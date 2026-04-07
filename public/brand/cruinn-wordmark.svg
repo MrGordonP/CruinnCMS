@@ -1,0 +1,29 @@
+<svg width="100%" viewBox="0 0 280 270" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  
+<mask id="imagine-text-gaps-n379sf" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="280" height="270" fill="white"/><rect x="16.611106872558594" y="3.888823986053467" width="145.201171875" height="16.833415031433105" fill="black" rx="2"/><rect x="98.99999237060547" y="98.33312225341797" width="131.99559783935547" height="44.4447021484375" fill="black" rx="2"/><rect x="99.99999237060547" y="141.333251953125" width="45.88652801513672" height="18.388980865478516" fill="black" rx="2"/><rect x="99.99999237060547" y="158.9999542236328" width="111.84008026123047" height="12.944501876831055" fill="black" rx="2"/></mask></defs>
+
+<text x="21" y="16" style="fill:rgb(194, 192, 182);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, sans-serif;font-size:10px;font-weight:400;text-anchor:start;dominant-baseline:auto">V3a — E-W only, no underline</text>
+<rect x="21" y="22" width="238" height="238" rx="4" fill="#0c1614" style="fill:rgb(12, 22, 20);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- STEP 1: TEXT -->
+<text x="103" y="133" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="400" fill="#e8e4da" letter-spacing="2" style="fill:rgb(232, 228, 218);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Arial, Helvetica, sans-serif;font-size:36px;font-weight:400;text-anchor:start;dominant-baseline:auto">RUINN</text>
+
+<text x="104" y="155" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#1d9e75" letter-spacing="3" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Arial, Helvetica, sans-serif;font-size:13px;font-weight:400;text-anchor:start;dominant-baseline:auto">CMS</text>
+
+<text x="104" y="168" font-family="'Space Mono', monospace" font-size="7.5" fill="#5dcaa5" letter-spacing="2.8" opacity="0.85" style="fill:rgb(93, 202, 165);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Space Mono&quot;, monospace;font-size:7.5px;font-weight:400;text-anchor:start;dominant-baseline:auto">FULLY AXIOMATIC</text>
+
+<!-- STEP 2: COMPASS LINES -->
+<line x1="78" y1="106" x2="78" y2="170" stroke="#1d9e75" stroke-width="1.2" opacity="0.85" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:1.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<line x1="55" y1="115" x2="101" y2="161" stroke="#1d9e75" stroke-width="0.45" opacity="0.30" mask="url(#imagine-text-gaps-n379sf)" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:0.45px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.3;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<line x1="101" y1="115" x2="55" y2="161" stroke="#1d9e75" stroke-width="0.45" opacity="0.30" mask="url(#imagine-text-gaps-n379sf)" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:0.45px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.3;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="78" cy="138" r="6" fill="none" stroke="#1d9e75" stroke-width="0.45" opacity="0.36" style="fill:none;stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:0.45px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.36;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="78" cy="138" r="1.8" fill="#1d9e75" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- STEP 3: E-W rect — after text -->
+<rect x="46" y="138" width="182" height="1" fill="#1d9e75" opacity="0.7" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.7;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- STEP 4: C ARC LAST -->
+<path d="M 99.5 116.5 A 30.4 30.4 0 1 0 99.5 159.5" fill="none" stroke="#e8e4da" stroke-width="3.2" stroke-linecap="butt" mask="url(#imagine-text-gaps-n379sf)" style="fill:none;stroke:rgb(232, 228, 218);color:rgb(255, 255, 255);stroke-width:3.2px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+</svg>

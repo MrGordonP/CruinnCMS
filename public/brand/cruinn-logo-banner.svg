@@ -1,0 +1,28 @@
+<svg width="100%" viewBox="34 94 206 86" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<mask id="imagine-text-gaps-n379sf" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="280" height="270" fill="white"/><rect x="16.611106872558594" y="3.888823986053467" width="145.201171875" height="16.833415031433105" fill="black" rx="2"/><rect x="98.99999237060547" y="98.33312225341797" width="131.99559783935547" height="44.4447021484375" fill="black" rx="2"/><rect x="99.99999237060547" y="141.333251953125" width="45.88652801513672" height="18.388980865478516" fill="black" rx="2"/><rect x="99.99999237060547" y="158.9999542236328" width="111.84008026123047" height="12.944501876831055" fill="black" rx="2"/></mask></defs>
+
+<rect x="36" y="96" width="202" height="82" rx="4" fill="#0c1614"/>
+
+<!-- STEP 1: TEXT -->
+<text x="103" y="133" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="400" fill="#e8e4da" letter-spacing="2">RUINN</text>
+
+<text x="104" y="155" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="400" fill="#1d9e75" letter-spacing="3">CMS</text>
+
+<text x="104" y="168" font-family="'Space Mono', monospace" font-size="7.5" fill="#5dcaa5" letter-spacing="2.8" opacity="0.85">FULLY AXIOMATIC</text>
+
+<!-- STEP 2: COMPASS LINES -->
+<line x1="78" y1="106" x2="78" y2="170" stroke="#1d9e75" stroke-width="1.2" opacity="0.85"/>
+<line x1="55" y1="115" x2="101" y2="161" stroke="#1d9e75" stroke-width="0.45" opacity="0.30" mask="url(#imagine-text-gaps-n379sf)"/>
+<line x1="101" y1="115" x2="55" y2="161" stroke="#1d9e75" stroke-width="0.45" opacity="0.30" mask="url(#imagine-text-gaps-n379sf)"/>
+<circle cx="78" cy="138" r="6" fill="none" stroke="#1d9e75" stroke-width="0.45" opacity="0.36"/>
+<circle cx="78" cy="138" r="1.8" fill="#1d9e75"/>
+
+<!-- STEP 3: E-W rect — after text -->
+<rect x="46" y="138" width="182" height="1" fill="#1d9e75" opacity="0.7"/>
+
+<!-- STEP 4: C ARC LAST -->
+<path d="M 99.5 116.5 A 30.4 30.4 0 1 0 99.5 159.5" fill="none" stroke="#e8e4da" stroke-width="3.2" stroke-linecap="butt"/>
+
+</svg>

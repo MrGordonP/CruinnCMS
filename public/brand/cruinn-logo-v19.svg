@@ -1,0 +1,62 @@
+<svg width="100%" viewBox="20 30 300 300" xmlns="http://www.w3.org/2000/svg">
+<defs>
+
+<mask id="imagine-text-gaps-2sofrr" maskUnits="userSpaceOnUse"><rect x="0" y="0" width="340" height="360" fill="white"/><rect x="16" y="12.8368558883667" width="112.97676849365234" height="15.092226028442383" fill="black" rx="2"/><rect x="90.00000762939453" y="128.66656494140625" width="171.30137634277344" height="59.94340515136719" fill="black" rx="2"/><rect x="269.6671142578125" y="138.90777587890625" width="16.680872917175293" height="17.50358009338379" fill="black" rx="2"/><rect x="269.0002136230469" y="150.90777587890625" width="17.999582290649414" height="17.50358009338379" fill="black" rx="2"/><rect x="269.9986877441406" y="162.90777587890625" width="16.0026798248291" height="17.50358009338379" fill="black" rx="2"/><rect x="182.51348876953125" y="186.80140686035156" width="105.48650360107422" height="14.609955787658691" fill="black" rx="2"/></mask></defs>
+
+<!--
+Full group bounding box:
+  Left edge:  C arc leftmost = cx - r
+  Right edge: CMS rightmost = CMS_centre + 6 (half M width)
+
+  Content:
+    r=18, gap_after_arc=2, RUINN_width=170, gap_before_CMS=8, CMS_half=6
+    Total = 18 + 2 + 170 + 8 + 6 = 204px
+    Plus left of C: r=18 more to the left of cx.
+    So full width from leftmost to rightmost = 18 + 2 + 170 + 8 + 12 = 210px.
+
+  Square width=300. Centre=170 (square x=20, centre=170).
+  Group centre should be at 170.
+  Group left = 170 - 210/2 = 170 - 105 = 65.
+  cx_C = 65 + 18 = 83.
+  RUINN_x = 83 + 18 + 2 = 103.
+  RUINN_end = 103 + 170 = 273.
+  CMS_centre_x = 273 + 8 + 6 = 287.
+  Group right = 287 + 6 = 293.
+  Verify centre: (65+293)/2 = 179 ≈ 170. Off by 9.
+  Adjust: shift left 9. cx_C=74. RUINN_x=94. RUINN_end=264. CMS_centre=278.
+  Group: left=56, right=284. Centre=170. ✓
+
+  Vertical: same as before.
+  cy=158, baseline=176, rule_y=185, FA_y=197.
+  CMS: C=152, M=164, S=176.
+-->
+
+<text x="20" y="24" style="fill:rgb(194, 192, 182);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, sans-serif;font-size:10px;font-weight:400;text-anchor:start;dominant-baseline:auto">V2 — full group centred</text>
+<rect x="20" y="30" width="300" height="300" rx="4" fill="#0c1614" style="fill:rgb(12, 22, 20);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- C: r=18, cx=74, cy=158 -->
+<path d="M 86.7 145.3 A 18 18 0 1 0 86.7 170.7" fill="none" stroke="#e8e4da" stroke-width="3.5" stroke-linecap="butt" style="fill:none;stroke:rgb(232, 228, 218);color:rgb(255, 255, 255);stroke-width:3.5px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- Compass (74,158) -->
+<line x1="74" y1="140" x2="74" y2="176" stroke="#1d9e75" stroke-width="1.0" opacity="0.85" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<line x1="56" y1="158" x2="92" y2="158" stroke="#1d9e75" stroke-width="1.0" opacity="0.85" mask="url(#imagine-text-gaps-2sofrr)" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<line x1="61" y1="145" x2="87" y2="171" stroke="#1d9e75" stroke-width="0.4" opacity="0.30" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:0.4px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.3;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<line x1="87" y1="145" x2="61" y2="171" stroke="#1d9e75" stroke-width="0.4" opacity="0.30" style="fill:rgb(0, 0, 0);stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:0.4px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.3;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="74" cy="158" r="5" fill="none" stroke="#1d9e75" stroke-width="0.4" opacity="0.36" style="fill:none;stroke:rgb(29, 158, 117);color:rgb(255, 255, 255);stroke-width:0.4px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.36;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+<circle cx="74" cy="158" r="1.4" fill="#1d9e75" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- RUINN: x=94, baseline=176 -->
+<text x="94" y="176" font-family="Arial, Helvetica, sans-serif" font-size="50" font-weight="400" fill="#e8e4da" letter-spacing="1" style="fill:rgb(232, 228, 218);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Arial, Helvetica, sans-serif;font-size:50px;font-weight:400;text-anchor:start;dominant-baseline:auto">RUINN</text>
+
+<!-- CMS stacked, centre x=278 -->
+<text x="278" y="152" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#1d9e75" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Arial, Helvetica, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">C</text>
+<text x="278" y="164" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#1d9e71" style="fill:rgb(29, 158, 113);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Arial, Helvetica, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">M</text>
+<text x="278" y="176" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#1d9e75" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:Arial, Helvetica, sans-serif;font-size:12px;font-weight:400;text-anchor:middle;dominant-baseline:auto">S</text>
+
+<!-- Rule rect: full group width, drawn last -->
+<rect x="56" y="185" width="228" height="1" fill="#1d9e75" opacity="0.85" style="fill:rgb(29, 158, 117);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+<!-- FULLY AXIOMATIC right-aligned to group right edge x=284 -->
+<text x="284" y="197" text-anchor="end" font-family="'Space Mono', monospace" font-size="7.5" fill="#5dcaa5" letter-spacing="2" opacity="0.85" style="fill:rgb(93, 202, 165);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.85;font-family:&quot;Space Mono&quot;, monospace;font-size:7.5px;font-weight:400;text-anchor:end;dominant-baseline:auto">FULLY AXIOMATIC</text>
+
+</svg>

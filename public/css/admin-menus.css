@@ -1,0 +1,394 @@
+/**
+ * Admin — Menus & Navigation
+ */
+/* ══════════════════════════════════════════════════════════════
+   Menu Tree Editor
+   ══════════════════════════════════════════════════════════════ */
+
+.menu-tree-root {
+    border: 1px solid #dce1e6;
+    border-radius: 6px;
+    background: #fff;
+    overflow: hidden;
+}
+
+.menu-tree-root>.menu-tree {
+    max-height: 600px;
+    overflow-y: auto;
+    resize: vertical;
+    min-height: 120px;
+    padding-bottom: 4px;
+}
+
+.menu-tree-root>.menu-tree::after {
+    content: '';
+    display: block;
+    width: 30px;
+    height: 4px;
+    margin: 4px auto 2px;
+    border-radius: 2px;
+    background: #d0d5dc;
+    opacity: 0.6;
+}
+
+.menu-tree-heading {
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0.85rem 1.2rem;
+    background: #f4f6f8;
+    border-bottom: 1px solid #dce1e6;
+    color: #1a2332;
+    letter-spacing: 0.01em;
+}
+
+/* Reset list styles */
+.menu-tree,
+.menu-tree-children {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Indent children and draw tree lines */
+.menu-tree-children {
+    padding-left: 1.75rem;
+    position: relative;
+}
+
+/* Vertical connector line for children */
+.menu-tree-children::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0.85rem;
+    bottom: 0.9rem;
+    width: 1px;
+    background: #cdd4db;
+}
+
+/* Horizontal branch connector */
+.menu-tree-children>.menu-tree-node::before {
+    content: '';
+    position: absolute;
+    top: 1.1rem;
+    left: -0.9rem;
+    width: 0.75rem;
+    height: 1px;
+    background: #cdd4db;
+}
+
+/* Each tree node */
+.menu-tree-node {
+    position: relative;
+}
+
+/* The visible item row */
+.menu-tree-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid #eef1f4;
+    transition: background 0.15s;
+}
+
+.menu-tree-item:hover {
+    background: #f7f9fb;
+}
+
+.menu-tree-node:last-child>.menu-tree-item {
+    /* Last child at any level */
+}
+
+/* Drag handle */
+.menu-tree-handle {
+    cursor: grab;
+    color: #aab3bc;
+    font-size: 1rem;
+    user-select: none;
+    flex-shrink: 0;
+    width: 1.2rem;
+    text-align: center;
+}
+
+.menu-tree-handle:hover {
+    color: #556272;
+}
+
+/* Drag-and-drop states */
+.menu-tree-dragging {
+    opacity: 0.35;
+}
+
+.menu-tree-drop-placeholder {
+    list-style: none;
+    height: 3px;
+    background: #4a90d9;
+    border-radius: 2px;
+    margin: 0 1rem;
+    transition: opacity 0.15s;
+}
+
+.menu-tree-nest-target>.menu-tree-item {
+    outline: 2px dashed #4a90d9;
+    outline-offset: -2px;
+    background: #eef4fc;
+}
+
+.menu-tree-handle:active {
+    cursor: grabbing;
+}
+
+/* Item label */
+.menu-tree-label {
+    font-weight: 600;
+    color: #1a2332;
+    flex-shrink: 0;
+}
+
+}
+
+/* Meta info (type badge, URL) */
+.menu-tree-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.menu-tree-url {
+    color: #7a8796;
+    font-size: 0.82rem;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Action buttons */
+.menu-tree-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.menu-tree-item:hover .menu-tree-actions {
+    opacity: 1;
+}
+
+/* Inactive items */
+.menu-item-inactive>.menu-tree-item {
+    opacity: 0.55;
+}
+
+.menu-item-inactive>.menu-tree-item .menu-tree-label {
+    text-decoration: line-through;
+}
+
+/* Inline edit form (nested inside tree node) */
+.menu-tree-edit-form {
+    background: #f7f9fb;
+    border-bottom: 1px solid #dce1e6;
+    padding: 0.75rem 1rem 0.75rem 2.7rem;
+}
+
+.menu-tree-edit-form .form-row {
+    margin-bottom: 0.5rem;
+}
+
+.menu-tree-edit-form .form-actions {
+    margin-top: 0.5rem;
+}
+
+/* Add Item panel */
+.menu-item-add {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f7f9fb;
+    border: 1px solid #dce1e6;
+    border-radius: 6px;
+}
+
+.menu-item-add h3 {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    color: #556272;
+}
+
+/* Two-Column Menu Editor Layout */
+.menu-editor-columns {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.menu-editor-stacked .menu-editor-columns {
+    grid-template-columns: 1fr;
+}
+
+@media (max-width: 900px) {
+    .menu-editor-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+.menu-editor-main {
+    min-width: 0;
+}
+
+/* Available Items Sidebar */
+.menu-editor-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: sticky;
+    top: 1rem;
+}
+
+.menu-source-panel {
+    border: 1px solid #dce1e6;
+    border-bottom: none;
+    background: #fff;
+}
+
+.menu-source-panel:first-child {
+    border-radius: 6px 6px 0 0;
+}
+
+.menu-source-panel:last-child {
+    border-bottom: 1px solid #dce1e6;
+    border-radius: 0 0 6px 6px;
+}
+
+.menu-source-panel:only-child {
+    border-radius: 6px;
+    border-bottom: 1px solid #dce1e6;
+}
+
+.menu-source-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: #f7f9fb;
+    border: none;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #374151;
+    text-align: left;
+}
+
+.menu-source-toggle:hover {
+    background: #eef1f5;
+}
+
+.menu-source-toggle .nav-caret {
+    font-size: 0.7rem;
+    transition: transform 0.2s;
+}
+
+.menu-source-panel.collapsed .menu-source-toggle .nav-caret {
+    transform: rotate(-90deg);
+}
+
+.menu-source-panel.collapsed .menu-source-body {
+    display: none !important;
+}
+
+.menu-source-body {
+    padding: 0.6rem 0.85rem;
+    border-top: 1px solid #e5e8ec;
+    resize: vertical;
+    overflow-y: auto;
+    min-height: 60px;
+    max-height: 500px;
+}
+
+.menu-source-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.5rem;
+    max-height: calc(100% - 2.5rem);
+    overflow-y: auto;
+}
+
+/* Resize handle hint */
+.menu-source-body::after {
+    content: '';
+    display: block;
+    width: 30px;
+    height: 4px;
+    margin: 4px auto 0;
+    border-radius: 2px;
+    background: #d0d5dc;
+    opacity: 0.6;
+}
+
+.menu-source-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.84rem;
+    line-height: 1.3;
+}
+
+.menu-source-item:hover {
+    background: #eef1f5;
+}
+
+.menu-source-label {
+    flex: 1;
+    color: #374151;
+}
+
+.menu-source-slug {
+    font-size: 0.75rem;
+    color: #8b95a5;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menu-source-empty {
+    color: #8b95a5;
+    font-size: 0.83rem;
+    margin: 0.3rem 0;
+}
+
+.menu-source-used {
+    opacity: 0.55;
+}
+
+.menu-source-in-use {
+    font-size: 0.68rem;
+    margin-left: auto;
+}
+
+.menu-source-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 0.4rem;
+    border-top: 1px solid #eef1f5;
+}
+
+.btn-select-all {
+    font-size: 0.78rem;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.btn-select-all:hover {
+    color: var(--color-primary, #4f7942);
+}
+

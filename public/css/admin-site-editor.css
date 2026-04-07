@@ -1,0 +1,903 @@
+/**
+ * Admin — 3-Panel Site Editor
+ */
+/* ── Top Toolbar ──────────────────────────────────────────── */
+
+.site-editor-toolbar {
+    grid-area: toolbar;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    min-height: 42px;
+    gap: 12px;
+}
+
+.se-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.se-toolbar-left .btn-outline {
+    color: #cbd5e1;
+    border-color: #475569;
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    white-space: nowrap;
+}
+
+.se-toolbar-left .btn-outline:hover {
+    background: #334155;
+    color: #fff;
+}
+
+.se-toolbar-title {
+    color: #f1f5f9;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.se-toolbar-left .badge {
+    font-size: 0.65rem;
+}
+
+.se-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.se-toolbar-right .btn-primary {
+    font-size: 0.82rem;
+    padding: 5px 16px;
+}
+
+.se-toolbar-right .btn-revert {
+    color: #f87171;
+    border-color: #ef4444;
+    font-size: 0.8rem;
+}
+
+.se-toolbar-right .btn-revert:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    border-color: #fca5a5;
+}
+
+.se-toolbar-right .btn-revert:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Left Panel ───────────────────────────────────────────── */
+
+.site-editor-left {
+    grid-area: left;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Section accordion */
+.se-section {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.se-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #475569;
+    background: none;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    text-align: left;
+}
+
+.se-section-header:hover {
+    background: #f1f5f9;
+}
+
+.se-section-header-static {
+    cursor: default;
+}
+
+.se-section-header-static:hover {
+    background: transparent;
+}
+
+.se-chevron {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    transition: transform 0.2s;
+}
+
+.se-section-body {
+    display: none;
+    padding: 0 14px 10px;
+}
+
+.se-section-body-open {
+    display: block;
+}
+
+.se-section-collapsed {
+    display: none;
+}
+
+/* Section items (zones) */
+.se-section-item {
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    transition: background 0.15s;
+}
+
+.se-section-item:hover {
+    background: #e2e8f0;
+}
+
+.se-section-item.active {
+    background: #dbeafe;
+}
+
+.se-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: #334155;
+    cursor: pointer;
+}
+
+.se-toggle input[type="checkbox"] {
+    margin: 0;
+    accent-color: var(--color-primary, #4a90d9);
+}
+
+.se-toggle span {
+    flex: 1;
+}
+
+/* Form fields */
+.se-field {
+    margin-bottom: 8px;
+}
+
+.se-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 3px;
+}
+
+.se-input {
+    width: 100%;
+    padding: 5px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-family: inherit;
+    background: #fff;
+}
+
+.se-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #4a90d9);
+    box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.15);
+}
+
+.se-input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
+.se-sidebar-pos {
+    margin-top: 4px;
+}
+
+/* Block palette */
+.se-block-palette {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.se-palette-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.se-palette-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    font-weight: 600;
+    padding: 2px 0;
+}
+
+.se-palette-btn {
+    display: block;
+    width: 100%;
+    padding: 6px 10px;
+    text-align: left;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.se-palette-btn:hover {
+    background: #eff6ff;
+    border-color: var(--color-primary, #4a90d9);
+    color: var(--color-primary, #4a90d9);
+}
+
+/* Page list */
+.se-page-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.se-page-list li {
+    padding: 4px 0;
+    font-size: 0.82rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.se-page-list a {
+    color: var(--color-primary, #4a90d9);
+}
+
+/* Danger section */
+.se-danger-section .se-section-header {
+    color: #dc2626;
+}
+
+.se-danger-text {
+    font-size: 0.82rem;
+    color: #6b7280;
+    margin: 0 0 8px;
+}
+
+/* ── Centre Panel (Canvas) ──────────────────────────────── */
+
+.site-editor-center {
+    grid-area: center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--color-bg-light, #f5f7fa);
+    padding: var(--space-md);
+}
+
+/* In embedded mode, simplify the block editor */
+.site-editor-center .block-editor {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+.site-editor-center .block-editor-header {
+    position: sticky;
+    top: 0;
+    background: var(--color-bg-light, #f5f7fa);
+    z-index: 10;
+    padding: 4px 0 8px;
+    margin-bottom: var(--space-sm);
+}
+
+/* Block items inside site editor: disable resize handles and tame overflow */
+.site-editor-center .block-editor-item {
+    overflow: visible;
+    resize: none;
+}
+
+/* Hide the "Properties" toggle in embedded mode (panel always visible) */
+.editor-embedded .btn-toggle-props {
+    display: none;
+}
+
+/* ── Right Panel (Properties) ──────────────────────────── */
+
+.site-editor-right {
+    grid-area: right;
+    min-height: 0;
+    /* allow grid item to shrink below content height */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: #fff;
+    border-left: 1px solid #e2e8f0;
+}
+
+/* Embedded properties panel: static instead of fixed */
+.se-props-embedded {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    border-left: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    z-index: auto !important;
+    top: auto !important;
+    right: auto !important;
+    overflow-y: visible !important;
+}
+
+/* Hide close button in embedded props (panel is always visible) */
+.se-props-embedded .block-props-close {
+    display: none;
+}
+
+/* Placeholder when no block selected */
+.se-props-placeholder {
+    padding: var(--space-lg);
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.se-props-placeholder p {
+    margin: 0;
+}
+
+/* Hide properties content until a block is selected */
+.se-props-embedded .se-props-content {
+    display: none;
+}
+
+.se-props-embedded.block-props-active .se-props-placeholder {
+    display: none;
+}
+
+.se-props-embedded.block-props-active .se-props-content {
+    display: block;
+}
+
+/* ── Zone Canvases ──────────────────────────────────────── */
+
+.block-canvas-zoned {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.se-zone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    transition: border-color 0.2s;
+    min-height: 60px;
+}
+
+.se-zone:hover {
+    border-color: #94a3b8;
+}
+
+.se-zone.se-zone-active {
+    border-color: var(--color-primary, #3b82f6);
+    border-style: solid;
+}
+
+.se-zone-label {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 12px;
+    border-radius: 4px 4px 0 0;
+    user-select: none;
+    cursor: pointer;
+}
+
+.se-zone.se-zone-active .se-zone-label {
+    background: var(--color-primary, #3b82f6);
+    color: #fff;
+}
+
+.se-zone-canvas {
+    padding: var(--space-sm) var(--space-md);
+    min-height: 40px;
+}
+
+.se-zone-canvas .block-empty {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-style: italic;
+    text-align: center;
+    padding: var(--space-md) 0;
+    margin: 0;
+}
+
+/* ── Block items inside zone canvases ──────────────────────── */
+
+.se-zone-canvas .block-editor-item.block-preview-wrap {
+    padding: 0;
+    background: transparent;
+    border: 2px solid transparent;
+    overflow: visible;
+    resize: none;
+}
+
+.se-zone-canvas .block-preview-wrap .block-handle-move,
+.se-zone-canvas .block-preview-wrap .block-info-bar {
+    display: none;
+}
+
+.se-zone-canvas .rte-editor {
+    min-height: 60px;
+    max-height: 300px;
+}
+
+.se-zone-canvas .block-editor-content {
+    overflow: hidden;
+}
+
+/* Header/footer zones: center blocks with max-width */
+.se-zone[data-zone="header"] .se-zone-canvas .content-block,
+.se-zone[data-zone="footer"] .se-zone-canvas .content-block {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.se-zone-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 6px var(--space-md) 8px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.se-zone-add .btn-add-block {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    opacity: 0.7;
+}
+
+.se-zone-add .btn-add-block:hover {
+    opacity: 1;
+}
+
+/* Zone selection */
+.se-zone.block-props-editing {
+    border-color: #f59e0b;
+    border-style: solid;
+}
+
+.se-zone.block-props-editing>.se-zone-label {
+    background: #f59e0b;
+    color: #fff;
+}
+
+/* Zone header/footer visual hints */
+.se-zone-header .se-zone-label {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.se-zone-header.se-zone-active .se-zone-label {
+    background: #2563eb;
+    color: #fff;
+}
+
+.se-zone-footer .se-zone-label {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.se-zone-footer.se-zone-active .se-zone-label {
+    background: #64748b;
+    color: #fff;
+}
+
+/* ── Nav Menu Block (editor) ───────────────────────────── */
+
+.block-nav-menu-editor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 4px 0;
+}
+
+.block-nav-menu-editor label {
+    font-size: 0.8rem;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.block-nav-menu-editor select {
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+}
+
+.block-nav-preview {
+    width: 100%;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    margin: 4px 0 0;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 4px;
+    border: 1px dashed #e2e8f0;
+}
+
+/* ── Live Preview Blocks inside Zone Canvases ──────────── */
+
+.block-preview-wrap {
+    position: relative;
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    padding: 0;
+    margin-bottom: var(--space-xs);
+    background: transparent;
+    overflow: visible;
+    resize: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.block-preview-wrap:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 1px #93c5fd;
+}
+
+.block-preview-wrap:hover>.block-preview-toolbar {
+    opacity: 1;
+}
+
+.block-preview-wrap.block-props-editing {
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    outline: none;
+}
+
+.block-preview-wrap .content-block {
+    margin-bottom: 0;
+}
+
+/* Preview block toolbar — visible on hover */
+.block-preview-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 3px 3px 0 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+    user-select: none;
+}
+
+.block-preview-wrap.block-props-editing>.block-preview-toolbar {
+    opacity: 1;
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+.block-preview-handle {
+    cursor: grab;
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.block-preview-handle:hover {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.block-preview-handle:active {
+    cursor: grabbing;
+}
+
+.block-preview-label {
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Drag ghost for preview blocks */
+.block-preview-wrap.dragging {
+    opacity: 0;
+    height: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+
+/* Preview placeholder for empty/dynamic blocks */
+.block-preview-placeholder {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    font-style: italic;
+    padding: var(--space-lg) var(--space-md);
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+    border-radius: 4px;
+}
+
+.block-preview-placeholder-small {
+    padding: var(--space-sm) var(--space-md);
+    font-size: 0.8rem;
+}
+
+/* Prevent links inside preview blocks from navigating */
+.block-preview-wrap a {
+    pointer-events: none;
+}
+
+/* Preview blocks inside rows need no extra margin */
+.block-preview-wrap .block-row {
+    margin-bottom: 0;
+}
+
+/* Site Logo / Site Title blocks in preview — inner elements handle sizing,
+   wrapper stays full-width so text-align alignment works */
+
+.block-preview-wrap .content-block>.block-site-logo {
+    display: inline-block;
+}
+
+.block-preview-wrap .block-site-logo img {
+    max-height: 60px;
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Site Title block in preview */
+.block-preview-wrap .content-block>.block-site-title {
+    display: inline-block;
+}
+
+.block-preview-wrap .block-site-title .site-logo {
+    pointer-events: none;
+}
+
+/* Add-child buttons inside preview row columns */
+.btn-add-child-preview {
+    display: block;
+    width: 100%;
+    margin-top: var(--space-xs);
+    opacity: 0.4;
+    font-size: 0.75rem;
+    text-align: center;
+    transition: opacity 0.15s;
+}
+
+.block-row-col:hover .btn-add-child-preview,
+.block-container:hover>.btn-add-child-preview {
+    opacity: 1;
+}
+
+/* ── Zone edit link in Sections panel ──────────────────── */
+
+.se-section-item.se-zone-link {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.se-section-item.se-zone-link.active {
+    background: #eff6ff;
+    border-left: 3px solid var(--color-primary, #3b82f6);
+    padding-left: 9px;
+}
+
+.se-zone-edit-link {
+    margin-left: auto;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-decoration: none;
+    padding: 2px 4px;
+}
+
+.se-zone-edit-link:hover {
+    color: #475569;
+}
+
+/* ── Header source row ─────────────────────────────────── */
+
+.se-header-source-row {
+    padding: 4px 14px 8px;
+}
+
+.se-header-source-row .se-field-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.se-edit-global-header-btn {
+    display: block;
+    margin-top: 5px;
+    text-align: center;
+    font-size: 0.78rem;
+    width: 100%;
+}
+
+/* ── Inactive zone (auto header) ───────────────────────── */
+
+.se-zone.se-zone-inactive {
+    opacity: 0.40;
+    pointer-events: none;
+    position: relative;
+}
+
+.se-zone.se-zone-inactive .se-zone-label::after {
+    content: ' — auto (not rendered)';
+    font-style: italic;
+    font-size: 0.78em;
+    color: #94a3b8;
+}
+
+/* ── Columns block ghost slots ───────────────────────────── */
+
+/* Each column slot — one grid cell in .content-block.block-columns */
+.block-col-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 80px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 6px;
+    background: #fafafa;
+}
+
+.block-col-ghost {
+    min-height: 100px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 4px;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 16px 8px;
+    transition: border-color 0.15s, background 0.15s;
+    cursor: pointer;
+}
+
+.block-col-ghost:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.block-col-ghost-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* "Add to col N" button inside a populated slot */
+.btn-add-to-col {
+    width: 100%;
+    margin-top: 4px;
+    font-size: 0.72rem;
+}
+
+/* Span all columns when children exist (legacy, kept for compatibility) */
+.block-col-add-more {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+    width: 100%;
+}
+
+/* ── Column preset picker ───────────────────────────────── */
+
+.col-preset-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.col-preset-btn {
+    font-size: 0.72rem;
+    padding: 3px 6px;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #334155;
+    line-height: 1.4;
+}
+
+.col-preset-btn:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+.col-preset-btn.active {
+    background: #dbeafe;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+/* ── Responsive: collapse panels on narrow screens ─────── */
+
+@media (max-width: 1024px) {
+    .site-editor {
+        grid-template-columns: 220px 1fr;
+        grid-template-areas:
+            "toolbar toolbar"
+            "left    center";
+    }
+
+    .site-editor-right {
+        display: none;
+    }
+
+    .editor-embedded .btn-toggle-props {
+        display: inline-flex;
+    }
+}
+
+@media (max-width: 768px) {
+    .site-editor {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+        grid-template-areas:
+            "toolbar"
+            "left"
+            "center";
+    }
+
+    .site-editor-left {
+        max-height: 200px;
+        border-right: none;
+        border-bottom: 1px solid #e2e8f0;
+    }
+}

@@ -1,0 +1,560 @@
+/**
+ * Admin — Template Visual Editor (TVE)
+ */
+/* ── Template Visual Editor (TVE) ──────────────────────── */
+
+.tve-form .form-fieldset {
+    border: 1px solid var(--border-color, #dee2e6);
+    border-radius: var(--radius, 6px);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.tve-form .form-fieldset legend {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-light, #6c757d);
+    padding: 0 0.4em;
+}
+
+.tve-editor {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+    align-items: start;
+}
+
+/* ── Interactive Preview ────────────────────────────────── */
+
+.tve-preview-wrap {
+    min-width: 0;
+}
+
+.tve-preview {
+    background: #f3f4f6;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.tve-hint {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #999;
+    margin: 0.5rem 0 0;
+}
+
+/* Each zone is a clickable section */
+.tve-zone {
+    position: relative;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.tve-zone:hover {
+    border-color: #93c5fd;
+    background-color: rgba(59, 130, 246, 0.04);
+}
+
+.tve-zone.tve-selected {
+    border-color: #3b82f6;
+    background-color: rgba(59, 130, 246, 0.06);
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);
+}
+
+/* Zone labels */
+.tve-zone-label {
+    position: absolute;
+    top: 3px;
+    right: 6px;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.tve-zone.tve-selected .tve-zone-label {
+    color: #3b82f6;
+}
+
+/* Hidden zone styling */
+.tve-zone.tve-hidden {
+    opacity: 0.35;
+}
+
+.tve-zone.tve-hidden .tve-zone-visual {
+    opacity: 0.5;
+}
+
+.tve-hidden-badge {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    color: #dc3545;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 2px 10px;
+    border-radius: 3px;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.tve-zone.tve-hidden .tve-hidden-badge {
+    display: block;
+}
+
+/* ── Header zone ──────────────────────────────────────── */
+
+.tve-zone-header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d5a88 100%);
+    padding: 14px 16px;
+}
+
+.tve-zone-header .tve-zone-label {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.tve-zone-header.tve-selected .tve-zone-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.tve-zone-header .tve-zone-visual {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tve-mock-logo {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+.tve-mock-nav {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+}
+
+.tve-mock-nav span {
+    display: block;
+    height: 6px;
+    width: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+/* ── Breadcrumbs zone ──────────────────────────────────── */
+
+.tve-zone-breadcrumbs {
+    padding: 6px 16px;
+    background: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.tve-zone-breadcrumbs .tve-zone-visual {
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+.tve-mock-crumb {
+    color: #4a90d9;
+}
+
+.tve-mock-crumb-current {
+    color: #495057;
+    font-weight: 600;
+}
+
+.tve-mock-crumb-sep {
+    color: #adb5bd;
+    margin: 0 2px;
+}
+
+/* ── Title zone ──────────────────────────────────────── */
+
+.tve-zone-title {
+    padding: 12px 16px 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.tve-mock-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #212529;
+    font-family: Georgia, serif;
+}
+
+/* ── Content zone ──────────────────────────────────────── */
+
+.tve-zone-content {
+    padding: 12px 16px 16px;
+    min-height: 160px;
+}
+
+.tve-content-layout {
+    display: flex;
+    gap: 16px;
+}
+
+.tve-content-layout.tve-sidebar-left {
+    flex-direction: row-reverse;
+}
+
+.tve-mock-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tve-mock-line {
+    height: 7px;
+    background: #d1d5db;
+    border-radius: 3px;
+}
+
+.tve-mock-line.tve-w100 {
+    width: 100%;
+}
+
+.tve-mock-line.tve-w90 {
+    width: 90%;
+}
+
+.tve-mock-line.tve-w80 {
+    width: 80%;
+}
+
+.tve-mock-line.tve-w70 {
+    width: 70%;
+}
+
+.tve-mock-line.tve-w60 {
+    width: 60%;
+}
+
+.tve-mock-sidebar {
+    display: none;
+    flex: 0 0 28%;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tve-content-layout.tve-has-sidebar .tve-mock-sidebar {
+    display: flex;
+}
+
+.tve-mock-widget {
+    background: #e5e7eb;
+    border-radius: 4px;
+    height: 50px;
+}
+
+.tve-mock-widget-sm {
+    height: 35px;
+}
+
+/* Content width indicator */
+.tve-content-layout[data-width="narrow"] .tve-mock-main {
+    max-width: 70%;
+}
+
+.tve-content-layout[data-width="wide"] .tve-mock-main,
+.tve-content-layout[data-width="full"] .tve-mock-main {
+    max-width: 100%;
+}
+
+/* ── Footer zone ──────────────────────────────────────── */
+
+.tve-zone-footer {
+    background: #374151;
+    padding: 10px 16px;
+    text-align: center;
+}
+
+.tve-mock-copyright {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.tve-zone-footer .tve-zone-label {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.tve-zone-footer.tve-selected .tve-zone-label {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Properties Panel ──────────────────────────────────── */
+
+.tve-props {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: var(--radius, 6px);
+    padding: 1rem 1.25rem;
+    min-height: 280px;
+}
+
+.tve-panel {
+    display: none;
+}
+
+.tve-panel.tve-panel-active {
+    display: block;
+}
+
+.tve-panel h3 {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1f2937;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #3b82f6;
+}
+
+.tve-panel-intro {
+    font-size: 0.82rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.tve-summary {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tve-summary li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.82rem;
+    color: #374151;
+}
+
+.tve-summary li:last-child {
+    border-bottom: 0;
+}
+
+.tve-prop-group {
+    margin-bottom: 1rem;
+}
+
+.tve-prop-group label:not(.form-checkbox):not(.tve-radio) {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 0.3rem;
+}
+
+.tve-prop-group .form-input {
+    width: 100%;
+}
+
+.tve-prop-links {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.tve-prop-links p {
+    margin: 0 0 0.4rem;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+.tve-prop-links a {
+    color: #4a90d9;
+}
+
+/* Alignment picker */
+.tve-align-picker {
+    display: flex;
+    gap: 4px;
+}
+
+.tve-align-btn {
+    width: 36px;
+    height: 32px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.tve-align-btn:hover {
+    border-color: #93c5fd;
+    color: #3b82f6;
+}
+
+.tve-align-btn.active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+.tve-align-btn[data-align="left"] {
+    text-align: left;
+}
+
+.tve-align-btn[data-align="center"] {
+    text-align: center;
+}
+
+.tve-align-btn[data-align="right"] {
+    text-align: right;
+    transform: scaleX(-1);
+}
+
+/* Sidebar options */
+.tve-sidebar-opts.tve-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.tve-pos-picker {
+    display: flex;
+    gap: 1rem;
+}
+
+.tve-radio {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+/* ── Collapsible details sections ──────────────────────── */
+
+.tve-details {
+    border: 1px solid #dee2e6;
+    border-radius: var(--radius, 6px);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+.tve-details summary {
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #4b5563;
+    cursor: pointer;
+    background: #f9fafb;
+    border-bottom: 1px solid transparent;
+    user-select: none;
+}
+
+.tve-details[open] summary {
+    border-bottom-color: #dee2e6;
+}
+
+.tve-details> :not(summary) {
+    padding: 0 1rem;
+}
+
+.tve-details .form-row,
+.tve-details .form-group {
+    margin-top: 0.75rem;
+}
+
+.tve-details .form-group:last-child {
+    margin-bottom: 0.75rem;
+}
+
+/* Pages list and links list inside details */
+.tve-details .tpl-pages-list,
+.tve-details .tpl-links-list {
+    padding: 0.5rem 1rem;
+}
+
+/* ── Template block editor section heading ─────────────── */
+
+.tve-section-heading {
+    margin: 1.5rem 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+    border-bottom: 2px solid #3b82f6;
+    padding-bottom: 0.4rem;
+}
+
+.tve-section-intro {
+    font-size: 0.82rem;
+    color: #6c757d;
+    margin: 0 0 1rem;
+    line-height: 1.5;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+
+@media (max-width: 860px) {
+    .tve-editor {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .sb-create-form .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .acp-sections {
+        order: -1;
+    }
+
+    .acp-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+/* ══════════════════════════════════════════════════════════════ */
+/*  FULL-WINDOW SITE EDITOR (3-Panel Layout)                    */
+/* ══════════════════════════════════════════════════════════════ */
+
+/* Break out of .admin-content constraints (also defined in admin-base.css) */
+.admin-content.fullscreen-editor {
+    max-width: none;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+}
+
+/* Main grid: toolbar on top, 3 panels below */
+.site-editor {
+    display: grid;
+    grid-template-columns: 250px 1fr 300px;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "toolbar toolbar toolbar"
+        "left    center  right";
+    width: 100%;
+    height: calc(100vh - 32px);
+    overflow: hidden;
+}
