@@ -1,4 +1,4 @@
-<?php \Cruinn\Template::requireCss('admin-members.css'); ?>
+<?php \Cruinn\Template::requireCss('admin-base.css'); ?>
 <div class="admin-page-header">
     <h1><?= e($user['display_name']) ?></h1>
     <div class="header-actions">
