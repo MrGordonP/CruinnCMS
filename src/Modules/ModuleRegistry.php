@@ -317,6 +317,11 @@ class ModuleRegistry
             $db   = Database::getInstance();
             $rows = $db->fetchAll("SELECT slug, status, settings FROM module_config");
             foreach ($rows as $row) {
+                // Only apply DB state for modules that actually exist on disk.
+                // Stale rows (from old installs or migrations) are ignored.
+                if (!isset(self::$modules[$row['slug']])) {
+                    continue;
+                }
                 self::$statuses[$row['slug']] = $row['status'];
                 self::$settings[$row['slug']] = json_decode($row['settings'] ?? '{}', true) ?? [];
             }
