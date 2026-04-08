@@ -47,6 +47,17 @@
                 </td>
             </tr>
             <tr>
+                <th>Email Verified</th>
+                <td>
+                    <?php if ($user['email_verified_at']): ?>
+                        <span class="badge badge-active">Verified</span>
+                        <span class="text-muted"><?= format_date($user['email_verified_at'], 'j M Y H:i') ?></span>
+                    <?php else: ?>
+                        <span class="badge badge-inactive">Not verified</span>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <tr>
                 <th>Last Login</th>
                 <td>
                     <?php if ($user['last_login']): ?>

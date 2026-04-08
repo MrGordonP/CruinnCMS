@@ -25,6 +25,7 @@ CREATE TABLE `users` (
     `role`          ENUM('admin','council','member','public') NOT NULL DEFAULT 'member',
     `role_id`       INT UNSIGNED    NULL DEFAULT NULL,
     `active`        TINYINT(1)      NOT NULL DEFAULT 1,
+    `email_verified_at` DATETIME    NULL DEFAULT NULL,
     `last_login`    DATETIME        NULL,
     `failed_logins` INT UNSIGNED    NOT NULL DEFAULT 0,
     `locked_until`  DATETIME        NULL DEFAULT NULL,
