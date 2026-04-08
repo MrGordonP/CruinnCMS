@@ -24,9 +24,8 @@ TMP="$(mktemp -d)"
 PKG_DIR="$TMP/$PKG_NAME"
 mkdir -p "$PKG_DIR"
 
-# ── home_root/ — extract to /home/username/ ─────────────────────
-# Engine dirs sit above public_html; never web-served
-HOME_DIR="$PKG_DIR/home_root"
+# ── CruinnCMS/ — extract to /home/username/ giving /home/username/CruinnCMS/ ─
+HOME_DIR="$PKG_DIR/CruinnCMS"
 mkdir -p "$HOME_DIR"
 cp -r "$ROOT/src"       "$HOME_DIR/src"
 cp -r "$ROOT/templates" "$HOME_DIR/templates"
@@ -43,8 +42,8 @@ PUB_DIR="$PKG_DIR/public_html/CruinnCMS"
 mkdir -p "$PUB_DIR"
 cp -r "$ROOT/public/." "$PUB_DIR/"
 
-# Patch CRUINN_ROOT: public_html/CruinnCMS/ is two levels below home root
-sed -i "s|define('CRUINN_ROOT', dirname(__DIR__))|define('CRUINN_ROOT', dirname(__DIR__, 2))|" "$PUB_DIR/index.php"
+# Patch CRUINN_ROOT: engine is at /home/username/CruinnCMS/, public at /home/username/public_html/CruinnCMS/
+sed -i "s|define('CRUINN_ROOT', dirname(__DIR__))|define('CRUINN_ROOT', dirname(__DIR__, 2) . '/CruinnCMS')|" "$PUB_DIR/index.php"
 
 # Clean writable dirs — keep structure, strip any real content
 find "$PUB_DIR/storage" -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
