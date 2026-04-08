@@ -23,6 +23,9 @@ server_err.log
 # Composer dependencies (install via composer install)
 vendor/
 
+# Release packages
+release/
+
 # OS
 .DS_Store
 Thumbs.db
