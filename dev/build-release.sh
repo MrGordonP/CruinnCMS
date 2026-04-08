@@ -42,12 +42,17 @@ PUB_DIR="$PKG_DIR/public_html/CruinnCMS"
 mkdir -p "$PUB_DIR"
 cp -r "$ROOT/public/." "$PUB_DIR/"
 
-# Patch CRUINN_ROOT: engine is at /home/username/CruinnCMS/, public at /home/username/public_html/CruinnCMS/
-sed -i "s|define('CRUINN_ROOT', dirname(__DIR__))|define('CRUINN_ROOT', dirname(__DIR__, 2) . '/CruinnCMS')|" "$PUB_DIR/index.php"
+# Rewrite index.php with the correct CRUINN_ROOT for cPanel layout:
+# public_html/CruinnCMS/ → dirname(__DIR__, 2) = /home/username/
+# Engine lives at /home/username/CruinnCMS/
+sed -i "s|define('CRUINN_ROOT', dirname(__DIR__));|define('CRUINN_ROOT', dirname(__DIR__, 2) . '/CruinnCMS');|" "$PUB_DIR/index.php"
 
 # Clean writable dirs — keep structure, strip any real content
 find "$PUB_DIR/storage" -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
 find "$PUB_DIR/uploads" -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
+
+# Blank index.php at public_html/ level — prevents directory listing
+echo '<?php // silence' > "$PKG_DIR/public_html/index.php"
 
 # Docs at zip root for reference
 cp "$ROOT/dev/README.md" "$PKG_DIR/README.md"

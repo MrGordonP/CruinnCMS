@@ -210,7 +210,7 @@
             // Show the active instance in the sidebar footer
             $activeInst = null;
             if (!empty($instances) && is_array($instances)) {
-                foreach ($instances as $_inst) { if ($_inst['active']) { $activeInst = $_inst; break; } }
+                foreach ($instances as $_inst) { if ($_inst['online']) { $activeInst = $_inst; break; } }
                 if (!$activeInst) $activeInst = $instances[0] ?? null;
             } elseif (!empty($instance)) {
                 $activeInst = $instance; // backward compat

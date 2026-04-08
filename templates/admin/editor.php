@@ -1063,7 +1063,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 
 <?php
 // Load block type registry + all registered type definitions
-$btDir = __DIR__ . '/../../../public/js/admin/block-types/';
+$btDir = CRUINN_PUBLIC . '/js/admin/block-types/';
 $btFiles = is_dir($btDir) ? (glob($btDir . '*.js') ?: []) : [];
 foreach ($btFiles as $btFile):
     $btMtime = filemtime($btFile);
@@ -1071,4 +1071,4 @@ foreach ($btFiles as $btFile):
 ?>
 <script src="<?= url('/js/admin/block-types/' . $btName) ?>?v=<?= $btMtime ?>"></script>
 <?php endforeach; ?>
-<script src="/js/editor.js?v=<?= file_exists(__DIR__ . '/../../public/js/editor.js') ? filemtime(__DIR__ . '/../../public/js/editor.js') : 0 ?>"></script>
+<script src="/js/editor.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/editor.js') ? filemtime(CRUINN_PUBLIC . '/js/editor.js') : 0 ?>"></script>

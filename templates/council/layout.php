@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Council') ?> — <?= e(\Cruinn\App::config('site.name', 'Council')) ?></title>
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= filemtime(__DIR__ . '/../../public/css/admin-base.css') ?>">
-    <link rel="stylesheet" href="<?= url('/css/admin-council.css') ?>?v=<?= filemtime(__DIR__ . '/../../public/css/admin-council.css') ?>">
+    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-base.css') ?>">
+    <link rel="stylesheet" href="<?= url('/css/admin-council.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-council.css') ?>">
 </head>
 <body class="council-body">
 
@@ -69,7 +69,7 @@
 </div>
 
 <?php
-$adminJsBase = __DIR__ . '/../../public/js/admin/';
+$adminJsBase = CRUINN_PUBLIC . '/js/admin/';
 $adminModules = [
     'utils.js',
     'api.js',
