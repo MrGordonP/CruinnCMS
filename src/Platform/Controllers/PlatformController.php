@@ -1486,7 +1486,12 @@ class PlatformController
     {
         $stmt = $pdo->prepare("SELECT table_name FROM information_schema.tables WHERE table_schema = ?");
         $stmt->execute([$dbName]);
-        return array_column($stmt->fetchAll(), 'table_name');
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        // Normalise column name casing — some MySQL hosts return TABLE_NAME in uppercase
+        return array_map(
+            fn($row) => $row['table_name'] ?? $row['TABLE_NAME'] ?? '',
+            $rows
+        );
     }
 
     private function pdoGetTablePk(\PDO $pdo, string $dbName, string $table): ?string
