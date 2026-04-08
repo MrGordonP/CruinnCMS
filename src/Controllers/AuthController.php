@@ -213,6 +213,68 @@ class AuthController extends BaseController
     }
 
     /**
+     * GET /users/profile — Show the logged-in user's profile.
+     */
+    public function profile(): void
+    {
+        Auth::requireRole('member');
+
+        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [Auth::userId()]);
+
+        $this->render('public/profile', [
+            'title' => 'My Profile',
+            'user'  => $user,
+        ]);
+    }
+
+    /**
+     * POST /users/profile — Update display name and/or password.
+     */
+    public function updateProfile(): void
+    {
+        Auth::requireRole('member');
+
+        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [Auth::userId()]);
+
+        $displayName = trim($this->input('display_name', ''));
+        $password    = $this->input('password', '');
+        $confirm     = $this->input('password_confirm', '');
+
+        $errors = [];
+
+        if (empty($displayName)) {
+            $errors['display_name'] = 'Display name is required.';
+        }
+
+        if ($password !== '' && strlen($password) < 8) {
+            $errors['password'] = 'Password must be at least 8 characters.';
+        }
+
+        if ($password !== '' && $password !== $confirm) {
+            $errors['password_confirm'] = 'Passwords do not match.';
+        }
+
+        if ($errors) {
+            $this->render('public/profile', [
+                'title'  => 'My Profile',
+                'user'   => array_merge($user, ['display_name' => $displayName]),
+                'errors' => $errors,
+            ]);
+            return;
+        }
+
+        $update = ['display_name' => $displayName];
+        if ($password !== '') {
+            $update['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+        }
+
+        $this->db->update('users', $update, 'id = ?', [Auth::userId()]);
+        $this->logActivity('update', 'user', Auth::userId(), 'profile updated');
+        Auth::flash('success', 'Profile updated.');
+        $this->redirect('/users/profile');
+    }
+
+    /**
      * Determine the appropriate landing page for the current user's role.
      */
     private function defaultRedirectForRole(): string
