@@ -89,12 +89,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             return;
         }
 
-        // Check if user has a linked member record
-        $member = $this->db->fetch(
-            'SELECT * FROM members WHERE user_id = ?',
-            [$id]
-        );
-
         // Recent activity
         $activity = $this->db->fetchAll(
             'SELECT * FROM activity_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 25',
@@ -105,7 +99,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         $this->renderAdmin('admin/users/show', [
             'title'       => $user['display_name'],
             'user'        => $user,
-            'member'      => $member,
             'activity'    => $activity,
             'userRoles'   => $roleService->getUserRoles($id),
             'userGroups'  => $roleService->getUserGroups($id),
