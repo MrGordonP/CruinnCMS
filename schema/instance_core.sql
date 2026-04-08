@@ -426,8 +426,8 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- ── System Roles ─────────────────────────────────────────────
 INSERT INTO `roles` (`slug`, `name`, `description`, `level`, `is_system`, `colour`, `default_redirect`) VALUES
-    ('admin',  'Administrator', 'Full site administration',              100, 1, '#dc3545', '/members/profile'),
-    ('member', 'Member',        'Authenticated user with standard access', 20, 1, '#198754', '/members/profile'),
+    ('admin',  'Administrator', 'Full site administration',              100, 1, '#dc3545', '/users/profile'),
+    ('member', 'Member',        'Authenticated user with standard access', 20, 1, '#198754', '/users/profile'),
     ('public', 'Public',        'Basic account with no special access',     0, 1, '#6c757d', '/');
 
 -- ── Core Permissions ─────────────────────────────────────────
