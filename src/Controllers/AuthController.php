@@ -230,9 +230,9 @@ class AuthController extends BaseController
         // Legacy fallback — all roles land on the user portal; admin/council
         // can navigate to their control panel from there.
         return match (Auth::role()) {
-            'admin'   => '/members/profile',
-            'council' => '/members/profile',
-            'member'  => '/members/profile',
+            'admin'   => '/users/profile',
+            'council' => '/users/profile',
+            'member'  => '/users/profile',
             default   => '/',
         };
     }

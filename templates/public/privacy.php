@@ -51,7 +51,7 @@
             <li><strong>Portability</strong> — export your data in a machine-readable format (JSON).</li>
             <li><strong>Objection</strong> — contact us to object to specific processing activities.</li>
         </ul>
-        <p>You can exercise your right to access and erasure directly from your <a href="/members/profile">profile page</a>. For other requests, contact us at <a href="mailto:<?= e($contact) ?>"><?= e($contact) ?></a>.</p>
+        <p>You can exercise your right to access and erasure directly from your <a href="/users/profile">profile page</a>. For other requests, contact us at <a href="mailto:<?= e($contact) ?>"><?= e($contact) ?></a>.</p>
 
         <h2>Data Security</h2>
         <p>We protect your data with:</p>

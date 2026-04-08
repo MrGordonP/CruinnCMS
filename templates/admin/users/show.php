@@ -98,30 +98,6 @@
         </div>
     </div>
 
-    <!-- Linked Member Record -->
-    <?php if ($member): ?>
-    <div class="detail-card">
-        <h2>Linked Member Record</h2>
-        <table class="detail-table">
-            <tr>
-                <th>Member</th>
-                <td>
-                    <a href="/admin/members/<?= (int)$member['id'] ?>">
-                        <?= e($member['forenames'] . ' ' . $member['surnames']) ?>
-                    </a>
-                </td>
-            </tr>
-            <tr>
-                <th>Status</th>
-                <td><span class="badge badge-<?= e($member['status']) ?>"><?= e(ucfirst($member['status'])) ?></span></td>
-            </tr>
-            <tr>
-                <th>Type</th>
-                <td><?= e($member['type'] ?? '—') ?></td>
-            </tr>
-        </table>
-    </div>
-    <?php endif; ?>
 
     <!-- Recent Activity -->
     <div class="detail-card">

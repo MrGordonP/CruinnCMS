@@ -114,8 +114,8 @@ class App
         // Council routes require council role
         $this->router->addPrefixMiddleware('/council', [Auth::class, 'councilMiddleware']);
 
-        // Member self-service routes require member role
-        $this->router->addPrefixMiddleware('/members', [Auth::class, 'memberMiddleware']);
+        // User self-service routes require member role
+        $this->router->addPrefixMiddleware('/users', [Auth::class, 'memberMiddleware']);
 
         // File Manager routes require at least member login
         $this->router->addPrefixMiddleware('/files', [Auth::class, 'memberMiddleware']);

@@ -91,7 +91,7 @@ $isSystem = !$isNew && ($role['is_system'] ?? false);
             <input type="text" name="default_redirect" id="default_redirect" class="form-input"
                    value="<?= e($role['default_redirect'] ?? '/') ?>"
                    placeholder="/">
-            <p class="form-help">Where users with this role are redirected after logging in. e.g. /admin, /council, /members/profile</p>
+            <p class="form-help">Where users with this role are redirected after logging in. e.g. /admin, /council, /users/profile</p>
         </div>
     </div>
 

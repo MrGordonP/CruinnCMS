@@ -7,8 +7,8 @@
 $member = $data['member'] ?? null;
 ?>
 <div class="activity-header">
-    <h2>My Member Profile</h2>
-    <a href="/members/profile" class="btn btn-outline btn-small">Edit Profile</a>
+    <h2>My Profile</h2>
+    <a href="/users/profile" class="btn btn-outline btn-small">Edit Profile</a>
 </div>
 <?php if ($member): ?>
 <div class="detail-card" style="margin-bottom: 0;">
@@ -34,5 +34,5 @@ $member = $data['member'] ?? null;
     </table>
 </div>
     <?php else: ?>
-    <p class="text-muted">No linked member record found. <a href="/members/profile">Set up your profile</a>.</p>
+    <p class="text-muted">No linked member record found. <a href="/users/profile">Set up your profile</a>.</p>
 <?php endif; ?>

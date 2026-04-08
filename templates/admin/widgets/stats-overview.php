@@ -29,7 +29,7 @@ $d = $data;
         <span>Events</span>
     </a>
     <?php endif; ?>
-    <a href="<?= url('/admin/members') ?>" class="dash-quick-link">
+    <a href="<?= url('/admin/users') ?>" class="dash-quick-link">
         <span class="dash-quick-icon">🤝</span>
         <strong class="dash-stat-num"><?= (int)($d['members'] ?? 0) ?></strong>
         <span>Members</span>

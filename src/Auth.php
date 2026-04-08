@@ -461,7 +461,7 @@ class Auth
     }
 
     /**
-     * Middleware: require member role for /members routes.
+     * Middleware: require member role for /users routes.
      * Uses role level (>= 20) with legacy ENUM fallback.
      */
     public static function memberMiddleware(string $uri, string $method): ?string
