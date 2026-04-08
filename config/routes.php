@@ -45,6 +45,7 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/instances/{name}/backup/delete',     [PlatformController::class, 'deleteBackupFile']);
     $router->post('/cms/instances/{name}/restore',           [PlatformController::class, 'restoreInstance']);
     $router->post('/cms/instances/{name}/delete',            [PlatformController::class, 'deleteInstance']);
+    $router->post('/cms/instances/{name}/reset-password',   [PlatformController::class, 'resetInstanceUserPassword']);
     $router->get('/cms/instances/new',                       [PlatformController::class, 'showProvisionInstance']);
     $router->post('/cms/instances/new',                      [PlatformController::class, 'provisionInstance']);
     $router->post('/cms/instances/from-archive',             [PlatformController::class, 'provisionFromArchive']);

@@ -2447,6 +2447,50 @@ class PlatformController
     }
 
     /**
+     * POST /cms/instances/{name}/reset-password
+     * Resets an instance user's password directly via the instance DB.
+     */
+    public function resetInstanceUserPassword(string $name): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $name     = basename($name);
+        $email    = strtolower(trim($_POST['email'] ?? ''));
+        $password = $_POST['new_password'] ?? '';
+
+        if ($email === '' || $password === '') {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Email and new password are required.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+        if (strlen($password) < 8) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Password must be at least 8 characters.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        try {
+            [$pdo] = $this->resolveDbConnection($name);
+            $stmt  = $pdo->prepare('SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1');
+            $stmt->execute([$email]);
+            $user  = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+            if (!$user) {
+                $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "No user found with email '{$email}' in instance '{$name}'."];
+                header('Location: /cms/dashboard'); exit;
+            }
+
+            $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+            $pdo->prepare('UPDATE users SET password_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?')
+                ->execute([$hash, $user['id']]);
+
+            $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Password reset for '{$email}' in instance '{$name}'."];
+        } catch (\Throwable $e) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Reset failed: ' . $e->getMessage()];
+        }
+
+        header('Location: /cms/dashboard'); exit;
+    }
+
+    /**
      * POST /cms/instances/from-archive
      * Provision a new instance by restoring from a backup ZIP upload.
      */

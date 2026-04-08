@@ -172,6 +172,24 @@
                 </table>
                 <?php endif; ?>
 
+                <!-- Reset user password -->
+                <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,.08);">
+                    <strong style="color:rgba(232,228,218,.8); display:block; margin-bottom:.6rem;">Reset User Password</strong>
+                    <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/reset-password"
+                          style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:flex-end;">
+                        <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                        <div class="platform-field" style="margin:0; flex:1; min-width:160px;">
+                            <label style="font-size:.8rem;">Email</label>
+                            <input type="email" name="email" placeholder="user@example.com" required style="padding:.3rem .5rem; font-size:.85rem;">
+                        </div>
+                        <div class="platform-field" style="margin:0; flex:1; min-width:160px;">
+                            <label style="font-size:.8rem;">New Password</label>
+                            <input type="password" name="new_password" minlength="8" required autocomplete="new-password" style="padding:.3rem .5rem; font-size:.85rem;">
+                        </div>
+                        <button type="submit" class="platform-btn platform-btn-secondary" style="font-size:.85rem;">Reset Password</button>
+                    </form>
+                </div>
+
                 <!-- Delete instance (offline only) -->
                 <?php if (!$instance['online']): ?>
                 <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,.08);">
