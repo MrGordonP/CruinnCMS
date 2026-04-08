@@ -35,22 +35,21 @@ if (!$commit) {
 }
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
-define('ROOT', dirname(__DIR__));
+define('ROOT', dirname(__DIR__, 2));
 
 $cfg = array_replace_recursive(
     require ROOT . '/config/config.php',
     file_exists(ROOT . '/config/config.local.php') ? require ROOT . '/config/config.local.php' : []
 );
 
-// Instance config overlay
+// Instance config overlay.
+// Set CRUINN_INSTANCE=slug in the environment before running this script,
+// e.g.:  CRUINN_INSTANCE=mysite php dev/tools/migrate-to-cruinn.php --commit
 $instanceDir = null;
-$activePath  = ROOT . '/instance/.active';
 if (($env = getenv('CRUINN_INSTANCE')) !== false && $env !== '') {
-    $instanceDir = ROOT . '/instance/' . basename($env);
-} elseif (file_exists($activePath)) {
-    $name = trim((string) file_get_contents($activePath));
-    if ($name !== '') {
-        $instanceDir = ROOT . '/instance/' . basename($name);
+    $candidate = ROOT . '/instance/' . basename($env);
+    if (is_dir($candidate)) {
+        $instanceDir = $candidate;
     }
 }
 if ($instanceDir && file_exists($instanceDir . '/config.php')) {

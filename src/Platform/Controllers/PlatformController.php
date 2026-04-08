@@ -214,20 +214,22 @@ class PlatformController
      */
     public function passthrough(): void
     {
-        if (!PlatformAuth::check()) {
-            header('Location: /cms/login');
-            exit;
-        }
-
-        // Validate & whitelist destination â€” only allow /admin/* to prevent redirect abuse
+        // Validate & whitelist destination — only allow /admin/* to prevent redirect abuse
         $to = $_GET['to'] ?? '/admin/dashboard';
         if (!preg_match('#^/admin(/[\w/_\-\.]*)?$#', $to)) {
             $to = '/admin/dashboard';
         }
 
-        // Already logged in to instance? Just redirect.
+        // Already logged in to instance admin? Just redirect.
         if (!empty($_SESSION['user_id'])) {
             header('Location: ' . $to);
+            exit;
+        }
+
+        // Platform auth required for auto-login.
+        // Not present (e.g. cross-domain call) — send to instance login instead.
+        if (!PlatformAuth::check()) {
+            header('Location: /login');
             exit;
         }
 
@@ -237,7 +239,7 @@ class PlatformController
         );
 
         if (!$user) {
-            // No admin user in DB â€” redirect to CMS with error
+            // No admin user in DB — redirect to CMS with error
             $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'No active admin user found in the instance database.'];
             header('Location: /cms/dashboard');
             exit;
@@ -971,20 +973,20 @@ class PlatformController
     // â”€â”€ Instance Switching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
-     * POST /cms/instances/{name}/activate
-     * Writes the named instance to instance/.active so the next request
-     * loads that instance's config. Validates the name is a real directory.
+     * POST /cms/instances/{name}/toggle
+     * Creates instance/{slug}/.active (brings online) or deletes it (takes offline).
+     * The .active file is the per-instance online flag; its absence triggers maintenance mode.
      */
-    public function activateInstance(string $name): void
+    public function toggleInstance(string $name): void
     {
         if (!PlatformAuth::check()) {
             header('Location: /cms/login');
             exit;
         }
 
-        $name     = basename($name); // prevent path traversal
-        $rootDir  = dirname(__DIR__, 3);
-        $instDir  = $rootDir . '/instance/' . $name;
+        $name    = basename($name); // prevent path traversal
+        $rootDir = dirname(__DIR__, 3);
+        $instDir = $rootDir . '/instance/' . $name;
 
         if (!is_dir($instDir)) {
             $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Instance '{$name}' not found."];
@@ -992,10 +994,16 @@ class PlatformController
             exit;
         }
 
-        $activeFile = $rootDir . '/instance/.active';
-        file_put_contents($activeFile, $name);
+        $onlineFile = $instDir . '/.active';
+        if (is_file($onlineFile)) {
+            unlink($onlineFile);
+            $msg = "Instance '{$name}' taken offline.";
+        } else {
+            file_put_contents($onlineFile, '1');
+            $msg = "Instance '{$name}' brought online.";
+        }
 
-        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Switched to instance: {$name}"];
+        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => $msg];
         header('Location: /cms/dashboard');
         exit;
     }
@@ -1170,10 +1178,10 @@ class PlatformController
             // Non-fatal â€” instance is functional, registry entry is cosmetic
         }
 
-        // Make this the active instance
-        file_put_contents($rootDir . '/instance/.active', $slug);
+        // Bring this instance online immediately after provisioning
+        file_put_contents($instDir . '/.active', '1');
 
-        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Instance '{$name}' provisioned and activated."];
+        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Instance '{$name}' provisioned and brought online."];
         header('Location: /cms/dashboard');
         exit;
     }
@@ -1186,81 +1194,65 @@ class PlatformController
      */
     private function gatherAllInstances(): array
     {
-        $rootDir     = dirname(__DIR__, 3);
+        $rootDir       = dirname(__DIR__, 3);
         $instancesBase = $rootDir . '/instance/';
-        $activeName  = App::instanceDir();
-        $activeName  = $activeName ? basename($activeName) : null;
-
-        $instances = [];
 
         if (!is_dir($instancesBase)) {
             return [];
         }
 
-        $dirs = glob($instancesBase . '*', GLOB_ONLYDIR);
+        $dirs = glob($instancesBase . '*', GLOB_ONLYDIR) ?: [];
         if (empty($dirs)) {
             return [];
         }
 
+        $instances = [];
         foreach ($dirs as $dir) {
             $name = basename($dir);
-            if ($name === '') continue;
-            $isActive = ($name === $activeName);
-            $instances[] = $this->gatherInstanceData($dir, $name, $isActive);
+            if ($name === '') {
+                continue;
+            }
+            $instances[] = $this->gatherInstanceData($dir, $name);
         }
 
         return $instances;
     }
 
     /**
-     * Gather config and optionally live DB stats for one instance.
+     * Gather config and live DB stats for one instance.
      *
-     * @param string|null $instanceDir   Absolute path to instance directory, or null for active
-     * @param string|null $instanceName  Folder name, or null for active
-     * @param bool        $isActive      Whether this is the currently loaded instance
+     * @param string $instanceDir   Absolute path to the instance directory
+     * @param string $instanceName  Folder name (slug)
      */
-    private function gatherInstanceData(?string $instanceDir, ?string $instanceName, bool $isActive): array
+    private function gatherInstanceData(string $instanceDir, string $instanceName): array
     {
-        // Load instance config if available
-        $cfg = [];
-        if ($instanceDir) {
-            $cfgFile = $instanceDir . '/config.php';
-            if (file_exists($cfgFile)) {
-                $cfg = require $cfgFile;
-            }
+        $cfg     = [];
+        $cfgFile = $instanceDir . '/config.php';
+        if (file_exists($cfgFile)) {
+            $cfg = require $cfgFile;
         }
 
         $siteCfg = $cfg['site'] ?? [];
         $dbCfg   = $cfg['db']   ?? [];
+        $isOnline = is_file($instanceDir . '/.active');
 
-        // For the active instance, supplement with the already-merged App config
-        if ($isActive) {
-            $siteCfg = array_merge($siteCfg, [
-                'name' => App::config('site.name', $siteCfg['name'] ?? 'Unknown'),
-                'url'  => App::config('site.url',  $siteCfg['url']  ?? ''),
-            ]);
-            $dbCfg = [
-                'host' => App::config('db.host', 'localhost'),
-                'name' => App::config('db.name', ''),
-                'user' => App::config('db.user', ''),
-            ];
+        // Build hostnames list
+        $rawHost   = $cfg['hostname'] ?? [];
+        $hostnames = is_array($rawHost)
+            ? $rawHost
+            : (is_string($rawHost) && $rawHost !== '' ? [$rawHost] : []);
+
+        // Build base URL for action links (scheme + hostname, no trailing slash)
+        $siteUrl = $siteCfg['url'] ?? '';
+        if ($siteUrl === '' && !empty($hostnames)) {
+            $siteUrl = 'https://' . $hostnames[0];
         }
+        $baseUrl = rtrim($siteUrl, '/');
 
-        $name        = $instanceName ?? ($siteCfg['name'] ?? 'Default');
         $dbConnected = false;
         $stats       = [];
 
-        if ($isActive) {
-            // Use the existing DB connection for the active instance
-            try {
-                $db = Database::getInstance();
-                $dbConnected = true;
-                $stats = $this->fetchDbStats($db);
-            } catch (\Throwable $e) {
-                $stats['db_error'] = $e->getMessage();
-            }
-        } elseif (!empty($dbCfg['host']) && !empty($dbCfg['name'])) {
-            // Try to connect to another instance's DB using its config credentials
+        if (!empty($dbCfg['host']) && !empty($dbCfg['name'])) {
             try {
                 $pdo = new \PDO(
                     sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
@@ -1273,24 +1265,34 @@ class PlatformController
                     [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_TIMEOUT => 3]
                 );
                 $dbConnected = true;
-                $stats['pages'] = (int) $pdo->query('SELECT COUNT(*) FROM pages')->fetchColumn();
-                $stats['users'] = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
                 $stats['tables'] = (int) $pdo->query(
                     "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()"
                 )->fetchColumn();
+                $stats['db_mb'] = (float) $pdo->query(
+                    "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2)
+                     FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()"
+                )->fetchColumn();
+                try { $stats['pages'] = (int) $pdo->query('SELECT COUNT(*) FROM pages')->fetchColumn(); }
+                catch (\Throwable) {}
+                try { $stats['users'] = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn(); }
+                catch (\Throwable) {}
+                try { $stats['last_activity'] = $pdo->query('SELECT MAX(created_at) FROM activity_log')->fetchColumn(); }
+                catch (\Throwable) {}
             } catch (\Throwable $e) {
                 $stats['db_error'] = $e->getMessage();
             }
         }
 
         return [
-            'folder_name'  => $instanceName ?? '(active)',
-            'name'         => $siteCfg['name'] ?? $name,
+            'folder_name'  => $instanceName,
+            'name'         => $siteCfg['name'] ?? $instanceName,
             'url'          => $siteCfg['url']  ?? '',
-            'db_name'      => $dbCfg['name']   ?? App::config('db.name', ''),
-            'db_host'      => $dbCfg['host']   ?? App::config('db.host', 'localhost'),
+            'base_url'     => $baseUrl,
+            'hostnames'    => $hostnames,
+            'db_name'      => $dbCfg['name']   ?? '',
+            'db_host'      => $dbCfg['host']   ?? 'localhost',
             'db_connected' => $dbConnected,
-            'active'       => $isActive,
+            'online'       => $isOnline,
             'stats'        => $stats,
         ];
     }

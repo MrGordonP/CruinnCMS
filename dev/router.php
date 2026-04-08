@@ -13,7 +13,7 @@
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
 // If the request is for a real file in public/, serve it directly
-$publicPath = __DIR__ . '/public' . $uri;
+$publicPath = __DIR__ . '/../public' . $uri;
 if ($uri !== '/' && file_exists($publicPath) && is_file($publicPath)) {
     // Set Content-Type based on extension
     $ext = strtolower(pathinfo($publicPath, PATHINFO_EXTENSION));
@@ -40,4 +40,4 @@ if ($uri !== '/' && file_exists($publicPath) && is_file($publicPath)) {
 
 // Route everything else through the front controller
 $_SERVER['SCRIPT_NAME'] = '/index.php';
-require __DIR__ . '/public/index.php';
+require __DIR__ . '/../public/index.php';

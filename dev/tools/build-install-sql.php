@@ -11,16 +11,14 @@
  * This is an alternative to the web installer for environments with phpMyAdmin.
  */
 
-$root      = dirname(__DIR__);
+$root      = dirname(__DIR__, 2);
 $migrDir   = $root . '/migrations/core';
 
-// Resolve active instance directory (mirrors App::instanceDir())
+// Resolve instance directory for seed.sql.
+// Set CRUINN_INSTANCE=slug in the environment before running this script,
+// e.g.:  CRUINN_INSTANCE=mysite php dev/tools/build-install-sql.php
 $_instName = getenv('CRUINN_INSTANCE') ?: '';
-if ($_instName === '') {
-    $_af = $root . '/instance/.active';
-    $_instName = file_exists($_af) ? trim(file_get_contents($_af)) : '';
-}
-$_instDir = $_instName !== '' && is_dir($root . '/instance/' . basename($_instName))
+$_instDir  = $_instName !== '' && is_dir($root . '/instance/' . basename($_instName))
     ? $root . '/instance/' . basename($_instName) : null;
 
 $seedFile  = $_instDir ? $_instDir . '/seed.sql' : null;
