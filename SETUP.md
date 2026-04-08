@@ -201,3 +201,101 @@ If a release includes schema changes, migration files will be noted in the relea
 ```bash
 mysql -u cruinn -p cruinncms < schema/migration-xyz.sql
 ```
+
+---
+
+## 9. cPanel / Shared Hosting (no SSH)
+
+CruinnCMS uses a **split deployment model**: the private engine files sit outside the web root, and only `public/` is exposed. This maps cleanly onto a standard cPanel account.
+
+### Directory layout on a cPanel account
+
+```
+/home/username/
+    public_html/          ← Web root — public/ contents go here
+        index.php
+        .htaccess
+        brand/
+        css/
+        js/
+        storage/
+        uploads/
+    CruinnCMS/            ← Private engine files (not web-accessible)
+        src/
+        templates/
+        config/
+        schema/
+        instance/
+        tools/
+```
+
+`public/index.php` contains `define('CRUINN_ROOT', dirname(__DIR__))`, which resolves to `/home/username/public_html/..` — i.e. `/home/username/`. All private directories (`config/`, `instance/`, `src/`, `vendor/`) must therefore live directly under `/home/username/`.
+
+The simplest layout that satisfies this:
+
+| Source path | Upload to |
+|-------------|-----------|
+| `public/*` | `/home/username/public_html/` |
+| `src/` | `/home/username/src/` |
+| `templates/` | `/home/username/templates/` |
+| `config/` | `/home/username/config/` |
+| `schema/` | `/home/username/schema/` |
+| `instance/` | `/home/username/instance/` |
+| `tools/` | `/home/username/tools/` |
+| `vendor/` | `/home/username/vendor/` |
+
+### Step-by-step install (cPanel, no SSH)
+
+**1. Prepare files locally**
+
+```bash
+git clone https://github.com/MrGordonP/CruinnCMS.git
+cd CruinnCMS
+composer install --no-dev --optimize-autoloader
+```
+
+This generates the `vendor/` directory. Shared hosting has no Composer — you must build this locally and upload the result.
+
+**2. Upload files via File Manager or FTP**
+
+Upload the contents of `public/` into `public_html/`. Upload all other top-level directories (`src/`, `templates/`, `config/`, `schema/`, `instance/`, `tools/`, `vendor/`) into `/home/username/` directly (not inside `public_html/`).
+
+> **Tip:** Zip the non-public directories locally and extract them via cPanel File Manager — it is faster than uploading thousands of small files individually.
+
+**3. Create the platform database**
+
+In cPanel → **MySQL Databases**:
+1. Create a new database (e.g. `username_cruinn`)
+2. Create a database user with a strong password
+3. Add the user to the database with **All Privileges**
+
+Note the database name, user, and password — you will need them in the next step.
+
+**4. Set directory permissions**
+
+In File Manager, ensure these directories are writable by the web server (`755` is typically sufficient on cPanel):
+
+- `public_html/storage/`
+- `public_html/uploads/`
+- `instance/`
+- `config/`
+
+**5. Run the install wizard**
+
+Visit `https://yourdomain.com/cms/install` in your browser.
+
+The wizard will prompt for your database credentials, apply the platform schema, and write `config/CruinnCMS.php`. On completion it redirects to `/cms/login`.
+
+> If you see a blank page or HTTP 500 at this point, enable PHP error display temporarily:  
+> In `public_html/index.php`, add `ini_set('display_errors', '1');` immediately after `<?php` to see the actual error. Remove it after diagnosing.
+
+**6. Log in and provision an instance**
+
+Log in at `/cms/login` with the credentials you chose in the wizard. From the dashboard, provision your first instance (this creates the instance database and applies `schema/instance_core.sql`).
+
+**7. Verify `.htaccess` is active**
+
+If you get 404 on every page except the home page, Apache rewriting is not active. Check:
+- `public_html/.htaccess` is present
+- `mod_rewrite` is enabled (it is on virtually all cPanel hosts — contact support if not)
+- `AllowOverride All` is set for your document root (cPanel handles this automatically on most hosts)
