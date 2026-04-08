@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.4`
-**HEAD:** `(see git log)` — fix(deploy): remove unused deps, harden .htaccess, add cPanel deployment docs
+**Current version:** `v1.0.0-beta.5`
+**HEAD:** `722627b` — fix(profile): remove non-existent Auth::getFlash call, flashes handled by layout
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -186,6 +186,9 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 
 - **v1.0.0-beta.1** (`95d8895`) — Initial public release: full engine extracted from IGAPortal RC. 22 block types, install wizard, multi-instance platform, block editor, DB browser, module registry stub.
 - **v1.0.0-beta.2** — Deployment fixes: remove unused Composer deps (phpoffice/phpword, dompdf, smalot/pdfparser), add `Options -Indexes` to `.htaccess`, add `config/CruinnCMS.example.php`, add cPanel/shared-hosting deployment section to SETUP.md.
+- **v1.0.0-beta.3** — Instance backup/restore/delete/provision-from-archive on platform dashboard. Instance admin password reset from platform. Multi-instance bugfixes.
+- **v1.0.0-beta.4** — Deployment hardening: fix provision.php double-render, write hostname key to instance config on provisioning, normalise DB browser column name casing, fix security.php missing PHP tag.
+- **v1.0.0-beta.5** — Live deployment bugfixes: missing `<?php` tags in 5 admin templates, missing `admin-members.css` replaced with `admin-base.css`, add `email_verified_at` to users schema, add `/users/profile` page, platform password reset UI.
 
 ---
 

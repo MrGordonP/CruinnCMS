@@ -2205,7 +2205,7 @@ class PlatformController
 
         // Manifest
         $manifest = json_encode([
-            'cruinn_version' => '1.0.0-beta.4',
+            'cruinn_version' => '1.0.0-beta.5',
             'slug'           => $name,
             'name'           => $cfg['site']['name'] ?? $name,
             'site_url'       => $cfg['site']['url']  ?? '',
