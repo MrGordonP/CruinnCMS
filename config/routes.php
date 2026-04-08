@@ -39,7 +39,7 @@ return function (Cruinn\Router $router) {
     $router->get('/cms/dashboard',                      [PlatformController::class, 'dashboard']);
     $router->get('/cms/settings',                       [PlatformController::class, 'showSettings']);
     $router->post('/cms/settings',                      [PlatformController::class, 'saveSettings']);
-    $router->post('/cms/instances/{name}/activate',     [PlatformController::class, 'activateInstance']);
+    $router->post('/cms/instances/{name}/toggle',      [PlatformController::class, 'toggleInstance']);
     $router->get('/cms/instances/new',                  [PlatformController::class, 'showProvisionInstance']);
     $router->post('/cms/instances/new',                 [PlatformController::class, 'provisionInstance']);
     $router->get('/cms/source',                         [PlatformController::class, 'platformSource']);

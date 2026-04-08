@@ -157,13 +157,24 @@ class App
         }
 
         // ── No-instance guard ──────────────────────────────────────────────
-        // Platform is installed but no instance is active yet. Any non-/cms/*
+        // Platform is installed but no hostname matched any instance. Any non-/cms/*
         // request would hit the instance DB (which doesn't exist). Redirect to
         // the platform dashboard where the operator can provision an instance.
         if (Platform\PlatformAuth::isInitialized() && self::instanceDir() === null
             && !str_starts_with($cleanUri, '/cms/') && $cleanUri !== '/cms'
         ) {
             header('Location: /cms/dashboard');
+            exit;
+        }
+
+        // ── Maintenance guard ──────────────────────────────────────────────
+        // Instance resolved but marked offline (instance/{slug}/.active absent).
+        $instancePath = self::instanceDir();
+        if ($instancePath !== null && !is_file($instancePath . '/.active')
+            && !str_starts_with($cleanUri, '/cms/') && $cleanUri !== '/cms'
+        ) {
+            http_response_code(503);
+            require dirname(__DIR__) . '/templates/errors/maintenance.php';
             exit;
         }
 
@@ -240,33 +251,55 @@ class App
     }
 
     /**
-     * Resolve the active instance directory path.
+     * Resolve the active instance directory path for this request.
      *
      * Resolution order:
-     *   1. CRUINN_INSTANCE environment variable  (e.g. set in Nginx fastcgi_param)
-     *   2. instance/.active plain-text file       (one line: the instance name)
-     *   3. null — no instance, bare CMS defaults only
+     *   1. CRUINN_INSTANCE environment variable — explicit slug (CLI tools, Nginx fastcgi_param)
+     *   2. HTTP_HOST — scan instance configs, match against each instance's 'hostname' key
+     *      (string or array of strings; port stripped before comparison)
+     *   3. null — no match; no-instance guard in run() will intercept
      *
-     * The returned path points to instance/{name}/ and is only returned if that
-     * directory actually exists.
+     * The returned path points to instance/{slug}/ and is only returned if that
+     * directory actually exists.  Whether the instance is online or offline is
+     * NOT checked here — see the maintenance guard in run().
      */
     public static function instanceDir(): ?string
     {
-        $rootDir  = dirname(__DIR__);
-        $basePath = $rootDir . '/instance/';
+        $basePath = dirname(__DIR__) . '/instance/';
 
+        // 1. Explicit CLI / server-variable override
         $name = getenv('CRUINN_INSTANCE');
-        if ($name === false || $name === '') {
-            $activeFile = $basePath . '.active';
-            $name = file_exists($activeFile) ? trim(file_get_contents($activeFile)) : '';
+        if ($name !== false && $name !== '') {
+            $dir = $basePath . basename($name);
+            return is_dir($dir) ? $dir : null;
         }
 
-        if ($name === '') {
-            return null;
+        // 2. Hostname match
+        $host = strtolower(trim($_SERVER['HTTP_HOST'] ?? ''));
+        if (str_contains($host, ':')) {
+            $host = explode(':', $host)[0]; // strip port
         }
 
-        $dir = $basePath . basename($name);
-        return is_dir($dir) ? $dir : null;
+        if ($host !== '') {
+            foreach (glob($basePath . '*', GLOB_ONLYDIR) ?: [] as $dir) {
+                $cfgFile = $dir . '/config.php';
+                if (!is_file($cfgFile)) {
+                    continue;
+                }
+                $cfg       = require $cfgFile;
+                $hostnames = $cfg['hostname'] ?? [];
+                if (is_string($hostnames)) {
+                    $hostnames = [$hostnames];
+                }
+                foreach ($hostnames as $h) {
+                    if (strtolower(trim((string) $h)) === $host) {
+                        return $dir;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -21,13 +21,15 @@
         </div>
         <?php endif; ?>
         <?php foreach ($instances as $instance): ?>
-        <div class="platform-instance-card <?= $instance['active'] ? 'instance-active' : 'instance-inactive' ?>">
+        <div class="platform-instance-card <?= $instance['online'] ? 'instance-active' : 'instance-inactive' ?>">
             <div class="platform-instance-header">
                 <div class="platform-instance-identity">
                     <strong class="platform-instance-name">
                         <?= e($instance['name']) ?>
-                        <?php if ($instance['active']): ?>
-                        <span class="platform-badge platform-badge-active">Active</span>
+                        <?php if ($instance['online']): ?>
+                        <span class="platform-badge platform-badge-active">Online</span>
+                        <?php else: ?>
+                        <span class="platform-badge platform-badge-inactive">Offline</span>
                         <?php endif; ?>
                     </strong>
                     <?php if ($instance['url']): ?>
@@ -35,20 +37,24 @@
                         <?= e($instance['url']) ?>
                     </a>
                     <?php endif; ?>
-                    <?php if (!empty($instance['folder_name']) && $instance['folder_name'] !== '(active)'): ?>
-                    <span class="platform-instance-folder"><code>instance/<?= e($instance['folder_name']) ?>/</code></span>
+                    <?php if (!empty($instance['hostnames'])): ?>
+                    <span class="platform-instance-hosts"><?= e(implode(', ', $instance['hostnames'])) ?></span>
                     <?php endif; ?>
+                    <span class="platform-instance-folder"><code>instance/<?= e($instance['folder_name']) ?>/</code></span>
                 </div>
                 <div class="platform-instance-actions">
-                    <?php if ($instance['active']): ?>
-                    <a href="/admin/platform-passthrough?to=/admin/dashboard" class="platform-btn platform-btn-primary">Open Admin</a>
-                    <a href="/admin/platform-passthrough?to=/admin/settings/site" class="platform-btn platform-btn-secondary">ACP Settings</a>
-                    <a href="/admin/platform-passthrough?to=/admin/maintenance/links" class="platform-btn platform-btn-secondary">Link Check</a>
+                    <?php if ($instance['online']): ?>
+                    <a href="<?= e($instance['base_url']) ?>/admin/platform-passthrough?to=/admin/dashboard" class="platform-btn platform-btn-primary">Open Admin</a>
+                    <a href="<?= e($instance['base_url']) ?>/admin/settings/site" class="platform-btn platform-btn-secondary">ACP Settings</a>
                     <a href="/cms/database?instance=<?= e(urlencode($instance['folder_name'])) ?>" class="platform-btn platform-btn-secondary">DB Browser</a>
-                    <?php elseif (!empty($instance['folder_name']) && $instance['folder_name'] !== '(active)'): ?>
-                    <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/activate" style="display:inline">
+                    <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/toggle" style="display:inline">
                         <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
-                        <button type="submit" class="platform-btn platform-btn-secondary">Activate</button>
+                        <button type="submit" class="platform-btn platform-btn-danger">Take Offline</button>
+                    </form>
+                    <?php else: ?>
+                    <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/toggle" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                        <button type="submit" class="platform-btn platform-btn-secondary">Bring Online</button>
                     </form>
                     <a href="/cms/database?instance=<?= e(urlencode($instance['folder_name'])) ?>" class="platform-btn platform-btn-secondary">DB Browser</a>
                     <?php endif; ?>
@@ -121,9 +127,9 @@
                     <?php endforeach; ?>
                 </ul>
                 <?php endif; ?>
-                <?php $activeInst = current(array_filter($instances, fn($i) => $i['active'])); ?>
-                <?php if ($activeInst): ?>
-                <a href="/admin/settings/modules" class="platform-link">Manage Modules →</a>
+                <?php $firstOnline = current(array_filter($instances, fn($i) => $i['online'])); ?>
+                <?php if ($firstOnline): ?>
+                <a href="<?= e($firstOnline['base_url']) ?>/admin/settings/modules" class="platform-link">Manage Modules →</a>
                 <?php endif; ?>
             </div>
 
@@ -141,8 +147,8 @@
             <div class="platform-health-card">
                 <h3>Recent Activity</h3>
                 <?php
-                    $activeInst = current(array_filter($instances, fn($i) => $i['active'])) ?: ($instances[0] ?? []);
-                    $lastAct = $activeInst['stats']['last_activity'] ?? null;
+                    $anyInst = current(array_filter($instances, fn($i) => $i['online'])) ?: ($instances[0] ?? []);
+                    $lastAct = $anyInst['stats']['last_activity'] ?? null;
                 ?>
                 <?php if ($lastAct): ?>
                 <p class="platform-health-value"><?= e(date('j M Y, H:i', strtotime($lastAct))) ?></p>
