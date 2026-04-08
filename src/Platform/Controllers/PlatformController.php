@@ -1151,6 +1151,7 @@ class PlatformController
             "        'password' => '" . $escape($db['password']) . "',",
             "        'charset'  => 'utf8mb4',",
             "    ],",
+            "    'hostname' => '" . $escape(parse_url($siteUrl, PHP_URL_HOST) ?: '') . "',",
             "    'site' => [",
             "        'name'     => '" . $escape($name)     . "',",
             "        'url'      => '" . $escape($siteUrl)  . "',",
