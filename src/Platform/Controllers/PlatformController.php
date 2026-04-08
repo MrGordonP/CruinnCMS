@@ -1019,6 +1019,7 @@ class PlatformController
 
         echo $this->view->render('platform/provision', [
             'title'  => 'Provision Instance',
+            'mode'   => $_GET['mode'] ?? 'new',
             'errors' => $_SESSION['_provision_errors'] ?? [],
             'values' => $_SESSION['_provision_values'] ?? [],
         ]);
@@ -1294,6 +1295,7 @@ class PlatformController
             'db_connected' => $dbConnected,
             'online'       => $isOnline,
             'stats'        => $stats,
+            'backups'      => $this->listInstanceBackups($instanceName),
         ];
     }
 
@@ -2128,5 +2130,553 @@ class PlatformController
             }
         }
         return $out;
+    }
+
+    // ── Instance Backup / Restore / Delete ───────────────────────────────────
+
+    /**
+     * POST /cms/instances/{name}/backup
+     * Creates a ZIP backup of an instance's DB and optionally uploads/secrets.
+     * Saved to CRUINN_ROOT/backups/{slug}/.
+     */
+    public function backupInstance(string $name): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $name    = basename($name);
+        $rootDir = dirname(__DIR__, 3);
+        $instDir = $rootDir . '/instance/' . $name;
+
+        if (!is_dir($instDir) || !is_file($instDir . '/config.php')) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Instance '{$name}' not found."];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        $includeUploads = !empty($_POST['include_uploads']);
+        $includeSecrets = !empty($_POST['include_secrets']);
+
+        $cfg   = require $instDir . '/config.php';
+        $dbCfg = $cfg['db'] ?? [];
+
+        if (empty($dbCfg['host']) || empty($dbCfg['name'])) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Instance DB config is incomplete.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Connect
+        try {
+            $pdo = new \PDO(
+                sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                    $dbCfg['host'], $dbCfg['port'] ?? 3306, $dbCfg['name']),
+                $dbCfg['user'] ?? '', $dbCfg['password'] ?? '',
+                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_TIMEOUT => 10]
+            );
+        } catch (\PDOException $e) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'DB connection failed: ' . $e->getMessage()];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        if (!class_exists('ZipArchive')) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'PHP ZipArchive extension is not available.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Ensure backup dir exists
+        $backupDir = $rootDir . '/backups/' . $name;
+        if (!is_dir($backupDir)) {
+            mkdir($backupDir, 0755, true);
+        }
+
+        $timestamp  = date('Y-m-d_His');
+        $zipName    = "cruinn-backup-{$name}-{$timestamp}.zip";
+        $zipPath    = $backupDir . '/' . $zipName;
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Could not create backup archive.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Manifest
+        $manifest = json_encode([
+            'cruinn_version' => '1.0.0-beta.4',
+            'slug'           => $name,
+            'name'           => $cfg['site']['name'] ?? $name,
+            'site_url'       => $cfg['site']['url']  ?? '',
+            'db_name'        => $dbCfg['name'],
+            'db_host'        => $dbCfg['host'],
+            'created_at'     => date('Y-m-d H:i:s'),
+            'includes_secrets' => $includeSecrets,
+            'includes_uploads' => $includeUploads,
+        ], JSON_PRETTY_PRINT);
+        $zip->addFromString('manifest.json', $manifest);
+
+        // DB dump
+        $sqlDump = $this->dumpInstanceDbViaPdo($pdo, $dbCfg['name']);
+        $zip->addFromString('database.sql', $sqlDump);
+
+        // Secrets (instance config.php)
+        if ($includeSecrets) {
+            $zip->addFile($instDir . '/config.php', 'config.php');
+        }
+
+        // Uploads
+        if ($includeUploads) {
+            $uploadsDir = $rootDir . '/public/uploads';
+            if (is_dir($uploadsDir)) {
+                $iter = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($uploadsDir, \FilesystemIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($iter as $file) {
+                    if ($file->isFile()) {
+                        $rel = 'uploads/' . ltrim(substr($file->getRealPath(), strlen($uploadsDir)), '/\\');
+                        $zip->addFile($file->getRealPath(), str_replace('\\', '/', $rel));
+                    }
+                }
+            }
+        }
+
+        $zip->close();
+
+        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Backup created: {$zipName}"];
+        header('Location: /cms/dashboard'); exit;
+    }
+
+    /**
+     * GET /cms/instances/{name}/backup/download?file={filename}
+     * Streams a backup ZIP to the browser for download.
+     */
+    public function downloadBackup(string $name): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $name     = basename($name);
+        $file     = basename($_GET['file'] ?? '');
+        $rootDir  = dirname(__DIR__, 3);
+        $zipPath  = $rootDir . '/backups/' . $name . '/' . $file;
+
+        if ($file === '' || !str_ends_with($file, '.zip') || !is_file($zipPath)) {
+            http_response_code(404);
+            echo 'Backup file not found.';
+            exit;
+        }
+
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="' . $file . '"');
+        header('Content-Length: ' . filesize($zipPath));
+        readfile($zipPath);
+        exit;
+    }
+
+    /**
+     * POST /cms/instances/{name}/backup/delete
+     * Deletes a single backup ZIP file.
+     */
+    public function deleteBackupFile(string $name): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $name    = basename($name);
+        $file    = basename($_POST['file'] ?? '');
+        $rootDir = dirname(__DIR__, 3);
+        $zipPath = $rootDir . '/backups/' . $name . '/' . $file;
+
+        if ($file !== '' && str_ends_with($file, '.zip') && is_file($zipPath)) {
+            unlink($zipPath);
+            $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Backup '{$file}' deleted."];
+        } else {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Backup file not found.'];
+        }
+
+        header('Location: /cms/dashboard'); exit;
+    }
+
+    /**
+     * POST /cms/instances/{name}/restore
+     * Restores an instance DB (and optionally uploads) from a selected backup ZIP.
+     * Instance must be offline.
+     */
+    public function restoreInstance(string $name): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $name    = basename($name);
+        $file    = basename($_POST['file'] ?? '');
+        $rootDir = dirname(__DIR__, 3);
+        $instDir = $rootDir . '/instance/' . $name;
+        $zipPath = $rootDir . '/backups/' . $name . '/' . $file;
+
+        if (!is_dir($instDir) || !is_file($instDir . '/config.php')) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Instance '{$name}' not found."];
+            header('Location: /cms/dashboard'); exit;
+        }
+        if (is_file($instDir . '/.active')) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Take the instance offline before restoring.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+        if ($file === '' || !str_ends_with($file, '.zip') || !is_file($zipPath)) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Backup file not found.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+        if (!class_exists('ZipArchive')) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'PHP ZipArchive extension is not available.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Could not open backup archive.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Read manifest
+        $manifest = json_decode($zip->getFromName('manifest.json') ?: '{}', true) ?? [];
+
+        // Read SQL
+        $sql = $zip->getFromName('database.sql');
+        if ($sql === false) {
+            $zip->close();
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Backup archive contains no database.sql.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Connect using current instance config (credentials must still be valid)
+        $cfg   = require $instDir . '/config.php';
+        $dbCfg = $cfg['db'] ?? [];
+
+        try {
+            $pdo = new \PDO(
+                sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                    $dbCfg['host'], $dbCfg['port'] ?? 3306, $dbCfg['name']),
+                $dbCfg['user'] ?? '', $dbCfg['password'] ?? '',
+                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_TIMEOUT => 10]
+            );
+        } catch (\PDOException $e) {
+            $zip->close();
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'DB connection failed: ' . $e->getMessage()];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Apply SQL dump
+        try {
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+            $statements = preg_split('/;\s*[\r\n]+/', $sql);
+            foreach ($statements as $stmt) {
+                $stmt = trim($stmt);
+                if ($stmt === '' || str_starts_with($stmt, '--')) continue;
+                $pdo->exec($stmt);
+            }
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        } catch (\PDOException $e) {
+            $zip->close();
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Restore failed during SQL execution: ' . $e->getMessage()];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Restore uploads if present in archive
+        if (!empty($manifest['includes_uploads'])) {
+            $uploadsDir = $rootDir . '/public/uploads';
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = $zip->getNameIndex($i);
+                if (!str_starts_with($entry, 'uploads/') || str_ends_with($entry, '/')) continue;
+                $dest = $uploadsDir . '/' . substr($entry, strlen('uploads/'));
+                $destParent = dirname($dest);
+                if (!is_dir($destParent)) mkdir($destParent, 0755, true);
+                file_put_contents($dest, $zip->getFromIndex($i));
+            }
+        }
+
+        $zip->close();
+
+        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Instance '{$name}' restored from backup '{$file}'. Bring it online when ready."];
+        header('Location: /cms/dashboard'); exit;
+    }
+
+    /**
+     * POST /cms/instances/{name}/delete
+     * Removes instance directory and platform registry row.
+     * Instance must be offline. The instance DB is NOT dropped.
+     */
+    public function deleteInstance(string $name): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $name    = basename($name);
+        $rootDir = dirname(__DIR__, 3);
+        $instDir = $rootDir . '/instance/' . $name;
+
+        if (!is_dir($instDir)) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Instance '{$name}' not found."];
+            header('Location: /cms/dashboard'); exit;
+        }
+        if (is_file($instDir . '/.active')) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Take the instance offline before deleting it.'];
+            header('Location: /cms/dashboard'); exit;
+        }
+
+        // Recursively delete instance directory
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($instDir, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($iter as $entry) {
+            $entry->isDir() ? rmdir($entry->getRealPath()) : unlink($entry->getRealPath());
+        }
+        rmdir($instDir);
+
+        // Remove from platform instances table
+        try {
+            $platDb = Database::getInstance();
+            $platDb->delete('instances', 'slug = ?', [$name]);
+        } catch (\Throwable) {
+            // Non-fatal
+        }
+
+        $_SESSION['_platform_flash'] = [
+            'type'    => 'success',
+            'message' => "Instance '{$name}' deleted. Note: the instance database was NOT dropped — remove it manually via your host's control panel.",
+        ];
+        header('Location: /cms/dashboard'); exit;
+    }
+
+    /**
+     * POST /cms/instances/from-archive
+     * Provision a new instance by restoring from a backup ZIP upload.
+     */
+    public function provisionFromArchive(): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $errors  = [];
+        $rootDir = dirname(__DIR__, 3);
+
+        // Handle upload
+        $upload = $_FILES['archive'] ?? null;
+        if (!$upload || $upload['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($upload['tmp_name'])) {
+            $errors[] = 'Please upload a valid .zip backup archive.';
+        }
+
+        $slug    = preg_replace('/[^a-z0-9\-]/', '', strtolower(trim($_POST['slug']     ?? '')));
+        $name    = trim($_POST['name']     ?? '');
+        $siteUrl = rtrim(trim($_POST['site_url'] ?? ''), '/');
+        $db = [
+            'host'     => trim($_POST['db_host'] ?? 'localhost'),
+            'port'     => (int) ($_POST['db_port'] ?? 3306),
+            'name'     => trim($_POST['db_name'] ?? ''),
+            'user'     => trim($_POST['db_user'] ?? ''),
+            'password' => $_POST['db_pass'] ?? '',
+            'charset'  => 'utf8mb4',
+        ];
+
+        if (empty($slug))     { $errors[] = 'Instance slug is required.'; }
+        if (empty($name))     { $errors[] = 'Instance name is required.'; }
+        if (empty($siteUrl))  { $errors[] = 'Site URL is required.'; }
+        if (empty($db['name'])){ $errors[] = 'Database name is required.'; }
+        if (empty($db['user'])){ $errors[] = 'Database user is required.'; }
+
+        if (empty($errors) && is_dir($rootDir . '/instance/' . $slug)) {
+            $errors[] = "An instance with slug '{$slug}' already exists.";
+        }
+
+        if (!class_exists('ZipArchive') && empty($errors)) {
+            $errors[] = 'PHP ZipArchive extension is not available on this server.';
+        }
+
+        if (!empty($errors)) {
+            $_SESSION['_provision_errors'] = $errors;
+            $_SESSION['_provision_values'] = $_POST;
+            header('Location: /cms/instances/new?mode=archive'); exit;
+        }
+
+        // Open archive
+        $zip = new \ZipArchive();
+        if ($zip->open($upload['tmp_name']) !== true) {
+            $_SESSION['_provision_errors'] = ['Could not open uploaded archive. Is it a valid ZIP?'];
+            $_SESSION['_provision_values'] = $_POST;
+            header('Location: /cms/instances/new?mode=archive'); exit;
+        }
+
+        $sql = $zip->getFromName('database.sql');
+        if ($sql === false) {
+            $zip->close();
+            $_SESSION['_provision_errors'] = ['Archive does not contain a database.sql file.'];
+            $_SESSION['_provision_values'] = $_POST;
+            header('Location: /cms/instances/new?mode=archive'); exit;
+        }
+
+        $manifest = json_decode($zip->getFromName('manifest.json') ?: '{}', true) ?? [];
+
+        // Connect and restore DB
+        try {
+            $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $db['host'], $db['port'], $db['name']);
+            $pdo = new \PDO($dsn, $db['user'], $db['password'], [
+                \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+                \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+                \PDO::ATTR_TIMEOUT            => 10,
+            ]);
+
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+            $statements = preg_split('/;\s*[\r\n]+/', $sql);
+            foreach ($statements as $stmt) {
+                $stmt = trim($stmt);
+                if ($stmt === '' || str_starts_with($stmt, '--')) continue;
+                $pdo->exec($stmt);
+            }
+            $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        } catch (\PDOException $e) {
+            $zip->close();
+            $_SESSION['_provision_errors'] = ['Database error: ' . $e->getMessage()];
+            $_SESSION['_provision_values'] = $_POST;
+            header('Location: /cms/instances/new?mode=archive'); exit;
+        }
+
+        // Restore uploads if present
+        if (!empty($manifest['includes_uploads'])) {
+            $uploadsDir = $rootDir . '/public/uploads';
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = $zip->getNameIndex($i);
+                if (!str_starts_with($entry, 'uploads/') || str_ends_with($entry, '/')) continue;
+                $dest = $uploadsDir . '/' . substr($entry, strlen('uploads/'));
+                $destParent = dirname($dest);
+                if (!is_dir($destParent)) mkdir($destParent, 0755, true);
+                file_put_contents($dest, $zip->getFromIndex($i));
+            }
+        }
+
+        $zip->close();
+
+        // Write instance directory and config
+        $instDir = $rootDir . '/instance/' . $slug;
+        mkdir($instDir, 0755, true);
+
+        $escape = fn(string $v) => str_replace(["'", "\\"], ["\\'", "\\\\"], $v);
+        $cfgContent = implode("\n", [
+            "<?php",
+            "// CruinnCMS Instance Config — {$slug} — restored from archive " . date('Y-m-d H:i:s'),
+            "return [",
+            "    'db' => [",
+            "        'host'     => '" . $escape($db['host'])     . "',",
+            "        'port'     => " . $db['port']               . ",",
+            "        'name'     => '" . $escape($db['name'])     . "',",
+            "        'user'     => '" . $escape($db['user'])     . "',",
+            "        'password' => '" . $escape($db['password']) . "',",
+            "        'charset'  => 'utf8mb4',",
+            "    ],",
+            "    'site' => [",
+            "        'name'     => '" . $escape($name)    . "',",
+            "        'url'      => '" . $escape($siteUrl) . "',",
+            "        'timezone' => 'UTC',",
+            "        'debug'    => false,",
+            "    ],",
+            "];",
+        ]) . "\n";
+        file_put_contents($instDir . '/config.php', $cfgContent);
+
+        // Register in platform instances table
+        try {
+            $platDb = Database::getInstance();
+            $platDb->insert('instances', [
+                'slug'        => $slug,
+                'name'        => $name,
+                'db_host'     => $db['host'],
+                'db_port'     => $db['port'],
+                'db_name'     => $db['name'],
+                'db_user'     => $db['user'],
+                'db_password' => $db['password'],
+                'site_url'    => $siteUrl,
+                'status'      => 'active',
+            ]);
+        } catch (\Throwable) {}
+
+        // Bring online
+        file_put_contents($instDir . '/.active', '1');
+
+        $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Instance '{$name}' provisioned from archive and brought online."];
+        header('Location: /cms/dashboard'); exit;
+    }
+
+    // ── Private Helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Generate a full SQL dump of an instance DB using PDO (no exec/mysqldump).
+     * Works on shared hosting without shell access.
+     */
+    private function dumpInstanceDbViaPdo(\PDO $pdo, string $dbName): string
+    {
+        $out  = "-- CruinnCMS instance backup\n";
+        $out .= "-- Database: {$dbName}\n";
+        $out .= "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
+        $out .= "SET FOREIGN_KEY_CHECKS=0;\n";
+        $out .= "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n";
+
+        $tables = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(\PDO::FETCH_COLUMN);
+
+        foreach ($tables as $table) {
+            $createRow = $pdo->query("SHOW CREATE TABLE `" . str_replace('`', '', $table) . "`")->fetch(\PDO::FETCH_ASSOC);
+            $createSql = $createRow['Create Table'] ?? '';
+
+            $out .= "-- Table: `{$table}`\n";
+            $out .= "DROP TABLE IF EXISTS `{$table}`;\n";
+            $out .= $createSql . ";\n\n";
+
+            $rows = $pdo->query("SELECT * FROM `" . str_replace('`', '', $table) . "`")->fetchAll(\PDO::FETCH_ASSOC);
+            if (!empty($rows)) {
+                $cols  = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                $chunks = array_chunk($rows, 200);
+                foreach ($chunks as $chunk) {
+                    $vals = [];
+                    foreach ($chunk as $row) {
+                        $quoted = array_map(fn($v) => $v === null ? 'NULL' : $pdo->quote((string) $v), $row);
+                        $vals[] = '(' . implode(', ', $quoted) . ')';
+                    }
+                    $out .= "INSERT INTO `{$table}` ({$cols}) VALUES\n" . implode(",\n", $vals) . ";\n";
+                }
+                $out .= "\n";
+            }
+        }
+
+        $out .= "SET FOREIGN_KEY_CHECKS=1;\n";
+        return $out;
+    }
+
+    /**
+     * List available backup ZIPs for an instance, newest first.
+     * Returns array of ['file', 'size_mb', 'created_at', 'manifest'].
+     */
+    private function listInstanceBackups(string $slug): array
+    {
+        $rootDir   = dirname(__DIR__, 3);
+        $backupDir = $rootDir . '/backups/' . $slug;
+        if (!is_dir($backupDir)) return [];
+
+        $files = glob($backupDir . '/cruinn-backup-*.zip') ?: [];
+        rsort($files); // newest first (timestamp in filename)
+
+        $backups = [];
+        foreach ($files as $path) {
+            $filename = basename($path);
+            $sizeMb   = round(filesize($path) / 1024 / 1024, 2);
+            $manifest = [];
+
+            if (class_exists('ZipArchive')) {
+                $zip = new \ZipArchive();
+                if ($zip->open($path) === true) {
+                    $raw = $zip->getFromName('manifest.json');
+                    if ($raw !== false) {
+                        $manifest = json_decode($raw, true) ?? [];
+                    }
+                    $zip->close();
+                }
+            }
+
+            $backups[] = [
+                'file'       => $filename,
+                'size_mb'    => $sizeMb,
+                'created_at' => $manifest['created_at'] ?? '',
+                'manifest'   => $manifest,
+            ];
+        }
+        return $backups;
     }
 }

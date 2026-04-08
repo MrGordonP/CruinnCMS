@@ -13,7 +13,7 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.2`
+**Current version:** `v1.0.0-beta.4`
 **HEAD:** `(see git log)` — fix(deploy): remove unused deps, harden .htaccess, add cPanel deployment docs
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 

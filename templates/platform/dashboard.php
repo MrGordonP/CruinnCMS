@@ -58,6 +58,10 @@
                     </form>
                     <a href="/cms/database?instance=<?= e(urlencode($instance['folder_name'])) ?>" class="platform-btn platform-btn-secondary">DB Browser</a>
                     <?php endif; ?>
+                    <!-- Backup (always available) -->
+                    <button type="button"
+                            onclick="document.getElementById('backup-panel-<?= e($instance['folder_name']) ?>').style.display = document.getElementById('backup-panel-<?= e($instance['folder_name']) ?>').style.display === 'none' ? 'block' : 'none'"
+                            class="platform-btn platform-btn-secondary">Backups</button>
                 </div>
             </div>
 
@@ -101,6 +105,88 @@
                 <?php endif; ?>
             </div>
             <?php endif; ?>
+
+            <!-- ── Backup Panel ───────────────────────────────── -->
+            <div id="backup-panel-<?= e($instance['folder_name']) ?>" style="display:none; border-top:1px solid rgba(255,255,255,.08); margin-top:1rem; padding-top:1rem;">
+
+                <!-- Create backup -->
+                <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/backup" style="margin-bottom:1rem;">
+                    <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+                        <strong style="color:rgba(232,228,218,.8)">Create Backup</strong>
+                        <label style="display:flex;align-items:center;gap:.3rem;font-size:.85rem;">
+                            <input type="checkbox" name="include_uploads"> Uploads
+                        </label>
+                        <label style="display:flex;align-items:center;gap:.3rem;font-size:.85rem;">
+                            <input type="checkbox" name="include_secrets"> Credentials
+                        </label>
+                        <button type="submit" class="platform-btn platform-btn-secondary">Run Backup</button>
+                    </div>
+                </form>
+
+                <!-- Existing backups -->
+                <?php if (empty($instance['backups'])): ?>
+                <p style="color:rgba(232,228,218,.4); font-size:.85rem;">No backups yet.</p>
+                <?php else: ?>
+                <table style="width:100%; font-size:.85rem; border-collapse:collapse;">
+                    <thead>
+                        <tr style="color:rgba(232,228,218,.45); text-align:left;">
+                            <th style="padding:.3rem .5rem;">File</th>
+                            <th style="padding:.3rem .5rem;">Created</th>
+                            <th style="padding:.3rem .5rem;">Size</th>
+                            <th style="padding:.3rem .5rem;">Includes</th>
+                            <th style="padding:.3rem .5rem;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($instance['backups'] as $bk): ?>
+                        <tr style="border-top:1px solid rgba(255,255,255,.05);">
+                            <td style="padding:.4rem .5rem; font-family:monospace; font-size:.8rem;"><?= e($bk['file']) ?></td>
+                            <td style="padding:.4rem .5rem;"><?= e($bk['created_at']) ?></td>
+                            <td style="padding:.4rem .5rem;"><?= e($bk['size_mb']) ?> MB</td>
+                            <td style="padding:.4rem .5rem;">
+                                <?= !empty($bk['manifest']['includes_uploads']) ? 'uploads ' : '' ?>
+                                <?= !empty($bk['manifest']['includes_secrets']) ? 'credentials' : '' ?>
+                            </td>
+                            <td style="padding:.4rem .5rem; white-space:nowrap;">
+                                <a href="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/backup/download?file=<?= e(urlencode($bk['file'])) ?>"
+                                   class="platform-btn platform-btn-secondary" style="font-size:.8rem; padding:.2rem .6rem;">Download</a>
+                                <?php if (!$instance['online']): ?>
+                                <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/restore" style="display:inline">
+                                    <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                                    <input type="hidden" name="file" value="<?= e($bk['file']) ?>">
+                                    <button type="submit" class="platform-btn platform-btn-secondary" style="font-size:.8rem; padding:.2rem .6rem;"
+                                            onclick="return confirm('Restore from this backup? This will overwrite the current database.')">Restore</button>
+                                </form>
+                                <?php endif; ?>
+                                <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/backup/delete" style="display:inline">
+                                    <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                                    <input type="hidden" name="file" value="<?= e($bk['file']) ?>">
+                                    <button type="submit" class="platform-btn platform-btn-danger" style="font-size:.8rem; padding:.2rem .6rem;"
+                                            onclick="return confirm('Delete this backup file?')">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+
+                <!-- Delete instance (offline only) -->
+                <?php if (!$instance['online']): ?>
+                <div style="margin-top:1.2rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,.08);">
+                    <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/delete" style="display:inline">
+                        <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                        <button type="submit" class="platform-btn platform-btn-danger"
+                                onclick="return confirm('Permanently delete this instance? The database will NOT be dropped — you must remove it manually.')">
+                            Delete Instance
+                        </button>
+                    </form>
+                    <span style="font-size:.8rem; color:rgba(232,228,218,.4); margin-left:.75rem;">The instance database will NOT be dropped automatically.</span>
+                </div>
+                <?php endif; ?>
+            </div>
+
         </div>
         <?php endforeach; ?>
     </section>

@@ -39,9 +39,15 @@ return function (Cruinn\Router $router) {
     $router->get('/cms/dashboard',                      [PlatformController::class, 'dashboard']);
     $router->get('/cms/settings',                       [PlatformController::class, 'showSettings']);
     $router->post('/cms/settings',                      [PlatformController::class, 'saveSettings']);
-    $router->post('/cms/instances/{name}/toggle',      [PlatformController::class, 'toggleInstance']);
-    $router->get('/cms/instances/new',                  [PlatformController::class, 'showProvisionInstance']);
-    $router->post('/cms/instances/new',                 [PlatformController::class, 'provisionInstance']);
+    $router->post('/cms/instances/{name}/toggle',            [PlatformController::class, 'toggleInstance']);
+    $router->post('/cms/instances/{name}/backup',            [PlatformController::class, 'backupInstance']);
+    $router->get('/cms/instances/{name}/backup/download',    [PlatformController::class, 'downloadBackup']);
+    $router->post('/cms/instances/{name}/backup/delete',     [PlatformController::class, 'deleteBackupFile']);
+    $router->post('/cms/instances/{name}/restore',           [PlatformController::class, 'restoreInstance']);
+    $router->post('/cms/instances/{name}/delete',            [PlatformController::class, 'deleteInstance']);
+    $router->get('/cms/instances/new',                       [PlatformController::class, 'showProvisionInstance']);
+    $router->post('/cms/instances/new',                      [PlatformController::class, 'provisionInstance']);
+    $router->post('/cms/instances/from-archive',             [PlatformController::class, 'provisionFromArchive']);
     $router->get('/cms/source',                         [PlatformController::class, 'platformSource']);
     $router->post('/cms/source/save',                   [PlatformController::class, 'platformSourceSave']);
     $router->get('/cms/source/preview',                 [PlatformController::class, 'platformSourcePreview']);

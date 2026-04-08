@@ -26,6 +26,10 @@ vendor/
 # Release packages
 release/
 
+# Instance backups (generated at runtime)
+backups/*/
+!backups/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db
