@@ -2,10 +2,6 @@
     <div class="login-page">
         <h1>My Profile</h1>
 
-        <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-            <div class="alert alert-success"><?= e($flash) ?></div>
-        <?php endif; ?>
-
         <?php if (!empty($errors)): ?>
             <div class="alert alert-error">
                 <ul>
