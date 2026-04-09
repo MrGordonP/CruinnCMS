@@ -111,8 +111,10 @@ class App
         // Admin routes require admin role
         $this->router->addPrefixMiddleware('/admin', [Auth::class, 'adminMiddleware']);
 
-        // Council routes require council role
-        $this->router->addPrefixMiddleware('/council', [Auth::class, 'councilMiddleware']);
+        // Organisation routes require organisation role
+        $this->router->addPrefixMiddleware('/organisation', [Auth::class, 'organisationMiddleware']);
+        // Legacy route prefix kept for backward compatibility during rename rollout
+        $this->router->addPrefixMiddleware('/council', [Auth::class, 'organisationMiddleware']);
 
         // User self-service routes require member role
         $this->router->addPrefixMiddleware('/users', [Auth::class, 'memberMiddleware']);

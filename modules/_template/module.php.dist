@@ -1,0 +1,78 @@
+<?php
+/**
+ * CruinnCMS Module Template Manifest
+ *
+ * 1. Copy this folder to modules/{your-slug}/
+ * 2. Rename this file to module.php
+ * 3. Replace ExampleModule namespace/class names
+ * 4. Update routes, migrations, and template paths
+ */
+
+use Cruinn\Module\ExampleModule\Controllers\ExampleController;
+
+return [
+    // Required
+    'slug'        => 'example-module',
+    'name'        => 'Example Module',
+    'version'     => '1.0.0',
+    'description' => 'Describe what this module adds to CruinnCMS.',
+
+    // Optional
+    'dependencies' => [],
+
+    // Called only when module is active
+    'routes' => static function (object $router): void {
+        // Admin routes
+        $router->get('/admin/example-module', [ExampleController::class, 'index']);
+
+        // Public routes
+        // $router->get('/example', [ExampleController::class, 'publicIndex']);
+    },
+
+    // Absolute paths only
+    'migrations' => [
+        __DIR__ . '/migrations/001_create_example.sql',
+    ],
+
+    // Optional module template root
+    'template_path' => __DIR__ . '/templates',
+
+    // Optional ACP sidebar sections rendered in the admin sidebar after core navigation
+    'acp_sections' => [
+        ['group' => 'Extensions', 'label' => 'Example Module', 'url' => '/admin/example-module', 'icon' => '🧩'],
+    ],
+
+    // Optional dashboard sections (rendered after core dashboard cards)
+    // Add 'roles' => ['admin', 'organisation', 'member'] to target specific roles
+    'dashboard_sections' => [
+        ['group' => 'Extensions', 'label' => 'Example Module', 'url' => '/admin/example-module', 'icon' => '🧩', 'roles' => ['admin']],
+    ],
+
+    // Optional richer dashboard widgets rendered via provider + module template
+    'dashboard_widgets' => [
+        [
+            'slug'     => 'example-summary',
+            'label'    => 'Example Summary',
+            'template' => 'admin/example/widgets/summary',
+            'provider' => 'Cruinn\\Module\\ExampleModule\\Services\\ExampleService::dashboardSummary',
+            'roles'    => ['admin'],
+            'width'    => 'full',
+            'order'    => 100,
+            'settings' => ['limit' => 5],
+        ],
+    ],
+
+    // Optional module settings UI schema for /admin/settings/modules
+    'settings_schema' => [
+        [
+            'key'     => 'enabled_feature',
+            'type'    => 'checkbox',
+            'label'   => 'Enable feature',
+            'hint'    => 'Example boolean setting stored in module_config.settings JSON.',
+            'default' => false,
+        ],
+    ],
+
+    // Optional capability declarations
+    'provides' => ['example_capability'],
+];

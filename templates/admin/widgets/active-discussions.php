@@ -1,14 +1,14 @@
 <?php
 /**
  * Widget: Active Discussions
- * Latest council discussion threads.
+ * Latest organisation discussion threads.
  * Data keys: discussions[]
  */
 $discussions = $data['discussions'] ?? [];
 ?>
 <div class="activity-header">
     <h2>Active Discussions</h2>
-    <a href="/council/discussions/new" class="btn btn-primary btn-sm">New Thread</a>
+    <a href="/organisation/discussions/new" class="btn btn-primary btn-sm">New Thread</a>
 </div>
 <?php if (empty($discussions)): ?>
     <p class="text-muted">No discussions yet.</p>
@@ -27,7 +27,7 @@ $discussions = $data['discussions'] ?? [];
                     <td>
                         <?php if ($disc['pinned']): ?><span class="pin-icon" title="Pinned">📌</span> <?php endif; ?>
                         <?php if ($disc['locked']): ?><span class="lock-icon" title="Locked">🔒</span> <?php endif; ?>
-                        <a href="/council/discussions/<?= (int)$disc['id'] ?>"><?= e($disc['title']) ?></a>
+                        <a href="/organisation/discussions/<?= (int)$disc['id'] ?>"><?= e($disc['title']) ?></a>
                     </td>
                     <td><?= (int)$disc['post_count'] ?></td>
                     <td>

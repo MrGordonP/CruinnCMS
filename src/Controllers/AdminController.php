@@ -22,11 +22,15 @@ class AdminController extends BaseController
     public function dashboard(): void
     {
         $roleId  = Auth::roleId();
+        $role    = Auth::role() ?: 'public';
         $isAdmin = (Auth::role() === 'admin');
         $widgets = [];
+        $moduleWidgets = [];
+
+        $dashService = new DashboardService();
+        $moduleWidgets = $dashService->buildModuleWidgetsForRole($role);
 
         if ($roleId && !$isAdmin) {
-            $dashService = new DashboardService();
             $widgets = $dashService->buildDashboard($roleId);
         }
 
@@ -34,6 +38,7 @@ class AdminController extends BaseController
             'title'          => 'Dashboard',
             'dashboardTitle' => 'Dashboard',
             'widgets'        => $widgets,
+            'moduleWidgets'  => $moduleWidgets,
         ]);
     }
 }

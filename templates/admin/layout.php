@@ -22,6 +22,17 @@
             </a>
         </div>
         <nav class="admin-sidebar-nav">
+            <?php
+            $moduleAcpSections = \Cruinn\Modules\ModuleRegistry::acpSections();
+            $moduleAcpGroups = [];
+            foreach ($moduleAcpSections as $section) {
+                $group = (string) ($section['group'] ?? 'Modules');
+                if (!isset($moduleAcpGroups[$group])) {
+                    $moduleAcpGroups[$group] = [];
+                }
+                $moduleAcpGroups[$group][] = $section;
+            }
+            ?>
             <?php if (!empty($acp_mode)): ?>
                 <a href="<?= url('/admin/dashboard') ?>">← Dashboard</a>
             <?php elseif (!empty($role_nav_items) && ($current_user['role'] ?? '') !== 'admin'): ?>
@@ -59,39 +70,6 @@
                         <a href="<?= url('/admin/import') ?>">Import</a>
                     </div>
                 </div>
-                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('articles') || \Cruinn\Modules\ModuleRegistry::isActive('broadcasts') || \Cruinn\Modules\ModuleRegistry::isActive('forms')): ?>
-                <div class="admin-sidebar-group">
-                    <a href="<?= url('/admin/articles') ?>" class="admin-sidebar-parent">Content <span class="sidebar-caret">▸</span></a>
-                    <div class="admin-sidebar-flyout">
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('articles')): ?>
-                        <a href="<?= url('/admin/articles') ?>">Articles</a>
-                        <a href="<?= url('/admin/subjects') ?>">Subjects</a>
-                        <?php endif; ?>
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('broadcasts')): ?>
-                        <a href="<?= url('/admin/broadcasts') ?>">Broadcasts</a>
-                        <?php endif; ?>
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('forms')): ?>
-                        <a href="<?= url('/admin/forms') ?>">Forms</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
-                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('events') || \Cruinn\Modules\ModuleRegistry::isActive('forum') || \Cruinn\Modules\ModuleRegistry::isActive('file-manager')): ?>
-                <div class="admin-sidebar-group">
-                    <a href="<?= url('/admin/events') ?>" class="admin-sidebar-parent">Community <span class="sidebar-caret">▸</span></a>
-                    <div class="admin-sidebar-flyout">
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('events')): ?>
-                        <a href="<?= url('/admin/events') ?>">Events</a>
-                        <?php endif; ?>
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('forum')): ?>
-                        <a href="<?= url('/admin/forum') ?>">Forum</a>
-                        <?php endif; ?>
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('file-manager')): ?>
-                        <a href="<?= url('/files') ?>">Files</a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <?php endif; ?>
                 <div class="admin-sidebar-group">
                     <a href="<?= url('/admin/users') ?>" class="admin-sidebar-parent">People <span class="sidebar-caret">▸</span></a>
                     <div class="admin-sidebar-flyout">
@@ -100,17 +78,16 @@
                         <a href="<?= url('/admin/groups') ?>">Groups</a>
                     </div>
                 </div>
-                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('social')): ?>
+                <?php foreach ($moduleAcpGroups as $group => $items): ?>
                 <div class="admin-sidebar-group">
-                    <a href="<?= url('/admin/social') ?>" class="admin-sidebar-parent">Comms <span class="sidebar-caret">▸</span></a>
+                    <a href="<?= url($items[0]['url'] ?? '#') ?>" class="admin-sidebar-parent"><?= e($group) ?> <span class="sidebar-caret">▸</span></a>
                     <div class="admin-sidebar-flyout">
-                        <a href="<?= url('/admin/social') ?>">Social Hub</a>
-                        <a href="<?= url('/admin/social/mailing-lists') ?>">Mailing Lists</a>
-                        <a href="<?= url('/admin/social/accounts') ?>">Accounts</a>
-                        <a href="<?= url('/admin/social/distribute') ?>">Distribute</a>
+                        <?php foreach ($items as $item): ?>
+                        <a href="<?= url($item['url'] ?? '#') ?>"><?= e($item['label'] ?? 'Module') ?></a>
+                        <?php endforeach; ?>
                     </div>
                 </div>
-                <?php endif; ?>
+                <?php endforeach; ?>
                 <span class="admin-sidebar-sep"></span>
                 <a href="<?= url('/admin/settings/site') ?>">⚙ Settings</a>
             <?php endif; ?>

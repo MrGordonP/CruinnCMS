@@ -1,7 +1,7 @@
 <?php
 /**
  * CruinnCMS — Database Layer
- * 
+ *
  * PDO wrapper with prepared statements throughout.
  * No ORM — direct SQL with parameter binding for safety and clarity.
  * Singleton pattern: Database::getInstance() returns the shared connection.
@@ -52,10 +52,22 @@ class Database
     public static function getInstance(): self
     {
         if (self::$instance === null) {
+            $requestPath = parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '';
             if (!empty($_SESSION['_platform_editor_mode'])
                 && class_exists(\Cruinn\Platform\PlatformAuth::class)
             ) {
                 $config = \Cruinn\Platform\PlatformAuth::dbConfig();
+            } elseif (!empty($_SESSION['_platform_editor_instance'])
+                && (str_starts_with($requestPath, '/cms/editor') || str_starts_with($requestPath, '/admin/'))
+            ) {
+                $instanceSlug = basename((string) $_SESSION['_platform_editor_instance']);
+                $cfgFile = dirname(__DIR__) . '/instance/' . $instanceSlug . '/config.php';
+                if (is_file($cfgFile)) {
+                    $cfg = require $cfgFile;
+                    $config = $cfg['db'] ?? App::config('db');
+                } else {
+                    $config = App::config('db');
+                }
             } else {
                 $config = App::config('db');
             }
@@ -85,7 +97,7 @@ class Database
 
     /**
      * Execute a query and return all rows.
-     * 
+     *
      * Usage: $db->fetchAll('SELECT * FROM pages WHERE status = ?', ['published']);
      */
     public function fetchAll(string $sql, array $params = []): array
@@ -96,7 +108,7 @@ class Database
 
     /**
      * Execute a query and return a single row.
-     * 
+     *
      * Usage: $db->fetch('SELECT * FROM pages WHERE slug = ?', [$slug]);
      */
     public function fetch(string $sql, array $params = []): array|false
@@ -107,7 +119,7 @@ class Database
 
     /**
      * Execute a query and return a single column value.
-     * 
+     *
      * Usage: $db->fetchColumn('SELECT COUNT(*) FROM members');
      */
     public function fetchColumn(string $sql, array $params = []): mixed
@@ -118,7 +130,7 @@ class Database
 
     /**
      * Execute an INSERT, UPDATE, or DELETE and return affected row count.
-     * 
+     *
      * Usage: $db->execute('UPDATE pages SET title = ? WHERE id = ?', [$title, $id]);
      */
     public function execute(string $sql, array $params = []): PDOStatement
@@ -130,7 +142,7 @@ class Database
 
     /**
      * Insert a row and return the last insert ID.
-     * 
+     *
      * Usage: $id = $db->insert('pages', ['title' => 'About', 'slug' => 'about', ...]);
      */
     public function insert(string $table, array $data): string
@@ -147,7 +159,7 @@ class Database
     /**
      * Update rows matching a WHERE clause.
      * Returns the number of affected rows.
-     * 
+     *
      * Usage: $db->update('pages', ['title' => 'New Title'], 'id = ?', [$id]);
      */
     public function update(string $table, array $data, string $where, array $whereParams = []): int
@@ -162,7 +174,7 @@ class Database
     /**
      * Delete rows matching a WHERE clause.
      * Returns the number of affected rows.
-     * 
+     *
      * Usage: $db->delete('pages', 'id = ?', [$id]);
      */
     public function delete(string $table, string $where, array $params = []): int
@@ -177,7 +189,7 @@ class Database
     /**
      * Run a callback inside a database transaction.
      * Automatically commits on success, rolls back on exception.
-     * 
+     *
      * Usage: $db->transaction(function() use ($db) { ... });
      */
     public function transaction(callable $callback): mixed

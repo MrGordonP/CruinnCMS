@@ -262,6 +262,40 @@
                 <a href="/admin/dashboard" class="platform-link">View Activity Log →</a>
             </div>
         </div>
+
+        <?php
+            $moduleDashByGroup = [];
+            $firstOnline = current(array_filter($instances, fn($i) => $i['online']));
+            if ($firstOnline) {
+                foreach (\Cruinn\Modules\ModuleRegistry::dashboardSections('admin') as $section) {
+                    $group = (string) ($section['group'] ?? 'Modules');
+                    if (!isset($moduleDashByGroup[$group])) {
+                        $moduleDashByGroup[$group] = [];
+                    }
+                    $moduleDashByGroup[$group][] = $section;
+                }
+            }
+        ?>
+
+        <?php if (!empty($moduleDashByGroup)): ?>
+        <div class="platform-health-grid" style="margin-top:1rem;">
+            <?php foreach ($moduleDashByGroup as $group => $items): ?>
+            <div class="platform-health-card">
+                <h3><?= e($group) ?></h3>
+                <ul class="platform-module-list" style="list-style:none; margin:0; padding:0; display:grid; gap:.5rem;">
+                    <?php foreach ($items as $item): ?>
+                    <li>
+                        <a href="<?= e(rtrim($firstOnline['base_url'], '/') . ($item['url'] ?? '#')) ?>" class="platform-link">
+                            <span><?= e($item['icon'] ?? '🧩') ?></span>
+                            <span><?= e($item['label'] ?? 'Module') ?></span>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php endif; ?>
     </section>
 </div>
 

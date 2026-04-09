@@ -219,20 +219,22 @@ class Auth
             return $level !== false ? (int) $level : 0;
         }
         // Legacy fallback
-        $hierarchy = ['public' => 0, 'member' => 20, 'council' => 50, 'admin' => 100];
+        $hierarchy = ['public' => 0, 'member' => 20, 'organisation' => 50, 'council' => 50, 'admin' => 100];
         return $hierarchy[self::role()] ?? 0;
     }
 
     /**
      * Check if the current user has at least the given role level.
-     * Role hierarchy: admin > council > member > public
+     * Role hierarchy: admin > organisation > member > public
      * Supports both legacy string roles and numeric levels.
      */
     public static function hasRole(string $minimumRole): bool
     {
-        $hierarchy = ['public' => 0, 'member' => 1, 'council' => 2, 'admin' => 3];
-        $currentLevel = $hierarchy[self::role()] ?? 0;
-        $requiredLevel = $hierarchy[$minimumRole] ?? 0;
+        $normalisedMinimumRole = $minimumRole === 'council' ? 'organisation' : $minimumRole;
+        $normalisedCurrentRole = self::role() === 'council' ? 'organisation' : self::role();
+        $hierarchy = ['public' => 0, 'member' => 1, 'organisation' => 2, 'admin' => 3];
+        $currentLevel = $hierarchy[$normalisedCurrentRole] ?? 0;
+        $requiredLevel = $hierarchy[$normalisedMinimumRole] ?? 0;
         return $currentLevel >= $requiredLevel;
     }
 
@@ -439,10 +441,10 @@ class Auth
     }
 
     /**
-     * Middleware: require council role for /council routes.
+    * Middleware: require organisation role for /organisation routes.
      * Uses role level (>= 50) with legacy ENUM fallback.
      */
-    public static function councilMiddleware(string $uri, string $method): ?string
+    public static function organisationMiddleware(string $uri, string $method): ?string
     {
         if (!self::check()) {
             $_SESSION['redirect_after_login'] = $uri;
@@ -450,7 +452,7 @@ class Auth
             exit;
         }
 
-        if (self::roleLevel() < 50 && !self::hasRole('council')) {
+        if (self::roleLevel() < 50 && !self::hasRole('organisation')) {
             http_response_code(403);
             $template = new Template();
             echo $template->render('errors/403');
@@ -458,6 +460,14 @@ class Auth
         }
 
         return null;
+    }
+
+    /**
+     * Legacy alias for older route middleware references.
+     */
+    public static function councilMiddleware(string $uri, string $method): ?string
+    {
+        return self::organisationMiddleware($uri, $method);
     }
 
     /**

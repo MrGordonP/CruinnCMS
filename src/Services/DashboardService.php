@@ -23,6 +23,23 @@ class DashboardService
         $this->db = Database::getInstance();
     }
 
+    /**
+     * During council→organisation rename, accept either module slug.
+     */
+    private static function organisationModuleActive(): bool
+    {
+        return self::capabilityAvailable('organisation', 'council');
+    }
+
+    private static function capabilityAvailable(string $capability, ?string $legacySlug = null): bool
+    {
+        if (!empty(ModuleRegistry::providing($capability))) {
+            return true;
+        }
+
+        return $legacySlug !== null && ModuleRegistry::isActive($legacySlug);
+    }
+
     // ── Widget Configuration ──────────────────────────────────────
 
     /**
@@ -143,6 +160,35 @@ class DashboardService
     }
 
     /**
+     * Build dashboard widgets declared directly by active modules for a role.
+     *
+     * @return array[] Each element contains render-ready widget data.
+     */
+    public function buildModuleWidgetsForRole(string $role): array
+    {
+        $result = [];
+
+        foreach (ModuleRegistry::dashboardWidgets($role) as $widget) {
+            $settings = is_array($widget['settings'] ?? null) ? $widget['settings'] : [];
+            $templateFile = $this->resolveModuleWidgetTemplate($widget);
+            $data = [];
+
+            if (!empty($widget['provider'])) {
+                $data = $this->callProvider((string) $widget['provider'], $settings);
+            }
+
+            $result[] = array_merge($widget, [
+                'grid_width'    => (($widget['width'] ?? 'full') === 'half') ? 'half' : 'full',
+                'template_file' => $templateFile,
+                'settings'      => $settings,
+                'data'          => $data,
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
      * Call a widget data provider.
      * Providers are static methods in the format "Class::method".
      */
@@ -161,6 +207,27 @@ class DashboardService
         return $class::$method($settings);
     }
 
+    private function resolveModuleWidgetTemplate(array $widget): ?string
+    {
+        $template = trim((string) ($widget['template'] ?? ''));
+        $templateRoot = $widget['template_root'] ?? null;
+
+        if ($template === '' || !is_string($templateRoot) || $templateRoot === '') {
+            return null;
+        }
+
+        if (str_starts_with($template, '/')) {
+            return is_file($template) ? $template : null;
+        }
+
+        $path = rtrim($templateRoot, '/') . '/' . ltrim($template, '/');
+        if (!str_ends_with($path, '.php')) {
+            $path .= '.php';
+        }
+
+        return is_file($path) ? $path : null;
+    }
+
     // ══════════════════════════════════════════════════════════════
     //  WIDGET DATA PROVIDERS (static methods)
     // ══════════════════════════════════════════════════════════════
@@ -176,13 +243,13 @@ class DashboardService
             'users'    => $db->fetchColumn('SELECT COUNT(*) FROM users'),
             'subjects' => $db->fetchColumn('SELECT COUNT(*) FROM subjects'),
         ];
-        if (ModuleRegistry::isActive('articles')) {
+        if (self::capabilityAvailable('articles')) {
             $stats['articles'] = $db->fetchColumn('SELECT COUNT(*) FROM articles');
         }
-        if (ModuleRegistry::isActive('events')) {
+        if (self::capabilityAvailable('events')) {
             $stats['events'] = $db->fetchColumn('SELECT COUNT(*) FROM events');
         }
-        if (!empty($settings['show_forum']) && ModuleRegistry::isActive('forum')) {
+        if (!empty($settings['show_forum']) && self::capabilityAvailable('forum')) {
             $stats['forum_threads'] = $db->fetchColumn('SELECT COUNT(*) FROM forum_threads');
         }
 
@@ -213,7 +280,7 @@ class DashboardService
      */
     public static function communicationsData(array $settings): array
     {
-        if (!ModuleRegistry::isActive('articles')) {
+        if (!self::capabilityAvailable('articles')) {
             return ['articles' => [], 'draftCount' => 0, 'totalArticles' => 0];
         }
 
@@ -264,11 +331,11 @@ class DashboardService
     }
 
     /**
-     * Council stats: document and discussion counts.
+    * Organisation stats: document and discussion counts.
      */
     public static function councilStatsData(array $settings): array
     {
-        if (!ModuleRegistry::isActive('council')) {
+        if (!self::organisationModuleActive()) {
             return ['documents' => 0, 'pending' => 0, 'discussions' => 0, 'posts' => 0];
         }
 
@@ -282,11 +349,11 @@ class DashboardService
     }
 
     /**
-     * Recent council documents.
+    * Recent organisation documents.
      */
     public static function recentDocumentsData(array $settings): array
     {
-        if (!ModuleRegistry::isActive('council')) {
+        if (!self::organisationModuleActive()) {
             return ['documents' => []];
         }
 
@@ -305,11 +372,11 @@ class DashboardService
     }
 
     /**
-     * Active council discussions.
+    * Active organisation discussions.
      */
     public static function activeDiscussionsData(array $settings): array
     {
-        if (!ModuleRegistry::isActive('council')) {
+        if (!self::organisationModuleActive()) {
             return ['discussions' => []];
         }
 
@@ -332,7 +399,7 @@ class DashboardService
      */
     public static function upcomingEventsData(array $settings): array
     {
-        if (!ModuleRegistry::isActive('events')) {
+        if (!self::capabilityAvailable('events')) {
             return ['events' => []];
         }
 
@@ -355,7 +422,7 @@ class DashboardService
      */
     public static function forumRecentData(array $settings): array
     {
-        if (!ModuleRegistry::isActive('forum')) {
+        if (!self::capabilityAvailable('forum')) {
             return ['threads' => []];
         }
 

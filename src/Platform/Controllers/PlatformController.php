@@ -283,6 +283,7 @@ class PlatformController
         if ($instance === null || $instance === '') {
             // Clear any leftover platform editor mode from a previous session
             unset($_SESSION['_platform_editor_mode']);
+            unset($_SESSION['_platform_editor_instance']);
             \Cruinn\Database::resetInstance();
             echo $this->view->render('platform/editor-picker', [
                 'title'       => 'Editor',
@@ -301,8 +302,23 @@ class PlatformController
             // before the session is started, and that connection would otherwise
             // persist for the lifetime of this request.
             $_SESSION['_platform_editor_mode'] = true;
+            unset($_SESSION['_platform_editor_instance']);
             \Cruinn\Database::resetInstance();
-            $db = \Cruinn\Database::getInstance();
+            try {
+                $db = \Cruinn\Database::getInstance();
+            } catch (\Throwable $e) {
+                error_log('Platform editor DB connect failed: ' . $e->getMessage());
+                unset($_SESSION['_platform_editor_mode']);
+                \Cruinn\Database::resetInstance();
+                echo $this->view->render('platform/editor-picker', [
+                    'title'       => 'Editor',
+                    'username'    => PlatformAuth::username(),
+                    'editorReady' => false,
+                    'editorError' => 'Platform editor could not connect to the platform database. '
+                        . 'Check config/CruinnCMS.php database credentials.',
+                ]);
+                return;
+            }
             // Ensure the block editor tables exist in the platform DB
             // (idempotent — IF NOT EXISTS guards every statement)
             try {
@@ -484,22 +500,21 @@ class PlatformController
                 \Cruinn\Database::resetInstance();
             }
 
-            // Only the active instance is wired into Database::getInstance
-            $activeDir  = App::instanceDir();
-            $activeName = $activeDir ? basename($activeDir) : null;
-            $isActive   = ($instance === $activeName);
-
-            if (!$isActive) {
+            // Route editor DB access to the selected instance (active or inactive)
+            $instanceCfg = dirname(__DIR__, 3) . '/instance/' . $instance . '/config.php';
+            if (!is_file($instanceCfg)) {
                 echo $this->view->render('platform/editor-picker', [
                     'title'       => 'Editor',
                     'username'    => PlatformAuth::username(),
                     'editorReady' => false,
-                    'editorError' => 'The "' . htmlspecialchars($instance, ENT_QUOTES, 'UTF-8')
-                        . '" instance is not the currently active instance. Only the active instance can be edited from here.',
+                    'editorError' => 'The selected instance could not be found: "'
+                        . htmlspecialchars($instance, ENT_QUOTES, 'UTF-8') . '".',
                 ]);
                 return;
             }
 
+            $_SESSION['_platform_editor_instance'] = $instance;
+            \Cruinn\Database::resetInstance();
             $db = \Cruinn\Database::getInstance();
 
             // Silently log in as the first active admin user so editor AJAX routes pass Auth::requireRole

@@ -15,6 +15,8 @@
  *   routes           (callable)  function(Router $router): void — registers public + admin routes
  *   migrations       (string[])  Absolute paths to SQL migration files, in apply order
  *   acp_sections     (array[])   Sidebar entries: [group, label, url, icon]
+ *   dashboard_sections (array[]) Dashboard entries: [group, label, url, icon, roles[]]
+ *   dashboard_widgets (array[])  Widget entries: [slug, label, template, provider, roles[], width, order]
  *   template_path    (string)    Absolute path to this module's templates directory
  *   settings_schema  (array[])   Settings fields rendered in the ACP Modules panel
  *   provides         (string[])  Capabilities: 'block_types', 'nav_items', 'content_feed'
@@ -54,6 +56,8 @@ class ModuleRegistry
                 'routes'          => null,
                 'migrations'      => [],
                 'acp_sections'    => [],
+                'dashboard_sections' => [],
+                'dashboard_widgets' => [],
                 'template_path'   => null,
                 'settings_schema' => [],
                 'provides'        => [],
@@ -164,6 +168,65 @@ class ModuleRegistry
     }
 
     /**
+     * Return dashboard section entries from active modules for the given role.
+     * Each entry: ['group' => ..., 'label' => ..., 'url' => ..., 'icon' => ..., 'roles' => [...]]
+     */
+    public static function dashboardSections(string $role): array
+    {
+        self::load();
+        $sections = [];
+        foreach (self::$modules as $slug => $def) {
+            if (self::$statuses[$slug] !== 'active') {
+                continue;
+            }
+            foreach ($def['dashboard_sections'] as $section) {
+                $roles = $section['roles'] ?? [];
+                if (!is_array($roles)) {
+                    $roles = [$roles];
+                }
+                if (!empty($roles) && !in_array($role, $roles, true)) {
+                    continue;
+                }
+                $sections[] = $section;
+            }
+        }
+        return $sections;
+    }
+
+    /**
+     * Return dashboard widget entries from active modules for the given role.
+     * Each entry: ['slug', 'label', 'template', 'provider', 'roles', 'width', 'order']
+     */
+    public static function dashboardWidgets(string $role): array
+    {
+        self::load();
+        $widgets = [];
+        foreach (self::$modules as $slug => $def) {
+            if (self::$statuses[$slug] !== 'active') {
+                continue;
+            }
+            foreach ($def['dashboard_widgets'] as $widget) {
+                $roles = $widget['roles'] ?? [];
+                if (!is_array($roles)) {
+                    $roles = [$roles];
+                }
+                if (!empty($roles) && !in_array($role, $roles, true)) {
+                    continue;
+                }
+                $widgets[] = array_merge([
+                    'module'        => $slug,
+                    'module_name'   => $def['name'],
+                    'template_root' => $def['template_path'],
+                ], $widget);
+            }
+        }
+
+        usort($widgets, static fn(array $a, array $b): int => ((int) ($a['order'] ?? 999)) <=> ((int) ($b['order'] ?? 999)));
+
+        return $widgets;
+    }
+
+    /**
      * Return all active modules that declare a given capability.
      * e.g. ModuleRegistry::providing('content_feed')
      */
@@ -254,9 +317,13 @@ class ModuleRegistry
         // or return a definition array — both patterns are supported.
         $manifestRoot = dirname(__DIR__, 2) . '/modules';
         foreach (glob($manifestRoot . '/*/module.php') ?: [] as $file) {
-            $def = require $file;
-            if (is_array($def) && isset($def['slug'])) {
-                self::register($def);
+            try {
+                $def = require $file;
+                if (is_array($def) && isset($def['slug'])) {
+                    self::register($def);
+                }
+            } catch (\Throwable $e) {
+                error_log('ModuleRegistry: failed loading manifest ' . $file . ' — ' . $e->getMessage());
             }
         }
 

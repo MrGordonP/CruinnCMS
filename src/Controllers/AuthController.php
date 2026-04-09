@@ -48,12 +48,12 @@ class AuthController extends BaseController
         if ($user) {
             $this->logActivity('login', 'user', $user['id']);
 
-            // Redirect to where they were trying to go, but never back into admin/council
+            // Redirect to where they were trying to go, but never back into admin/organisation
             // on first load — everyone lands on the portal, then navigates from there.
             $stored = $_SESSION['redirect_after_login'] ?? null;
             unset($_SESSION['redirect_after_login']);
             $isPrivilegedRoute = $stored && (
-                str_starts_with($stored, '/admin') || str_starts_with($stored, '/council')
+                str_starts_with($stored, '/admin') || str_starts_with($stored, '/organisation') || str_starts_with($stored, '/council')
             );
             $redirect = (!$stored || $isPrivilegedRoute) ? $this->defaultRedirectForRole() : $stored;
             $this->redirect($redirect);
@@ -289,10 +289,11 @@ class AuthController extends BaseController
             }
         }
 
-        // Legacy fallback — all roles land on the user portal; admin/council
+        // Legacy fallback — all roles land on the user portal; admin/organisation
         // can navigate to their control panel from there.
         return match (Auth::role()) {
             'admin'   => '/users/profile',
+            'organisation' => '/users/profile',
             'council' => '/users/profile',
             'member'  => '/users/profile',
             default   => '/',

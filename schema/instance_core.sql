@@ -22,7 +22,7 @@ CREATE TABLE `users` (
     `email`         VARCHAR(255)    NOT NULL,
     `password_hash` VARCHAR(255)    NOT NULL,
     `display_name`  VARCHAR(100)    NOT NULL,
-    `role`          ENUM('admin','council','member','public') NOT NULL DEFAULT 'member',
+    `role`          ENUM('admin','organisation','member','public') NOT NULL DEFAULT 'member',
     `role_id`       INT UNSIGNED    NULL DEFAULT NULL,
     `active`        TINYINT(1)      NOT NULL DEFAULT 1,
     `email_verified_at` DATETIME    NULL DEFAULT NULL,
