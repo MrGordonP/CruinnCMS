@@ -45,9 +45,12 @@ class MediaController extends \Cruinn\Controllers\BaseController
         $isDoc   = in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip']);
         $typeDir = $isImage ? 'media' : ($isDoc ? 'documents' : 'media');
 
+        // Namespace by instance slug so multi-instance deploys stay isolated
+        $instanceSlug = basename(App::instanceDir() ?? 'default');
+
         // Organise into year/month subdirectories
-        $subdir   = date('Y/m');
-        $uploadDir = CRUINN_PUBLIC . '/storage/' . $typeDir . '/' . $subdir;
+        $subdir    = date('Y/m');
+        $uploadDir = CRUINN_PUBLIC . '/storage/' . $instanceSlug . '/' . $typeDir . '/' . $subdir;
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -63,7 +66,7 @@ class MediaController extends \Cruinn\Controllers\BaseController
             $this->resizeImage($destination, 1920); // Max 1920px wide
         }
 
-        $url = '/storage/' . $typeDir . '/' . $subdir . '/' . $filename;
+        $url = '/storage/' . $instanceSlug . '/' . $typeDir . '/' . $subdir . '/' . $filename;
         $this->logActivity('upload', 'file', null, htmlspecialchars($file['name'], ENT_QUOTES, 'UTF-8'));
 
         $this->json([
@@ -80,10 +83,10 @@ class MediaController extends \Cruinn\Controllers\BaseController
      */
     public function listMedia(): void
     {
-        // Scan both storage/media (new) and uploads/ (legacy) for backward compat
-        $publicRoot = CRUINN_PUBLIC;
+        $publicRoot   = CRUINN_PUBLIC;
+        $instanceSlug = basename(App::instanceDir() ?? 'default');
         $scanDirs = [
-            $publicRoot . '/storage/media',
+            $publicRoot . '/storage/' . $instanceSlug . '/media',
             $publicRoot . '/uploads',  // legacy — keep until all instances migrated
         ];
         $search = $this->query('q', '');
