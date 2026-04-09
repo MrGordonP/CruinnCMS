@@ -14,7 +14,7 @@ $igUrl = $data['instagram'] ?? '';
     <h2>Social Media</h2>
     <a href="/admin/social" class="btn btn-primary btn-small">Command Centre</a>
 </div>
-<p class="text-muted" style="margin-bottom: var(--space-md); font-size: 0.9rem;">Quick links to your social accounts. Share articles directly from their edit page.</p>
+<p class="text-muted" style="margin-bottom: var(--space-md); font-size: 0.9rem;">Quick links to your social accounts. Share blog posts directly from their edit page.</p>
 <div class="social-dashboard-links">
         <?php if ($fbUrl): ?>
         <a href="<?= e($fbUrl) ?>" target="_blank" rel="noopener noreferrer" class="social-dash-link social-dash-facebook">
@@ -30,7 +30,7 @@ $igUrl = $data['instagram'] ?? '';
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
             <span>
                 <strong>Twitter / X</strong>
-                <small>Share news & updates</small>
+                <small>Share blog updates</small>
             </span>
         </a>
         <?php endif; ?>
@@ -47,7 +47,7 @@ $igUrl = $data['instagram'] ?? '';
 
 <h3 class="dash-widget-label">Share Tips</h3>
 <ul class="comms-tips">
-        <li>Published articles include share buttons for Facebook, Twitter/X, and email</li>
+    <li>Published blog posts include share buttons for Facebook, Twitter/X, and email</li>
         <li>All public pages include Open Graph metadata for rich social previews</li>
         <li>Instagram doesn't support link sharing — use compelling images with a call to action directing people to your site</li>
         <li>Tag fieldtrip photos with your location for better Instagram reach</li>

@@ -1,4 +1,4 @@
-<?php \IGA\Template::requireCss('admin-social.css'); ?>
+<?php \Cruinn\Template::requireCss('admin-social.css'); ?>
 <div class="social-hub">
     <div class="social-hub-header">
         <h1>Social Inbox <?php if ($unreadCount): ?><span class="badge badge-danger"><?= $unreadCount ?> unread</span><?php endif; ?></h1>

@@ -1,17 +1,17 @@
 <?php
 /**
- * IGA Portal â€” Form Service
+ * CruinnCMS â€” Form Service
  *
  * CRUD for dynamic forms, field management, submission handling,
  * validation, approval workflows, CSV export, and membership
  * application post-processing.
  */
 
-namespace IGA\Module\Forms\Services;
+namespace Cruinn\Module\Forms\Services;
 
-use IGA\Auth;
-use IGA\Database;
-use IGA\Mailer;
+use Cruinn\Auth;
+use Cruinn\Database;
+use Cruinn\Mailer;
 
 class FormService
 {
@@ -275,7 +275,7 @@ class FormService
             'user_id'      => $userId,
             'data'         => json_encode($cleanData),
             'status'       => $status,
-            'ip_address'   => \IGA\App::clientIp() ?: null,
+            'ip_address'   => \Cruinn\App::clientIp() ?: null,
         ]);
 
         // Send notification email

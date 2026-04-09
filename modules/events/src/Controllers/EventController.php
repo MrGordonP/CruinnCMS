@@ -1,18 +1,18 @@
 <?php
 /**
- * IGA Portal — Event Controller
+ * CruinnCMS — Event Controller
  *
  * Public event listing, detail pages, and event registration.
  * Admin event CRUD, attendee management, and export.
  */
 
-namespace IGA\Module\Events\Controllers;
+namespace Cruinn\Module\Events\Controllers;
 
-use IGA\Auth;
-use IGA\App;
-use IGA\Database;
-use IGA\Mailer;
-use IGA\Controllers\BaseController;
+use Cruinn\Auth;
+use Cruinn\App;
+use Cruinn\Database;
+use Cruinn\Mailer;
+use Cruinn\Controllers\BaseController;
 
 class EventController extends BaseController
 {
@@ -92,8 +92,8 @@ class EventController extends BaseController
         // Can this event accept registrations?
         $canRegister = $this->canRegister($event, $spotsRemaining);
 
-        $siteUrl = \IGA\App::config('site.url', '');
-        $defaultImg = $siteUrl . \IGA\App::config('social.default_image', '');
+        $siteUrl = \Cruinn\App::config('site.url', '');
+        $defaultImg = $siteUrl . \Cruinn\App::config('social.default_image', '');
         $eventDesc = truncate(strip_tags($event['description'] ?? ''), 200);
 
         $this->render('public/events/show', [

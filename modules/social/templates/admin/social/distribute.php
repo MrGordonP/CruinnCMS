@@ -1,4 +1,4 @@
-<?php \IGA\Template::requireCss('admin-social.css'); ?>
+<?php \Cruinn\Template::requireCss('admin-social.css'); ?>
 <div class="social-hub">
     <div class="social-hub-header">
         <h1>Distribute Content</h1>
@@ -16,7 +16,7 @@
                     <label>Content Type</label>
                     <select name="content_type" id="contentType" class="form-control" required>
                         <option value="">Choose type...</option>
-                        <option value="article" <?= $selectedType === 'article' ? 'selected' : '' ?>>Article</option>
+                        <option value="article" <?= $selectedType === 'article' ? 'selected' : '' ?>>Blog Post</option>
                         <option value="event" <?= $selectedType === 'event' ? 'selected' : '' ?>>Event</option>
                     </select>
                 </div>

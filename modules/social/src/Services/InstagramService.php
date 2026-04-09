@@ -1,6 +1,6 @@
 <?php
 /**
- * IGA Portal â€” Instagram Graph API Service
+ * CruinnCMS â€” Instagram Graph API Service
  *
  * Handles reading media, comments and publishing content
  * via the Instagram Graph API (Business / Creator accounts only).
@@ -13,9 +13,9 @@
  *   - Instagram Business Account ID stored in social_accounts.account_id.
  */
 
-namespace IGA\Module\Social\Services;
+namespace Cruinn\Module\Social\Services;
 
-use IGA\App;
+use Cruinn\App;
 
 class InstagramService extends AbstractSocialService
 {

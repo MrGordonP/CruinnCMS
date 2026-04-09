@@ -12,16 +12,16 @@ $totalArticles = $data['totalArticles'] ?? 0;
 ?>
 <div class="activity-header">
     <h2>Communications</h2>
-    <a href="/admin/articles/new" class="btn btn-primary btn-small">+ New Article</a>
+    <a href="/admin/blog/new" class="btn btn-primary btn-small">+ New Blog Post</a>
 </div>
 
 <div class="dash-quick-grid">
-    <a href="<?= url('/admin/articles') ?>" class="dash-quick-link">
+    <a href="<?= url('/admin/blog') ?>" class="dash-quick-link">
         <span class="dash-quick-icon">📰</span>
         <strong class="dash-stat-num"><?= (int)$totalArticles ?></strong>
-        <span>Articles</span>
+        <span>Blog Posts</span>
     </a>
-    <a href="<?= url('/admin/articles?status=draft') ?>" class="dash-quick-link">
+    <a href="<?= url('/admin/blog?status=draft') ?>" class="dash-quick-link">
         <span class="dash-quick-icon">📝</span>
         <strong class="dash-stat-num"><?= (int)$draftCount ?></strong>
         <span>Drafts</span>
@@ -29,11 +29,11 @@ $totalArticles = $data['totalArticles'] ?? 0;
 </div>
 
 <?php if (!empty($articles)): ?>
-<h3 class="dash-widget-label">Recent Articles</h3>
+<h3 class="dash-widget-label">Recent Blog Posts</h3>
 <ul class="comms-article-list">
     <?php foreach ($articles as $ra): ?>
     <li>
-        <a href="/admin/articles/<?= (int)$ra['id'] ?>/edit"><?= e($ra['title']) ?></a>
+        <a href="/admin/blog/<?= (int)$ra['id'] ?>/edit"><?= e($ra['title']) ?></a>
         <span class="badge badge-<?= $ra['status'] === 'published' ? 'success' : ($ra['status'] === 'draft' ? 'warning' : 'muted') ?>">
             <?= e(ucfirst($ra['status'])) ?>
         </span>

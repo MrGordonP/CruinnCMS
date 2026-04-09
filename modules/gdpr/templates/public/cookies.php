@@ -61,6 +61,6 @@
         </ul>
 
         <h2>Contact</h2>
-        <p>If you have questions about our use of cookies, please see our <a href="/privacy">Privacy Policy</a><?php $gdpr_email = \IGA\App::config('gdpr.contact_email', ''); if ($gdpr_email): ?> or contact us at <a href="mailto:<?= e($gdpr_email) ?>"><?= e($gdpr_email) ?></a><?php endif; ?>.</p>
+        <p>If you have questions about our use of cookies, please see our <a href="/privacy">Privacy Policy</a><?php $gdpr_email = \Cruinn\App::config('gdpr.contact_email', ''); if ($gdpr_email): ?> or contact us at <a href="mailto:<?= e($gdpr_email) ?>"><?= e($gdpr_email) ?></a><?php endif; ?>.</p>
     </div>
 </div>

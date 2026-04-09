@@ -1,9 +1,9 @@
 <?php
 
-namespace IGA\Module\Forum\Controllers;
+namespace Cruinn\Module\Forum\Controllers;
 
-use IGA\Auth;
-use IGA\Controllers\BaseController;
+use Cruinn\Auth;
+use Cruinn\Controllers\BaseController;
 
 class ForumAdminController extends BaseController
 {

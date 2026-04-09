@@ -1,6 +1,6 @@
 <?php
 /**
- * IGA Portal â€” Twitter/X API v2 Service
+ * CruinnCMS â€” Twitter/X API v2 Service
  *
  * Handles reading tweets, mentions, DMs and publishing tweets
  * via the Twitter API v2.
@@ -10,9 +10,9 @@
  *   - Access token with tweet.read, tweet.write, users.read, dm.read scopes.
  */
 
-namespace IGA\Module\Social\Services;
+namespace Cruinn\Module\Social\Services;
 
-use IGA\App;
+use Cruinn\App;
 
 class TwitterService extends AbstractSocialService
 {

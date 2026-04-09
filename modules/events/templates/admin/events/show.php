@@ -1,4 +1,4 @@
-<?php \IGA\Template::requireCss('admin-events.css'); ?>
+<?php \Cruinn\Template::requireCss('admin-events.css'); ?>
 <div class="admin-event-detail">
     <div class="admin-header-row">
         <h1><?= e($event['title']) ?></h1>

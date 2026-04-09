@@ -1,8 +1,8 @@
 <?php
 
-namespace IGA\Module\Forum\Forum;
+namespace Cruinn\Module\Forum\Forum;
 
-use IGA\App;
+use Cruinn\App;
 
 class ForumManager
 {

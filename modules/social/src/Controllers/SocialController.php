@@ -1,6 +1,6 @@
 <?php
 /**
- * IGA Portal â€” Social Media Controller
+ * CruinnCMS â€” Social Media Controller
  *
  * Manages the Social Media Command Centre:
  *   - Dashboard: unified view of all platform activity
@@ -9,15 +9,15 @@
  *   - Accounts: manage connected platform credentials
  */
 
-namespace IGA\Module\Social\Controllers;
+namespace Cruinn\Module\Social\Controllers;
 
-use IGA\Auth;
-use IGA\App;
-use IGA\Controllers\BaseController;
-use IGA\Module\Social\Services\FacebookService;
-use IGA\Module\Social\Services\TwitterService;
-use IGA\Module\Social\Services\InstagramService;
-use IGA\Module\Social\Services\AbstractSocialService;
+use Cruinn\Auth;
+use Cruinn\App;
+use Cruinn\Controllers\BaseController;
+use Cruinn\Module\Social\Services\FacebookService;
+use Cruinn\Module\Social\Services\TwitterService;
+use Cruinn\Module\Social\Services\InstagramService;
+use Cruinn\Module\Social\Services\AbstractSocialService;
 
 class SocialController extends BaseController
 {
@@ -330,7 +330,7 @@ class SocialController extends BaseController
 
         $siteUrl = rtrim(App::config('site.url', ''), '/');
         $slug    = $content['slug'] ?? '';
-        $link    = $siteUrl . '/' . ($contentType === 'article' ? "articles/{$slug}" : "events/{$slug}");
+        $link    = $siteUrl . '/' . ($contentType === 'article' ? "blog/{$slug}" : "events/{$slug}");
 
         $successCount = 0;
         $errors = [];

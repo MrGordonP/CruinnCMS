@@ -1,6 +1,6 @@
 <?php
 /**
- * IGA Portal â€” Facebook Graph API Service
+ * CruinnCMS â€” Facebook Graph API Service
  *
  * Handles reading posts, comments, messages and publishing to a Facebook Page
  * via the Graph API v19.0.
@@ -11,9 +11,9 @@
  *   - A Page Access Token stored in social_accounts.page_token.
  */
 
-namespace IGA\Module\Social\Services;
+namespace Cruinn\Module\Social\Services;
 
-use IGA\App;
+use Cruinn\App;
 
 class FacebookService extends AbstractSocialService
 {

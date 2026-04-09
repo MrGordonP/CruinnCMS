@@ -119,15 +119,15 @@ class App
         // User self-service routes require member role
         $this->router->addPrefixMiddleware('/users', [Auth::class, 'memberMiddleware']);
 
-        // File Manager routes require at least member login
-        $this->router->addPrefixMiddleware('/files', [Auth::class, 'memberMiddleware']);
+        // Drivespace routes require at least member login
+        $this->router->addPrefixMiddleware('/drivespace', [Auth::class, 'memberMiddleware']);
 
         // Load core route definitions
         $registerRoutes = require dirname(__DIR__) . '/config/routes.php';
         $registerRoutes($this->router);
 
         // Register routes from active modules BEFORE the page catch-alls,
-        // so module paths like /news, /events, /forum are never shadowed.
+        // so module paths like /blog, /events, /forum are never shadowed.
         Modules\ModuleRegistry::registerRoutes($this->router);
 
         // ── Public page catch-alls (must be last) ──────────────────────────

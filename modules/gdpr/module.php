@@ -3,7 +3,7 @@
  * GDPR Module — Privacy policy, cookie consent, data export, and account deletion.
  */
 
-use IGA\Module\Gdpr\Controllers\GdprController;
+use Cruinn\Module\Gdpr\Controllers\GdprController;
 
 return [
     'slug'         => 'gdpr',

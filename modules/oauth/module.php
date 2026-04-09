@@ -3,7 +3,7 @@
  * OAuth Module — Social login via OAuth 2.0 providers (Google, GitHub, etc.).
  */
 
-use IGA\Module\OAuth\Controllers\OAuthController;
+use Cruinn\Module\OAuth\Controllers\OAuthController;
 
 return [
     'slug'         => 'oauth',

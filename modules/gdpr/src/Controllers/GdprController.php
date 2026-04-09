@@ -1,18 +1,18 @@
 <?php
 /**
- * IGA Portal â€” GDPR Controller
+ * CruinnCMS â€” GDPR Controller
  *
  * Handles privacy policy, cookie policy, cookie consent,
  * data export requests, and account deletion.
  * All routes are no-ops / 404 when gdpr.enabled is false.
  */
 
-namespace IGA\Module\Gdpr\Controllers;
+namespace Cruinn\Module\Gdpr\Controllers;
 
-use IGA\Auth;
-use IGA\App;
-use IGA\Controllers\BaseController;
-use IGA\Module\Gdpr\Services\GdprService;
+use Cruinn\Auth;
+use Cruinn\App;
+use Cruinn\Controllers\BaseController;
+use Cruinn\Module\Gdpr\Services\GdprService;
 
 class GdprController extends BaseController
 {

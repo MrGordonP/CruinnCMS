@@ -1,5 +1,5 @@
 -- ============================================================
--- IGA Portal — Migration 014: GDPR Consent & Data Management
+-- CruinnCMS — Migration 014: GDPR Consent & Data Management
 --
 -- Tracks user consent records and data request history.
 -- All GDPR features are toggleable via config('gdpr.enabled').

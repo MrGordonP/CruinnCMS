@@ -313,7 +313,7 @@
                 $commonRoutes = [
                     ['route' => '/',          'label' => 'Home'],
                     ['route' => '/events',    'label' => 'Events'],
-                    ['route' => '/news',      'label' => 'News'],
+                    ['route' => '/blog',      'label' => 'Blog'],
                     ['route' => '/forum',     'label' => 'Forum'],
                     ['route' => '/directory', 'label' => 'Directory'],
                     ['route' => '/login',     'label' => 'Login'],

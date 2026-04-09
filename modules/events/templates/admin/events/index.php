@@ -1,4 +1,4 @@
-<?php \IGA\Template::requireCss('admin-events.css'); ?>
+<?php \Cruinn\Template::requireCss('admin-events.css'); ?>
 <div class="admin-events">
     <div class="admin-header-row">
         <h1>Events <span class="count">(<?= (int) $totalCount ?>)</span></h1>

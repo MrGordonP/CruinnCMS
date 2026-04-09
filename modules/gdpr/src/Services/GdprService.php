@@ -1,6 +1,6 @@
 <?php
 /**
- * IGA Portal â€” GDPR Service
+ * CruinnCMS â€” GDPR Service
  *
  * Handles data export (Subject Access Requests), account deletion
  * (Right to Erasure), and consent record-keeping.
@@ -8,12 +8,12 @@
  * All methods are no-ops when config('gdpr.enabled') is false.
  */
 
-namespace IGA\Module\Gdpr\Services;
+namespace Cruinn\Module\Gdpr\Services;
 
-use IGA\App;
-use IGA\Auth;
-use IGA\Database;
-use IGA\Modules\ModuleRegistry;
+use Cruinn\App;
+use Cruinn\Auth;
+use Cruinn\Database;
+use Cruinn\Modules\ModuleRegistry;
 
 class GdprService
 {

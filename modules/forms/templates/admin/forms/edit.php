@@ -1,6 +1,6 @@
 <?php
     $isNew = empty($form['id']);
-\IGA\Template::requireCss('admin-forms.css');
+\Cruinn\Template::requireCss('admin-forms.css');
     $settings = is_string($form['settings'] ?? '') ? json_decode($form['settings'] ?? '{}', true) : ($form['settings'] ?? []);
 ?>
 <div class="admin-form-edit">

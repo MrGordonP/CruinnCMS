@@ -1,5 +1,5 @@
 -- ============================================================
--- IGA Portal — Migration 009: Forum Core
+-- Cruinn CMS — Migration 009: Forum Core
 --
 -- Native forum tables for public/member discussion.
 -- Designed as provider-backed implementation (native provider first).

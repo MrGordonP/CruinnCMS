@@ -1,10 +1,10 @@
 <?php
 
-namespace IGA\Module\Forum\Forum;
+namespace Cruinn\Module\Forum\Forum;
 
-use IGA\Auth;
-use IGA\Database;
-use IGA\Services\NotificationService;
+use Cruinn\Auth;
+use Cruinn\Database;
+use Cruinn\Services\NotificationService;
 
 class NativeForumProvider implements ForumProviderInterface
 {

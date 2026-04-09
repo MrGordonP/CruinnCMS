@@ -144,8 +144,8 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             return $pageSlugIndex[$slug]['status'] === 'published' ? 'ok' : 'broken';
         }
 
-        // Module routes: /news, /events, /forum etc. — don't flag these
-        $moduleRoots = ['news', 'events', 'forum', 'files', 'forms', 'admin', 'login', 'logout', 'register',
+        // Module routes: /blog, /events, /forum etc. — don't flag these
+        $moduleRoots = ['blog', 'events', 'forum', 'files', 'forms', 'admin', 'login', 'logout', 'register',
                         'members', 'council', 'reset-password', 'forgot-password', 'notifications', 'mailing-lists',
                         'directory', 'subjects', 'storage', 'uploads', 'brand', 'cms', 'install.php'];
         $firstSegment = explode('/', $slug)[0];

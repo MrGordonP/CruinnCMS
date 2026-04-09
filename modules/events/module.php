@@ -5,8 +5,8 @@
  * Public event listing, registration, and admin CRUD with attendee management.
  */
 
-use IGA\Router;
-use IGA\Module\Events\Controllers\EventController;
+use Cruinn\Router;
+use Cruinn\Module\Events\Controllers\EventController;
 
 return [
     'slug'        => 'events',

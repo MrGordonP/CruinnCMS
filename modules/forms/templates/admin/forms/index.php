@@ -1,4 +1,4 @@
-<?php \IGA\Template::requireCss('admin-forms.css'); ?>
+<?php \Cruinn\Template::requireCss('admin-forms.css'); ?>
 <div class="admin-form-list">
     <div class="admin-list-header">
         <h1>Forms</h1>

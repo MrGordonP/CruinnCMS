@@ -1,10 +1,10 @@
 <?php
 
-namespace IGA\Module\Forum\Controllers;
+namespace Cruinn\Module\Forum\Controllers;
 
-use IGA\Auth;
-use IGA\Controllers\BaseController;
-use IGA\Module\Forum\Forum\ForumManager;
+use Cruinn\Auth;
+use Cruinn\Controllers\BaseController;
+use Cruinn\Module\Forum\Forum\ForumManager;
 
 class ForumController extends BaseController
 {

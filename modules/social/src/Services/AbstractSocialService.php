@@ -1,14 +1,14 @@
 <?php
 /**
- * IGA Portal â€” Abstract Social Platform Service
+ * CruinnCMS â€” Abstract Social Platform Service
  *
  * Common interface and helpers for all platform API wrappers.
  */
 
-namespace IGA\Module\Social\Services;
+namespace Cruinn\Module\Social\Services;
 
-use IGA\Database;
-use IGA\App;
+use Cruinn\Database;
+use Cruinn\App;
 
 abstract class AbstractSocialService
 {
@@ -145,7 +145,7 @@ abstract class AbstractSocialService
             'link_url'          => $link,
             'status'            => 'published',
             'published_at'      => date('Y-m-d H:i:s'),
-            'created_by'        => \IGA\Auth::userId(),
+            'created_by'        => \Cruinn\Auth::userId(),
         ]);
     }
 }

@@ -1,18 +1,18 @@
 <?php
 /**
- * IGA Portal â€” OAuth Controller
+ * CruinnCMS â€” OAuth Controller
  *
  * Handles the OAuth social login flow:
  *  GET  /auth/{provider}          â†’ redirect to provider's auth page
  *  GET  /auth/{provider}/callback â†’ process the callback, log in or register
  */
 
-namespace IGA\Module\OAuth\Controllers;
+namespace Cruinn\Module\OAuth\Controllers;
 
-use IGA\Auth;
-use IGA\Controllers\BaseController;
-use IGA\Database;
-use IGA\Services\OAuthService;
+use Cruinn\Auth;
+use Cruinn\Controllers\BaseController;
+use Cruinn\Database;
+use Cruinn\Services\OAuthService;
 
 class OAuthController extends BaseController
 {

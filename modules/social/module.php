@@ -4,7 +4,7 @@
  * Unified feed, shared inbox, content distribution, and connected accounts.
  */
 
-use IGA\Module\Social\Controllers\SocialController;
+use Cruinn\Module\Social\Controllers\SocialController;
 
 return [
     'slug'         => 'social',

@@ -9,11 +9,10 @@
  * (e.g. a phpBB adapter) to replace the native implementation.
  */
 
-use IGA\Modules\ModuleRegistry;
-use IGA\Module\Forum\Controllers\ForumController;
-use IGA\Module\Forum\Controllers\ForumAdminController;
+use Cruinn\Module\Forum\Controllers\ForumController;
+use Cruinn\Module\Forum\Controllers\ForumAdminController;
 
-ModuleRegistry::register([
+return [
     'slug'        => 'forum',
     'name'        => 'Forum',
     'version'     => '1.0.0',
@@ -64,4 +63,4 @@ ModuleRegistry::register([
     ],
 
     'provides' => ['forum'],
-]);
+];

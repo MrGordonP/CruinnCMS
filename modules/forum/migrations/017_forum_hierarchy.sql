@@ -1,5 +1,5 @@
 -- ============================================================
--- IGA Portal — Migration 017: Forum Category Hierarchy
+-- Cruinn CMS — Migration 017: Forum Category Hierarchy
 --
 -- Adds parent_id to forum_categories so categories can nest,
 -- mirroring the phpBB forum/sub-forum structure.

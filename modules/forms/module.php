@@ -3,7 +3,7 @@
  * Forms Module — Dynamic form builder with field management and submission handling.
  */
 
-use IGA\Module\Forms\Controllers\FormController;
+use Cruinn\Module\Forms\Controllers\FormController;
 
 return [
     'slug'         => 'forms',

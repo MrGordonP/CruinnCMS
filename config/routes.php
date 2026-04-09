@@ -255,6 +255,6 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/template-editor/preview',            [SiteBuilderController::class, 'templateEditorPreview']);
 
     // '/' and '/{slug}' catch-alls are intentionally registered in App::init()
-    // AFTER module routes, so module paths like /news /events /forum are never
+    // AFTER module routes, so module paths like /blog /events /forum are never
     // shadowed by the page catch-all. Do not add them here.
 };

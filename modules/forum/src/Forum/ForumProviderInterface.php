@@ -1,6 +1,6 @@
 <?php
 
-namespace IGA\Module\Forum\Forum;
+namespace Cruinn\Module\Forum\Forum;
 
 interface ForumProviderInterface
 {

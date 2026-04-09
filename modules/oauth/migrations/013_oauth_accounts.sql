@@ -1,5 +1,5 @@
 -- ============================================================
--- IGA Portal — Migration 013: OAuth / Social Login Accounts
+-- CruinnCMS — Migration 013: OAuth / Social Login Accounts
 --
 -- Links external OAuth provider identities to local user accounts.
 -- A single user can have multiple OAuth providers linked.

@@ -1,10 +1,10 @@
 <?php
 
-namespace IGA\Module\Forms\Controllers;
+namespace Cruinn\Module\Forms\Controllers;
 
-use IGA\Auth;
-use IGA\Controllers\BaseController;
-use IGA\Module\Forms\Services\FormService;
+use Cruinn\Auth;
+use Cruinn\Controllers\BaseController;
+use Cruinn\Module\Forms\Services\FormService;
 
 class FormController extends BaseController
 {
