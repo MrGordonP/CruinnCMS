@@ -97,7 +97,7 @@ class CruinnRenderService
     public function buildCss(int $pageId): string
     {
         $flat = $this->db->fetchAll(
-            'SELECT block_id, css_props FROM cruinn_blocks WHERE page_id = ?',
+            'SELECT block_id, block_type, block_config, css_props FROM cruinn_blocks WHERE page_id = ?',
             [$pageId]
         );
 

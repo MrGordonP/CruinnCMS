@@ -317,45 +317,9 @@ class SiteBuilderController extends BaseController
         $tpl['zones'] = json_decode($tpl['zones'] ?? '["main"]', true) ?: ['main'];
         $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
 
-        $blocks = $this->db->fetchAll(
-            'SELECT * FROM content_blocks WHERE parent_type = ? AND parent_id = ? ORDER BY zone, sort_order ASC',
-            ['template', (int) $id]
-        );
-
-        foreach ($blocks as &$block) {
-            $block['content'] = json_decode($block['content'], true) ?? [];
-            $block['settings'] = json_decode($block['settings'] ?? '{}', true) ?? [];
-            $block['children'] = [];
-        }
-        unset($block);
-
+        // Template zone blocks now live in the canvas page via cruinn_blocks.
+        // content_blocks no longer exists — pass empty grouped zones.
         $grouped = ['header' => [], 'body' => [], 'footer' => []];
-        foreach ($blocks as $b) {
-            $z = $b['zone'] ?? 'body';
-            if (!isset($grouped[$z])) $grouped[$z] = [];
-            $grouped[$z][] = $b;
-        }
-
-        foreach ($grouped as $zone => &$zoneBlocks) {
-            $indexed = [];
-            foreach ($zoneBlocks as &$block) {
-                $indexed[$block['id']] = &$block;
-            }
-            unset($block);
-
-            $tree = [];
-            foreach ($zoneBlocks as &$block) {
-                $pid = $block['parent_block_id'] ?? null;
-                if ($pid && isset($indexed[$pid])) {
-                    $indexed[$pid]['children'][] = &$block;
-                } else {
-                    $tree[] = &$block;
-                }
-            }
-            unset($block);
-            $zoneBlocks = $tree;
-        }
-        unset($zoneBlocks);
 
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_header_blocks', $grouped['header']);

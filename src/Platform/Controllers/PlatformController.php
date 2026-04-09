@@ -1457,17 +1457,22 @@ class PlatformController
         // Sentinel: explicit request for the platform (engine) DB
         if ($instanceFolder === '__platform__') {
             $pCfg = PlatformAuth::dbConfig();
+            $host = $pCfg['host'] ?? $pCfg['hostname'] ?? 'localhost';
+            $port = (int) ($pCfg['port'] ?? 3306);
+            $name = $pCfg['name'] ?? $pCfg['database'] ?? '';
+            $user = $pCfg['user'] ?? $pCfg['username'] ?? '';
+            $pass = $pCfg['password'] ?? $pCfg['pass'] ?? '';
             $pdo  = new \PDO(
                 sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
-                    $pCfg['host']     ?? 'localhost',
-                    (int)($pCfg['port'] ?? 3306),
-                    $pCfg['name']     ?? ''
+                    $host,
+                    $port,
+                    $name
                 ),
-                $pCfg['user']     ?? '',
-                $pCfg['password'] ?? '',
+                $user,
+                $pass,
                 [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC]
             );
-            return [$pdo, $pCfg['name'] ?? '', '(platform)'];
+            return [$pdo, $name, '(platform)'];
         }
 
         if ($instanceFolder === null || $instanceFolder === '') {

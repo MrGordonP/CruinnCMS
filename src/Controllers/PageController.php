@@ -33,8 +33,6 @@ class PageController extends BaseController
             return;
         }
 
-        $blocks = $this->getBlocks($page['id']);
-
         // Cruinn CMS: if published Cruinn blocks exist, hand off to Cruinn renderer
         $cruinn = new CruinnRenderService();
         if ($cruinn->hasPublished((int) $page['id'])) {
@@ -46,6 +44,8 @@ class PageController extends BaseController
             ]);
             return;
         }
+
+        $blocks = $this->getBlocks($page['id']);
 
         $this->render('public/home', [
             'title'  => $page['title'],
@@ -97,7 +97,6 @@ class PageController extends BaseController
             return;
         }
 
-        $blocks = $this->getBlocks($page['id']);
         $tpl = $this->getTemplate($page['template'] ?? 'default');
 
         // ── Cruinn mode: block renderer ──────────────────────────────────────
@@ -156,6 +155,8 @@ class PageController extends BaseController
         // Set template-level globals so layout.php can use them
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_footer_blocks', $templateBlocks['footer'] ?? []);
+
+        $blocks = $this->getBlocks($page['id']);
 
         $this->render('public/page', [
             'title'            => $page['title'],

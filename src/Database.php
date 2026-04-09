@@ -56,7 +56,20 @@ class Database
             if (!empty($_SESSION['_platform_editor_mode'])
                 && class_exists(\Cruinn\Platform\PlatformAuth::class)
             ) {
-                $config = \Cruinn\Platform\PlatformAuth::dbConfig();
+                $platformCfg = \Cruinn\Platform\PlatformAuth::dbConfig();
+                $config = [
+                    'host'     => $platformCfg['host'] ?? $platformCfg['hostname'] ?? 'localhost',
+                    'port'     => (int) ($platformCfg['port'] ?? 3306),
+                    'name'     => $platformCfg['name'] ?? $platformCfg['database'] ?? '',
+                    'user'     => $platformCfg['user'] ?? $platformCfg['username'] ?? '',
+                    'password' => $platformCfg['password'] ?? $platformCfg['pass'] ?? '',
+                    'charset'  => $platformCfg['charset'] ?? 'utf8mb4',
+                ];
+
+                // Fall back to the active app DB config if platform DB config is incomplete.
+                if ($config['name'] === '' || $config['user'] === '') {
+                    $config = App::config('db');
+                }
             } elseif (!empty($_SESSION['_platform_editor_instance'])
                 && (str_starts_with($requestPath, '/cms/editor') || str_starts_with($requestPath, '/admin/'))
             ) {
