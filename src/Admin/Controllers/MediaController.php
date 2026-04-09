@@ -47,7 +47,7 @@ class MediaController extends \Cruinn\Controllers\BaseController
 
         // Organise into year/month subdirectories
         $subdir   = date('Y/m');
-        $uploadDir = dirname(__DIR__, 3) . '/public/storage/' . $typeDir . '/' . $subdir;
+        $uploadDir = CRUINN_PUBLIC . '/storage/' . $typeDir . '/' . $subdir;
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -81,7 +81,7 @@ class MediaController extends \Cruinn\Controllers\BaseController
     public function listMedia(): void
     {
         // Scan both storage/media (new) and uploads/ (legacy) for backward compat
-        $publicRoot = dirname(__DIR__, 3) . '/public';
+        $publicRoot = CRUINN_PUBLIC;
         $scanDirs = [
             $publicRoot . '/storage/media',
             $publicRoot . '/uploads',  // legacy — keep until all instances migrated

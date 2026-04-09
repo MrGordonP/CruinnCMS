@@ -82,14 +82,14 @@ class CruinnController extends BaseController
 
         $sitePages = $this->db->fetchAll(
             "SELECT id, title, slug, render_mode FROM pages
-             WHERE slug NOT LIKE '\\_\\_%'
+             WHERE slug NOT LIKE '\\_%'
              ORDER BY title ASC"
         );
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
              LEFT JOIN pages p ON p.id = pt.canvas_page_id
-             WHERE pt.slug NOT LIKE '\\_\\_%'
+             WHERE pt.slug NOT LIKE '\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
         try {
@@ -98,14 +98,14 @@ class CruinnController extends BaseController
             $navMenus = $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC');
         }
 
-        $cssDir   = dirname(__DIR__, 2) . '/public/css';
+        $cssDir   = CRUINN_PUBLIC . '/css';
         $cssFiles = [];
-        foreach (glob($cssDir . '/*.css') as $f) {
+        foreach (glob($cssDir . '/*.css') ?: [] as $f) {
             $cssFiles[] = basename($f);
         }
         sort($cssFiles);
 
-        $tplBase    = dirname(__DIR__, 2) . '/templates';
+        $tplBase    = CRUINN_ROOT . '/templates';
         $tplExclude = ['/admin/', '/platform/'];
         $tplIter    = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($tplBase, \FilesystemIterator::SKIP_DOTS)
@@ -355,7 +355,7 @@ class CruinnController extends BaseController
         // Content pages for the sidebar nav
         $sitePages = $this->db->fetchAll(
             "SELECT id, title, slug, render_mode FROM pages
-             WHERE slug NOT LIKE '\\_\\_%'
+             WHERE slug NOT LIKE '\\_%'
              ORDER BY title ASC"
         );
 
@@ -364,7 +364,7 @@ class CruinnController extends BaseController
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
              LEFT JOIN pages p ON p.id = pt.canvas_page_id
-             WHERE pt.slug NOT LIKE '\\_\\_%'
+             WHERE pt.slug NOT LIKE '\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
 
@@ -379,15 +379,15 @@ class CruinnController extends BaseController
         }
 
         // CSS files for sidebar nav
-        $cssDir   = dirname(__DIR__, 2) . '/public/css';
+        $cssDir   = CRUINN_PUBLIC . '/css';
         $cssFiles = [];
-        foreach (glob($cssDir . '/*.css') as $f) {
+        foreach (glob($cssDir . '/*.css') ?: [] as $f) {
             $cssFiles[] = basename($f);
         }
         sort($cssFiles);
 
         // PHP template groups for sidebar nav (same exclusions as template editor)
-        $tplBase    = dirname(__DIR__, 2) . '/templates';
+        $tplBase    = CRUINN_ROOT . '/templates';
         $tplExclude = ['/admin/', '/platform/'];
         $tplIter    = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($tplBase, \FilesystemIterator::SKIP_DOTS)
