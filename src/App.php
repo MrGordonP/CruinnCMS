@@ -116,6 +116,9 @@ class App
         // Legacy route prefix kept for backward compatibility during rename rollout
         $this->router->addPrefixMiddleware('/council', [Auth::class, 'organisationMiddleware']);
 
+        // Document library requires organisation role
+        $this->router->addPrefixMiddleware('/documents', [Auth::class, 'organisationMiddleware']);
+
         // User self-service routes require member role
         $this->router->addPrefixMiddleware('/users', [Auth::class, 'memberMiddleware']);
 

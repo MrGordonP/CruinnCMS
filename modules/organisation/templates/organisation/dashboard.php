@@ -5,12 +5,12 @@
         <div class="stat-card">
             <span class="stat-number"><?= (int)($stats['documents'] ?? 0) ?></span>
             <span class="stat-label">Documents</span>
-            <a href="/organisation/documents" class="stat-link">View All</a>
+            <a href="/documents" class="stat-link">View All</a>
         </div>
         <div class="stat-card stat-card-warning">
             <span class="stat-number"><?= (int)($stats['pending'] ?? 0) ?></span>
             <span class="stat-label">Pending Approval</span>
-            <a href="/organisation/documents?status=submitted" class="stat-link">Review</a>
+            <a href="/documents?status=submitted" class="stat-link">Review</a>
         </div>
         <div class="stat-card">
             <span class="stat-number"><?= (int)($stats['discussions'] ?? 0) ?></span>
@@ -28,7 +28,7 @@
         <section class="organisation-section">
             <div class="section-header">
                 <h2>Recent Documents</h2>
-                <a href="/organisation/documents/new" class="btn btn-primary btn-sm">Upload New</a>
+                <a href="/documents/new" class="btn btn-primary btn-sm">Upload New</a>
             </div>
             <?php if (empty($recentDocuments)): ?>
                 <p class="text-muted">No documents yet.</p>
@@ -45,7 +45,7 @@
                     <tbody>
                         <?php foreach ($recentDocuments as $doc): ?>
                         <tr>
-                            <td><a href="/organisation/documents/<?= (int)$doc['id'] ?>"><?= e($doc['title']) ?></a></td>
+                            <td><a href="/documents/<?= (int)$doc['id'] ?>"><?= e($doc['title']) ?></a></td>
                             <td><span class="badge badge-category"><?= e(ucfirst($doc['category'])) ?></span></td>
                             <td><span class="badge badge-doc-<?= e($doc['status']) ?>"><?= e(ucfirst($doc['status'])) ?></span></td>
                             <td><time datetime="<?= e($doc['updated_at']) ?>"><?= format_date($doc['updated_at'], 'j M Y') ?></time></td>

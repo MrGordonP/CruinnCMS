@@ -8,10 +8,10 @@ $recentDiscussions = $data['recent_discussions'] ?? [];
 </div>
 
 <div class="dash-quick-grid">
-    <a href="<?= url('/organisation/documents') ?>" class="dash-quick-link">
+    <a href="<?= url('/documents') ?>" class="dash-quick-link">
         <span class="dash-quick-icon">📄</span><span>Documents <?= (int) ($data['documents'] ?? 0) ?></span>
     </a>
-    <a href="<?= url('/organisation/documents?status=submitted') ?>" class="dash-quick-link">
+    <a href="<?= url('/documents?status=submitted') ?>" class="dash-quick-link">
         <span class="dash-quick-icon">⏳</span><span>Pending <?= (int) ($data['pending'] ?? 0) ?></span>
     </a>
     <a href="<?= url('/organisation/discussions') ?>" class="dash-quick-link">
@@ -26,7 +26,7 @@ $recentDiscussions = $data['recent_discussions'] ?? [];
     <div class="dashboard-widget widget-half">
         <div class="activity-header">
             <h3>Recent Documents</h3>
-            <a href="<?= url('/organisation/documents/new') ?>" class="btn btn-primary btn-small">Upload</a>
+            <a href="<?= url('/documents/new') ?>" class="btn btn-primary btn-small">Upload</a>
         </div>
         <?php if (empty($recentDocuments)): ?>
         <p class="text-muted">No documents yet.</p>
@@ -41,7 +41,7 @@ $recentDiscussions = $data['recent_discussions'] ?? [];
             <tbody>
                 <?php foreach ($recentDocuments as $doc): ?>
                 <tr>
-                    <td><a href="<?= url('/organisation/documents/' . (int) $doc['id']) ?>"><?= e($doc['title']) ?></a></td>
+                    <td><a href="<?= url('/documents/' . (int) $doc['id']) ?>"><?= e($doc['title']) ?></a></td>
                     <td><?= e(ucfirst((string) $doc['status'])) ?></td>
                 </tr>
                 <?php endforeach; ?>

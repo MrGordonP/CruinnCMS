@@ -1,7 +1,7 @@
 <?php
 /**
  * Organisation Module — Restricted workspace for organisation members.
- * Document management, discussion threads, and inbox viewer.
+ * Discussion threads and inbox. Document management lives in the documents module.
  */
 
 use Cruinn\Module\Organisation\Controllers\OrganisationController;
@@ -9,7 +9,7 @@ use Cruinn\Module\Organisation\Controllers\OrganisationController;
 return [
     'slug'         => 'organisation',
     'name'         => 'Organisation Workspace',
-    'description'  => 'Restricted workspace for organisation members: document management, discussion threads, and inbox.',
+    'description'  => 'Restricted workspace for organisation members: discussion threads and inbox.',
     'provides'     => ['organisation'],
     'migrations'   => [__DIR__ . '/migrations/001_organisation_tables.sql'],
     'template_path' => __DIR__ . '/templates',
@@ -38,19 +38,6 @@ return [
     'routes' => static function (object $router): void {
         // Organisation workspace
         $router->get('/organisation', [OrganisationController::class, 'dashboard']);
-
-        // Documents
-        $router->get('/organisation/documents',                                        [OrganisationController::class, 'documentList']);
-        $router->get('/organisation/documents/new',                                    [OrganisationController::class, 'documentNew']);
-        $router->post('/organisation/documents',                                       [OrganisationController::class, 'documentCreate']);
-        $router->get('/organisation/documents/{id}',                                   [OrganisationController::class, 'documentShow']);
-        $router->get('/organisation/documents/{id}/download',                          [OrganisationController::class, 'documentDownload']);
-        $router->get('/organisation/documents/{id}/versions/{versionId}/download',     [OrganisationController::class, 'documentDownloadVersion']);
-        $router->post('/organisation/documents/{id}/version',                          [OrganisationController::class, 'documentNewVersion']);
-        $router->post('/organisation/documents/{id}/submit',                           [OrganisationController::class, 'documentSubmit']);
-        $router->post('/organisation/documents/{id}/approve',                          [OrganisationController::class, 'documentApprove']);
-        $router->post('/organisation/documents/{id}/archive',                          [OrganisationController::class, 'documentArchive']);
-        $router->post('/organisation/documents/{id}/delete',                           [OrganisationController::class, 'documentDelete']);
 
         // Discussions
         $router->get('/organisation/discussions',                                      [OrganisationController::class, 'discussionList']);
