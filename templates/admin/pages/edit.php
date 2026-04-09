@@ -6,7 +6,6 @@
  * Centre: Block editor canvas
  * Right:  Block properties panel
  */
-<?php
 \Cruinn\Template::requireCss('admin-site-builder.css');
 \Cruinn\Template::requireCss('admin-block-editor.css');
 \Cruinn\Template::requireJs('block-editor/core.js', 'block-editor/undo.js', 'block-editor/properties.js', 'block-editor/drag.js', 'site-editor.js');

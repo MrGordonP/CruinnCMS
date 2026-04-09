@@ -17,7 +17,7 @@ return [
         ['group' => 'Settings', 'label' => 'OAuth', 'url' => '/admin/settings/oauth', 'icon' => '🔐', 'roles' => ['admin']],
     ],
 
-    'routes' => function (IGA\Router $router) {
+    'routes' => function (\Cruinn\Router $router) {
         $router->get('/auth/{provider}',          [OAuthController::class, 'startAuth']);
         $router->get('/auth/{provider}/callback', [OAuthController::class, 'callback']);
     },
