@@ -165,7 +165,7 @@ class Template
 
     /**
      * Queue additional admin JS modules to load at the bottom of admin/layout.php.
-     * Path is relative to public/js/admin/ (e.g. 'block-editor/core.js').
+     * Path is relative to public/js/admin/ (e.g. 'gallery.js').
      */
     public static function requireJs(string ...$files): void
     {

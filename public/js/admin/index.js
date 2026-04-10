@@ -5,9 +5,8 @@
  *
  * Loading order (must match <script> tags in layout.php):
  *   utils → api → media-browser → rte → gallery
- *   → block-editor/core → block-editor/undo → block-editor/properties → block-editor/drag
- *   → menu-editor → social-hub → dashboard-config → nav-config
- *   → site-editor → template-editor → index  (this file)
+ *   → menu-editor → dashboard-config → nav-config
+ *   → template-editor → index  (this file)
  */
 (function (Cruinn) {
 
@@ -31,69 +30,12 @@
             });
         }
 
-        // ── Non-block-editor pages ──────────────────────────────────
+        // ── Init admin modules ───────────────────────────────────
 
-        var blockEditor = document.querySelector('.block-editor');
-
-        if (!blockEditor) {
-            Cruinn.initRichTextEditors();
-            Cruinn.initSocialHub();
-            Cruinn.initDashboardConfig();
-            Cruinn.initNavConfig();
-            Cruinn.initMenuEditor();
-            Cruinn.initSiteEditor();
-            Cruinn.initTemplateEditor();
-            return;
-        }
-
-        // ── Block editor setup ──────────────────────────────────────
-
-        var csrfToken = Cruinn.getCSRFToken();
-        var parentType = blockEditor.dataset.parentType || 'page';
-        var parentId = blockEditor.dataset.parentId;
-        var editorMode = blockEditor.dataset.editorMode || 'structured';
-
-        Cruinn.blockContext = {
-            csrfToken: csrfToken,
-            parentType: parentType,
-            parentId: parentId,
-            editorMode: editorMode,
-            activeZone: 'body',
-
-            // Mutable working state — set by sub-modules
-            propsTargetBlock: null,
-            propsTargetZone: null,
-            propsPanel: null,
-            propsSaveTimer: null,
-            zoneSaveTimer: null,
-            undoStack: [],
-            redoStack: [],
-            maxUndoSteps: 50,
-        };
-
-        // ── Block editor module init ────────────────────────────────
-
-        Cruinn.initBlockEditorCore();
         Cruinn.initRichTextEditors();
-        Cruinn.initGalleryEditors();
-        Cruinn.initUndoSystem();
-        Cruinn.initPropertiesPanel();
-
-        // Drag is mode-specific (freeform / structured / zone-aware)
-        if (editorMode === 'freeform') {
-            Cruinn.initFreeformDrag();
-        } else if (editorMode === 'structured') {
-            Cruinn.initStructuredDrag();
-        }
-        Cruinn.initZoneDrag(); // always try — only activates when zone canvases are present
-
-        // ── Other admin modules ─────────────────────────────────────
-
-        Cruinn.initSocialHub();
         Cruinn.initDashboardConfig();
         Cruinn.initNavConfig();
         Cruinn.initMenuEditor();
-        Cruinn.initSiteEditor();
         Cruinn.initTemplateEditor();
     });
 

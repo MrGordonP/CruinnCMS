@@ -135,7 +135,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
         $pages  = $pending['pages'];
         $mode   = $_POST['import_mode'] ?? $pending['mode'];
-        $rootPub = dirname(__DIR__, 3) . '/public';
+        $rootPub = CRUINN_PUBLIC;
 
         $overrides = $_POST['pages'] ?? [];   // keyed by index: ['slug', 'title', 'skip']
         $imported  = [];

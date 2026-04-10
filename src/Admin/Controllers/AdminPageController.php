@@ -257,7 +257,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
 HTML;
 
         $filename  = $page['slug'] . '.html';
-        $storageDir = dirname(__DIR__, 3) . '/public/storage/pages';
+        $storageDir = CRUINN_PUBLIC . '/storage/pages';
         if (!is_dir($storageDir)) {
             mkdir($storageDir, 0755, true);
         }

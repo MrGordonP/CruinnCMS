@@ -11,7 +11,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
     background: #f4f5f7;
 }
 
@@ -86,9 +85,10 @@
 #editor-body {
     display: grid;
     grid-template-columns: 220px 1fr 280px;
+    grid-template-rows: 1fr;
     flex: 1;
-    overflow: hidden;
     min-height: 0;
+    overflow: hidden;
 }
 
 /* ── Left panel ───────────────────────────────────────────────── */
@@ -96,13 +96,17 @@
 #editor-left {
     background: #ffffff;
     border-right: 1px solid #e2e6ea;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 .editor-panel-section {
     border-bottom: 1px solid #e2e6ea;
     padding-bottom: 0.5rem;
+    flex-shrink: 0;
 }
 
 .editor-panel-heading {
@@ -281,7 +285,14 @@
     color: #1a308c;
 }
 
-/* Block tree */
+/* Block tree — fills remaining left-panel space and scrolls independently */
+#editor-tree-section {
+    flex: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
 .editor-block-tree {
     padding: 0.25rem 0.75rem 0.75rem;
     font-size: 0.78rem;
@@ -320,7 +331,10 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    transform: translateZ(0); /* contain position:fixed children to this scroll box */
+    transform: translateZ(0);
+    min-width: 0;
+    /* prevent grid blowout from wide content */
+    /* contain position:fixed children to this scroll box */
 }
 
 #editor-canvas {
@@ -332,6 +346,19 @@
     /* Prevent whitespace gaps between inline-block blocks */
     font-size: 0;
     line-height: 0;
+}
+
+/* Code view: remove canvas constraints so textarea fills the column */
+#editor-canvas-wrap:has(#editor-code-area) {
+    padding: 0;
+}
+
+#editor-canvas:has(#editor-code-area) {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    box-shadow: none;
+    margin: 0;
 }
 
 /* Zone pages: canvas height follows content by default */
@@ -608,6 +635,7 @@
     background: #ffffff;
     border-left: 1px solid #e2e6ea;
     overflow-y: auto;
+    height: 100%;
 }
 
 .editor-props-empty {
@@ -817,6 +845,7 @@
     font-size: 0.75rem;
     line-height: 1;
 }
+
 .cruinn-color-clear:hover {
     border-color: #ef4444;
     color: #ef4444;
@@ -1037,7 +1066,8 @@
 .editor-zone-inner {
     min-height: 60px;
     pointer-events: none;
-    transform: translateZ(0); /* contain position:fixed children within the preview box */
+    transform: translateZ(0);
+    /* contain position:fixed children within the preview box */
 }
 
 .editor-zone-empty {
@@ -1089,11 +1119,13 @@
     cursor: default;
     user-select: none;
 }
+
 .cruinn-php-chip-label {
     color: #7c3aed;
     font-weight: 600;
     flex-shrink: 0;
 }
+
 .cruinn-php-chip-code {
     color: #9ca0b0;
     overflow: hidden;
@@ -1233,11 +1265,13 @@
     pointer-events: none;
     user-select: none;
 }
+
 #editor-canvas [data-editor-tag]::before {
     content: '<' attr(data-editor-tag) '>';
     color: #5dcaa5;
     margin-right: 4px;
 }
+
 #editor-canvas [data-editor-tag] * {
     display: none;
 }
@@ -1271,6 +1305,7 @@
     text-align: left;
     transition: color 0.15s, border-color 0.15s;
 }
+
 .editor-doc-toggle:hover,
 .editor-doc-toggle[aria-expanded="true"] {
     border-color: #7c3aed;
@@ -1287,6 +1322,7 @@
     flex-direction: column;
     gap: 0.25rem;
 }
+
 .editor-doc-body[hidden] {
     display: none;
 }
@@ -1296,11 +1332,13 @@
     align-items: center;
     gap: 0.5rem;
 }
+
 .editor-doc-row label {
     color: #6b7280;
     font-size: 0.7rem;
     min-width: 40px;
 }
+
 .editor-doc-row input,
 .editor-doc-body textarea {
     background: #1f2937;
@@ -1312,6 +1350,7 @@
     padding: 0.2rem 0.4rem;
     width: 100%;
 }
+
 .editor-doc-body textarea {
     resize: vertical;
     min-height: 80px;

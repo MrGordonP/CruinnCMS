@@ -12,6 +12,9 @@ ob_start();
 // Define the application root (one level up from public/)
 define('CRUINN_ROOT', dirname(__DIR__));
 
+// Public web root (this directory - works whether it is public/ or public_html/)
+define('CRUINN_PUBLIC', __DIR__);
+
 // ── Autoloader ────────────────────────────────────────────────────
 // Use Composer autoloader if available, otherwise fall back to simple PSR-4 autoloader.
 $composerAutoload = CRUINN_ROOT . '/vendor/autoload.php';

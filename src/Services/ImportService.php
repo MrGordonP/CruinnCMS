@@ -127,6 +127,11 @@ class ImportService
             if ($absFilePath === null || !file_exists($absFilePath)) {
                 return [];
             }
+            // Only import PHP and HTML files into blocks — CSS, JS, etc. are code-only
+            $ext = strtolower(pathinfo($absFilePath, PATHINFO_EXTENSION));
+            if (!in_array($ext, ['php', 'html', 'htm'], true)) {
+                return [];
+            }
             $src = file_get_contents($absFilePath);
             if ($src === false) {
                 return [];

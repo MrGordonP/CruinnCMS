@@ -1,100 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Cruinn CMS') ?></title>
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
     <link rel="stylesheet" href="/css/platform.css">
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 </head>
 <body class="platform-body">
 <script>if(localStorage.getItem('platform-layout-wide')==='1')document.documentElement.classList.add('platform-layout-wide');</script>
 <div class="platform-wrap"><aside class="platform-sidebar"><div class="platform-sidebar-hero"><a href="/cms/dashboard"><img src="/brand/cruinn-favicon.svg" alt="Cruinn CMS">
 </a>
-<div class="platform-sidebar-wordmark"><span class="platform-sidebar-wm-name"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>CRUINN</span>
+<div class="platform-sidebar-wordmark">
+    <span class="platform-sidebar-wm-name"><span>CRUINN</span><span class="platform-sidebar-wm-cms">CMS</span>
+<span class="platform-sidebar-wm-fa" style="text-align: center;">
+    <span style="width: 200px;">
+        <span style="width: 100px;">
+            <span style="font-style: normal; text-align: center; font-weight: 400; letter-spacing: 1em;">
+                <span style="letter-spacing: 0.5em;">FULLY AXIOMATIC</span>
+            </span>
+        </span>
+    </span>
 </span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-<span class="platform-sidebar-wm-cms"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>CMS</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-<span class="platform-sidebar-wm-fa" style="text-align: center;"><span><span><span><span style="width: 200px;"><span><span><span style="width: 100px;"><span><span><span><span><span><span><span style="font-style: normal; text-align: center; font-weight: 400; letter-spacing: 1em;"><span style="letter-spacing: 0.5em;">FULLY AXIOMATIC</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
+
 </div>
 </div>
 <?php if (!empty($username)): ?>
 <?php
-            // ╬ô├╢├ç╬ô├╢├ç Build sidebar nav data ╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç╬ô├╢├ç
+            // Build sidebar nav data
             $_snRootDir    = dirname(__DIR__, 2);
             $_snActiveDir  = \Cruinn\App::instanceDir();
             $_snActiveName = $_snActiveDir ? basename($_snActiveDir) : null;
@@ -109,70 +42,13 @@
                 ];
             }
         ?>
-<nav class="platform-sidebar-nav" id="platform-sidebar-nav"><a href="/cms/dashboard"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Dashboard</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
+<nav class="platform-sidebar-nav" id="platform-sidebar-nav">
+    <a href="/cms/dashboard">
+        span>Dashboard</span>
 </a>
-<a href="/cms/settings"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Settings</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</a>
-<a href="/cms/source"<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/source') ? ' class="active"' : '' ?>><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Source Files</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</a>
-<span class="platform-nav-section-label"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Editor</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
+<a href="/cms/settings"><span>Settings</span></a>
+<a href="/cms/source"<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/source') ? ' class="active"' : '' ?>><span>Source Files</span></a>
+<span class="platform-nav-section-label">Editor</span>
 <?php
                 // Current URL is navigating to a specific instance if the query string contains instance=<folder>
                 $_snCurrentUri      = $_SERVER['REQUEST_URI'] ?? '';
@@ -183,22 +59,7 @@
                 }
             ?>
 <a href="/cms/editor?instance=__platform__"
-               class="platform-nav-instance<?= ($_snCurrentInstance === '__platform__') ? ' active' : '' ?>"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>CruinnCMS Platform</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</a>
+               class="platform-nav-instance<?= ($_snCurrentInstance === '__platform__') ? ' active' : '' ?>"><span>CruinnCMS Platform</span></a>
 <?php foreach ($_snInstances as $_snInst): ?>
 <a href="/cms/editor?instance=<?= urlencode($_snInst['folder_name']) ?>"
                class="platform-nav-instance<?= ($_snCurrentInstance === $_snInst['folder_name']) ? ' active' : '' ?>"><?= e($_snInst['name']) ?>
@@ -210,7 +71,7 @@
             // Show the active instance in the sidebar footer
             $activeInst = null;
             if (!empty($instances) && is_array($instances)) {
-                foreach ($instances as $_inst) { if ($_inst['active']) { $activeInst = $_inst; break; } }
+                foreach ($instances as $_inst) { if (!empty($_inst['online'])) { $activeInst = $_inst; break; } }
                 if (!$activeInst) $activeInst = $instances[0] ?? null;
             } elseif (!empty($instance)) {
                 $activeInst = $instance; // backward compat
@@ -225,56 +86,14 @@
 <?php endif; ?>
 </aside>
 <div class="platform-right"><div class="platform-bar"><div class="platform-bar-inner"><?php if (!empty($username)): ?>
-<div class="platform-bar-right"><span class="platform-bar-user"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>👤</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
+<div class="platform-bar-right"><span class="platform-bar-user"><span>👤</span>
+
 <?= e($username) ?></span>
 <button class="platform-width-toggle" id="platform-width-btn" title="Toggle layout width"
-                            onclick="var w=document.documentElement.classList.toggle('platform-layout-wide');localStorage.setItem('platform-layout-wide',w?'1':'0');this.textContent=w?'\u22A1':'\u229E';"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>⊞</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
+                            onclick="var w=document.documentElement.classList.toggle('platform-layout-wide');localStorage.setItem('platform-layout-wide',w?'1':'0');this.textContent=w?'\u22A1':'\u229E';"><span>⊞</span>
 </button>
 <script>document.getElementById('platform-width-btn').textContent=document.documentElement.classList.contains('platform-layout-wide')?'\u22A1':'\u229E';</script>
-<a href="/cms/logout"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Logout</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</a>
+<a href="/cms/logout"><span>Logout</span></a>
 </div>
 <?php endif; ?>
 </div>
@@ -298,39 +117,8 @@
 </div>
 </div>
 </div>
-<footer class="platform-footer"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Built with</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-<a href="https://cruinncms.com" target="_blank" rel="noopener"><span><span><span><span><span><span><span><span><span><span><span><span><span><span><span>Cruinn CMS</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</span>
-</a>
-</span>
+<footer class="platform-footer"><span>Built with</span>
+<a href="https://cruinncms.com" target="_blank" rel="noopener"><span>Cruinn CMS</span></a>
 </footer>
-
 </body>
 </html>

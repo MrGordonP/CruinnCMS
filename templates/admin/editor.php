@@ -47,7 +47,17 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <span class="editor-zone-badge"><?= e(ucfirst($zoneName ?? '')) ?> Zone</span>
         <?php endif; ?>
         <?php if ($page): ?>
-        <span class="editor-page-title"><?= htmlspecialchars($page['title'], ENT_QUOTES, 'UTF-8') ?></span>
+        <?php
+            // Show full file path when editing a source file, otherwise just the title
+            $renderFile = $page['render_file'] ?? '';
+            $displayPath = '';
+            if ($renderFile) {
+                $displayPath = ltrim(str_replace('@cms/', '', $renderFile), '/');
+            }
+        ?>
+        <span class="editor-page-title" title="<?= e($displayPath ?: $page['title']) ?>">
+            <?= $displayPath ? e($displayPath) : htmlspecialchars($page['title'], ENT_QUOTES, 'UTF-8') ?>
+        </span>
         <?php if ($hasDraft): ?>
             <span class="editor-draft-badge" title="Unsaved draft in progress">⚠ Draft</span>
         <?php endif; ?>
@@ -179,8 +189,9 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Platform Pages <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($platformPages as $_pt): ?>
-                            <a href="<?= e($editorPageBase . '&platformPage=' . urlencode($_pt['slug'])) ?>"
-                               class="editor-site-nav-link<?= $page && ($page['slug'] ?? '') === '_cms_platform_' . $_pt['slug'] ? ' active' : '' ?>">
+                            <?php $_ptFileRel = 'templates/platform/' . $_pt['slug'] . '.php'; ?>
+                            <a href="<?= e('/cms/editor?instance=__platform__&file=' . rawurlencode($_ptFileRel)) ?>"
+                               class="editor-site-nav-link<?= $page && ($page['render_file'] ?? '') === '@cms/' . $_ptFileRel ? ' active' : '' ?>">
                                 <?= e($_pt['name']) ?>
                             </a>
                             <?php endforeach; ?>
@@ -294,7 +305,11 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">🎨 CSS Files <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($navCssFiles as $_css): ?>
-                            <a href="<?= url('/admin/template-editor/edit?f=' . rawurlencode('@css/' . $_css) . ($page ? '&return=' . rawurlencode('/admin/editor/' . (int)$page['id'] . '/edit') : '')) ?>" class="editor-site-nav-link"><?= e($_css) ?></a>
+                            <?php $_cssFileRel = 'public/css/' . $_css; ?>
+                            <a href="<?= e(!empty($isPlatformMode)
+                                ? '/cms/editor?instance=__platform__&file=' . rawurlencode($_cssFileRel)
+                                : '/cms/editor?instance=' . rawurlencode($_SESSION['_platform_editor_instance'] ?? '') . '&file=' . rawurlencode($_cssFileRel)) ?>"
+                               class="editor-site-nav-link<?= $page && str_ends_with($page['render_file'] ?? '', $_cssFileRel) ? ' active' : '' ?>"><?= e($_css) ?></a>
                             <?php endforeach; ?>
                         </div>
                     </div>
@@ -335,7 +350,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <button class="palette-btn palette-btn--zone" data-add-block="zone">Zone</button>
                 </div>
             </div>
-            <div class="editor-panel-section">
+            <div class="editor-panel-section" id="editor-tree-section">
                 <h3 class="editor-panel-heading">Block Tree</h3>
                 <div id="editor-block-tree" class="editor-block-tree"></div>
             </div>
@@ -1063,7 +1078,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 
 <?php
 // Load block type registry + all registered type definitions
-$btDir = __DIR__ . '/../../../public/js/admin/block-types/';
+$btDir = CRUINN_PUBLIC . '/js/admin/block-types/';
 $btFiles = is_dir($btDir) ? (glob($btDir . '*.js') ?: []) : [];
 foreach ($btFiles as $btFile):
     $btMtime = filemtime($btFile);
@@ -1071,4 +1086,4 @@ foreach ($btFiles as $btFile):
 ?>
 <script src="<?= url('/js/admin/block-types/' . $btName) ?>?v=<?= $btMtime ?>"></script>
 <?php endforeach; ?>
-<script src="/js/editor.js?v=<?= file_exists(__DIR__ . '/../../public/js/editor.js') ? filemtime(__DIR__ . '/../../public/js/editor.js') : 0 ?>"></script>
+<script src="/js/editor.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/editor.js') ? filemtime(CRUINN_PUBLIC . '/js/editor.js') : 0 ?>"></script>

@@ -24,7 +24,7 @@
 </div>
 
 <?php else: ?>
-<link rel="stylesheet" href="/css/editor.css?v=<?= file_exists(__DIR__ . '/../../public/css/editor.css') ? filemtime(__DIR__ . '/../../public/css/editor.css') : 0 ?>">
+<link rel="stylesheet" href="/css/editor.css?v=<?= file_exists(CRUINN_PUBLIC . '/css/editor.css') ? filemtime(CRUINN_PUBLIC . '/css/editor.css') : 0 ?>">
 <?php include __DIR__ . '/../admin/editor.php'; ?>
 <?php endif; ?>
 <?php $content = ob_get_clean(); ?>

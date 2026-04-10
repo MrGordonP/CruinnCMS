@@ -317,10 +317,9 @@ class SiteBuilderController extends BaseController
         $tpl['zones'] = json_decode($tpl['zones'] ?? '["main"]', true) ?: ['main'];
         $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
 
-        $blocks = $this->db->fetchAll(
-            'SELECT * FROM content_blocks WHERE parent_type = ? AND parent_id = ? ORDER BY zone, sort_order ASC',
-            ['template', (int) $id]
-        );
+        // content_blocks table no longer exists — template-attached blocks
+        // were part of the pre-Cruinn editor and were never migrated.
+        $blocks = [];
 
         foreach ($blocks as &$block) {
             $block['content'] = json_decode($block['content'], true) ?? [];
@@ -578,17 +577,10 @@ class SiteBuilderController extends BaseController
 
         $sourceBlockId = (int)($_POST['source_block_id'] ?? 0);
         if ($sourceBlockId) {
-            $tree = $this->db->fetch('SELECT * FROM content_blocks WHERE id = ?', [$sourceBlockId]);
-            if (!$tree) {
-                $this->json(['error' => 'Source block not found'], 404);
-                return;
-            }
-            $tree['content']  = json_decode($tree['content'] ?? '{}', true) ?: [];
-            $tree['settings'] = json_decode($tree['settings'] ?? '{}', true) ?: [];
-            $tree['children'] = $this->fetchBlockChildrenRecursive($sourceBlockId);
-            $treeJson = json_encode($tree, JSON_UNESCAPED_UNICODE);
-            if (!$slug) $slug = $this->sanitiseSlug($name);
-            if (!$type) $type = $tree['block_type'] ?? 'section';
+            // content_blocks table no longer exists — source_block_id import
+            // was part of the pre-Cruinn editor and is not yet migrated.
+            $this->json(['error' => 'Source block import not yet available'], 501);
+            return;
         } else {
             $treeJson = $_POST['tree_snapshot'] ?? '';
         }
@@ -628,17 +620,8 @@ class SiteBuilderController extends BaseController
 
     private function fetchBlockChildrenRecursive(int $blockId): array
     {
-        $children = $this->db->fetchAll(
-            'SELECT * FROM content_blocks WHERE parent_block_id = ? ORDER BY sort_order ASC',
-            [$blockId]
-        );
-        foreach ($children as &$child) {
-            $child['content']  = json_decode($child['content'] ?? '{}', true) ?: [];
-            $child['settings'] = json_decode($child['settings'] ?? '{}', true) ?: [];
-            $child['children'] = $this->fetchBlockChildrenRecursive((int)$child['id']);
-        }
-        unset($child);
-        return $children;
+        // content_blocks table no longer exists — stub until migrated
+        return [];
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -714,7 +697,7 @@ class SiteBuilderController extends BaseController
 
         // @css/ prefix → file is in public/css/
         if (str_starts_with($raw, '@css/')) {
-            $cssBase = realpath(dirname(__DIR__, 3) . '/public/css');
+            $cssBase = realpath(CRUINN_PUBLIC . '/css');
             $rel     = substr($raw, 5); // strip @css/
             if ($rel === '' || str_contains($rel, '/') || str_contains($rel, "\0") || str_contains($rel, '..')) {
                 Auth::flash('error', 'Invalid CSS file path.');

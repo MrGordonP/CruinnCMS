@@ -1,7 +1,7 @@
 <?php
 /**
  * CruinnCMS — Database Layer
- * 
+ *
  * PDO wrapper with prepared statements throughout.
  * No ORM — direct SQL with parameter binding for safety and clarity.
  * Singleton pattern: Database::getInstance() returns the shared connection.
@@ -46,16 +46,21 @@ class Database
 
     /**
      * Get the singleton database instance.
-     * When the platform editor mode session flag is set, connects to the
-     * platform DB instead of the active instance DB.
+     * When a platform editor instance slug is set in the session, connects
+     * to the appropriate DB: '__platform__' → platform DB, otherwise the
+     * named instance's DB via its config file.
      */
     public static function getInstance(): self
     {
         if (self::$instance === null) {
-            if (!empty($_SESSION['_platform_editor_mode'])
+            $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
+
+            if ($editorInstance === '__platform__'
                 && class_exists(\Cruinn\Platform\PlatformAuth::class)
             ) {
                 $config = \Cruinn\Platform\PlatformAuth::dbConfig();
+            } elseif ($editorInstance !== null && $editorInstance !== '') {
+                $config = self::loadInstanceDbConfig($editorInstance);
             } else {
                 $config = App::config('db');
             }
@@ -74,6 +79,36 @@ class Database
     }
 
     /**
+     * Switch the singleton to a specific instance's DB by slug.
+     * Reads instance/{slug}/config.php for credentials.
+     */
+    public static function connectToInstance(string $slug): self
+    {
+        self::$instance = null;
+        $config = self::loadInstanceDbConfig($slug);
+        self::$instance = new self($config);
+        return self::$instance;
+    }
+
+    /**
+     * Load DB config array from an instance's config file.
+     */
+    private static function loadInstanceDbConfig(string $slug): array
+    {
+        $slug    = basename($slug); // prevent path traversal
+        $cfgFile = dirname(__DIR__) . '/instance/' . $slug . '/config.php';
+        if (!file_exists($cfgFile)) {
+            throw new \RuntimeException("Instance config not found: {$slug}");
+        }
+        $cfg = require $cfgFile;
+        $db  = $cfg['db'] ?? null;
+        if (!is_array($db) || empty($db['name'])) {
+            throw new \RuntimeException("Instance '{$slug}' has no valid db config.");
+        }
+        return $db;
+    }
+
+    /**
      * Get the raw PDO connection (for transactions, etc.).
      */
     public function pdo(): PDO
@@ -85,7 +120,7 @@ class Database
 
     /**
      * Execute a query and return all rows.
-     * 
+     *
      * Usage: $db->fetchAll('SELECT * FROM pages WHERE status = ?', ['published']);
      */
     public function fetchAll(string $sql, array $params = []): array
@@ -96,7 +131,7 @@ class Database
 
     /**
      * Execute a query and return a single row.
-     * 
+     *
      * Usage: $db->fetch('SELECT * FROM pages WHERE slug = ?', [$slug]);
      */
     public function fetch(string $sql, array $params = []): array|false
@@ -107,7 +142,7 @@ class Database
 
     /**
      * Execute a query and return a single column value.
-     * 
+     *
      * Usage: $db->fetchColumn('SELECT COUNT(*) FROM members');
      */
     public function fetchColumn(string $sql, array $params = []): mixed
@@ -118,7 +153,7 @@ class Database
 
     /**
      * Execute an INSERT, UPDATE, or DELETE and return affected row count.
-     * 
+     *
      * Usage: $db->execute('UPDATE pages SET title = ? WHERE id = ?', [$title, $id]);
      */
     public function execute(string $sql, array $params = []): PDOStatement
@@ -130,7 +165,7 @@ class Database
 
     /**
      * Insert a row and return the last insert ID.
-     * 
+     *
      * Usage: $id = $db->insert('pages', ['title' => 'About', 'slug' => 'about', ...]);
      */
     public function insert(string $table, array $data): string
@@ -147,7 +182,7 @@ class Database
     /**
      * Update rows matching a WHERE clause.
      * Returns the number of affected rows.
-     * 
+     *
      * Usage: $db->update('pages', ['title' => 'New Title'], 'id = ?', [$id]);
      */
     public function update(string $table, array $data, string $where, array $whereParams = []): int
@@ -162,7 +197,7 @@ class Database
     /**
      * Delete rows matching a WHERE clause.
      * Returns the number of affected rows.
-     * 
+     *
      * Usage: $db->delete('pages', 'id = ?', [$id]);
      */
     public function delete(string $table, string $where, array $params = []): int
@@ -177,7 +212,7 @@ class Database
     /**
      * Run a callback inside a database transaction.
      * Automatically commits on success, rolls back on exception.
-     * 
+     *
      * Usage: $db->transaction(function() use ($db) { ... });
      */
     public function transaction(callable $callback): mixed

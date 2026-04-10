@@ -282,7 +282,7 @@ class PlatformController
         // ── No instance selected — show landing prompt ─────────────────
         if ($instance === null || $instance === '') {
             // Clear any leftover platform editor mode from a previous session
-            unset($_SESSION['_platform_editor_mode']);
+            unset($_SESSION['_platform_editor_instance']);
             \Cruinn\Database::resetInstance();
             echo $this->view->render('platform/editor-picker', [
                 'title'       => 'Editor',
@@ -300,7 +300,7 @@ class PlatformController
             // App::loadSettingsOverrides() opens a connection to the instance DB
             // before the session is started, and that connection would otherwise
             // persist for the lifetime of this request.
-            $_SESSION['_platform_editor_mode'] = true;
+            $_SESSION['_platform_editor_instance'] = '__platform__';
             \Cruinn\Database::resetInstance();
             $db = \Cruinn\Database::getInstance();
             // Ensure the block editor tables exist in the platform DB
@@ -327,11 +327,21 @@ class PlatformController
                 : null;
             if ($fileParam !== null && $pageId === null) {
                 $rcRoot     = dirname(__DIR__, 3);
-                $absPath    = realpath($rcRoot . '/' . $fileParam);
                 $rcRootReal = realpath($rcRoot);
                 $allowedExt = ['php', 'css', 'js', 'html'];
-                if ($absPath && $rcRootReal
-                    && str_starts_with($absPath, $rcRootReal . DIRECTORY_SEPARATOR)
+
+                // Resolve: public/ files may live at CRUINN_PUBLIC (cPanel split)
+                if (str_starts_with($fileParam, 'public/')) {
+                    $relInPublic = substr($fileParam, 7); // strip 'public/'
+                    $absPath = realpath(CRUINN_PUBLIC . '/' . $relInPublic);
+                    $absRoot = realpath(CRUINN_PUBLIC);
+                } else {
+                    $absPath = realpath($rcRoot . '/' . $fileParam);
+                    $absRoot = $rcRootReal;
+                }
+
+                if ($absPath && $absRoot
+                    && str_starts_with($absPath, $absRoot . DIRECTORY_SEPARATOR)
                     && is_file($absPath)
                     && in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
                 ) {
@@ -427,9 +437,36 @@ class PlatformController
                 }
             }
 
+            // Code-only files (CSS, JS, etc.) — start in code view with raw content
+            $startInCodeView = false;
+            $htmlContent     = null;
+            if ($page && ($page['render_mode'] ?? '') === 'file') {
+                $renderFile = $page['render_file'] ?? '';
+                $ext = strtolower(pathinfo($renderFile, PATHINFO_EXTENSION));
+                if (!in_array($ext, ['php', 'html', 'htm'], true)) {
+                    $absPath = $this->resolveRenderFilePath($renderFile);
+                    $startInCodeView = true;
+                    $htmlContent = ($absPath && is_file($absPath)) ? file_get_contents($absPath) : '';
+                }
+            }
+
             // Nav: platform DB pages + source file groups
-            $sitePages       = $db->fetchAll("SELECT id, title, slug, render_mode FROM pages ORDER BY title ASC");
+            // Exclude internal slugs (_cms_platform_*, _cms_src_*) from the pages nav —
+            // those appear under their own groups (Platform Pages, source file groups).
+            $sitePages       = $db->fetchAll(
+                "SELECT id, title, slug, render_mode FROM pages
+                 WHERE slug NOT LIKE '\\_cms\\_%'
+                 ORDER BY title ASC"
+            );
             $navSourceGroups = $this->buildSourceFileGroups();
+
+            // CSS files for nav
+            $cssDir   = CRUINN_PUBLIC . '/css';
+            $cssFiles = [];
+            foreach (glob($cssDir . '/*.css') ?: [] as $f) {
+                $cssFiles[] = basename($f);
+            }
+            sort($cssFiles);
 
             echo $this->view->render('platform/editor-picker', [
                 'title'                => $page ? 'Editor — ' . $page['title'] : 'Editor — CruinnCMS Platform',
@@ -459,7 +496,7 @@ class PlatformController
                 'navSourceGroups'      => $navSourceGroups,
                 'navTemplates'         => [],
                 'navMenus'             => [],
-                'navCssFiles'          => [],
+                'navCssFiles'          => $cssFiles,
                 'navPhpGroups'         => [],
                 'headerZoneHtml'       => '',
                 'headerZoneCss'        => '',
@@ -469,8 +506,8 @@ class PlatformController
                 'templateCanvasPageId' => null,
                 'templateCanvasHtml'   => '',
                 'templateCanvasCss'    => '',
-                'startInCodeView'      => false,
-                'htmlContent'          => null,
+                'startInCodeView'      => $startInCodeView,
+                'htmlContent'          => $htmlContent,
                 'isFileMode'           => $isFileMode,
                 'docHtmlBlock'         => $docHtmlBlock,
                 'docHeadBlock'         => $docHeadBlock,
@@ -478,24 +515,20 @@ class PlatformController
             ]);
             return;
         }
-            // ── Switching away from platform mode — restore instance DB ─
-            if (!empty($_SESSION['_platform_editor_mode'])) {
-                unset($_SESSION['_platform_editor_mode']);
-                \Cruinn\Database::resetInstance();
-            }
+            // ── Connect to the requested instance's DB ────────────────
+            $_SESSION['_platform_editor_instance'] = $instance;
+            \Cruinn\Database::resetInstance();
 
-            // Only the active instance is wired into Database::getInstance
-            $activeDir  = App::instanceDir();
-            $activeName = $activeDir ? basename($activeDir) : null;
-            $isActive   = ($instance === $activeName);
-
-            if (!$isActive) {
+            // Validate: instance directory must exist with a config file
+            $instDir = dirname(__DIR__, 3) . '/instance/' . basename($instance);
+            if (!is_dir($instDir) || !is_file($instDir . '/config.php')) {
+                unset($_SESSION['_platform_editor_instance']);
                 echo $this->view->render('platform/editor-picker', [
                     'title'       => 'Editor',
                     'username'    => PlatformAuth::username(),
                     'editorReady' => false,
-                    'editorError' => 'The "' . htmlspecialchars($instance, ENT_QUOTES, 'UTF-8')
-                        . '" instance is not the currently active instance. Only the active instance can be edited from here.',
+                    'editorError' => 'Instance "' . htmlspecialchars($instance, ENT_QUOTES, 'UTF-8')
+                        . '" not found or has no config file.',
                 ]);
                 return;
             }
@@ -564,7 +597,7 @@ class PlatformController
             $navMenus = $db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC');
         }
 
-        $cssDir   = dirname(__DIR__, 3) . '/public/css';
+        $cssDir   = CRUINN_PUBLIC . '/css';
         $cssFiles = [];
         foreach (glob($cssDir . '/*.css') ?: [] as $f) {
             $cssFiles[] = basename($f);
@@ -692,7 +725,7 @@ class PlatformController
 
                     if ($renderMode === 'file') {
                         $filePath = $page['render_file'] ?? '';
-                        $absPath  = dirname(__DIR__, 3) . '/public' . $filePath;
+                        $absPath  = CRUINN_PUBLIC . $filePath;
                         if ($filePath !== '' && file_exists($absPath)) {
                             $html = file_get_contents($absPath);
                             // Strip PHP tags — PHP rendering handled by php-include blocks
@@ -1329,7 +1362,7 @@ class PlatformController
         $activeModules  = array_filter($modules, fn($slug) => ModuleRegistry::isActive($slug), ARRAY_FILTER_USE_KEY);
 
         // Disk usage: check both storage/ (new) and uploads/ (legacy)
-        $rootPublic = dirname(__DIR__, 3) . '/public';
+        $rootPublic = CRUINN_PUBLIC;
         $storageDirs = [
             $rootPublic . '/storage',
             $rootPublic . '/uploads',
@@ -1880,11 +1913,17 @@ class PlatformController
         if ($renderFile === '') { return null; }
         $rcRoot = dirname(__DIR__, 3);
         if (str_starts_with($renderFile, '@cms/')) {
-            $abs = realpath($rcRoot . '/' . substr($renderFile, 5));
+            $rel = substr($renderFile, 5);
+            // public/ files may live at CRUINN_PUBLIC (cPanel split)
+            if (str_starts_with($rel, 'public/')) {
+                $abs = realpath(CRUINN_PUBLIC . '/' . substr($rel, 7));
+                return ($abs && str_starts_with($abs, realpath(CRUINN_PUBLIC))) ? $abs : null;
+            }
+            $abs = realpath($rcRoot . '/' . $rel);
             return ($abs && str_starts_with($abs, realpath($rcRoot))) ? $abs : null;
         }
         // Legacy public/ prefix
-        $abs = $rcRoot . '/public' . $renderFile;
+        $abs = CRUINN_PUBLIC . $renderFile;
         return file_exists($abs) ? $abs : null;
     }
 

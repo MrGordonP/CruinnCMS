@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Admin') ?> — <?= e(\Cruinn\App::config('site.name', 'Admin')) ?></title>
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= filemtime(__DIR__ . '/../../public/css/admin-base.css') ?>">
+    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-base.css') ?>">
     <?php foreach (\Cruinn\Template::flushCss() as $_cssFile): ?>
-    <link rel="stylesheet" href="<?= url('/css/' . e($_cssFile)) ?>?v=<?= filemtime(__DIR__ . '/../../public/css/' . $_cssFile) ?>">
+    <link rel="stylesheet" href="<?= url('/css/' . e($_cssFile)) ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/' . $_cssFile) ?>">
     <?php endforeach; ?>
     <script>if(localStorage.getItem('admin-layout-wide')==='1')document.documentElement.classList.add('admin-layout-wide');</script>
 </head>
@@ -202,7 +202,7 @@
 </div>
 
 <?php
-$adminJsBase = __DIR__ . '/../../public/js/admin/';
+$adminJsBase = CRUINN_PUBLIC . '/js/admin/';
 $adminModules = [
     'utils.js',
     'api.js',

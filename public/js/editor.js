@@ -636,9 +636,9 @@
             btn.onclick = function () {
                 var prop = btn.dataset.clearProp;
                 var textInp = panel.querySelector('[data-prop="' + prop + '"]');
-                var swatch   = panel.querySelector('[data-color-swatch="' + prop + '"]');
+                var swatch = panel.querySelector('[data-color-swatch="' + prop + '"]');
                 if (textInp) { textInp.value = ''; }
-                if (swatch)  { swatch.value  = '#000000'; }
+                if (swatch) { swatch.value = '#000000'; }
                 writeProps(block, prop, '');
             };
         });
@@ -985,941 +985,939 @@
     }
 
     function writeProps(block, prop, value) {
-            block.style[prop] = value;
-            rebuildLiveStyles();
-            recordAction();
-        }
+        block.style[prop] = value;
+        rebuildLiveStyles();
+        recordAction();
+    }
 
-        function writeConfig(block, key, value) {
-            var config = {};
-            try { config = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
-            config[key] = value;
-            block.dataset.blockConfig = JSON.stringify(config);
-            debounceAction();
-        }
+    function writeConfig(block, key, value) {
+        var config = {};
+        try { config = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+        config[key] = value;
+        block.dataset.blockConfig = JSON.stringify(config);
+        debounceAction();
+    }
 
-        function rebuildLiveStyles() {
-            if (!liveStyles) { return; }
-            var css = '';
-            canvas.querySelectorAll('[data-block]').forEach(function (block) {
-                if (!block.id || !block.style.cssText) { return; }
-                css += '#' + block.id + ' { ' + block.style.cssText + ' }\n';
+    function rebuildLiveStyles() {
+        if (!liveStyles) { return; }
+        var css = '';
+        canvas.querySelectorAll('[data-block]').forEach(function (block) {
+            if (!block.id || !block.style.cssText) { return; }
+            css += '#' + block.id + ' { ' + block.style.cssText + ' }\n';
+        });
+        liveStyles.textContent = css;
+    }
+
+    function rgbToHex(val) {
+        if (!val) { return ''; }
+        if (val.charAt(0) === '#') { return val; }
+        var m = val.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (!m) { return ''; }
+        return '#' +
+            ('0' + parseInt(m[1]).toString(16)).slice(-2) +
+            ('0' + parseInt(m[2]).toString(16)).slice(-2) +
+            ('0' + parseInt(m[3]).toString(16)).slice(-2);
+    }
+
+    // ── Section G — Block palette + delete ──────────────────────────
+
+    // Default CSS applied to new leaf blocks — portrait ISO proportions (≈ A4 at screen scale),
+    // inline-block so that multiple blocks can sit side by side.
+    var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', minHeight: '368px', boxSizing: 'border-box' };
+
+    var BLOCK_DEFS = {
+        'text': { tag: 'div', inner: '<p>New text block.</p>', initCss: PORTRAIT_INIT },
+        'heading': { tag: 'h2', inner: 'New Heading', initCss: PORTRAIT_INIT },
+        'image': { tag: 'figure', inner: '<img src="" alt=""><figcaption></figcaption>', initCss: PORTRAIT_INIT },
+        'section': { tag: 'section', inner: '', initCss: PORTRAIT_INIT },
+        'columns': {
+            tag: 'div', inner: function () {
+                return '<section data-block data-block-type="section" id="' + newId() + '"></section>' +
+                    '<section data-block data-block-type="section" id="' + newId() + '"></section>';
+            }, initCss: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }
+        },
+        'site-header': {
+            tag: 'header', inner: function () {
+                return '<div data-block data-block-type="site-logo" id="' + newId() + '"><a href="/"><img src="" alt="Site Logo"></a></div>' +
+                    '<div data-block data-block-type="site-title" id="' + newId() + '"><h1 class="site-name">Site Name</h1><p class="site-tagline"></p></div>' +
+                    '<nav data-block data-block-type="nav-menu" id="' + newId() + '" data-block-config="{&quot;menu_id&quot;:&quot;&quot;}"></nav>';
+            }, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '120px', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
+        },
+        'gallery': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
+        'html': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
+        'nav-menu': { tag: 'nav', inner: '', defaultConfig: { menu_id: '' }, initCss: PORTRAIT_INIT },
+        'site-logo': { tag: 'div', inner: '<a href="/"><img src="" alt="Site Logo"></a>', initCss: PORTRAIT_INIT },
+        'site-title': { tag: 'div', inner: '<h1 class="site-name">Site Name</h1><p class="site-tagline"></p>', initCss: PORTRAIT_INIT },
+        'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list — visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
+        'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include — visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
+        'zone': {
+            tag: 'div', inner: '', defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
+            initCss: { display: 'block', width: '100%', minHeight: '120px', boxSizing: 'border-box' }
+        },
+    };
+
+    function bindPalette() {
+        document.querySelectorAll('[data-add-block]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                addBlock(btn.dataset.addBlock);
             });
-            liveStyles.textContent = css;
+        });
+    }
+
+    function addBlock(type) {
+        var def = BLOCK_DEFS[type];
+        if (!def) { return; }
+
+        var el = document.createElement(def.tag);
+        el.id = newId();
+        el.setAttribute('data-block', '');
+        el.setAttribute('data-block-type', type);
+
+        if (def.defaultConfig) {
+            el.dataset.blockConfig = JSON.stringify(def.defaultConfig);
         }
 
-        function rgbToHex(val) {
-            if (!val) { return ''; }
-            if (val.charAt(0) === '#') { return val; }
-            var m = val.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-            if (!m) { return ''; }
-            return '#' +
-                ('0' + parseInt(m[1]).toString(16)).slice(-2) +
-                ('0' + parseInt(m[2]).toString(16)).slice(-2) +
-                ('0' + parseInt(m[3]).toString(16)).slice(-2);
-        }
-
-        // ── Section G — Block palette + delete ──────────────────────────
-
-        // Default CSS applied to new leaf blocks — portrait ISO proportions (≈ A4 at screen scale),
-        // inline-block so that multiple blocks can sit side by side.
-        var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', minHeight: '368px', boxSizing: 'border-box' };
-
-        var BLOCK_DEFS = {
-            'text': { tag: 'div', inner: '<p>New text block.</p>', initCss: PORTRAIT_INIT },
-            'heading': { tag: 'h2', inner: 'New Heading', initCss: PORTRAIT_INIT },
-            'image': { tag: 'figure', inner: '<img src="" alt=""><figcaption></figcaption>', initCss: PORTRAIT_INIT },
-            'section': { tag: 'section', inner: '', initCss: PORTRAIT_INIT },
-            'columns': {
-                tag: 'div', inner: function () {
-                    return '<section data-block data-block-type="section" id="' + newId() + '"></section>' +
-                        '<section data-block data-block-type="section" id="' + newId() + '"></section>';
-                }, initCss: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }
-            },
-            'site-header': {
-                tag: 'header', inner: function () {
-                    return '<div data-block data-block-type="site-logo" id="' + newId() + '"><a href="/"><img src="" alt="Site Logo"></a></div>' +
-                        '<div data-block data-block-type="site-title" id="' + newId() + '"><h1 class="site-name">Site Name</h1><p class="site-tagline"></p></div>' +
-                        '<nav data-block data-block-type="nav-menu" id="' + newId() + '" data-block-config="{&quot;menu_id&quot;:&quot;&quot;}"></nav>';
-                }, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '120px', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
-            },
-            'gallery': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
-            'html': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
-            'nav-menu': { tag: 'nav', inner: '', defaultConfig: { menu_id: '' }, initCss: PORTRAIT_INIT },
-            'site-logo': { tag: 'div', inner: '<a href="/"><img src="" alt="Site Logo"></a>', initCss: PORTRAIT_INIT },
-            'site-title': { tag: 'div', inner: '<h1 class="site-name">Site Name</h1><p class="site-tagline"></p>', initCss: PORTRAIT_INIT },
-            'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list — visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
-            'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include — visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
-            'zone': {
-                tag: 'div', inner: '', defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
-                initCss: { display: 'block', width: '100%', minHeight: '120px', boxSizing: 'border-box' }
-            },
-        };
-
-        function bindPalette() {
-            document.querySelectorAll('[data-add-block]').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    addBlock(btn.dataset.addBlock);
-                });
-            });
-        }
-
-        function addBlock(type) {
-            var def = BLOCK_DEFS[type];
-            if (!def) { return; }
-
-            var el = document.createElement(def.tag);
-            el.id = newId();
-            el.setAttribute('data-block', '');
-            el.setAttribute('data-block-type', type);
-
-            if (def.defaultConfig) {
-                el.dataset.blockConfig = JSON.stringify(def.defaultConfig);
-            }
-
-            if (def.initCss) {
-                Object.keys(def.initCss).forEach(function (p) {
-                    el.style[p] = def.initCss[p];
-                });
-            }
-
-            el.innerHTML = typeof def.inner === 'function' ? def.inner() : (def.inner || '');
-
-            // Remove any empty-canvas placeholder
-            var emptyMsg = canvas.querySelector('.editor-empty-canvas');
-            if (emptyMsg) { emptyMsg.remove(); }
-
-            // Zone blocks: set data-zone-name attribute so CSS ::before label works
-            if (type === 'zone') {
-                var defCfg = def.defaultConfig || {};
-                el.setAttribute('data-zone-name', defCfg.zone_name || 'main');
-            }
-
-            // Insert after active block, or append
-            if (activeBlock && canvas.contains(activeBlock)) {
-                activeBlock.parentNode.insertBefore(el, activeBlock.nextSibling);
-            } else {
-                canvas.appendChild(el);
-            }
-
-            reInitAll();
-            select(el);
-            recordAction();
-        }
-
-        function deleteBlock() {
-            if (!activeBlock) { return; }
-            var toRemove = activeBlock;
-            deselect();
-            toRemove.remove();
-
-            // Restore empty canvas if nothing left
-            if (!canvas.querySelector('[data-block]')) {
-                var msg = document.createElement('div');
-                msg.className = 'editor-empty-canvas';
-                msg.textContent = 'Click a block type on the left to begin.';
-                canvas.appendChild(msg);
-            }
-
-            reInitAll();
-            recordAction();
-        }
-
-        // ── Block tree ───────────────────────────────────────────────────
-
-        function updateBlockTree() {
-            var tree = document.getElementById('editor-block-tree');
-            if (!tree) { return; }
-            tree.innerHTML = '';
-            // Only render top-level (direct children of canvas)
-            var children = canvas.querySelectorAll('#editor-canvas > [data-block]');
-            children.forEach(function (block) {
-                tree.appendChild(buildTreeNode(block));
+        if (def.initCss) {
+            Object.keys(def.initCss).forEach(function (p) {
+                el.style[p] = def.initCss[p];
             });
         }
 
-        function buildTreeNode(block) {
-            var item = document.createElement('div');
-            item.className = 'editor-tree-item' + (block === activeBlock ? ' active' : '');
-            // Show actual tag + class for better identification
-            var label = block.tagName.toLowerCase();
-            var cls = block.className.replace(/\bactive\b/, '').trim();
-            if (cls) { label += '.' + cls.split(/\s+/)[0]; }
-            item.textContent = label + ' #' + (block.id || '');
-            item.addEventListener('click', function (e) {
-                e.stopPropagation();
-                select(block);
-                block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            });
+        el.innerHTML = typeof def.inner === 'function' ? def.inner() : (def.inner || '');
 
-            var nested = block.querySelectorAll(':scope > [data-block]');
-            if (nested.length) {
-                var childWrap = document.createElement('div');
-                childWrap.className = 'editor-tree-children';
-                nested.forEach(function (child) {
-                    childWrap.appendChild(buildTreeNode(child));
-                });
-                item.appendChild(childWrap);
-            }
-            return item;
+        // Remove any empty-canvas placeholder
+        var emptyMsg = canvas.querySelector('.editor-empty-canvas');
+        if (emptyMsg) { emptyMsg.remove(); }
+
+        // Zone blocks: set data-zone-name attribute so CSS ::before label works
+        if (type === 'zone') {
+            var defCfg = def.defaultConfig || {};
+            el.setAttribute('data-zone-name', defCfg.zone_name || 'main');
         }
 
-        // ── Accordion behaviour ──────────────────────────────────────────
-
-        function bindAccordions() {
-            panel.querySelectorAll('.editor-accordion-toggle').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var acc = btn.closest('.editor-accordion');
-                    if (acc) { acc.classList.toggle('collapsed'); }
-                });
-            });
+        // Insert after active block, or append
+        if (activeBlock && canvas.contains(activeBlock)) {
+            activeBlock.parentNode.insertBefore(el, activeBlock.nextSibling);
+        } else {
+            canvas.appendChild(el);
         }
 
-        // ── Section H — Media panel ──────────────────────────────────────
+        reInitAll();
+        select(el);
+        recordAction();
+    }
 
-        var mediaPanel = document.getElementById('editor-media-panel');
-        var mediaGrid = document.getElementById('editor-media-grid');
-        var mediaCallback = null;
-        var mediaSelected = null;
+    function deleteBlock() {
+        if (!activeBlock) { return; }
+        var toRemove = activeBlock;
+        deselect();
+        toRemove.remove();
 
-        document.getElementById('editor-media-close').addEventListener('click', closeMediaPanel);
-        document.getElementById('editor-media-cancel-btn').addEventListener('click', closeMediaPanel);
-        document.getElementById('editor-media-select-btn').addEventListener('click', function () {
-            if (mediaSelected && mediaCallback) {
-                mediaCallback(mediaSelected);
-                closeMediaPanel();
-            }
+        // Restore empty canvas if nothing left
+        if (!canvas.querySelector('[data-block]')) {
+            var msg = document.createElement('div');
+            msg.className = 'editor-empty-canvas';
+            msg.textContent = 'Click a block type on the left to begin.';
+            canvas.appendChild(msg);
+        }
+
+        reInitAll();
+        recordAction();
+    }
+
+    // ── Block tree ───────────────────────────────────────────────────
+
+    function updateBlockTree() {
+        var tree = document.getElementById('editor-block-tree');
+        if (!tree) { return; }
+        tree.innerHTML = '';
+        // Only render top-level (direct children of canvas)
+        var children = canvas.querySelectorAll('#editor-canvas > [data-block]');
+        children.forEach(function (block) {
+            tree.appendChild(buildTreeNode(block));
+        });
+    }
+
+    function buildTreeNode(block) {
+        var item = document.createElement('div');
+        item.className = 'editor-tree-item' + (block === activeBlock ? ' active' : '');
+        // Show actual tag + class for better identification
+        var label = block.tagName.toLowerCase();
+        var cls = block.className.replace(/\bactive\b/, '').trim();
+        if (cls) { label += '.' + cls.split(/\s+/)[0]; }
+        item.textContent = label + ' #' + (block.id || '');
+        item.addEventListener('click', function (e) {
+            e.stopPropagation();
+            select(block);
+            block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
 
-        document.getElementById('editor-media-upload').addEventListener('change', function (e) {
-            var file = e.target.files[0];
-            if (!file) { return; }
-            var fd = new FormData();
-            fd.append('file', file);
-            fd.append('_csrf_token', CSRF);
-            fetch('/admin/upload', { method: 'POST', body: fd })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.url) { loadMediaGrid(); }
-                })
-                .catch(function () { });
-            e.target.value = '';
+        var nested = block.querySelectorAll(':scope > [data-block]');
+        if (nested.length) {
+            var childWrap = document.createElement('div');
+            childWrap.className = 'editor-tree-children';
+            nested.forEach(function (child) {
+                childWrap.appendChild(buildTreeNode(child));
+            });
+            item.appendChild(childWrap);
+        }
+        return item;
+    }
+
+    // ── Accordion behaviour ──────────────────────────────────────────
+
+    function bindAccordions() {
+        panel.querySelectorAll('.editor-accordion-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var acc = btn.closest('.editor-accordion');
+                if (acc) { acc.classList.toggle('collapsed'); }
+            });
         });
+    }
 
-        var mediaSearchInput = document.getElementById('editor-media-search');
-        if (mediaSearchInput) {
-            mediaSearchInput.addEventListener('input', function () {
-                filterMediaGrid(mediaSearchInput.value.toLowerCase());
-            });
+    // ── Section H — Media panel ──────────────────────────────────────
+
+    var mediaPanel = document.getElementById('editor-media-panel');
+    var mediaGrid = document.getElementById('editor-media-grid');
+    var mediaCallback = null;
+    var mediaSelected = null;
+
+    document.getElementById('editor-media-close').addEventListener('click', closeMediaPanel);
+    document.getElementById('editor-media-cancel-btn').addEventListener('click', closeMediaPanel);
+    document.getElementById('editor-media-select-btn').addEventListener('click', function () {
+        if (mediaSelected && mediaCallback) {
+            mediaCallback(mediaSelected);
+            closeMediaPanel();
         }
+    });
 
-        function openMediaPanel(callback) {
-            mediaCallback = callback;
-            mediaSelected = null;
-            document.getElementById('editor-media-select-btn').disabled = true;
-            mediaPanel.style.display = 'flex';
-            loadMediaGrid();
-        }
-
-        function closeMediaPanel() {
-            mediaPanel.style.display = 'none';
-            mediaCallback = null;
-            mediaSelected = null;
-        }
-
-        function loadMediaGrid() {
-            mediaGrid.innerHTML = '<p class="editor-media-loading">Loading…</p>';
-            fetch('/admin/media', {
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    document.getElementById('editor-media-upload').addEventListener('change', function (e) {
+        var file = e.target.files[0];
+        if (!file) { return; }
+        var fd = new FormData();
+        fd.append('file', file);
+        fd.append('_csrf_token', CSRF);
+        fetch('/admin/upload', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.url) { loadMediaGrid(); }
             })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    var files = data.files || data || [];
-                    mediaGrid.innerHTML = '';
-                    if (!files.length) {
-                        mediaGrid.innerHTML = '<p class="editor-media-loading">No media yet.</p>';
-                        return;
-                    }
-                    files.forEach(function (file) {
-                        var url = file.url || file;
-                        var name = url.split('/').pop();
-                        var item = document.createElement('div');
-                        item.className = 'editor-media-item';
-                        item.dataset.url = url;
-                        item.innerHTML = '<img src="' + url + '" alt="' + name + '" loading="lazy">'
-                            + '<div class="editor-media-item-name">' + name + '</div>';
-                        item.addEventListener('click', function () {
-                            mediaGrid.querySelectorAll('.editor-media-item').forEach(function (i) {
-                                i.classList.remove('selected');
-                            });
-                            item.classList.add('selected');
-                            mediaSelected = url;
-                            document.getElementById('editor-media-select-btn').disabled = false;
-                        });
-                        item.addEventListener('dblclick', function () {
-                            mediaSelected = url;
-                            if (mediaCallback) { mediaCallback(url); }
-                            closeMediaPanel();
-                        });
-                        mediaGrid.appendChild(item);
-                    });
-                })
-                .catch(function () {
-                    mediaGrid.innerHTML = '<p class="editor-media-loading">Failed to load media.</p>';
-                });
-        }
-
-        function filterMediaGrid(query) {
-            mediaGrid.querySelectorAll('.editor-media-item').forEach(function (item) {
-                var name = (item.dataset.url || '').toLowerCase();
-                item.style.display = (!query || name.includes(query)) ? '' : 'none';
-            });
-        }
-
-        // ── Section I — Serialise + recordAction ─────────────────────────
-
-        function serialiseCanvas() {
-            var blocks = [];
-            var sortCounters = {};
-
-            canvas.querySelectorAll('[data-block]').forEach(function (block) {
-                if (!block.id) { return; }
-
-                var parentBlockEl = block.parentElement
-                    ? block.parentElement.closest('[data-block]')
-                    : null;
-                var parentBlockId = parentBlockEl ? parentBlockEl.id : null;
-                var parentKey = parentBlockId || '__root';
-
-                sortCounters[parentKey] = (sortCounters[parentKey] || 0) + 1;
-
-                // Shallow inner_html: children that are blocks are stored as their own rows
-                var cloned = block.cloneNode(true);
-                cloned.removeAttribute('draggable');
-                cloned.removeAttribute('contenteditable');
-                cloned.removeAttribute('data-css-props');
-                // Remove nested block elements from the clone (they are their own rows)
-                cloned.querySelectorAll('[data-block]').forEach(function (child) {
-                    child.remove();
-                });
-                var innerHtml = cloned.innerHTML.trim();
-
-                var cssProps = parseCssProps(block.style);
-
-                var config = null;
-                if (block.dataset.blockConfig) {
-                    try { config = JSON.parse(block.dataset.blockConfig); } catch (e) { }
-                }
-
-                blocks.push({
-                    block_id: block.id,
-                    block_type: block.dataset.blockType || 'text',
-                    inner_html: innerHtml || null,
-                    css_props: cssProps,
-                    block_config: config,
-                    sort_order: sortCounters[parentKey],
-                    parent_block_id: parentBlockId || null,
-                });
-            });
-
-            return blocks;
-        }
-
-        // ── Document panel (file-mode) ────────────────────────────────────
-        var _docSaveTimer = null;
-
-        function bindDocPanel() {
-            var panel = document.getElementById('editor-doc-panel');
-            if (!panel) { return; }
-
-            panel.querySelectorAll('[data-doc-html-attr], [data-doc-head-html], [data-doc-body-attr]')
-                .forEach(function (el) {
-                    el.addEventListener('input', function () {
-                        clearTimeout(_docSaveTimer);
-                        _docSaveTimer = setTimeout(saveDocAttrs, 600);
-                    });
-                });
-
-            panel.querySelectorAll('.editor-doc-toggle').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var targetId = btn.dataset.target;
-                    var body = document.getElementById(targetId);
-                    if (!body) { return; }
-                    var expanded = btn.getAttribute('aria-expanded') === 'true';
-                    btn.setAttribute('aria-expanded', String(!expanded));
-                    body.hidden = expanded;
-                });
-            });
-        }
-
-        function saveDocAttrs() {
-            var panel = document.getElementById('editor-doc-panel');
-            if (!panel) { return; }
-
-            var htmlAttrs = {};
-            panel.querySelectorAll('[data-doc-html-attr]').forEach(function (el) {
-                htmlAttrs[el.dataset.docHtmlAttr] = el.value;
-            });
-
-            var headEl = panel.querySelector('[data-doc-head-html]');
-            var headHtml = headEl ? headEl.value : null;
-
-            var bodyAttrs = {};
-            panel.querySelectorAll('[data-doc-body-attr]').forEach(function (el) {
-                bodyAttrs[el.dataset.docBodyAttr] = el.value;
-            });
-
-            fetch(API_BASE + '/' + PAGE_ID + '/doc-attrs', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': CSRF,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    html_attrs: htmlAttrs,
-                    head_html: headHtml,
-                    body_attrs: bodyAttrs,
-                }),
-            }).catch(function (err) {
-                console.error('[Cruinn] saveDocAttrs failed:', err);
-            });
-        }
-        // ── End Document panel ────────────────────────────────────────────
-
-        function parseCssProps(style) {
-            if (!style) { return null; }
-            // Always return an object (possibly empty {}) — an empty object signals
-            // "this block's styles have been managed and are currently empty", which
-            // lets reconstructTree strip a previously-baked style attr on publish.
-            var obj = {};
-            var text = style.cssText || '';
-            text.split(';').forEach(function (rule) {
-                var colon = rule.indexOf(':');
-                if (colon === -1) { return; }
-                var prop = rule.slice(0, colon).trim();
-                var val = rule.slice(colon + 1).trim();
-                if (prop && val) { obj[prop] = val; }
-            });
-            return obj;
-        }
-
-        var _actionTimer = null;
-
-        function recordAction() {
-            if (_htmlPageMode) { return; } // HTML pages: save only on publish
-            clearTimeout(_actionTimer);
-            var blocks = serialiseCanvas();
-
-            pushLocalUndo();
-
-            fetch(API_BASE + '/' + PAGE_ID + '/action', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': CSRF,
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ blocks: blocks }),
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.success) {
-                        setUndoRedoState(data.can_undo, data.can_redo);
-                        showDraftBadge(true);
-                    }
-                })
-                .catch(function (err) {
-                    console.error('recordAction failed:', err);
-                });
-        }
-
-        var _debounceTimer = null;
-        function debounceAction() {
-            if (_htmlPageMode) { return; }
-            clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(recordAction, 2000);
-        }
-
-        // ── Section J — Undo / Redo ──────────────────────────────────────
-
-        // Local ring-buffer for optimistic undo (stores canvas.innerHTML snapshots)
-        var localUndoStack = [];
-        var localRedoStack = [];
-        var MAX_LOCAL = 10;
-
-        function pushLocalUndo() {
-            localUndoStack.push(canvas.innerHTML);
-            if (localUndoStack.length > MAX_LOCAL) { localUndoStack.shift(); }
-            localRedoStack.length = 0;
-        }
-
-        function undo() {
-            // Optimistic: restore from local buffer immediately
-            if (localUndoStack.length) {
-                localRedoStack.push(canvas.innerHTML);
-                canvas.innerHTML = localUndoStack.pop();
-                reInitAll();
-            }
-
-            // Confirm with server
-            fetch(API_BASE + '/' + PAGE_ID + '/undo', {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.success) {
-                        setUndoRedoState(data.can_undo, data.can_redo);
-                        reconcile(data.blocks);
-                    }
-                })
-                .catch(function (err) {
-                    console.error('undo failed:', err);
-                });
-        }
-
-        function redo() {
-            if (localRedoStack.length) {
-                localUndoStack.push(canvas.innerHTML);
-                canvas.innerHTML = localRedoStack.pop();
-                reInitAll();
-            }
-
-            fetch(API_BASE + '/' + PAGE_ID + '/redo', {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.success) {
-                        setUndoRedoState(data.can_undo, data.can_redo);
-                        reconcile(data.blocks);
-                    }
-                })
-                .catch(function (err) {
-                    console.error('redo failed:', err);
-                });
-        }
-
-        /**
-         * Reconcile canvas with server-authoritative block list.
-         * Only replaces the canvas if the block IDs/order differ.
-         */
-        function reconcile(blocks) {
-            if (!blocks || !blocks.length) { return; }
-
-            var serverIds = blocks.map(function (b) { return b.block_id; }).join(',');
-            var domIds = Array.from(canvas.querySelectorAll('[data-block]'))
-                .map(function (el) { return el.id; }).join(',');
-
-            if (serverIds !== domIds) {
-                // Rebuild canvas from server state
-                canvas.innerHTML = '';
-                var byId = {};
-                blocks.forEach(function (b) { byId[b.block_id] = b; });
-                var tagMap = {
-                    heading: 'h2', image: 'figure', section: 'section',
-                    'nav-menu': 'nav', list: 'ul', 'list-item': 'li',
-                    anchor: 'a', form: 'form', table: 'table',
-                    inline: 'span', text: 'div', element: 'div'
-                };
-
-                // Build a lookup and children map for DFS rendering
-                var byBlockId  = {};
-                var childrenOf = {};
-                blocks.forEach(function (b) {
-                    byBlockId[b.block_id] = b;
-                    var pid = b.parent_block_id || '__root';
-                    if (!childrenOf[pid]) { childrenOf[pid] = []; }
-                    childrenOf[pid].push(b.block_id);
-                });
-
-                function renderBlock(b) {
-                    var cfg = {};
-                    try { cfg = JSON.parse(b.block_config || '{}'); } catch (e) {}
-                    // Use _tag from config (imported blocks) or tagMap/default
-                    var tag = cfg._tag || tagMap[b.block_type] || 'div';
-
-                    var el = document.createElement(tag);
-                    el.id = b.block_id;
-                    el.setAttribute('data-block', '');
-                    el.setAttribute('data-block-type', b.block_type);
-                    if (b.block_config) {
-                        el.dataset.blockConfig = typeof b.block_config === 'string'
-                            ? b.block_config
-                            : JSON.stringify(b.block_config);
-                    }
-                    if (b.css_props) {
-                        var props = typeof b.css_props === 'string'
-                            ? JSON.parse(b.css_props)
-                            : b.css_props;
-                        Object.keys(props).forEach(function (p) { el.style[p] = props[p]; });
-                    }
-                    // Container blocks: leave innerHTML empty so DFS can
-                    // append child blocks into this element without duplication.
-                    if (!cfg._container) {
-                        el.innerHTML = b.inner_html || '';
-                    }
-                    // Restore original HTML attributes from imported blocks
-                    if (cfg._attrs) {
-                        Object.keys(cfg._attrs).forEach(function (k) {
-                            if (k !== 'id') { el.setAttribute(k, cfg._attrs[k]); }
-                        });
-                    }
-                    return el;
-                }
-
-                // DFS: render parents before children at any depth
-                function buildSubtree(parentEl, parentKey) {
-                    (childrenOf[parentKey] || []).forEach(function (blockId) {
-                        var el = renderBlock(byBlockId[blockId]);
-                        parentEl.appendChild(el);
-                        buildSubtree(el, blockId);
-                    });
-                }
-                buildSubtree(canvas, '__root');
-
-                rebuildLiveStyles();
-                reInitAll();
-            }
-        }
-
-        function setUndoRedoState(canUndo, canRedo) {
-            var undoBtn = document.getElementById('editor-undo-btn');
-            var redoBtn = document.getElementById('editor-redo-btn');
-            if (undoBtn) { undoBtn.disabled = !canUndo; }
-            if (redoBtn) { redoBtn.disabled = !canRedo; }
-        }
-
-        function showDraftBadge(hasDraft) {
-            var badge = document.querySelector('.editor-draft-badge');
-            var discardBtn = document.getElementById('editor-discard-btn');
-            if (badge) { badge.style.display = hasDraft ? '' : 'none'; }
-            if (discardBtn) { discardBtn.disabled = !hasDraft; }
-        }
-
-        // ── Section K — Publish / Discard ────────────────────────────────
-
-        function bindToolbar() {
-            var publishBtn = document.getElementById('editor-publish-btn');
-            if (publishBtn) {
-                publishBtn.addEventListener('click', function () {
-                    if (!window.confirm('Publish this page? The live site will update immediately.')) { return; }
-                    publishBtn.disabled = true;
-
-                    // HTML page mode: send current code-area content with the publish request
-                    var publishBody = null;
-                    var publishHeaders = { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' };
-                    if (_htmlPageMode && _codeArea) {
-                        publishBody = JSON.stringify({ html: _codeArea.value });
-                        publishHeaders['Content-Type'] = 'application/json';
-                    }
-
-                    fetch(API_BASE + '/' + PAGE_ID + '/publish', {
-                        method: 'POST',
-                        headers: publishHeaders,
-                        body: publishBody,
-                    })
-                        .then(function (r) { return r.json(); })
-                        .then(function (data) {
-                            if (data.success) {
-                                if (data.reimported) {
-                                    alert('Published. Reloading editor — undo history has been reset.');
-                                    location.reload();
-                                } else {
-                                    showDraftBadge(false);
-                                    localUndoStack.length = 0;
-                                    localRedoStack.length = 0;
-                                    setUndoRedoState(false, false);
-                                    publishBtn.disabled = false;
-                                    alert('Page published successfully.');
-                                }
-                            }
-                        })
-                        .catch(function (err) {
-                            console.error('publish failed:', err);
-                            publishBtn.disabled = false;
-                        });
-                });
-            }
-
-            var discardBtn = document.getElementById('editor-discard-btn');
-            if (discardBtn) {
-                discardBtn.addEventListener('click', function () {
-                    if (!window.confirm('Discard all draft changes and revert to published state?')) { return; }
-                    fetch(API_BASE + '/' + PAGE_ID + '/discard', {
-                        method: 'POST',
-                        headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
-                    })
-                        .then(function (r) { return r.json(); })
-                        .then(function (data) {
-                            if (data.redirect) {
-                                window.location.href = data.redirect;
-                            }
-                        })
-                        .catch(function (err) {
-                            console.error('discard failed:', err);
-                        });
-                });
-            }
-
-            // Toolbar undo/redo buttons
-            var undoBtn = document.getElementById('editor-undo-btn');
-            if (undoBtn) { undoBtn.addEventListener('click', undo); }
-            var redoBtn = document.getElementById('editor-redo-btn');
-            if (redoBtn) { redoBtn.addEventListener('click', redo); }
-
-            // ── Code view toggle ─────────────────────────────────────────
-            var codeBtn = document.getElementById('editor-code-toggle-btn');
-            if (codeBtn) { codeBtn.addEventListener('click', toggleCodeView); }
-        }
-
-        // ── Section N — Code View ─────────────────────────────────────────
-
-        var _inCodeView = false;
-        var _codeArea = null;
-        var _codeFileMode = null; // { rel } when editing a template file
-        var _htmlPageMode = false; // true when page render_mode=html
-
-        function enterCodeView(opts) {
-            // opts: optional { html, rel, content } for seeding the textarea
-            if (_inCodeView) { return; }
-            _inCodeView = true;
-
-            // Create textarea if not already present
-            if (!_codeArea) {
-                _codeArea = document.createElement('textarea');
-                _codeArea.id = 'editor-code-area';
-                _codeArea.spellcheck = false;
-                _codeArea.autocomplete = 'off';
-                _codeArea.style.cssText = [
-                    'display:block', 'width:100%', 'height:100%', 'min-height:400px',
-                    'font-family:Consolas,Cascadia Code,Fira Code,monospace',
-                    'font-size:0.82rem', 'line-height:1.55', 'padding:1rem',
-                    'background:#0d1117', 'color:#e6edf3',
-                    'border:none', 'outline:none', 'resize:none', 'box-sizing:border-box',
-                    'tab-size:4',
-                ].join(';');
-                _codeArea.addEventListener('keydown', function (e) {
-                    if (e.key === 'Tab') {
-                        e.preventDefault();
-                        var s = _codeArea.selectionStart;
-                        var end = _codeArea.selectionEnd;
-                        _codeArea.value = _codeArea.value.substring(0, s) + '    ' + _codeArea.value.substring(end);
-                        _codeArea.selectionStart = _codeArea.selectionEnd = s + 4;
-                    }
-                });
-            }
-
-            if (opts && opts.rel) {
-                // File-editing mode: show file content, track filename
-                _codeFileMode = { rel: opts.rel };
-                _codeArea.value = opts.content || '';
-            } else if (opts && typeof opts.html !== 'undefined') {
-                // HTML page mode: seed with stored body_html
-                _codeFileMode = null;
-                _codeArea.value = opts.html;
-            } else {
-                // Block HTML mode
-                _codeFileMode = null;
-                _codeArea.value = formatHtml(canvas.innerHTML);
-            }
-
-            // Hide canvas content, show code area inside the same wrapper
-            canvas.querySelectorAll(':scope > *').forEach(function (el) {
-                el.style.display = 'none';
-            });
-            canvas.style.background = '#0d1117';
-            canvas.style.padding = '0';
-            canvas.appendChild(_codeArea);
-
-            // Update toolbar button
-            var btn = document.getElementById('editor-code-toggle-btn');
-            if (btn) {
-                btn.classList.add('active');
-                btn.textContent = _codeFileMode ? '× Close File' : 'Blocks';
-            }
-
-            deselect();
-        }
-
-        function exitCodeView() {
-            if (!_inCodeView || !_codeArea) { return; }
-            // HTML page mode: no "blocks" view to return to — stay in code view
-            if (_htmlPageMode) { return; }
-            _inCodeView = false;
-
-            var savedContent = _codeArea.value;
-            var fileMode = _codeFileMode;
-            _codeFileMode = null;
-            _codeArea.remove();
-            canvas.style.background = '';
-            canvas.style.padding = '';
-
-            if (fileMode) {
-                // Save template file via POST, then restore canvas
-                canvas.querySelectorAll(':scope > *').forEach(function (el) { el.style.display = ''; });
-                reInitAll();
-
-                var fd = new FormData();
-                fd.append('csrf_token', CSRF);
-                fd.append('content', savedContent);
-                fd.append('_json', '1');
-                fetch('/admin/template-editor/edit?f=' + encodeURIComponent(fileMode.rel), {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json' },
-                    body: fd,
-                })
-                    .then(function (r) { return r.json(); })
-                    .then(function () {
-                        // Refresh php-include preview if a block is selected
-                        if (activeBlock && activeBlock.dataset.blockType === 'php-include') {
-                            refreshPhpIncludePreview(activeBlock);
-                        }
-                    })
-                    .catch(function (err) { console.error('template save failed:', err); });
-            } else {
-                // Parse canvas HTML back from textarea
-                canvas.innerHTML = savedContent;
-                reInitAll();
-                recordAction();
-            }
-
-            var btn = document.getElementById('editor-code-toggle-btn');
-            if (btn) { btn.classList.remove('active'); btn.textContent = '</> Code'; }
-        }
-
-        function toggleCodeView() {
-            if (_inCodeView) { exitCodeView(); } else { enterCodeView(); }
-        }
-
-        /**
-         * Very basic HTML formatter — adds newlines before block-level tags.
-         */
-        function formatHtml(html) {
-            return html
-                .replace(/>\s*</g, '>\n<')
-                .replace(/(<\/(div|section|header|nav|figure|h[1-6]|p|ul|ol|li|table|tr|td|th)>)/gi, '$1\n')
-                .replace(/(<(div|section|header|nav|figure|h[1-6]|p|ul|ol|li|table|tr|td|th)[^>]*>)/gi, '\n$1')
-                .replace(/\n{3,}/g, '\n\n')
-                .trim();
-        }
-
-        // Wire the "Edit Template Source" button whenever a php-include block is selected
-        (function () {
-            var editSrcBtn = document.getElementById('prop-php-edit-source-btn');
-            if (!editSrcBtn) { return; }
-            editSrcBtn.addEventListener('click', function () {
-                if (!activeBlock || activeBlock.dataset.blockType !== 'php-include') { return; }
-                var cfg = {};
-                try { cfg = JSON.parse(activeBlock.dataset.blockConfig || '{}'); } catch (e) { }
-                var rel = cfg.template || '';
-                if (!rel) {
-                    alert('Select a template file first.');
+            .catch(function () { });
+        e.target.value = '';
+    });
+
+    var mediaSearchInput = document.getElementById('editor-media-search');
+    if (mediaSearchInput) {
+        mediaSearchInput.addEventListener('input', function () {
+            filterMediaGrid(mediaSearchInput.value.toLowerCase());
+        });
+    }
+
+    function openMediaPanel(callback) {
+        mediaCallback = callback;
+        mediaSelected = null;
+        document.getElementById('editor-media-select-btn').disabled = true;
+        mediaPanel.style.display = 'flex';
+        loadMediaGrid();
+    }
+
+    function closeMediaPanel() {
+        mediaPanel.style.display = 'none';
+        mediaCallback = null;
+        mediaSelected = null;
+    }
+
+    function loadMediaGrid() {
+        mediaGrid.innerHTML = '<p class="editor-media-loading">Loading…</p>';
+        fetch('/admin/media', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var files = data.files || data || [];
+                mediaGrid.innerHTML = '';
+                if (!files.length) {
+                    mediaGrid.innerHTML = '<p class="editor-media-loading">No media yet.</p>';
                     return;
                 }
-                editSrcBtn.disabled = true;
-                editSrcBtn.textContent = 'Loading…';
-                fetch('/admin/template-editor/edit?f=' + encodeURIComponent(rel) + '&format=json', {
-                    headers: { 'Accept': 'application/json' },
+                files.forEach(function (file) {
+                    var url = file.url || file;
+                    var name = url.split('/').pop();
+                    var item = document.createElement('div');
+                    item.className = 'editor-media-item';
+                    item.dataset.url = url;
+                    item.innerHTML = '<img src="' + url + '" alt="' + name + '" loading="lazy">'
+                        + '<div class="editor-media-item-name">' + name + '</div>';
+                    item.addEventListener('click', function () {
+                        mediaGrid.querySelectorAll('.editor-media-item').forEach(function (i) {
+                            i.classList.remove('selected');
+                        });
+                        item.classList.add('selected');
+                        mediaSelected = url;
+                        document.getElementById('editor-media-select-btn').disabled = false;
+                    });
+                    item.addEventListener('dblclick', function () {
+                        mediaSelected = url;
+                        if (mediaCallback) { mediaCallback(url); }
+                        closeMediaPanel();
+                    });
+                    mediaGrid.appendChild(item);
+                });
+            })
+            .catch(function () {
+                mediaGrid.innerHTML = '<p class="editor-media-loading">Failed to load media.</p>';
+            });
+    }
+
+    function filterMediaGrid(query) {
+        mediaGrid.querySelectorAll('.editor-media-item').forEach(function (item) {
+            var name = (item.dataset.url || '').toLowerCase();
+            item.style.display = (!query || name.includes(query)) ? '' : 'none';
+        });
+    }
+
+    // ── Section I — Serialise + recordAction ─────────────────────────
+
+    function serialiseCanvas() {
+        var blocks = [];
+        var sortCounters = {};
+
+        canvas.querySelectorAll('[data-block]').forEach(function (block) {
+            if (!block.id) { return; }
+
+            var parentBlockEl = block.parentElement
+                ? block.parentElement.closest('[data-block]')
+                : null;
+            var parentBlockId = parentBlockEl ? parentBlockEl.id : null;
+            var parentKey = parentBlockId || '__root';
+
+            sortCounters[parentKey] = (sortCounters[parentKey] || 0) + 1;
+
+            // Shallow inner_html: children that are blocks are stored as their own rows
+            var cloned = block.cloneNode(true);
+            cloned.removeAttribute('draggable');
+            cloned.removeAttribute('contenteditable');
+            cloned.removeAttribute('data-css-props');
+            // Remove nested block elements from the clone (they are their own rows)
+            cloned.querySelectorAll('[data-block]').forEach(function (child) {
+                child.remove();
+            });
+            var innerHtml = cloned.innerHTML.trim();
+
+            var cssProps = parseCssProps(block.style);
+
+            var config = null;
+            if (block.dataset.blockConfig) {
+                try { config = JSON.parse(block.dataset.blockConfig); } catch (e) { }
+            }
+
+            blocks.push({
+                block_id: block.id,
+                block_type: block.dataset.blockType || 'text',
+                inner_html: innerHtml || null,
+                css_props: cssProps,
+                block_config: config,
+                sort_order: sortCounters[parentKey],
+                parent_block_id: parentBlockId || null,
+            });
+        });
+
+        return blocks;
+    }
+
+    // ── Document panel (file-mode) ────────────────────────────────────
+    var _docSaveTimer = null;
+
+    function bindDocPanel() {
+        var panel = document.getElementById('editor-doc-panel');
+        if (!panel) { return; }
+
+        panel.querySelectorAll('[data-doc-html-attr], [data-doc-head-html], [data-doc-body-attr]')
+            .forEach(function (el) {
+                el.addEventListener('input', function () {
+                    clearTimeout(_docSaveTimer);
+                    _docSaveTimer = setTimeout(saveDocAttrs, 600);
+                });
+            });
+
+        panel.querySelectorAll('.editor-doc-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var targetId = btn.dataset.target;
+                var body = document.getElementById(targetId);
+                if (!body) { return; }
+                var expanded = btn.getAttribute('aria-expanded') === 'true';
+                btn.setAttribute('aria-expanded', String(!expanded));
+                body.hidden = expanded;
+            });
+        });
+    }
+
+    function saveDocAttrs() {
+        var panel = document.getElementById('editor-doc-panel');
+        if (!panel) { return; }
+
+        var htmlAttrs = {};
+        panel.querySelectorAll('[data-doc-html-attr]').forEach(function (el) {
+            htmlAttrs[el.dataset.docHtmlAttr] = el.value;
+        });
+
+        var headEl = panel.querySelector('[data-doc-head-html]');
+        var headHtml = headEl ? headEl.value : null;
+
+        var bodyAttrs = {};
+        panel.querySelectorAll('[data-doc-body-attr]').forEach(function (el) {
+            bodyAttrs[el.dataset.docBodyAttr] = el.value;
+        });
+
+        fetch(API_BASE + '/' + PAGE_ID + '/doc-attrs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': CSRF,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                html_attrs: htmlAttrs,
+                head_html: headHtml,
+                body_attrs: bodyAttrs,
+            }),
+        }).catch(function (err) {
+            console.error('[Cruinn] saveDocAttrs failed:', err);
+        });
+    }
+    // ── End Document panel ────────────────────────────────────────────
+
+    function parseCssProps(style) {
+        if (!style) { return null; }
+        // Always return an object (possibly empty {}) — an empty object signals
+        // "this block's styles have been managed and are currently empty", which
+        // lets reconstructTree strip a previously-baked style attr on publish.
+        var obj = {};
+        var text = style.cssText || '';
+        text.split(';').forEach(function (rule) {
+            var colon = rule.indexOf(':');
+            if (colon === -1) { return; }
+            var prop = rule.slice(0, colon).trim();
+            var val = rule.slice(colon + 1).trim();
+            if (prop && val) { obj[prop] = val; }
+        });
+        return obj;
+    }
+
+    var _actionTimer = null;
+
+    function recordAction() {
+        if (_htmlPageMode) { return; } // HTML pages: save only on publish
+        clearTimeout(_actionTimer);
+        var blocks = serialiseCanvas();
+
+        pushLocalUndo();
+
+        fetch(API_BASE + '/' + PAGE_ID + '/action', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': CSRF,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ blocks: blocks }),
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    setUndoRedoState(data.can_undo, data.can_redo);
+                    showDraftBadge(true);
+                }
+            })
+            .catch(function (err) {
+                console.error('recordAction failed:', err);
+            });
+    }
+
+    var _debounceTimer = null;
+    function debounceAction() {
+        if (_htmlPageMode) { return; }
+        clearTimeout(_debounceTimer);
+        _debounceTimer = setTimeout(recordAction, 2000);
+    }
+
+    // ── Section J — Undo / Redo ──────────────────────────────────────
+
+    // Local ring-buffer for optimistic undo (stores canvas.innerHTML snapshots)
+    var localUndoStack = [];
+    var localRedoStack = [];
+    var MAX_LOCAL = 10;
+
+    function pushLocalUndo() {
+        localUndoStack.push(canvas.innerHTML);
+        if (localUndoStack.length > MAX_LOCAL) { localUndoStack.shift(); }
+        localRedoStack.length = 0;
+    }
+
+    function undo() {
+        // Optimistic: restore from local buffer immediately
+        if (localUndoStack.length) {
+            localRedoStack.push(canvas.innerHTML);
+            canvas.innerHTML = localUndoStack.pop();
+            reInitAll();
+        }
+
+        // Confirm with server
+        fetch(API_BASE + '/' + PAGE_ID + '/undo', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    setUndoRedoState(data.can_undo, data.can_redo);
+                    reconcile(data.blocks);
+                }
+            })
+            .catch(function (err) {
+                console.error('undo failed:', err);
+            });
+    }
+
+    function redo() {
+        if (localRedoStack.length) {
+            localUndoStack.push(canvas.innerHTML);
+            canvas.innerHTML = localRedoStack.pop();
+            reInitAll();
+        }
+
+        fetch(API_BASE + '/' + PAGE_ID + '/redo', {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    setUndoRedoState(data.can_undo, data.can_redo);
+                    reconcile(data.blocks);
+                }
+            })
+            .catch(function (err) {
+                console.error('redo failed:', err);
+            });
+    }
+
+    /**
+     * Reconcile canvas with server-authoritative block list.
+     * Only replaces the canvas if the block IDs/order differ.
+     */
+    function reconcile(blocks) {
+        if (!blocks || !blocks.length) { return; }
+
+        var serverIds = blocks.map(function (b) { return b.block_id; }).join(',');
+        var domIds = Array.from(canvas.querySelectorAll('[data-block]'))
+            .map(function (el) { return el.id; }).join(',');
+
+        if (serverIds !== domIds) {
+            // Rebuild canvas from server state
+            canvas.innerHTML = '';
+            var byId = {};
+            blocks.forEach(function (b) { byId[b.block_id] = b; });
+            var tagMap = {
+                heading: 'h2', image: 'figure', section: 'section',
+                'nav-menu': 'nav', list: 'ul', 'list-item': 'li',
+                anchor: 'a', form: 'form', table: 'table',
+                inline: 'span', text: 'div', element: 'div'
+            };
+
+            // Build a lookup and children map for DFS rendering
+            var byBlockId = {};
+            var childrenOf = {};
+            blocks.forEach(function (b) {
+                byBlockId[b.block_id] = b;
+                var pid = b.parent_block_id || '__root';
+                if (!childrenOf[pid]) { childrenOf[pid] = []; }
+                childrenOf[pid].push(b.block_id);
+            });
+
+            function renderBlock(b) {
+                var cfg = {};
+                try { cfg = JSON.parse(b.block_config || '{}'); } catch (e) { }
+                // Use _tag from config (imported blocks) or tagMap/default
+                var tag = cfg._tag || tagMap[b.block_type] || 'div';
+
+                var el = document.createElement(tag);
+                el.id = b.block_id;
+                el.setAttribute('data-block', '');
+                el.setAttribute('data-block-type', b.block_type);
+                if (b.block_config) {
+                    el.dataset.blockConfig = typeof b.block_config === 'string'
+                        ? b.block_config
+                        : JSON.stringify(b.block_config);
+                }
+                if (b.css_props) {
+                    var props = typeof b.css_props === 'string'
+                        ? JSON.parse(b.css_props)
+                        : b.css_props;
+                    Object.keys(props).forEach(function (p) { el.style[p] = props[p]; });
+                }
+                // Container blocks: leave innerHTML empty so DFS can
+                // append child blocks into this element without duplication.
+                if (!cfg._container) {
+                    el.innerHTML = b.inner_html || '';
+                }
+                // Restore original HTML attributes from imported blocks
+                if (cfg._attrs) {
+                    Object.keys(cfg._attrs).forEach(function (k) {
+                        if (k !== 'id') { el.setAttribute(k, cfg._attrs[k]); }
+                    });
+                }
+                return el;
+            }
+
+            // DFS: render parents before children at any depth
+            function buildSubtree(parentEl, parentKey) {
+                (childrenOf[parentKey] || []).forEach(function (blockId) {
+                    var el = renderBlock(byBlockId[blockId]);
+                    parentEl.appendChild(el);
+                    buildSubtree(el, blockId);
+                });
+            }
+            buildSubtree(canvas, '__root');
+
+            rebuildLiveStyles();
+            reInitAll();
+        }
+    }
+
+    function setUndoRedoState(canUndo, canRedo) {
+        var undoBtn = document.getElementById('editor-undo-btn');
+        var redoBtn = document.getElementById('editor-redo-btn');
+        if (undoBtn) { undoBtn.disabled = !canUndo; }
+        if (redoBtn) { redoBtn.disabled = !canRedo; }
+    }
+
+    function showDraftBadge(hasDraft) {
+        var badge = document.querySelector('.editor-draft-badge');
+        var discardBtn = document.getElementById('editor-discard-btn');
+        if (badge) { badge.style.display = hasDraft ? '' : 'none'; }
+        if (discardBtn) { discardBtn.disabled = !hasDraft; }
+    }
+
+    // ── Section K — Publish / Discard ────────────────────────────────
+
+    function bindToolbar() {
+        var publishBtn = document.getElementById('editor-publish-btn');
+        if (publishBtn) {
+            publishBtn.addEventListener('click', function () {
+                if (!window.confirm('Publish this page? The live site will update immediately.')) { return; }
+                publishBtn.disabled = true;
+
+                // HTML page mode: send current code-area content with the publish request
+                var publishBody = null;
+                var publishHeaders = { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' };
+                if (_htmlPageMode && _codeArea) {
+                    publishBody = JSON.stringify({ html: _codeArea.value });
+                    publishHeaders['Content-Type'] = 'application/json';
+                }
+
+                fetch(API_BASE + '/' + PAGE_ID + '/publish', {
+                    method: 'POST',
+                    headers: publishHeaders,
+                    body: publishBody,
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
-                        editSrcBtn.disabled = false;
-                        editSrcBtn.textContent = '</> Edit Template Source';
-                        enterCodeView({ rel: data.rel || rel, content: data.content || '' });
+                        if (data.success) {
+                            if (data.reimported) {
+                                alert('Published. Reloading editor — undo history has been reset.');
+                                location.reload();
+                            } else {
+                                showDraftBadge(false);
+                                localUndoStack.length = 0;
+                                localRedoStack.length = 0;
+                                setUndoRedoState(false, false);
+                                publishBtn.disabled = false;
+                                alert('Page published successfully.');
+                            }
+                        }
                     })
-                    .catch(function () {
-                        editSrcBtn.disabled = false;
-                        editSrcBtn.textContent = '</> Edit Template Source';
-                        alert('Could not load template file.');
+                    .catch(function (err) {
+                        console.error('publish failed:', err);
+                        publishBtn.disabled = false;
                     });
-            });
-        }());
-
-        // ── Section M — Canvas resize ─────────────────────────────────────
-
-        function initCanvasResize() {
-            var handle = document.getElementById('cruinn-canvas-resize-handle');
-            var heightInp = document.getElementById('cruinn-canvas-height-input');
-            var clearBtn = document.getElementById('cruinn-canvas-height-clear');
-
-            // Sync input to current canvas height if one is already set
-            if (heightInp && canvas.style.height) {
-                heightInp.value = parseInt(canvas.style.height, 10) || '';
-            }
-
-            // Height input: type a value to set canvas height
-            if (heightInp) {
-                heightInp.oninput = function () {
-                    var v = parseInt(heightInp.value, 10);
-                    if (!isNaN(v) && v > 0) {
-                        canvas.style.height = v + 'px';
-                        canvas.style.minHeight = v + 'px';
-                    }
-                };
-            }
-
-            // Clear button: reset to auto (content height)
-            if (clearBtn) {
-                clearBtn.onclick = function () {
-                    canvas.style.height = '';
-                    canvas.style.minHeight = '';
-                    if (heightInp) { heightInp.value = ''; }
-                };
-            }
-
-            // Drag handle: pointer-based drag to resize canvas height
-            if (!handle) { return; }
-
-            var dragStartY = 0;
-            var dragStartH = 0;
-
-            handle.addEventListener('pointerdown', function (e) {
-                e.preventDefault();
-                dragStartY = e.clientY;
-                dragStartH = canvas.getBoundingClientRect().height;
-                handle.classList.add('dragging');
-                handle.setPointerCapture(e.pointerId);
-            });
-
-            handle.addEventListener('pointermove', function (e) {
-                if (!handle.classList.contains('dragging')) { return; }
-                var newH = Math.max(40, dragStartH + (e.clientY - dragStartY));
-                canvas.style.height = newH + 'px';
-                canvas.style.minHeight = newH + 'px';
-                if (heightInp) { heightInp.value = Math.round(newH); }
-            });
-
-            handle.addEventListener('pointerup', function () {
-                handle.classList.remove('dragging');
-            });
-
-            handle.addEventListener('pointercancel', function () {
-                handle.classList.remove('dragging');
             });
         }
 
-        // ── Section L — Keyboard shortcuts ───────────────────────────────
+        var discardBtn = document.getElementById('editor-discard-btn');
+        if (discardBtn) {
+            discardBtn.addEventListener('click', function () {
+                if (!window.confirm('Discard all draft changes and revert to published state?')) { return; }
+                fetch(API_BASE + '/' + PAGE_ID + '/discard', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('discard failed:', err);
+                    });
+            });
+        }
 
-        function bindKeyboard() {
-            document.addEventListener('keydown', function (e) {
-                var ctrl = e.ctrlKey || e.metaKey;
-                if (!ctrl) { return; }
+        // Toolbar undo/redo buttons
+        var undoBtn = document.getElementById('editor-undo-btn');
+        if (undoBtn) { undoBtn.addEventListener('click', undo); }
+        var redoBtn = document.getElementById('editor-redo-btn');
+        if (redoBtn) { redoBtn.addEventListener('click', redo); }
 
-                if (e.key === 'z' && !e.shiftKey) {
+        // ── Code view toggle ─────────────────────────────────────────
+        var codeBtn = document.getElementById('editor-code-toggle-btn');
+        if (codeBtn) { codeBtn.addEventListener('click', toggleCodeView); }
+    }
+
+    // ── Section N — Code View ─────────────────────────────────────────
+
+    var _inCodeView = false;
+    var _codeArea = null;
+    var _codeFileMode = null; // { rel } when editing a template file
+    var _htmlPageMode = false; // true when page render_mode=html
+
+    function enterCodeView(opts) {
+        // opts: optional { html, rel, content } for seeding the textarea
+        if (_inCodeView) { return; }
+        _inCodeView = true;
+
+        // Create textarea if not already present
+        if (!_codeArea) {
+            _codeArea = document.createElement('textarea');
+            _codeArea.id = 'editor-code-area';
+            _codeArea.spellcheck = false;
+            _codeArea.autocomplete = 'off';
+            _codeArea.style.cssText = [
+                'display:block', 'width:100%', 'height:100%', 'min-height:400px',
+                'font-family:Consolas,Cascadia Code,Fira Code,monospace',
+                'font-size:0.82rem', 'line-height:1.55', 'padding:1rem',
+                'background:#0d1117', 'color:#e6edf3',
+                'border:none', 'outline:none', 'resize:none', 'box-sizing:border-box',
+                'tab-size:4',
+            ].join(';');
+            _codeArea.addEventListener('keydown', function (e) {
+                if (e.key === 'Tab') {
                     e.preventDefault();
-                    undo();
-                } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
-                    e.preventDefault();
-                    redo();
+                    var s = _codeArea.selectionStart;
+                    var end = _codeArea.selectionEnd;
+                    _codeArea.value = _codeArea.value.substring(0, s) + '    ' + _codeArea.value.substring(end);
+                    _codeArea.selectionStart = _codeArea.selectionEnd = s + 4;
                 }
             });
         }
 
-        // ── Section M — Public API ────────────────────────────────────────
-        // Expose serialiseCanvas for the Code panel inline script.
-        window.serialiseCanvasPublic = serialiseCanvas;
+        if (opts && opts.rel) {
+            // File-editing mode: show file content, track filename
+            _codeFileMode = { rel: opts.rel };
+            _codeArea.value = opts.content || '';
+        } else if (opts && typeof opts.html !== 'undefined') {
+            // HTML page mode: seed with stored body_html
+            _codeFileMode = null;
+            _codeArea.value = opts.html;
+        } else {
+            // Block HTML mode
+            _codeFileMode = null;
+            _codeArea.value = formatHtml(canvas.innerHTML);
+        }
 
-    }) ();
+        // Hide canvas content, show code area inside the same wrapper
+        canvas.querySelectorAll(':scope > *').forEach(function (el) {
+            el.style.display = 'none';
+        });
+        canvas.style.background = '#0d1117';
+        canvas.style.padding = '0';
+        canvas.appendChild(_codeArea);
+
+        // Update toolbar button
+        var btn = document.getElementById('editor-code-toggle-btn');
+        if (btn) {
+            btn.classList.add('active');
+            btn.textContent = _codeFileMode ? '× Close File' : 'Blocks';
+        }
+
+        deselect();
+    }
+
+    function exitCodeView() {
+        if (!_inCodeView || !_codeArea) { return; }
+        _inCodeView = false;
+
+        var savedContent = _codeArea.value;
+        var fileMode = _codeFileMode;
+        _codeFileMode = null;
+        _codeArea.remove();
+        canvas.style.background = '';
+        canvas.style.padding = '';
+
+        if (fileMode) {
+            // Save template file via POST, then restore canvas
+            canvas.querySelectorAll(':scope > *').forEach(function (el) { el.style.display = ''; });
+            reInitAll();
+
+            var fd = new FormData();
+            fd.append('csrf_token', CSRF);
+            fd.append('content', savedContent);
+            fd.append('_json', '1');
+            fetch('/admin/template-editor/edit?f=' + encodeURIComponent(fileMode.rel), {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                body: fd,
+            })
+                .then(function (r) { return r.json(); })
+                .then(function () {
+                    // Refresh php-include preview if a block is selected
+                    if (activeBlock && activeBlock.dataset.blockType === 'php-include') {
+                        refreshPhpIncludePreview(activeBlock);
+                    }
+                })
+                .catch(function (err) { console.error('template save failed:', err); });
+        } else {
+            // Parse canvas HTML back from textarea
+            canvas.innerHTML = savedContent;
+            reInitAll();
+            recordAction();
+        }
+
+        var btn = document.getElementById('editor-code-toggle-btn');
+        if (btn) { btn.classList.remove('active'); btn.textContent = '</> Code'; }
+    }
+
+    function toggleCodeView() {
+        if (_inCodeView) { exitCodeView(); } else { enterCodeView(); }
+    }
+
+    /**
+     * Very basic HTML formatter — adds newlines before block-level tags.
+     */
+    function formatHtml(html) {
+        return html
+            .replace(/>\s*</g, '>\n<')
+            .replace(/(<\/(div|section|header|nav|figure|h[1-6]|p|ul|ol|li|table|tr|td|th)>)/gi, '$1\n')
+            .replace(/(<(div|section|header|nav|figure|h[1-6]|p|ul|ol|li|table|tr|td|th)[^>]*>)/gi, '\n$1')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
+    // Wire the "Edit Template Source" button whenever a php-include block is selected
+    (function () {
+        var editSrcBtn = document.getElementById('prop-php-edit-source-btn');
+        if (!editSrcBtn) { return; }
+        editSrcBtn.addEventListener('click', function () {
+            if (!activeBlock || activeBlock.dataset.blockType !== 'php-include') { return; }
+            var cfg = {};
+            try { cfg = JSON.parse(activeBlock.dataset.blockConfig || '{}'); } catch (e) { }
+            var rel = cfg.template || '';
+            if (!rel) {
+                alert('Select a template file first.');
+                return;
+            }
+            editSrcBtn.disabled = true;
+            editSrcBtn.textContent = 'Loading…';
+            fetch('/admin/template-editor/edit?f=' + encodeURIComponent(rel) + '&format=json', {
+                headers: { 'Accept': 'application/json' },
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    editSrcBtn.disabled = false;
+                    editSrcBtn.textContent = '</> Edit Template Source';
+                    enterCodeView({ rel: data.rel || rel, content: data.content || '' });
+                })
+                .catch(function () {
+                    editSrcBtn.disabled = false;
+                    editSrcBtn.textContent = '</> Edit Template Source';
+                    alert('Could not load template file.');
+                });
+        });
+    }());
+
+    // ── Section M — Canvas resize ─────────────────────────────────────
+
+    function initCanvasResize() {
+        var handle = document.getElementById('cruinn-canvas-resize-handle');
+        var heightInp = document.getElementById('cruinn-canvas-height-input');
+        var clearBtn = document.getElementById('cruinn-canvas-height-clear');
+
+        // Sync input to current canvas height if one is already set
+        if (heightInp && canvas.style.height) {
+            heightInp.value = parseInt(canvas.style.height, 10) || '';
+        }
+
+        // Height input: type a value to set canvas height
+        if (heightInp) {
+            heightInp.oninput = function () {
+                var v = parseInt(heightInp.value, 10);
+                if (!isNaN(v) && v > 0) {
+                    canvas.style.height = v + 'px';
+                    canvas.style.minHeight = v + 'px';
+                }
+            };
+        }
+
+        // Clear button: reset to auto (content height)
+        if (clearBtn) {
+            clearBtn.onclick = function () {
+                canvas.style.height = '';
+                canvas.style.minHeight = '';
+                if (heightInp) { heightInp.value = ''; }
+            };
+        }
+
+        // Drag handle: pointer-based drag to resize canvas height
+        if (!handle) { return; }
+
+        var dragStartY = 0;
+        var dragStartH = 0;
+
+        handle.addEventListener('pointerdown', function (e) {
+            e.preventDefault();
+            dragStartY = e.clientY;
+            dragStartH = canvas.getBoundingClientRect().height;
+            handle.classList.add('dragging');
+            handle.setPointerCapture(e.pointerId);
+        });
+
+        handle.addEventListener('pointermove', function (e) {
+            if (!handle.classList.contains('dragging')) { return; }
+            var newH = Math.max(40, dragStartH + (e.clientY - dragStartY));
+            canvas.style.height = newH + 'px';
+            canvas.style.minHeight = newH + 'px';
+            if (heightInp) { heightInp.value = Math.round(newH); }
+        });
+
+        handle.addEventListener('pointerup', function () {
+            handle.classList.remove('dragging');
+        });
+
+        handle.addEventListener('pointercancel', function () {
+            handle.classList.remove('dragging');
+        });
+    }
+
+    // ── Section L — Keyboard shortcuts ───────────────────────────────
+
+    function bindKeyboard() {
+        document.addEventListener('keydown', function (e) {
+            var ctrl = e.ctrlKey || e.metaKey;
+            if (!ctrl) { return; }
+
+            if (e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
+            } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+                e.preventDefault();
+                redo();
+            }
+        });
+    }
+
+    // ── Section M — Public API ────────────────────────────────────────
+    // Expose serialiseCanvas for the Code panel inline script.
+    window.serialiseCanvasPublic = serialiseCanvas;
+
+})();

@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.2`
-**HEAD:** `(see git log)` — fix(deploy): remove unused deps, harden .htaccess, add cPanel deployment docs
+**Current version:** `v1.0.0-beta.4`
+**HEAD:** `(see git log)` — fix(editor): kill Editor 2, platform code view for CSS files, cPanel path resolution
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -150,7 +150,9 @@ Pages are composed of ordered blocks. Each block has a type, properties, and opt
 
 **Render pipeline:** `CruinnRenderService` → `BlockRegistry::getTag/isDynamic/renderDynamic`
 
-**Editor JS:** `public/js/editor.js` (main canvas editor) + `public/js/admin/block-editor/` (core.js, properties.js, drag.js, undo.js) + `public/js/admin/block-types/{slug}.js`
+**Editor JS:** `public/js/editor.js` (main canvas editor — single IIFE, handles init, selection, DnD, properties, palette, media, serialise, undo/redo, publish, code view) + `public/js/admin/block-types/{slug}.js`
+
+**Code view:** `enterCodeView()` / `exitCodeView()` in editor.js. Textarea `#editor-code-area` appended inside `#editor-canvas`. For file-mode pages (`startInCodeView=1`), the editor opens directly in code view with raw file content. CSS files, JS files, and other non-PHP/HTML files use this path.
 
 **EditorRenderService:** Single source of truth for rendering a flat block list into editor canvas HTML + CSS. Used by platform and instance admin. Inerts `script`/`style`/`noscript` as chip elements on canvas.
 
@@ -175,6 +177,8 @@ Pages are composed of ordered blocks. Each block has a type, properties, and opt
 
 - `public/` contents → `public_html/`
 - All other dirs (`src/`, `templates/`, `config/`, `schema/`, `instance/`, `vendor/`) → `/home/username/`
+- **CRUINN_PUBLIC** = `__DIR__` in `public/index.php` = the web root (`/home/username/public_html/`)
+- **CRITICAL:** `public/*` paths must resolve via `CRUINN_PUBLIC`, NOT via `CRUINN_ROOT . '/public/'` — the latter points to the engine source tree, not the deployed web root.
 
 **No Composer on the server** — build `vendor/` locally with `composer install --no-dev` and upload. The SPL fallback in `index.php` handles `Cruinn\*` if `vendor/` is absent.
 
@@ -185,7 +189,9 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 ## Version History
 
 - **v1.0.0-beta.1** (`95d8895`) — Initial public release: full engine extracted from IGAPortal RC. 22 block types, install wizard, multi-instance platform, block editor, DB browser, module registry stub.
-- **v1.0.0-beta.2** — Deployment fixes: remove unused Composer deps (phpoffice/phpword, dompdf, smalot/pdfparser), add `Options -Indexes` to `.htaccess`, add `config/CruinnCMS.example.php`, add cPanel/shared-hosting deployment section to SETUP.md.
+- **v1.0.0-beta.2** — Deployment fixes: remove unused Composer deps, add `Options -Indexes` to `.htaccess`, add `config/CruinnCMS.example.php`, add cPanel/shared-hosting deployment section to SETUP.md.
+- **v1.0.0-beta.3** (`bc70dd2`) — Release tooling: `dev/build-release.sh`, hostname-based instance routing, per-instance online toggle, `CRUINN_ROOT` depth fix for cPanel.
+- **v1.0.0-beta.4** — Editor overhaul: killed Editor 2 completely (deleted 11 files, stubbed `content_blocks` refs), removed council templates, platform editor CSS file editing via `?file=` handler with cPanel path resolution, code view toggle fix, code view CSS layout improvements (`:has(#editor-code-area)` rules), block tree + properties panel scroll constraints (in progress).
 
 ---
 

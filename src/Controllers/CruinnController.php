@@ -29,9 +29,10 @@ class CruinnController extends BaseController
      */
     private function requireEditorAuth(): void
     {
-        if (!empty($_SESSION['_platform_editor_mode']) && PlatformAuth::check()) {
-            // Swap the DB singleton to the platform DB so all queries
-            // in this request hit the correct database.
+        $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
+        if ($editorInstance !== null && PlatformAuth::check()) {
+            // Swap the DB singleton to the correct DB (platform or instance)
+            // based on which instance the platform editor is targeting.
             \Cruinn\Database::resetInstance();
             $this->db = \Cruinn\Database::getInstance();
             return;
@@ -98,7 +99,7 @@ class CruinnController extends BaseController
             $navMenus = $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC');
         }
 
-        $cssDir   = dirname(__DIR__, 2) . '/public/css';
+        $cssDir   = CRUINN_PUBLIC . '/css';
         $cssFiles = [];
         foreach (glob($cssDir . '/*.css') as $f) {
             $cssFiles[] = basename($f);
@@ -205,7 +206,7 @@ class CruinnController extends BaseController
             $absPath    = null;
             if ($renderMode === 'file') {
                 $filePath = $page['render_file'] ?? '';
-                $resolved = dirname(__DIR__, 2) . '/public' . $filePath;
+                $resolved = CRUINN_PUBLIC . $filePath;
                 if ($filePath !== '' && file_exists($resolved)) {
                     $absPath = $resolved;
                 }
@@ -379,7 +380,7 @@ class CruinnController extends BaseController
         }
 
         // CSS files for sidebar nav
-        $cssDir   = dirname(__DIR__, 2) . '/public/css';
+        $cssDir   = CRUINN_PUBLIC . '/css';
         $cssFiles = [];
         foreach (glob($cssDir . '/*.css') as $f) {
             $cssFiles[] = basename($f);
@@ -821,7 +822,7 @@ class CruinnController extends BaseController
                             if (str_starts_with($filePath, '@cms/')) {
                                 $absPath = dirname(__DIR__, 2) . '/' . substr($filePath, 5);
                             } else {
-                                $absPath = dirname(__DIR__, 2) . '/public' . $filePath;
+                                $absPath = CRUINN_PUBLIC . $filePath;
                             }
                             file_put_contents($absPath, $importSvc->reconstructDocument($flat));
                         }

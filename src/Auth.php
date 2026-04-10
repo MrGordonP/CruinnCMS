@@ -409,7 +409,7 @@ class Auth
 
         // Platform editor mode: platform auth is higher trust than instance auth.
         // Allow all /admin/* AJAX calls through when editing the platform itself.
-        if (!empty($_SESSION['_platform_editor_mode'])
+        if (!empty($_SESSION['_platform_editor_instance'])
             && \Cruinn\Platform\PlatformAuth::check()
         ) {
             return null;

@@ -75,7 +75,7 @@ class PageController extends BaseController
         // ── File mode: serve raw static HTML file, no layout wrapping ──────
         if ($renderMode === 'file') {
             $filePath = $page['render_file'] ?? '';
-            $absPath  = dirname(__DIR__, 2) . '/public' . $filePath;
+            $absPath  = CRUINN_PUBLIC . $filePath;
             if ($filePath && file_exists($absPath)) {
                 header('Content-Type: text/html; charset=UTF-8');
                 readfile($absPath);
@@ -167,43 +167,12 @@ class PageController extends BaseController
     }
 
     /**
-     * Get all content blocks for a page, ordered by sort_order.
-     * Each block's JSON `content` field is decoded into a PHP array.
-     * Builds a nested tree using parent_block_id.
+     * Legacy content_blocks fallback — table no longer exists.
+     * Pages without cruinn_blocks simply render empty.
      */
     private function getBlocks(int $pageId): array
     {
-        $blocks = $this->db->fetchAll(
-            'SELECT * FROM content_blocks WHERE parent_type = ? AND parent_id = ? ORDER BY sort_order ASC',
-            ['page', $pageId]
-        );
-
-        foreach ($blocks as &$block) {
-            $block['content'] = json_decode($block['content'], true) ?? [];
-            $block['settings'] = json_decode($block['settings'] ?? '{}', true) ?? [];
-            $block['children'] = [];
-        }
-        unset($block);
-
-        // Build tree
-        $indexed = [];
-        foreach ($blocks as &$block) {
-            $indexed[$block['id']] = &$block;
-        }
-        unset($block);
-
-        $tree = [];
-        foreach ($blocks as &$block) {
-            $pid = $block['parent_block_id'] ?? null;
-            if ($pid && isset($indexed[$pid])) {
-                $indexed[$pid]['children'][] = &$block;
-            } else {
-                $tree[] = &$block;
-            }
-        }
-        unset($block);
-
-        return $tree;
+        return [];
     }
 
     /**
@@ -252,54 +221,8 @@ class PageController extends BaseController
      */
     private function getTemplateBlocks(array $tpl): array
     {
-        $tplId = (int)($tpl['id'] ?? 0);
-        if ($tplId === 0) {
-            return ['header' => [], 'footer' => []];
-        }
-
-        $blocks = $this->db->fetchAll(
-            'SELECT * FROM content_blocks WHERE parent_type = ? AND parent_id = ? AND zone IN (?, ?) ORDER BY zone, sort_order ASC',
-            ['template', $tplId, 'header', 'footer']
-        );
-
-        foreach ($blocks as &$block) {
-            $block['content'] = json_decode($block['content'], true) ?? [];
-            $block['settings'] = json_decode($block['settings'] ?? '{}', true) ?? [];
-            $block['children'] = [];
-        }
-        unset($block);
-
-        // Group by zone and build trees
-        $grouped = ['header' => [], 'footer' => []];
-        foreach ($blocks as $b) {
-            $z = $b['zone'] ?? 'body';
-            if (isset($grouped[$z])) {
-                $grouped[$z][] = $b;
-            }
-        }
-
-        // Build trees for each zone (same tree-building as getBlocks)
-        foreach ($grouped as $zone => &$zoneBlocks) {
-            $indexed = [];
-            foreach ($zoneBlocks as &$block) {
-                $indexed[$block['id']] = &$block;
-            }
-            unset($block);
-
-            $tree = [];
-            foreach ($zoneBlocks as &$block) {
-                $pid = $block['parent_block_id'] ?? null;
-                if ($pid && isset($indexed[$pid])) {
-                    $indexed[$pid]['children'][] = &$block;
-                } else {
-                    $tree[] = &$block;
-                }
-            }
-            unset($block);
-            $zoneBlocks = $tree;
-        }
-        unset($zoneBlocks);
-
-        return $grouped;
+        // Legacy content_blocks zone system — table no longer exists.
+        // Template zones now resolved via canvas_page_id on page_templates.
+        return ['header' => [], 'footer' => []];
     }
 }

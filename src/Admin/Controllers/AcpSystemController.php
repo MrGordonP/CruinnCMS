@@ -205,7 +205,7 @@ class AcpSystemController extends BaseController
             [$dbName]
         );
 
-        $uploadsPath = dirname(__DIR__, 3) . '/public/uploads';
+        $uploadsPath = CRUINN_PUBLIC . '/uploads';
         $uploadsSize = 0;
         if (is_dir($uploadsPath)) {
             $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($uploadsPath));
@@ -389,7 +389,7 @@ class AcpSystemController extends BaseController
         $zip->addFile($sqlFile, 'database/' . basename($sqlFile));
 
         if ($includeMedia) {
-            $uploadsDir = dirname(__DIR__, 3) . '/public/uploads';
+            $uploadsDir = CRUINN_PUBLIC . '/uploads';
             if (is_dir($uploadsDir)) {
                 $iterator = new \RecursiveIteratorIterator(
                     new \RecursiveDirectoryIterator($uploadsDir, \RecursiveDirectoryIterator::SKIP_DOTS),

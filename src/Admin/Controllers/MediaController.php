@@ -13,6 +13,21 @@ use Cruinn\App;
 class MediaController extends \Cruinn\Controllers\BaseController
 {
     /**
+     * Resolve the storage slug for the current context.
+     * Platform editor → '__platform__' or the instance slug from session.
+     * Instance admin  → basename of the active instance directory.
+     */
+    private function storageSlug(): string
+    {
+        $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
+        if ($editorInstance !== null && $editorInstance !== '') {
+            return basename($editorInstance);
+        }
+        $dir = App::instanceDir();
+        return $dir ? basename($dir) : '__default__';
+    }
+
+    /**
      * POST /admin/upload — Handle file upload.
      * Returns JSON with the uploaded file URL.
      */
@@ -45,9 +60,10 @@ class MediaController extends \Cruinn\Controllers\BaseController
         $isDoc   = in_array($ext, ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip']);
         $typeDir = $isImage ? 'media' : ($isDoc ? 'documents' : 'media');
 
-        // Organise into year/month subdirectories
-        $subdir   = date('Y/m');
-        $uploadDir = dirname(__DIR__, 3) . '/public/storage/' . $typeDir . '/' . $subdir;
+        // Instance-scoped storage path
+        $slug      = $this->storageSlug();
+        $subdir    = date('Y/m');
+        $uploadDir = CRUINN_PUBLIC . '/storage/' . $slug . '/' . $typeDir . '/' . $subdir;
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
         }
@@ -63,7 +79,7 @@ class MediaController extends \Cruinn\Controllers\BaseController
             $this->resizeImage($destination, 1920); // Max 1920px wide
         }
 
-        $url = '/storage/' . $typeDir . '/' . $subdir . '/' . $filename;
+        $url = '/storage/' . $slug . '/' . $typeDir . '/' . $subdir . '/' . $filename;
         $this->logActivity('upload', 'file', null, htmlspecialchars($file['name'], ENT_QUOTES, 'UTF-8'));
 
         $this->json([
@@ -76,20 +92,21 @@ class MediaController extends \Cruinn\Controllers\BaseController
 
     /**
      * GET /admin/media — List uploaded media files as JSON.
-     * Scans the uploads directory and returns file metadata.
+     * Scans the instance-scoped uploads directory and returns file metadata.
      */
     public function listMedia(): void
     {
-        // Scan both storage/media (new) and uploads/ (legacy) for backward compat
-        $publicRoot = dirname(__DIR__, 3) . '/public';
-        $scanDirs = [
-            $publicRoot . '/storage/media',
-            $publicRoot . '/uploads',  // legacy — keep until all instances migrated
+        $publicRoot = CRUINN_PUBLIC;
+        $slug       = $this->storageSlug();
+        $scanDirs   = [
+            $publicRoot . '/storage/' . $slug . '/media',
+            $publicRoot . '/uploads',                     // legacy — keep until migrated
         ];
         $search = $this->query('q', '');
         $files = [];
         $config = App::config('uploads');
         $imageExts = $config['image_types'] ?? ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $seen = [];
 
         foreach ($scanDirs as $scanDir) {
             if (!is_dir($scanDir)) continue;
@@ -104,6 +121,10 @@ class MediaController extends \Cruinn\Controllers\BaseController
 
                 $relativePath = str_replace('\\', '/', substr($file->getPathname(), strlen($publicRoot)));
                 $name = $file->getFilename();
+
+                // Deduplicate across scan directories
+                if (isset($seen[$relativePath])) continue;
+                $seen[$relativePath] = true;
 
                 // Filter by search term
                 if ($search !== '' && stripos($name, $search) === false) continue;

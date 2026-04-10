@@ -317,10 +317,9 @@ html.admin-layout-wide .admin-wrap {
     flex: 1;
 }
 
-/* When the editor is loaded inside the container, remove padding and fill height */
+/* When the editor is loaded, remove padding but allow natural scroll */
 .admin-content:has(#editor-wrap) {
     padding: 0;
-    overflow: hidden;
 }
 
 .admin-flash {
