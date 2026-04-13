@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.5`
-**HEAD:** `(see git log)` — feat(editor): Properties panel collapse + code view clean HTML
+**Current version:** `v1.0.0-beta.6`
+**HEAD:** `(see git log)` — feat: user profile, cross-domain passthrough, editor improvements, module migration renumbering
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -192,6 +192,7 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 - **v1.0.0-beta.3** (`bc70dd2`) — Release tooling: `dev/build-release.sh`, hostname-based instance routing, per-instance online toggle, `CRUINN_ROOT` depth fix for cPanel.
 - **v1.0.0-beta.4** — Editor overhaul: killed Editor 2 completely (deleted 11 files, stubbed `content_blocks` refs), removed council templates, platform editor CSS file editing via `?file=` handler with cPanel path resolution, code view toggle fix, code view CSS layout improvements (`:has(#editor-code-area)` rules), block tree + properties panel scroll constraints (in progress).
 - **v1.0.0-beta.5** — Editor UX: Properties panel accordions start collapsed (except Identity), code view shows clean publishable HTML (block→tag serialization via `blocksToHtml()`), CSS class persistence through `css_props._class`, Collapsed checkbox in Identity panel.
+- **v1.0.0-beta.6** — User profile (`/profile` GET/POST), cross-domain passthrough tokens (HMAC-signed, 60s validity), editor visible outlines + layout container min-sizes + resize handles, module migration renumbering to `001_*_core.sql`, ImportService fragment file support, MySQL 8 information_schema case fix.
 
 ---
 
