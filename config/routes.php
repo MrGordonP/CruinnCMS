@@ -75,6 +75,10 @@ return function (Cruinn\Router $router) {
     $router->get('/reset-password/{token}',    [AuthController::class, 'showResetPassword']);
     $router->post('/reset-password/{token}',   [AuthController::class, 'resetPassword']);
 
+    // -- User Profile -----------------------------------------------
+    $router->get('/profile',                   [AuthController::class, 'showProfile']);
+    $router->post('/profile',                  [AuthController::class, 'updateProfile']);
+
     // -- Admin Panel ------------------------------------------------
     $router->get('/admin',                       [AcpController::class, 'index']);
     $router->get('/admin/dashboard',             [AdminController::class, 'dashboard']);

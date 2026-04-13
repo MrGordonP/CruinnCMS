@@ -75,21 +75,6 @@ CREATE TABLE IF NOT EXISTS social_inbox (
     CONSTRAINT fk_si_account FOREIGN KEY (social_account_id) REFERENCES social_accounts(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ── Mailing lists for content distribution ───────────────────
-CREATE TABLE IF NOT EXISTS mailing_lists (
-    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    name            VARCHAR(255)  NOT NULL,
-    description     TEXT          NULL,
-    is_active       TINYINT(1)    NOT NULL DEFAULT 1,
-    created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Seed default lists
-INSERT INTO mailing_lists (name, description) VALUES
-    ('All Members', 'Every member in the directory'),
-    ('Council',     'Council members only'),
-    ('Newsletter',  'Newsletter subscribers');
-
 -- ── Track which content was distributed where ────────────────
 CREATE TABLE IF NOT EXISTS content_distributions (
     id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

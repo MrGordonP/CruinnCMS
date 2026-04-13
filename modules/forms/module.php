@@ -10,7 +10,9 @@ return [
     'name'         => 'Forms',
     'description'  => 'Dynamic form builder with custom fields, validation, approval workflow, and CSV export.',
     'provides'     => ['forms'],
-    'migrations'   => ['020_forms.sql'],
+    'migrations'   => [
+        __DIR__ . '/migrations/001_forms_core.sql',
+    ],
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [

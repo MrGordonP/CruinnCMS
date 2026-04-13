@@ -29,7 +29,7 @@ return [
     },
 
     'migrations' => [
-        __DIR__ . '/migrations/005_content_articles.sql',
+        __DIR__ . '/migrations/001_articles_core.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

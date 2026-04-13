@@ -36,7 +36,7 @@ return [
     },
 
     'migrations' => [
-        __DIR__ . '/migrations/004_event_enhancements.sql',
+        __DIR__ . '/migrations/001_events_core.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

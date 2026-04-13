@@ -46,6 +46,7 @@
                     <?php endif; ?>
                 </td>
             </tr>
+            <?php if (array_key_exists('email_verified_at', $user)): ?>
             <tr>
                 <th>Email Verified</th>
                 <td>
@@ -57,6 +58,7 @@
                     <?php endif; ?>
                 </td>
             </tr>
+            <?php endif; ?>
             <tr>
                 <th>Last Login</th>
                 <td>

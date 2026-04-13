@@ -7,8 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
     <link rel="stylesheet" href="/css/platform.css">
 </head>
-<body class="platform-body">
-<script>if(localStorage.getItem('platform-layout-wide')==='1')document.documentElement.classList.add('platform-layout-wide');</script>
+<body class="platform-body<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/editor') ? ' platform-editor-page' : '' ?>">
+<script>document.documentElement.classList.add('platform-layout-wide');</script>
 <div class="platform-wrap"><aside class="platform-sidebar"><div class="platform-sidebar-hero"><a href="/cms/dashboard"><img src="/brand/cruinn-favicon.svg" alt="Cruinn CMS">
 </a>
 <div class="platform-sidebar-wordmark">
@@ -44,7 +44,7 @@
         ?>
 <nav class="platform-sidebar-nav" id="platform-sidebar-nav">
     <a href="/cms/dashboard">
-        span>Dashboard</span>
+        <span>Dashboard</span>
 </a>
 <a href="/cms/settings"><span>Settings</span></a>
 <a href="/cms/source"<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/source') ? ' class="active"' : '' ?>><span>Source Files</span></a>

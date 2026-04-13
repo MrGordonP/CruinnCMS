@@ -226,9 +226,15 @@ class PlatformController
             exit;
         }
 
-        // Platform auth required for auto-login.
-        // Not present (e.g. cross-domain call) — send to instance login instead.
-        if (!PlatformAuth::check()) {
+        // Check for token-based auth (cross-domain passthrough)
+        $token = $_GET['pt'] ?? null;
+        $tokenValid = false;
+        if ($token) {
+            $tokenValid = $this->validatePassthroughToken($token, $to);
+        }
+
+        // Platform session auth (same-domain) or valid token required
+        if (!$tokenValid && !PlatformAuth::check()) {
             header('Location: /login');
             exit;
         }
@@ -248,6 +254,75 @@ class PlatformController
         \Cruinn\Auth::loginById((int) $user['id']);
         header('Location: ' . $to);
         exit;
+    }
+
+    /**
+     * Generate a signed passthrough token for cross-domain admin access.
+     * Token is valid for 60 seconds.
+     */
+    public static function generatePassthroughToken(string $instance, string $destination): string
+    {
+        $cred = PlatformAuth::dbConfig();
+        $secret = $cred['password'] ?? '';  // Use DB password as HMAC secret
+        if (!$secret) {
+            // Fallback to credential file password hash
+            $path = dirname(__DIR__, 3) . '/config/CruinnCMS.php';
+            $cfg = file_exists($path) ? require $path : [];
+            $secret = $cfg['password_hash'] ?? 'cruinn-fallback-secret';
+        }
+
+        $expires = time() + 60;  // 60-second validity
+        $payload = base64_encode(json_encode([
+            'i' => $instance,
+            'd' => $destination,
+            'e' => $expires,
+        ]));
+        $sig = hash_hmac('sha256', $payload, $secret);
+
+        return $payload . '.' . $sig;
+    }
+
+    /**
+     * Validate a passthrough token.
+     */
+    private function validatePassthroughToken(string $token, string $expectedDest): bool
+    {
+        $parts = explode('.', $token);
+        if (count($parts) !== 2) {
+            return false;
+        }
+
+        [$payload, $sig] = $parts;
+
+        $cred = PlatformAuth::dbConfig();
+        $secret = $cred['password'] ?? '';
+        if (!$secret) {
+            $path = dirname(__DIR__, 3) . '/config/CruinnCMS.php';
+            $cfg = file_exists($path) ? require $path : [];
+            $secret = $cfg['password_hash'] ?? 'cruinn-fallback-secret';
+        }
+
+        $expectedSig = hash_hmac('sha256', $payload, $secret);
+        if (!hash_equals($expectedSig, $sig)) {
+            return false;
+        }
+
+        $data = json_decode(base64_decode($payload), true);
+        if (!$data || empty($data['e']) || empty($data['d'])) {
+            return false;
+        }
+
+        // Check expiry
+        if (time() > $data['e']) {
+            return false;
+        }
+
+        // Destination must match (prevents token reuse for different targets)
+        if ($data['d'] !== $expectedDest) {
+            return false;
+        }
+
+        return true;
     }
 
     // â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -397,7 +472,21 @@ class PlatformController
 
                     // ── Auto-import: parse file content into typed blocks on first open ──
                     $renderMode = $page['render_mode'] ?? 'cruinn';
-                    if (in_array($renderMode, ['html', 'file'], true) && empty($flat)) {
+                    $docOnlyTypes = ['doc-html', 'doc-head', 'doc-body'];
+                    $hasVisibleBlocks = !empty(array_filter($flat, fn($r) => !in_array($r['block_type'], $docOnlyTypes, true)));
+                    if (in_array($renderMode, ['html', 'file'], true) && !$hasVisibleBlocks) {
+                        // Clear any existing doc-only blocks before re-importing
+                        if (!empty($flat)) {
+                            $db->execute(
+                                'DELETE FROM cruinn_draft_blocks WHERE page_id = ?',
+                                [$pageId]
+                            );
+                            $db->execute(
+                                'DELETE FROM cruinn_page_state WHERE page_id = ?',
+                                [$pageId]
+                            );
+                            $flat = [];
+                        }
                         $importSvc = new \Cruinn\Services\ImportService();
                         $absPath   = $renderMode === 'file'
                             ? $this->resolveRenderFilePath($page['render_file'] ?? '')
@@ -438,6 +527,7 @@ class PlatformController
             }
 
             // Code-only files (CSS, JS, etc.) — start in code view with raw content
+            // PHP/HTML files render as blocks on the canvas (auto-imported above)
             $startInCodeView = false;
             $htmlContent     = null;
             if ($page && ($page['render_mode'] ?? '') === 'file') {
@@ -1514,9 +1604,9 @@ class PlatformController
 
     private function pdoGetTableNames(\PDO $pdo, string $dbName): array
     {
-        $stmt = $pdo->prepare("SELECT table_name FROM information_schema.tables WHERE table_schema = ?");
+        $stmt = $pdo->prepare("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?");
         $stmt->execute([$dbName]);
-        return array_column($stmt->fetchAll(), 'table_name');
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN, 0);
     }
 
     private function pdoGetTablePk(\PDO $pdo, string $dbName, string $table): ?string
@@ -1553,9 +1643,10 @@ class PlatformController
         try {
             [$pdo, $dbName, $instanceLabel] = $this->resolveDbConnection($instanceFolder);
             $stmt = $pdo->prepare(
-                "SELECT table_name, engine, table_rows, table_collation,
-                        ROUND((data_length + index_length) / 1024, 1) AS total_kb
-                 FROM information_schema.tables WHERE table_schema = ? ORDER BY table_name"
+                "SELECT TABLE_NAME AS table_name, ENGINE AS engine, TABLE_ROWS AS table_rows,
+                        TABLE_COLLATION AS table_collation,
+                        ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024, 1) AS total_kb
+                 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME"
             );
             $stmt->execute([$dbName]);
             $tables = $stmt->fetchAll();

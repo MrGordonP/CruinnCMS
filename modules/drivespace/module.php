@@ -11,7 +11,9 @@ return [
     'name'         => 'Drivespace',
     'description'  => 'Google Drive-style storage with folder tree, upload, version history, and sharing.',
     'provides'     => ['drivespace'],
-    'migrations'   => ['016_file_manager.sql'],
+    'migrations'   => [
+        __DIR__ . '/migrations/001_drivespace_core.sql',
+    ],
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [

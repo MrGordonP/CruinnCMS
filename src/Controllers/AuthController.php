@@ -212,6 +212,118 @@ class AuthController extends BaseController
         $this->redirect('/login');
     }
 
+    // ── User Profile ───────────────────────────────────────────────
+
+    /**
+     * GET /profile — Show the logged-in user's profile.
+     */
+    public function showProfile(): void
+    {
+        if (!Auth::check()) {
+            $_SESSION['redirect_after_login'] = '/profile';
+            $this->redirect('/login');
+        }
+
+        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [Auth::userId()]);
+        if (!$user) {
+            Auth::logout();
+            $this->redirect('/login');
+        }
+
+        $this->render('public/profile', [
+            'title' => 'My Profile',
+            'user'  => $user,
+        ]);
+    }
+
+    /**
+     * POST /profile — Update the logged-in user's profile.
+     */
+    public function updateProfile(): void
+    {
+        if (!Auth::check()) {
+            $this->redirect('/login');
+        }
+
+        $userId = Auth::userId();
+        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [$userId]);
+        if (!$user) {
+            Auth::logout();
+            $this->redirect('/login');
+        }
+
+        $displayName = trim($this->input('display_name', ''));
+        $email = strtolower(trim($this->input('email', '')));
+        $currentPassword = $this->input('current_password', '');
+        $newPassword = $this->input('new_password', '');
+        $confirmPassword = $this->input('confirm_password', '');
+
+        $errors = [];
+
+        // Validate display name
+        if (empty($displayName)) {
+            $errors['display_name'] = 'Display name is required.';
+        }
+
+        // Validate email
+        if (empty($email)) {
+            $errors['email'] = 'Email is required.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Invalid email address.';
+        } else {
+            // Check for uniqueness (excluding self)
+            $existing = $this->db->fetchColumn(
+                'SELECT COUNT(*) FROM users WHERE email = ? AND id != ?',
+                [$email, $userId]
+            );
+            if ($existing) {
+                $errors['email'] = 'This email is already in use.';
+            }
+        }
+
+        // Password change (optional)
+        if (!empty($newPassword) || !empty($confirmPassword)) {
+            if (empty($currentPassword)) {
+                $errors['current_password'] = 'Current password is required to set a new password.';
+            } elseif (!password_verify($currentPassword, $user['password_hash'])) {
+                $errors['current_password'] = 'Current password is incorrect.';
+            }
+
+            if (strlen($newPassword) < 8) {
+                $errors['new_password'] = 'New password must be at least 8 characters.';
+            }
+
+            if ($newPassword !== $confirmPassword) {
+                $errors['confirm_password'] = 'Passwords do not match.';
+            }
+        }
+
+        if (!empty($errors)) {
+            $this->render('public/profile', [
+                'title'  => 'My Profile',
+                'user'   => array_merge($user, ['display_name' => $displayName, 'email' => $email]),
+                'errors' => $errors,
+            ]);
+            return;
+        }
+
+        // Update user
+        $updateData = [
+            'display_name' => $displayName,
+            'email'        => $email,
+        ];
+
+        if (!empty($newPassword)) {
+            $updateData['password_hash'] = Auth::hashPassword($newPassword);
+        }
+
+        $this->db->update('users', $updateData, 'id = ?', [$userId]);
+
+        $this->logActivity('profile_update', 'user', $userId, 'Profile updated');
+        Auth::flash('success', 'Your profile has been updated.');
+        $this->redirect('/profile');
+    }
+
     /**
      * Determine the appropriate landing page for the current user's role.
      */
@@ -230,9 +342,9 @@ class AuthController extends BaseController
         // Legacy fallback — all roles land on the user portal; admin/council
         // can navigate to their control panel from there.
         return match (Auth::role()) {
-            'admin'   => '/members/profile',
-            'council' => '/members/profile',
-            'member'  => '/members/profile',
+            'admin'   => '/profile',
+            'council' => '/profile',
+            'member'  => '/profile',
             default   => '/',
         };
     }

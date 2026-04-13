@@ -1,3 +1,4 @@
+<?php
 $isNew = empty($user['id']);
 \Cruinn\Template::requireCss('admin-members.css');
 $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];

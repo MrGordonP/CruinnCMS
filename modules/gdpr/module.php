@@ -10,7 +10,10 @@ return [
     'name'         => 'GDPR / Privacy',
     'description'  => 'Privacy policy, cookie consent, Subject Access Request data export, and Right-to-Erasure account deletion.',
     'provides'     => ['gdpr'],
-    'migrations'   => ['014_gdpr.sql', '015_deleted_accounts.sql'],
+    'migrations'   => [
+        __DIR__ . '/migrations/001_gdpr_core.sql',
+        __DIR__ . '/migrations/002_deleted_accounts.sql',
+    ],
     'template_path' => __DIR__ . '/templates',
 
     'dashboard_sections' => [

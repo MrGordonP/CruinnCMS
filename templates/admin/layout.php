@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Admin') ?> — <?= e(\Cruinn\App::config('site.name', 'Admin')) ?></title>
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-base.css') ?>">
+    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= file_exists(CRUINN_PUBLIC . '/css/admin-base.css') ? filemtime(CRUINN_PUBLIC . '/css/admin-base.css') : 0 ?>">
     <?php foreach (\Cruinn\Template::flushCss() as $_cssFile): ?>
-    <link rel="stylesheet" href="<?= url('/css/' . e($_cssFile)) ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/' . $_cssFile) ?>">
+    <link rel="stylesheet" href="<?= url('/css/' . e($_cssFile)) ?>?v=<?= file_exists(CRUINN_PUBLIC . '/css/' . $_cssFile) ? filemtime(CRUINN_PUBLIC . '/css/' . $_cssFile) : 0 ?>">
     <?php endforeach; ?>
     <script>if(localStorage.getItem('admin-layout-wide')==='1')document.documentElement.classList.add('admin-layout-wide');</script>
 </head>
@@ -210,7 +210,7 @@ $adminModules = [
     'rte.js',
     'gallery.js',
     'menu-editor.js',
-    'social-hub.js',
+    'template-editor.js',
     'dashboard-config.js',
     'nav-config.js',
     'index.js',

@@ -11,7 +11,9 @@ return [
     'name'         => 'Social Media',
     'description'  => 'Social Media Command Centre — unified feed, inbox, content distribution, and account management.',
     'provides'     => ['social'],
-    'migrations'   => ['007_social_media.sql'],
+    'migrations'   => [
+        __DIR__ . '/migrations/001_social_core.sql',
+    ],
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [

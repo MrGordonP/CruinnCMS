@@ -368,9 +368,11 @@ class ImportService
         // ── Isolate body content ───────────────────────────────────────
 
         if (!preg_match('/<body[^>]*>(.*)<\/body>/is', $src, $m)) {
-            return $blocks;
+            // Fragment file (no <body> wrapper) — treat entire source as body
+            $bodySrc = $src;
+        } else {
+            $bodySrc = $m[1];
         }
-        $bodySrc = $m[1];
 
         // ── Build flat segment list from token_get_all ─────────────────
         // Prepend an opening+closing PHP tag so token_get_all treats the

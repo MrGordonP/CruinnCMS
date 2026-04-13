@@ -164,9 +164,16 @@ class EditorRenderService
                 $extraAttrs = '';
             }
 
+            // CSS class from css_props._class
+            $cssProps = json_decode($row['css_props'] ?? '{}', true) ?: [];
+            $cssClass = $cssProps['_class'] ?? '';
+            if ($cssClass !== '') {
+                $extraAttrs .= ' class="' . htmlspecialchars($cssClass, ENT_QUOTES, 'UTF-8') . '"';
+            }
+
             // Emit original HTML attributes from imported blocks
             foreach ($cfg['_attrs'] ?? [] as $k => $v) {
-                if ($k === 'id') { continue; }
+                if ($k === 'id' || $k === 'class') { continue; }
                 $extraAttrs .= ' ' . htmlspecialchars($k, ENT_QUOTES, 'UTF-8')
                              . '="' . htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8') . '"';
             }

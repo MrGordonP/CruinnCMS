@@ -89,11 +89,16 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             return;
         }
 
-        // Check if user has a linked member record
-        $member = $this->db->fetch(
-            'SELECT * FROM members WHERE user_id = ?',
-            [$id]
-        );
+        // Check if user has a linked member record (membership module optional)
+        $member = null;
+        try {
+            $member = $this->db->fetch(
+                'SELECT * FROM members WHERE user_id = ?',
+                [$id]
+            );
+        } catch (\PDOException $e) {
+            // members table doesn't exist (membership module not installed)
+        }
 
         // Recent activity
         $activity = $this->db->fetchAll(

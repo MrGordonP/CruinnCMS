@@ -160,6 +160,8 @@ class CruinnController extends BaseController
             'templateCanvasCss'    => '',
             'startInCodeView' => false,
             'htmlContent'     => null,
+            'editorPageBase'  => null,
+            'apiBase'         => '/admin/editor',
         ]);
     }
 
@@ -447,6 +449,7 @@ class CruinnController extends BaseController
             'docHeadBlock'      => $docHeadBlock,
             'docBodyBlock'      => $docBodyBlock,
             'editorPageBase'    => null,
+            'apiBase'           => '/admin/editor',
         ]);
     }
 
@@ -985,7 +988,12 @@ class CruinnController extends BaseController
         $this->db->execute('DELETE FROM cruinn_draft_blocks WHERE page_id = ?', [$pageId]);
         $this->db->execute('DELETE FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
 
-        $this->json(['success' => true, 'redirect' => '/admin/editor/' . $pageId . '/edit']);
+        if (str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/')) {
+            $redirect = '/cms/editor?instance=__platform__&page=' . $pageId;
+        } else {
+            $redirect = '/admin/editor/' . $pageId . '/edit';
+        }
+        $this->json(['success' => true, 'redirect' => $redirect]);
     }
 
     /**

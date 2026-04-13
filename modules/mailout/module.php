@@ -27,9 +27,7 @@ return [
     },
 
     'migrations' => [
-        __DIR__ . '/migrations/032_email_broadcasts.sql',
-        __DIR__ . '/migrations/034_broadcast_target_type.sql',
-        __DIR__ . '/migrations/035_member_year_broadcast_targets.sql',
+        __DIR__ . '/migrations/001_mailout_core.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

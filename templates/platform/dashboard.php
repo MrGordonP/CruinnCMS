@@ -44,8 +44,12 @@
                 </div>
                 <div class="platform-instance-actions">
                     <?php if ($instance['online']): ?>
-                    <a href="<?= e($instance['base_url']) ?>/admin/platform-passthrough?to=/admin/dashboard" class="platform-btn platform-btn-primary">Open Admin</a>
-                    <a href="<?= e($instance['base_url']) ?>/admin/settings/site" class="platform-btn platform-btn-secondary">ACP Settings</a>
+                    <?php
+                        $adminToken = \Cruinn\Platform\Controllers\PlatformController::generatePassthroughToken($instance['folder_name'], '/admin/dashboard');
+                        $acpToken = \Cruinn\Platform\Controllers\PlatformController::generatePassthroughToken($instance['folder_name'], '/admin/settings/site');
+                    ?>
+                    <a href="<?= e($instance['base_url']) ?>/admin/platform-passthrough?to=/admin/dashboard&amp;pt=<?= urlencode($adminToken) ?>" class="platform-btn platform-btn-primary">Open Admin</a>
+                    <a href="<?= e($instance['base_url']) ?>/admin/platform-passthrough?to=/admin/settings/site&amp;pt=<?= urlencode($acpToken) ?>" class="platform-btn platform-btn-secondary">ACP Settings</a>
                     <a href="/cms/database?instance=<?= e(urlencode($instance['folder_name'])) ?>" class="platform-btn platform-btn-secondary">DB Browser</a>
                     <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/toggle" style="display:inline">
                         <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">

@@ -119,6 +119,29 @@
     margin: 0;
 }
 
+/* ── Collapsible panel sections (Add Block, Block Tree) ───────── */
+.editor-panel-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.editor-panel-chevron {
+    font-size: 0.6rem;
+    transition: transform 0.15s;
+}
+
+.editor-panel-section.collapsed .editor-panel-chevron {
+    transform: rotate(-90deg);
+}
+
+.editor-panel-section.collapsed .editor-palette,
+.editor-panel-section.collapsed .editor-block-tree {
+    display: none;
+}
+
 /* ── Site Builder nav in left panel ───────────────────────────── */
 .editor-site-nav {
     padding-bottom: 0;
@@ -473,13 +496,58 @@
 
 .editor-mode [data-block] {
     position: relative;
-    transition: outline 0.08s;
+    transition: outline 0.08s, box-shadow 0.08s;
+    /* Subtle visible outline for ALL blocks so they're always visible in editor */
+    outline: 1px dashed rgba(29, 158, 117, 0.35);
+    outline-offset: 1px;
 }
 
 .editor-mode [data-block]:hover {
     outline: 1px solid #1d9e75;
     outline-offset: 2px;
     cursor: grab;
+}
+
+/* ── Layout container blocks — ensure visible minimum size ─────── */
+
+.editor-mode [data-block-type="columns"],
+.editor-mode [data-block-type="section"],
+.editor-mode [data-block-type="form"],
+.editor-mode [data-block-type="list"],
+.editor-mode [data-block-type="table"] {
+    min-height: 60px;
+    min-width: 100px;
+}
+
+/* Columns block: default 2-column grid layout */
+.editor-mode [data-block-type="columns"] {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+/* Section block: default block layout */
+.editor-mode [data-block-type="section"] {
+    display: block;
+    padding: 0.5rem;
+}
+
+/* Empty layout containers show placeholder text */
+.editor-mode [data-block-type="columns"]:empty::after,
+.editor-mode [data-block-type="section"]:empty::after,
+.editor-mode [data-block-type="form"]:empty::after,
+.editor-mode [data-block-type="list"]:empty::after,
+.editor-mode [data-block-type="table"]:empty::after {
+    content: 'Drop blocks here';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    grid-column: 1 / -1;
+    min-height: 60px;
+    color: rgba(29, 158, 117, 0.5);
+    font-size: 0.8rem;
+    font-style: italic;
+    pointer-events: none;
 }
 
 /* Links are not navigable in the editor — show default cursor, no underline decoration.
@@ -499,6 +567,8 @@
     outline: 2px solid #1d9e75;
     outline-offset: 2px;
     cursor: default;
+    resize: both;
+    overflow: auto;
 }
 
 .editor-mode [data-block].drag-over {
@@ -720,6 +790,16 @@
 .editor-prop-input[readonly] {
     color: #9ca3af;
     background: #f3f4f6;
+}
+
+.editor-prop-code {
+    font-family: Consolas, 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    resize: vertical;
+    tab-size: 4;
+    white-space: pre;
+    overflow-x: auto;
 }
 
 /* Number + unit combos */
