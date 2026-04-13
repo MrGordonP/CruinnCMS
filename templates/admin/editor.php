@@ -332,7 +332,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <div class="editor-panel-section">
-                <h3 class="editor-panel-heading">Add Block</h3>
+                <h3 class="editor-panel-heading editor-panel-toggle" onclick="this.parentElement.classList.toggle('collapsed')">Add Block <span class="editor-panel-chevron">▾</span></h3>
                 <div class="editor-palette">
                     <button class="palette-btn" data-add-block="text">Text</button>
                     <button class="palette-btn" data-add-block="heading">Heading</button>
@@ -351,7 +351,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 </div>
             </div>
             <div class="editor-panel-section" id="editor-tree-section">
-                <h3 class="editor-panel-heading">Block Tree</h3>
+                <h3 class="editor-panel-heading editor-panel-toggle" onclick="this.parentElement.classList.toggle('collapsed')">Block Tree <span class="editor-panel-chevron">▾</span></h3>
                 <div id="editor-block-tree" class="editor-block-tree"></div>
             </div>
         </div>
@@ -454,6 +454,13 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <label>CSS Class</label>
                         <input type="text" id="prop-class" class="editor-prop-input" data-prop-class>
                     </div>
+                    <div class="editor-prop-row">
+                        <label>
+                            <input type="checkbox" id="prop-collapsed">
+                            Collapsed
+                        </label>
+                        <span class="editor-label-hint">Add "collapsed" class (define behaviour in site CSS).</span>
+                    </div>
                     <div class="editor-prop-row" id="prop-zone-assign-row" style="display:none">
                         <label>Template Zone</label>
                         <select class="editor-prop-input" id="prop-zone-assign">
@@ -467,8 +474,20 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 </div>
             </div>
 
+            <!-- PHP Code group (php-code blocks only) -->
+            <div class="editor-accordion collapsed" data-group="php-code" style="display:none">
+                <button class="editor-accordion-toggle">PHP Source</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row">
+                        <textarea id="prop-php-code" class="editor-prop-input editor-prop-code"
+                                  rows="12" spellcheck="false" autocomplete="off"
+                                  placeholder="<?php echo 'Hello'; ?>"></textarea>
+                    </div>
+                </div>
+            </div>
+
             <!-- Typography group -->
-            <div class="editor-accordion" data-group="typography">
+            <div class="editor-accordion collapsed" data-group="typography">
                 <button class="editor-accordion-toggle">Typography</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -569,7 +588,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Spacing group -->
-            <div class="editor-accordion" data-group="spacing">
+            <div class="editor-accordion collapsed" data-group="spacing">
                 <button class="editor-accordion-toggle">Spacing</button>
                 <div class="editor-accordion-body">
                     <?php foreach (['padding' => 'Padding', 'margin' => 'Margin'] as $prop => $label): ?>
@@ -596,7 +615,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Image group (image / site-logo only) -->
-            <div class="editor-accordion" data-group="image" style="display:none">
+            <div class="editor-accordion collapsed" data-group="image" style="display:none">
                 <button class="editor-accordion-toggle">Image</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -636,7 +655,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Site Title group (site-title blocks only) -->
-            <div class="editor-accordion" data-group="site-title" style="display:none">
+            <div class="editor-accordion collapsed" data-group="site-title" style="display:none">
                 <button class="editor-accordion-toggle">Site Title</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -651,7 +670,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Background group -->
-            <div class="editor-accordion" data-group="background">
+            <div class="editor-accordion collapsed" data-group="background">
                 <button class="editor-accordion-toggle">Background</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -703,7 +722,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Border group -->
-            <div class="editor-accordion" data-group="border">
+            <div class="editor-accordion collapsed" data-group="border">
                 <button class="editor-accordion-toggle">Border</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -785,7 +804,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Effects group -->
-            <div class="editor-accordion" data-group="effects">
+            <div class="editor-accordion collapsed" data-group="effects">
                 <button class="editor-accordion-toggle">Effects</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -830,7 +849,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Size & Position group (all blocks) -->
-            <div class="editor-accordion" data-group="size-position">
+            <div class="editor-accordion collapsed" data-group="size-position">
                 <button class="editor-accordion-toggle">Size &amp; Position</button>
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
@@ -924,9 +943,13 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Layout group (section/columns only) -->
-            <div class="editor-accordion" data-group="layout" style="display:none">
+            <div class="editor-accordion collapsed" data-group="layout" style="display:none">
                 <button class="editor-accordion-toggle">Layout</button>
                 <div class="editor-accordion-body">
+                    <div class="editor-prop-row" id="prop-col-count-row">
+                        <label>Column Count</label>
+                        <input type="number" class="editor-prop-input" id="prop-col-count" data-config="columns" min="1" max="12" placeholder="2">
+                    </div>
                     <div class="editor-prop-row">
                         <label>Grid Columns</label>
                         <input type="text" class="editor-prop-input" data-prop="gridTemplateColumns" placeholder="1fr 1fr">
@@ -978,7 +1001,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <!-- Content group (dynamic blocks only) -->
-            <div class="editor-accordion" data-group="content" style="display:none">
+            <div class="editor-accordion collapsed" data-group="content" style="display:none">
                 <button class="editor-accordion-toggle">Content</button>
                 <div class="editor-accordion-body">
                     <!-- event-list config -->

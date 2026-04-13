@@ -97,9 +97,10 @@
 
     var activeBlock = null;
 
-    // Intercept all anchor clicks in the canvas — prevent navigation.
-    // Ctrl+click or Cmd+click opens the href in a new tab (for preview).
+    // Intercept all interactive element clicks in the canvas — prevent navigation/submission.
+    // Ctrl+click or Cmd+click opens anchor href in a new tab (for preview).
     canvas.addEventListener('click', function (e) {
+        // Prevent anchor navigation
         var anchor = e.target.closest('a');
         if (anchor && canvas.contains(anchor)) {
             if ((e.ctrlKey || e.metaKey) && anchor.href) {
@@ -108,10 +109,23 @@
             e.preventDefault();
         }
 
+        // Prevent button clicks from doing anything (form submit, JS handlers, etc.)
+        var button = e.target.closest('button, input[type="submit"], input[type="button"]');
+        if (button && canvas.contains(button)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
         var b = e.target.closest('[data-block]');
         if (!b) { deselect(); return; }
         e.stopPropagation();
         select(b);
+    });
+
+    // Prevent all form submissions inside the canvas
+    canvas.addEventListener('submit', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
     });
 
     document.addEventListener('click', function (e) {
@@ -231,12 +245,18 @@
                 canvas.querySelectorAll('.drag-over, .drag-over-inside').forEach(function (el) {
                     el.classList.remove('drag-over', 'drag-over-inside');
                 });
-                // Container: any block that has child data-block elements
-                var isContainer = !!block.querySelector('[data-block]');
+                // Container: any block that has child data-block elements OR is a layout type
+                var blockType = block.dataset.blockType;
+                var def = BLOCK_DEFS[blockType] || {};
+                var hasChildren = !!block.querySelector('[data-block]');
+                var isContainer = def.isLayout || hasChildren;
                 if (isContainer) {
+                    // Empty layout containers: entire area is drop zone
+                    // Non-empty containers: middle 60% is drop zone
                     var rect = block.getBoundingClientRect();
                     var relY = (e.clientY - rect.top) / rect.height;
-                    if (relY > 0.2 && relY < 0.8) {
+                    var inDropZone = !hasChildren || (relY > 0.2 && relY < 0.8);
+                    if (inDropZone) {
                         block.classList.add('drag-over-inside');
                         e.stopPropagation();
                         return;
@@ -258,11 +278,17 @@
 
                 block.classList.remove('drag-over', 'drag-over-inside');
 
-                var isContainer = !!block.querySelector('[data-block]');
+                var blockType = block.dataset.blockType;
+                var def = BLOCK_DEFS[blockType] || {};
+                var hasChildren = !!block.querySelector('[data-block]');
+                var isContainer = def.isLayout || hasChildren;
                 if (isContainer) {
+                    // Empty layout containers: entire area is drop zone
+                    // Non-empty containers: middle 60% is drop zone
                     var rect = block.getBoundingClientRect();
                     var relY = (e.clientY - rect.top) / rect.height;
-                    if (relY > 0.2 && relY < 0.8) {
+                    var inDropZone = !hasChildren || (relY > 0.2 && relY < 0.8);
+                    if (inDropZone) {
                         // Drop inside the container
                         block.appendChild(dragSrc);
                         reInitAll();
@@ -307,15 +333,17 @@
 
     // ── Section F — Properties panel ────────────────────────────────
 
-    var LAYOUT_TYPES = ['section', 'columns', 'site-header', 'nav-menu'];
+    var LAYOUT_TYPES = ['section', 'columns', 'table', 'site-header', 'nav-menu'];
     var ZONE_TYPES = ['zone'];
     var IMAGE_TYPES = ['image', 'site-logo'];
     var TITLE_TYPES = ['site-title'];
     var DYNAMIC_TYPES = ['event-list'];
     var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include'];
+    var PHP_CODE_TYPES = ['php-code'];
 
     function loadProps(block) {
         var type = block.dataset.blockType;
+        var cs = getComputedStyle(block); // computed styles for reading actual CSS values
 
         // Show/hide groups
         panel.querySelector('.editor-props-empty').style.display = 'none';
@@ -354,10 +382,16 @@
             zoneAcc.style.display = ZONE_TYPES.indexOf(type) !== -1 ? '' : 'none';
         }
 
-        // Layout group only for section/columns
+        // Layout group only for section/columns/table
         var layoutAcc = panel.querySelector('[data-group="layout"]');
         if (layoutAcc) {
             layoutAcc.style.display = LAYOUT_TYPES.indexOf(type) !== -1 ? '' : 'none';
+        }
+
+        // Column count row: only for 'columns' block type
+        var colCountRow = document.getElementById('prop-col-count-row');
+        if (colCountRow) {
+            colCountRow.style.display = type === 'columns' ? '' : 'none';
         }
 
         // Image group for image/site-logo blocks
@@ -370,6 +404,12 @@
         var contentAcc = panel.querySelector('[data-group="content"]');
         if (contentAcc) {
             contentAcc.style.display = CONFIG_TYPES.indexOf(type) !== -1 ? '' : 'none';
+        }
+
+        // PHP Code group
+        var phpCodeAcc = panel.querySelector('[data-group="php-code"]');
+        if (phpCodeAcc) {
+            phpCodeAcc.style.display = PHP_CODE_TYPES.indexOf(type) !== -1 ? '' : 'none';
         }
 
         // Site title group
@@ -389,41 +429,60 @@
         var typeInput = document.getElementById('prop-block-type');
         if (typeInput) { typeInput.value = type || ''; }
         var classInput = panel.querySelector('[data-prop-class]');
-        if (classInput) { classInput.value = block.className.replace('active', '').trim(); }
+        if (classInput) { classInput.value = block.className.replace(/\b(active|collapsed)\b/g, '').replace(/\s+/g, ' ').trim(); }
 
-        // CSS properties
+        // Collapsed checkbox
+        var collapsedCb = document.getElementById('prop-collapsed');
+        if (collapsedCb) { collapsedCb.checked = block.classList.contains('collapsed'); }
+
+        // CSS properties — read computed styles so users see actual values
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
             var prop = inp.dataset.prop;
-            var val = block.style[prop] || '';
+            var val = cs[prop] || '';
+            // Skip transparent/initial values that aren't meaningful
+            var isTransparent = val === 'transparent' || val === 'rgba(0, 0, 0, 0)';
             if (inp.type === 'color') {
                 // Normalise to hex if possible
-                inp.value = rgbToHex(val) || '#000000';
+                inp.value = isTransparent ? '#000000' : (rgbToHex(val) || '#000000');
             } else if (inp.type === 'range') {
                 // Range inputs: use 1 as default when unset (e.g. opacity)
                 inp.value = val !== '' ? val : inp.defaultValue || '1';
+            } else if (inp.type === 'number') {
+                // Number inputs: extract numeric portion only
+                var numMatch = val.match(/^([\d.]+)/);
+                inp.value = numMatch ? numMatch[1] : '';
             } else {
                 // Colour-text inputs paired with a swatch: normalise to hex or empty string
                 if (panel.querySelector('[data-color-swatch="' + prop + '"]')) {
-                    inp.value = rgbToHex(val) || '';
+                    inp.value = isTransparent ? '' : (rgbToHex(val) || '');
                 } else {
-                    inp.value = val;
+                    // For selects, only set if value is a valid option
+                    if (inp.tagName === 'SELECT') {
+                        var hasOption = Array.from(inp.options).some(function (o) { return o.value === val; });
+                        inp.value = hasOption ? val : '';
+                    } else {
+                        inp.value = val;
+                    }
                 }
             }
         });
 
-        // Sync colour swatches to their block CSS values
+        // Sync colour swatches to their block CSS values (from computed styles)
         panel.querySelectorAll('[data-color-swatch]').forEach(function (swatch) {
             var prop = swatch.dataset.colorSwatch;
-            var val = block.style[prop] || '';
-            swatch.value = rgbToHex(val) || '#000000';
+            var val = cs[prop] || '';
+            var isTransparent = val === 'transparent' || val === 'rgba(0, 0, 0, 0)';
+            swatch.value = isTransparent ? '#000000' : (rgbToHex(val) || '#000000');
         });
 
-        // Numeric + unit props
+        // Numeric + unit props — read computed styles
         panel.querySelectorAll('[data-prop-num]').forEach(function (inp) {
             var prop = inp.dataset.propNum;
-            var raw = block.style[prop] || '';
+            // Check inline style first for 'auto', then fall back to computed
+            var inline = block.style[prop] || '';
+            var raw = inline || cs[prop] || '';
             var unitSel = panel.querySelector('[data-unit-for="' + prop + '"]');
-            if (raw === 'auto') {
+            if (inline === 'auto') {
                 inp.value = '';
                 inp.disabled = true;
                 inp.placeholder = 'auto';
@@ -434,6 +493,9 @@
                 inp.value = match ? match[1] : '';
                 if (unitSel && match && match[2]) {
                     unitSel.value = match[2];
+                } else if (unitSel && !match) {
+                    // Reset to default unit when no value
+                    unitSel.value = 'px';
                 }
             }
         });
@@ -449,6 +511,21 @@
                 inp.value = config[key];
             }
         });
+
+        // Columns block: apply grid style from saved column count
+        if (type === 'columns') {
+            var colCount = parseInt(config.columns, 10) || 2;
+            block.style.display = 'grid';
+            block.style.gridTemplateColumns = 'repeat(' + colCount + ', 1fr)';
+            var colCountInp = document.getElementById('prop-col-count');
+            if (colCountInp) { colCountInp.value = colCount; }
+        }
+
+        // PHP Code: populate textarea from block_config._php
+        if (PHP_CODE_TYPES.indexOf(type) !== -1) {
+            var phpCodeTa = document.getElementById('prop-php-code');
+            if (phpCodeTa) { phpCodeTa.value = config._php || ''; }
+        }
 
         // PHP Include: populate template picker + dynamic var rows + live canvas preview
         if (type === 'php-include') {
@@ -494,14 +571,16 @@
             }
         }
 
-        // Text shadow — parse back into sub-fields
+        // Text shadow — parse back into sub-fields (from computed style)
         (function () {
             var tsX = document.getElementById('prop-text-shadow-x');
             var tsY = document.getElementById('prop-text-shadow-y');
             var tsBlur = document.getElementById('prop-text-shadow-blur');
             var tsCol = document.getElementById('prop-text-shadow-color');
             if (!tsX) { return; }
-            var raw = block.style.textShadow || '';
+            var raw = cs.textShadow || '';
+            // Skip 'none' value
+            if (raw === 'none') { raw = ''; }
             var m = raw.match(/^(-?[\d.]+)px\s+(-?[\d.]+)px\s+([\d.]+)px\s+(.+)$/);
             if (m) {
                 tsX.value = m[1];
@@ -515,7 +594,7 @@
             }
         }());
 
-        // Box shadow — parse back into sub-fields
+        // Box shadow — parse back into sub-fields (from computed style)
         (function () {
             var bsX = document.getElementById('prop-box-shadow-x');
             var bsY = document.getElementById('prop-box-shadow-y');
@@ -524,7 +603,9 @@
             var bsCol = document.getElementById('prop-box-shadow-color');
             var bsInset = document.getElementById('prop-box-shadow-inset');
             if (!bsX) { return; }
-            var raw = block.style.boxShadow || '';
+            var raw = cs.boxShadow || '';
+            // Skip 'none' value
+            if (raw === 'none') { raw = ''; }
             var inset = /\binset\b/.test(raw);
             var clean = raw.replace(/\binset\b/g, '').trim();
             var m = clean.match(/^(-?[\d.]+)px\s+(-?[\d.]+)px\s+([\d.]+)px\s+(-?[\d.]+)px\s+(.+)$/);
@@ -544,12 +625,12 @@
             }
         }());
 
-        // Opacity label
+        // Opacity label (from computed style)
         (function () {
             var opInp = panel.querySelector('[data-prop="opacity"]');
             var opLbl = document.getElementById('prop-opacity-label');
             if (opInp && opLbl) {
-                var v = parseFloat(block.style.opacity !== '' ? block.style.opacity : 1);
+                var v = parseFloat(cs.opacity || 1);
                 opLbl.textContent = Math.round(v * 100) + '%';
             }
         }());
@@ -647,6 +728,19 @@
             inp.oninput = function () {
                 writeConfig(block, inp.dataset.config, inp.value);
             };
+            // columns block: update grid-template-columns and sync child sections
+            if (inp.id === 'prop-col-count' && block.dataset.blockType === 'columns') {
+                inp.oninput = function () {
+                    var count = parseInt(inp.value, 10) || 2;
+                    if (count < 1) count = 1;
+                    if (count > 12) count = 12;
+                    writeConfig(block, 'columns', count);
+                    block.style.display = 'grid';
+                    block.style.gridTemplateColumns = 'repeat(' + count + ', 1fr)';
+                    syncColumnsChildren(block, count);
+                    debounceAction();
+                };
+            }
             // nav-menu: live-update canvas preview when menu selection changes
             if (inp.tagName === 'SELECT' && inp.dataset.config === 'menu_id' && block.dataset.blockType === 'nav-menu') {
                 inp.onchange = function () {
@@ -684,14 +778,27 @@
         var classInp = panel.querySelector('[data-prop-class]');
         if (classInp) {
             classInp.oninput = function () {
-                // Preserve 'active' class managed by editor; replace everything else
-                var managed = ['active', 'dragging', 'drag-over'];
+                // Preserve editor-managed and special classes; replace everything else
+                var managed = ['active', 'dragging', 'drag-over', 'collapsed'];
                 var keep = [];
                 block.className.split(' ').forEach(function (c) {
                     if (managed.indexOf(c) !== -1) { keep.push(c); }
                 });
                 var extras = classInp.value.trim().split(/\s+/).filter(Boolean);
                 block.className = keep.concat(extras).join(' ');
+                debounceAction();
+            };
+        }
+
+        // Collapsed checkbox
+        var collapsedCb = document.getElementById('prop-collapsed');
+        if (collapsedCb) {
+            collapsedCb.onchange = function () {
+                if (this.checked) {
+                    block.classList.add('collapsed');
+                } else {
+                    block.classList.remove('collapsed');
+                }
                 debounceAction();
             };
         }
@@ -929,6 +1036,17 @@
             swatch.oninput = applyColor;
             swatch.onchange = applyColor;
         });
+
+        // PHP Code textarea — write back to block_config._php on change
+        if (PHP_CODE_TYPES.indexOf(block.dataset.blockType) !== -1) {
+            var phpCodeTa = document.getElementById('prop-php-code');
+            if (phpCodeTa) {
+                phpCodeTa.oninput = function () {
+                    writeConfig(block, '_php', phpCodeTa.value);
+                    debounceAction();
+                };
+            }
+        }
     }
 
     function buildPhpIncludeVarRows(container, cfg, block) {
@@ -1029,19 +1147,19 @@
         'text': { tag: 'div', inner: '<p>New text block.</p>', initCss: PORTRAIT_INIT },
         'heading': { tag: 'h2', inner: 'New Heading', initCss: PORTRAIT_INIT },
         'image': { tag: 'figure', inner: '<img src="" alt=""><figcaption></figcaption>', initCss: PORTRAIT_INIT },
-        'section': { tag: 'section', inner: '', initCss: PORTRAIT_INIT },
+        'section': { tag: 'section', inner: '', isLayout: true, initCss: PORTRAIT_INIT },
         'columns': {
             tag: 'div', inner: function () {
                 return '<section data-block data-block-type="section" id="' + newId() + '"></section>' +
                     '<section data-block data-block-type="section" id="' + newId() + '"></section>';
-            }, initCss: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }
+            }, isLayout: true, initCss: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }
         },
         'site-header': {
             tag: 'header', inner: function () {
                 return '<div data-block data-block-type="site-logo" id="' + newId() + '"><a href="/"><img src="" alt="Site Logo"></a></div>' +
                     '<div data-block data-block-type="site-title" id="' + newId() + '"><h1 class="site-name">Site Name</h1><p class="site-tagline"></p></div>' +
                     '<nav data-block data-block-type="nav-menu" id="' + newId() + '" data-block-config="{&quot;menu_id&quot;:&quot;&quot;}"></nav>';
-            }, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '120px', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
+            }, isLayout: true, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '120px', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
         },
         'gallery': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
         'html': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
@@ -1051,7 +1169,7 @@
         'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list — visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include — visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
-            tag: 'div', inner: '', defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
+            tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
             initCss: { display: 'block', width: '100%', minHeight: '120px', boxSizing: 'border-box' }
         },
     };
@@ -1095,6 +1213,17 @@
             el.setAttribute('data-zone-name', defCfg.zone_name || 'main');
         }
 
+        // Columns block: create initial 2 column sections
+        if (type === 'columns') {
+            el.dataset.blockConfig = JSON.stringify({ columns: 2 });
+            el.style.display = 'grid';
+            el.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            el.style.gap = '1rem';
+            for (var ci = 0; ci < 2; ci++) {
+                el.appendChild(createColumnSection());
+            }
+        }
+
         // Insert after active block, or append
         if (activeBlock && canvas.contains(activeBlock)) {
             activeBlock.parentNode.insertBefore(el, activeBlock.nextSibling);
@@ -1105,6 +1234,35 @@
         reInitAll();
         select(el);
         recordAction();
+    }
+
+    // Helper: create a section block to act as a column cell
+    function createColumnSection() {
+        var sec = document.createElement('div');
+        sec.id = newId();
+        sec.setAttribute('data-block', '');
+        sec.setAttribute('data-block-type', 'section');
+        sec.style.minHeight = '60px';
+        return sec;
+    }
+
+    // Helper: sync column child sections to match count
+    function syncColumnsChildren(columnsBlock, count) {
+        var children = columnsBlock.querySelectorAll(':scope > [data-block-type="section"]');
+        var current = children.length;
+        if (count > current) {
+            for (var i = current; i < count; i++) {
+                columnsBlock.appendChild(createColumnSection());
+            }
+        } else if (count < current) {
+            for (var i = current - 1; i >= count; i--) {
+                // Only remove if empty
+                if (!children[i].innerHTML.trim()) {
+                    children[i].remove();
+                }
+            }
+        }
+        reInitAll();
     }
 
     function deleteBlock() {
@@ -1305,6 +1463,16 @@
             var innerHtml = cloned.innerHTML.trim();
 
             var cssProps = parseCssProps(block.style);
+
+            // Include CSS class (excluding editor-managed classes) in css_props._class
+            var cssClass = block.className
+                .replace(/\b(active|dragging|drag-over|drag-over-inside)\b/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (cssClass) {
+                if (!cssProps) { cssProps = {}; }
+                cssProps['_class'] = cssClass;
+            }
 
             var config = null;
             if (block.dataset.blockConfig) {
@@ -1682,6 +1850,101 @@
     var _codeFileMode = null; // { rel } when editing a template file
     var _htmlPageMode = false; // true when page render_mode=html
 
+    // Block type → HTML tag mapping (mirrors PHP BlockRegistry)
+    var BLOCK_TAGS = {
+        'text': 'div', 'heading': 'h2', 'image': 'figure', 'gallery': 'div',
+        'html': 'div', 'section': 'section', 'columns': 'div', 'site-logo': 'div',
+        'site-title': 'div', 'nav-menu': 'nav', 'map': 'div', 'event-list': 'div',
+        'php-include': 'div', 'anchor': 'a', 'document': 'span', 'element': 'div',
+        'form': 'form', 'inline': 'span', 'list': 'ul', 'list-item': 'li',
+        'table': 'table', 'php-code': 'div'
+    };
+
+    /**
+     * Convert a block element (and children) to clean publishable HTML.
+     */
+    function blockToHtml(block, indent) {
+        indent = indent || '';
+        var type = block.dataset.blockType || 'text';
+        var tag = BLOCK_TAGS[type] || 'div';
+        var config = {};
+        if (block.dataset.blockConfig) {
+            try { config = JSON.parse(block.dataset.blockConfig); } catch (e) { }
+        }
+
+        // Special handling for heading levels
+        if (type === 'heading' && config.level) {
+            tag = 'h' + Math.min(6, Math.max(1, parseInt(config.level, 10) || 2));
+        }
+
+        // Special handling for php-code: output raw PHP
+        if (type === 'php-code' && config._php) {
+            return indent + config._php;
+        }
+
+        // Build attributes
+        var attrs = '';
+
+        // ID for anchors
+        if (type === 'anchor' && config.id) {
+            attrs += ' id="' + escapeAttr(config.id) + '"';
+        }
+        if (type === 'anchor' && config.href) {
+            attrs += ' href="' + escapeAttr(config.href) + '"';
+        }
+
+        // CSS class (excluding editor classes)
+        var cssClass = (block.className || '')
+            .replace(/\b(active|dragging|drag-over|drag-over-inside|cruinn-php-chip)\b/g, '')
+            .replace(/\s+/g, ' ').trim();
+        if (cssClass) { attrs += ' class="' + escapeAttr(cssClass) + '"'; }
+
+        // Inline style
+        var style = block.style.cssText || '';
+        if (style) { attrs += ' style="' + escapeAttr(style) + '"'; }
+
+        // Image special case
+        if (type === 'image') {
+            var imgSrc = config.src || '';
+            var imgAlt = config.alt || '';
+            var imgHtml = imgSrc ? '<img src="' + escapeAttr(imgSrc) + '" alt="' + escapeAttr(imgAlt) + '">' : '';
+            return indent + '<figure' + attrs + '>' + imgHtml + '</figure>';
+        }
+
+        // Collect child blocks and text content
+        var childBlocks = Array.from(block.querySelectorAll(':scope > [data-block]'));
+        var hasChildBlocks = childBlocks.length > 0;
+
+        var innerContent = '';
+        if (hasChildBlocks) {
+            // Recurse into child blocks
+            innerContent = '\n' + childBlocks.map(function (child) {
+                return blockToHtml(child, indent + '    ');
+            }).join('\n') + '\n' + indent;
+        } else {
+            // Get inner content, stripping editor chip markup for php-code etc.
+            var clone = block.cloneNode(true);
+            clone.querySelectorAll('.cruinn-php-chip-label, .cruinn-php-chip-code').forEach(function (el) { el.remove(); });
+            innerContent = clone.innerHTML.trim();
+        }
+
+        return indent + '<' + tag + attrs + '>' + innerContent + '</' + tag + '>';
+    }
+
+    function escapeAttr(str) {
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Convert entire canvas to clean publishable HTML.
+     */
+    function blocksToHtml() {
+        var rootBlocks = Array.from(canvas.querySelectorAll(':scope > [data-block]'));
+        return rootBlocks.map(function (block) {
+            return blockToHtml(block, '');
+        }).join('\n\n');
+    }
+
     function enterCodeView(opts) {
         // opts: optional { html, rel, content } for seeding the textarea
         if (_inCodeView) { return; }
@@ -1721,9 +1984,9 @@
             _codeFileMode = null;
             _codeArea.value = opts.html;
         } else {
-            // Block HTML mode
+            // Block mode: show clean publishable HTML (not editor DOM)
             _codeFileMode = null;
-            _codeArea.value = formatHtml(canvas.innerHTML);
+            _codeArea.value = blocksToHtml();
         }
 
         // Hide canvas content, show code area inside the same wrapper

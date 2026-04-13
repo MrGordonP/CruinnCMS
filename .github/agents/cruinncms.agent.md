@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.4`
-**HEAD:** `(see git log)` — fix(editor): kill Editor 2, platform code view for CSS files, cPanel path resolution
+**Current version:** `v1.0.0-beta.5`
+**HEAD:** `(see git log)` — feat(editor): Properties panel collapse + code view clean HTML
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -103,12 +103,11 @@ templates/
   layout.php              ← Public master layout
   admin/                  ← Admin panel templates
   platform/               ← /cms/ platform dashboard templates
-  council/                ← Council workspace templates
   components/             ← Reusable components (block renderer)
   public/                 ← Public-facing page templates
   errors/                 ← 404, 403, CSRF error pages
 tools/                    ← CLI scripts
-docs/sessions/            ← Version checkpoints
+dev/docs/sessions/        ← Version checkpoints
 ```
 
 ---
@@ -192,6 +191,7 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 - **v1.0.0-beta.2** — Deployment fixes: remove unused Composer deps, add `Options -Indexes` to `.htaccess`, add `config/CruinnCMS.example.php`, add cPanel/shared-hosting deployment section to SETUP.md.
 - **v1.0.0-beta.3** (`bc70dd2`) — Release tooling: `dev/build-release.sh`, hostname-based instance routing, per-instance online toggle, `CRUINN_ROOT` depth fix for cPanel.
 - **v1.0.0-beta.4** — Editor overhaul: killed Editor 2 completely (deleted 11 files, stubbed `content_blocks` refs), removed council templates, platform editor CSS file editing via `?file=` handler with cPanel path resolution, code view toggle fix, code view CSS layout improvements (`:has(#editor-code-area)` rules), block tree + properties panel scroll constraints (in progress).
+- **v1.0.0-beta.5** — Editor UX: Properties panel accordions start collapsed (except Identity), code view shows clean publishable HTML (block→tag serialization via `blocksToHtml()`), CSS class persistence through `css_props._class`, Collapsed checkbox in Identity panel.
 
 ---
 
