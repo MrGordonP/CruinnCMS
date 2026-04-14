@@ -355,10 +355,10 @@ class CruinnController extends BaseController
             ]);
         }
 
-        // Content pages for the sidebar nav
+        // Content pages for the sidebar nav (exclude all zone/template pages starting with _)
         $sitePages = $this->db->fetchAll(
             "SELECT id, title, slug, render_mode FROM pages
-             WHERE slug NOT LIKE '\\_\\_%'
+             WHERE slug NOT LIKE '\_%'
              ORDER BY title ASC"
         );
 
@@ -902,6 +902,15 @@ class CruinnController extends BaseController
         }
 
         // ── Standard Cruinn block mode ────────────────────────────────────
+        // Only publish if a draft session exists — otherwise there is nothing to promote.
+        $pageState = $this->db->fetch('SELECT page_id FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
+        if (!$pageState) {
+            // No draft: page is already at its published state, nothing to do.
+            $this->db->execute("UPDATE pages SET status = 'published' WHERE id = ?", [$pageId]);
+            $this->json(['success' => true]);
+            return;
+        }
+
         $pdo = $this->db->pdo();
         $pdo->beginTransaction();
         try {

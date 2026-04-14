@@ -1279,6 +1279,7 @@ class PlatformController
             "        'timezone' => 'UTC',",
             "        'debug'    => false,",
             "    ],",
+            "    'hostname' => '" . $escape(parse_url($siteUrl, PHP_URL_HOST) ?? '') . "',",
             "];",
         ]) . "\n";
         file_put_contents($instDir . '/config.php', $cfg);

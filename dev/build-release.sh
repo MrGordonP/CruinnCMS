@@ -42,8 +42,9 @@ PUB_DIR="$PKG_DIR/public_html/CruinnCMS"
 mkdir -p "$PUB_DIR"
 cp -r "$ROOT/public/." "$PUB_DIR/"
 
-# Patch CRUINN_ROOT: engine is at /home/username/CruinnCMS/, public at /home/username/public_html/CruinnCMS/
-sed -i "s|define('CRUINN_ROOT', dirname(__DIR__))|define('CRUINN_ROOT', dirname(__DIR__, 2) . '/CruinnCMS')|" "$PUB_DIR/index.php"
+# Patch CRUINN_ROOT: engine is at /home/username/CruinnCMS/, public at /home/username/public_html/
+# dirname(__DIR__) from public_html/index.php = /home/username → /home/username/CruinnCMS
+sed -i "s|define('CRUINN_ROOT', dirname(__DIR__))|define('CRUINN_ROOT', dirname(__DIR__) . '/CruinnCMS')|" "$PUB_DIR/index.php"
 
 # Clean writable dirs — keep structure, strip any real content
 find "$PUB_DIR/storage" -mindepth 1 ! -name '.gitkeep' -delete 2>/dev/null || true
