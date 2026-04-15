@@ -3,17 +3,22 @@
  * Router script for PHP built-in development server.
  *
  * Usage:
- *   php -S localhost:8080 -t public router.php
+ *   php -S localhost:8000 -t public_html dev/router.php
  *
- * This script replicates Nginx rewrite rules:
- *  - Serves static files directly if they exist in public/
- *  - Routes everything else through public/index.php
+ * Pass the actual doc root via -t. This script uses $_SERVER['DOCUMENT_ROOT']
+ * so it works regardless of whether the doc root is public/, public_html/, or
+ * anything else — no hardcoded paths.
+ *
+ * This script replicates Nginx/Apache rewrite rules:
+ *  - Serves static files directly if they exist in the doc root
+ *  - Routes everything else through index.php in the doc root
  */
 
-$uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+$docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+$uri     = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
-// If the request is for a real file in public/, serve it directly
-$publicPath = __DIR__ . '/../public' . $uri;
+// If the request is for a real file in the doc root, serve it directly
+$publicPath = $docRoot . $uri;
 if ($uri !== '/' && file_exists($publicPath) && is_file($publicPath)) {
     // Set Content-Type based on extension
     $ext = strtolower(pathinfo($publicPath, PATHINFO_EXTENSION));
@@ -40,4 +45,4 @@ if ($uri !== '/' && file_exists($publicPath) && is_file($publicPath)) {
 
 // Route everything else through the front controller
 $_SERVER['SCRIPT_NAME'] = '/index.php';
-require __DIR__ . '/../public/index.php';
+require $docRoot . '/index.php';
