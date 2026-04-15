@@ -48,7 +48,7 @@
                 files.forEach(function (f) {
                     var sizeKB = Math.round(f.size / 1024);
                     html += '<div class="media-item" data-url="' + Cruinn.escapeAttr(f.url) + '">';
-                    html += '<img src="' + Cruinn.escapeAttr(f.url) + '" alt="' + Cruinn.escapeAttr(f.name) + '" loading="lazy">';
+                    html += '<img src="' + Cruinn.escapeAttr(f.url) + '" alt="' + Cruinn.escapeAttr(f.name) + '">';
                     html += '<div class="media-item-name">' + Cruinn.escapeHtml(f.name) + '</div>';
                     html += '<div class="media-item-size">' + sizeKB + ' KB</div>';
                     html += '</div>';

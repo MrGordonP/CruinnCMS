@@ -19,7 +19,7 @@
 |------------|----------------|
 | PHP | 8.2 |
 | MySQL | 8.0 |
-| Nginx | any current | 
+| Nginx | any current |
 | Composer | 2.x |
 
 PHP extensions required: `pdo_mysql`, `mbstring`, `fileinfo`, `json`, `openssl`
@@ -123,7 +123,7 @@ The wizard will:
 3. Apply `schema/platform.sql` to the platform database
 4. Redirect you to the platform login at `/cms/login`
 
-> **Default credential** written by the wizard: username `platform`, password `platform-admin`.  
+> **Default credential** written by the wizard: username `platform`, password `platform-admin`.
 > **Change this immediately** after first login via `/cms/settings`.
 
 `config/CruinnCMS.php` is gitignored — never commit it. Back it up securely outside the repo.
@@ -149,10 +149,12 @@ The instance admin uses separate credentials stored in the instance database. Th
 PHP's built-in server works for development. From the repo root:
 
 ```bash
-php -S localhost:8000 -t public router.php
+php -S localhost:8000 -t public_html dev/router.php -d upload_max_filesize=10M -d post_max_size=12M
 ```
 
-`router.php` in the repo root handles static file passthrough so CSS/JS/images are served correctly alongside routed PHP requests.
+`dev/router.php` handles static file passthrough so CSS/JS/images are served correctly alongside routed PHP requests.
+
+> **Upload limits:** PHP's default `upload_max_filesize` is 2M. The `-d` flags above raise it to 10M for the dev server. The CruinnCMS app enforces its own limit (default 10MB, configurable at Admin → Settings → Security). Both limits must allow the desired size — whichever is lower wins.
 
 ---
 
@@ -165,6 +167,24 @@ find . -type f -name "*.php" -exec chmod 644 {} \;
 find . -type d -exec chmod 755 {} \;
 chmod -R 775 public/storage public/uploads instance
 ```
+
+### Upload size limits (production)
+
+PHP's default upload limit is 2MB. On cPanel/shared hosting, set limits in `public_html/.htaccess`:
+
+```apache
+php_value upload_max_filesize 10M
+php_value post_max_size 12M
+```
+
+On a VPS with a `php.ini` you control:
+
+```ini
+upload_max_filesize = 10M
+post_max_size = 12M
+```
+
+The CruinnCMS app enforces its own cap (default 10MB, configurable at Admin → Settings → Security). Both the PHP limit and the app limit must allow the desired size — whichever is lower wins.
 
 ### Environment variables (optional)
 
@@ -286,7 +306,7 @@ Visit `https://yourdomain.com/cms/install` in your browser.
 
 The wizard will prompt for your database credentials, apply the platform schema, and write `config/CruinnCMS.php`. On completion it redirects to `/cms/login`.
 
-> If you see a blank page or HTTP 500 at this point, enable PHP error display temporarily:  
+> If you see a blank page or HTTP 500 at this point, enable PHP error display temporarily:
 > In `public_html/index.php`, add `ini_set('display_errors', '1');` immediately after `<?php` to see the actual error. Remove it after diagnosing.
 
 **6. Log in and provision an instance**

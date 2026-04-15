@@ -93,57 +93,215 @@ class MediaController extends \Cruinn\Controllers\BaseController
     /**
      * GET /admin/media — List uploaded media files as JSON.
      * Scans the instance-scoped uploads directory and returns file metadata.
+     *
+     * With no params:    lists subfolders + images in the media root.
+     * ?folder=/storage/… lists subfolders + images in that folder (non-recursive).
+     * ?q=term            recursive search across all folders (existing behaviour).
      */
     public function listMedia(): void
     {
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
         $publicRoot = CRUINN_PUBLIC;
         $slug       = $this->storageSlug();
-        $scanDirs   = [
-            $publicRoot . '/storage/' . $slug . '/media',
-            $publicRoot . '/uploads',                     // legacy — keep until migrated
-        ];
-        $search = $this->query('q', '');
-        $files = [];
-        $config = App::config('uploads');
-        $imageExts = $config['image_types'] ?? ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        $seen = [];
+        $mediaRoot  = $publicRoot . '/storage/' . $slug . '/media';
+        $config     = App::config('uploads');
+        $imageExts  = $config['image_types'] ?? ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
-        foreach ($scanDirs as $scanDir) {
-            if (!is_dir($scanDir)) continue;
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($scanDir, \RecursiveDirectoryIterator::SKIP_DOTS)
-            );
+        $search     = $this->query('q', '');
+        $folderParam = trim($this->query('folder', ''));
 
-            foreach ($iterator as $file) {
-                if (!$file->isFile()) continue;
-                $ext = strtolower($file->getExtension());
+        // ── Search mode: recursive, flat results ─────────────────────────────
+        if ($search !== '') {
+            $scanDirs = [
+                $mediaRoot,
+                $publicRoot . '/uploads',
+            ];
+            $files = [];
+            $seen  = [];
+            foreach ($scanDirs as $scanDir) {
+                if (!is_dir($scanDir)) continue;
+                $iterator = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($scanDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+                );
+                foreach ($iterator as $file) {
+                    if (!$file->isFile()) continue;
+                    $ext = strtolower($file->getExtension());
+                    if (!in_array($ext, $imageExts)) continue;
+                    $relativePath = str_replace('\\', '/', substr($file->getPathname(), strlen($publicRoot)));
+                    if (isset($seen[$relativePath])) continue;
+                    $seen[$relativePath] = true;
+                    $name = $file->getFilename();
+                    if (stripos($name, $search) === false) continue;
+                    $files[] = ['url' => $relativePath, 'name' => $name, 'size' => $file->getSize(), 'modified' => $file->getMTime()];
+                }
+            }
+            usort($files, fn($a, $b) => $b['modified'] - $a['modified']);
+            $this->json(['files' => $files, 'folders' => [], 'current' => '', 'parent' => null]);
+            return;
+        }
+
+        // ── Folder browse mode: non-recursive ────────────────────────────────
+        // Resolve the directory to scan.
+        if ($folderParam !== '') {
+            // Prevent path traversal: must start with /storage/{slug}/media
+            $allowedPrefix = '/storage/' . $slug . '/media';
+            if (!str_starts_with($folderParam, $allowedPrefix)) {
+                $this->json(['error' => 'Invalid folder'], 400);
+                return;
+            }
+            $absDir = realpath($publicRoot . $folderParam);
+            $absRoot = realpath($mediaRoot);
+            if ($absDir === false || $absRoot === false || !str_starts_with($absDir, $absRoot)) {
+                $this->json(['error' => 'Invalid folder'], 400);
+                return;
+            }
+            $currentAbs = $absDir;
+            $currentRel = str_replace('\\', '/', substr($currentAbs, strlen($publicRoot)));
+            // Parent: one level up, but not above media root
+            $parentAbs = dirname($currentAbs);
+            $parent = ($parentAbs !== $absRoot && str_starts_with($parentAbs, $absRoot))
+                ? str_replace('\\', '/', substr($parentAbs, strlen($publicRoot)))
+                : $allowedPrefix; // at a year folder — parent is the root
+            if ($currentAbs === $absRoot) {
+                $parent = null; // already at root
+            }
+        } else {
+            $currentAbs = realpath($mediaRoot);
+            $currentRel = str_replace('\\', '/', substr($currentAbs, strlen($publicRoot)));
+            $parent = null;
+        }
+
+        if (!$currentAbs || !is_dir($currentAbs)) {
+            $this->json(['files' => [], 'folders' => [], 'current' => '', 'parent' => null]);
+            return;
+        }
+
+        $folders = [];
+        $files   = [];
+
+        foreach (new \DirectoryIterator($currentAbs) as $entry) {
+            if ($entry->isDot()) continue;
+            $entryRel = $currentRel . '/' . $entry->getFilename();
+            if ($entry->isDir()) {
+                $folders[] = ['name' => $entry->getFilename(), 'path' => $entryRel];
+            } elseif ($entry->isFile()) {
+                $ext = strtolower($entry->getExtension());
                 if (!in_array($ext, $imageExts)) continue;
-
-                $relativePath = str_replace('\\', '/', substr($file->getPathname(), strlen($publicRoot)));
-                $name = $file->getFilename();
-
-                // Deduplicate across scan directories
-                if (isset($seen[$relativePath])) continue;
-                $seen[$relativePath] = true;
-
-                // Filter by search term
-                if ($search !== '' && stripos($name, $search) === false) continue;
-
-                $files[] = [
-                    'url'      => $relativePath,
-                    'name'     => $name,
-                    'size'     => $file->getSize(),
-                    'modified' => $file->getMTime(),
-                ];
+                $files[] = ['url' => $entryRel, 'name' => $entry->getFilename(), 'size' => $entry->getSize(), 'modified' => $entry->getMTime()];
             }
         }
 
-        // Sort newest first
-        usort($files, function ($a, $b) {
-            return $b['modified'] - $a['modified'];
-        });
+        sort($folders);
+        usort($files, fn($a, $b) => $b['modified'] - $a['modified']);
 
-        $this->json(['files' => $files]);
+        $this->json(['files' => $files, 'folders' => $folders, 'current' => $currentRel, 'parent' => $parent]);
+    }
+
+    /**
+     * POST /admin/media/folder — Create a new subfolder.
+     * Body: folder (current folder path), name (new folder name)
+     */
+    public function createFolder(): void
+    {
+        \Cruinn\CSRF::validate();
+        $publicRoot  = CRUINN_PUBLIC;
+        $slug        = $this->storageSlug();
+        $mediaRoot   = realpath($publicRoot . '/storage/' . $slug . '/media');
+        $folderParam = trim($this->input('folder', ''));
+        $name        = trim($this->input('name', ''));
+
+        if ($name === '' || preg_match('/[^a-zA-Z0-9_\-]/', $name)) {
+            $this->json(['error' => 'Invalid folder name (letters, numbers, - _ only)'], 400);
+            return;
+        }
+
+        $parentAbs = $folderParam !== ''
+            ? realpath($publicRoot . $folderParam)
+            : $mediaRoot;
+
+        if (!$parentAbs || !str_starts_with($parentAbs, $mediaRoot)) {
+            $this->json(['error' => 'Invalid parent folder'], 400);
+            return;
+        }
+
+        $newDir = $parentAbs . DIRECTORY_SEPARATOR . $name;
+        if (is_dir($newDir)) {
+            $this->json(['error' => 'Folder already exists'], 409);
+            return;
+        }
+        if (!mkdir($newDir, 0755)) {
+            $this->json(['error' => 'Failed to create folder'], 500);
+            return;
+        }
+        $this->json(['success' => true]);
+    }
+
+    /**
+     * POST /admin/media/delete — Delete an empty folder.
+     * Body: folder (path to delete)
+     */
+    public function deleteFolder(): void
+    {
+        \Cruinn\CSRF::validate();
+        $publicRoot = CRUINN_PUBLIC;
+        $slug       = $this->storageSlug();
+        $mediaRoot  = realpath($publicRoot . '/storage/' . $slug . '/media');
+        $folderParam = trim($this->input('folder', ''));
+
+        if ($folderParam === '') {
+            $this->json(['error' => 'No folder specified'], 400);
+            return;
+        }
+
+        $absDir = realpath($publicRoot . $folderParam);
+        if (!$absDir || !str_starts_with($absDir, $mediaRoot) || $absDir === $mediaRoot) {
+            $this->json(['error' => 'Invalid folder'], 400);
+            return;
+        }
+
+        // Only delete if empty
+        $contents = array_diff(scandir($absDir), ['.', '..']);
+        if (!empty($contents)) {
+            $this->json(['error' => 'Folder is not empty'], 409);
+            return;
+        }
+
+        if (!rmdir($absDir)) {
+            $this->json(['error' => 'Failed to delete folder'], 500);
+            return;
+        }
+        $this->json(['success' => true]);
+    }
+
+    /**
+     * POST /admin/media/delete-file — Delete a single media file.
+     * Body: file (web path to file, e.g. /storage/iga/media/2026/04/filename.jpg)
+     */
+    public function deleteFile(): void
+    {
+        \Cruinn\CSRF::validate();
+        $publicRoot = CRUINN_PUBLIC;
+        $slug       = $this->storageSlug();
+        $mediaRoot  = realpath($publicRoot . '/storage/' . $slug . '/media');
+        $fileParam  = trim($this->input('file', ''));
+
+        if ($fileParam === '') {
+            $this->json(['error' => 'No file specified'], 400);
+            return;
+        }
+
+        $absFile = realpath($publicRoot . $fileParam);
+        if (!$absFile || !str_starts_with($absFile, $mediaRoot) || !is_file($absFile)) {
+            $this->json(['error' => 'Invalid file'], 400);
+            return;
+        }
+
+        if (!unlink($absFile)) {
+            $this->json(['error' => 'Failed to delete file'], 500);
+            return;
+        }
+        $this->json(['success' => true]);
     }
 
     // ── Private helpers ───────────────────────────────────────────

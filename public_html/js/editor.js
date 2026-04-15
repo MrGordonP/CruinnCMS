@@ -1338,14 +1338,37 @@
     var mediaPanel = document.getElementById('editor-media-panel');
     var mediaGrid = document.getElementById('editor-media-grid');
     var mediaCallback = null;
-    var mediaSelected = null;
+    var mediaSelected = null;      // selected image URL
+    var mediaSelectedFolder = null; // selected folder path
+    var mediaCurrentFolder = '';
+    var mediaDeleteBtn = document.getElementById('editor-media-delete-folder-btn');
 
     document.getElementById('editor-media-close').addEventListener('click', closeMediaPanel);
     document.getElementById('editor-media-cancel-btn').addEventListener('click', closeMediaPanel);
-    document.getElementById('editor-media-select-btn').addEventListener('click', function () {
+    var mediaSelectBtn = document.getElementById('editor-media-select-btn');
+
+    function updateMediaSelectBtn() {
+        if (mediaSelected) {
+            mediaSelectBtn.textContent = 'Insert';
+        } else {
+            mediaSelectBtn.textContent = 'Upload';
+        }
+        // Delete File button: only when an image is selected
+        mediaDeleteBtn.textContent = mediaSelected ? 'Delete File' : 'Delete Folder';
+        if (mediaSelected) {
+            mediaDeleteBtn.style.display = '';
+        } else {
+            // Delete Folder: only when inside a subfolder
+            mediaDeleteBtn.style.display = mediaCurrentFolder ? '' : 'none';
+        }
+    }
+
+    mediaSelectBtn.addEventListener('click', function () {
         if (mediaSelected && mediaCallback) {
             mediaCallback(mediaSelected);
             closeMediaPanel();
+        } else {
+            document.getElementById('editor-media-upload').click();
         }
     });
 
@@ -1358,65 +1381,196 @@
         fetch('/admin/upload', { method: 'POST', body: fd })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                if (data.url) { loadMediaGrid(); }
+                if (data.error) { alert('Upload failed: ' + data.error); loadMediaGrid(mediaCurrentFolder); return; }
+                // Navigate to the folder the file was saved into
+                var destFolder = data.url ? data.url.substring(0, data.url.lastIndexOf('/')) : mediaCurrentFolder;
+                loadMediaGrid(destFolder);
             })
-            .catch(function () { });
+            .catch(function () { alert('Upload request failed.'); loadMediaGrid(mediaCurrentFolder); });
         e.target.value = '';
     });
 
     var mediaSearchInput = document.getElementById('editor-media-search');
     if (mediaSearchInput) {
         mediaSearchInput.addEventListener('input', function () {
-            filterMediaGrid(mediaSearchInput.value.toLowerCase());
+            var q = mediaSearchInput.value.trim();
+            if (q) {
+                // Search mode: fetch recursively via ?q=
+                mediaGrid.innerHTML = '<p class="editor-media-loading">Searching…</p>';
+                fetch('/admin/media?_=' + Date.now() + '&q=' + encodeURIComponent(q), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var files = data.files || [];
+                        mediaGrid.innerHTML = '';
+                        if (!files.length) { mediaGrid.innerHTML = '<p class="editor-media-loading">No results.</p>'; return; }
+                        files.forEach(function (file) {
+                            var fileUrl = file.url;
+                            var name = file.name;
+                            var item = document.createElement('div');
+                            item.className = 'editor-media-item';
+                            item.dataset.url = fileUrl;
+                            item.innerHTML = '<img src="' + fileUrl + '" alt="' + name + '">'
+                                + '<div class="editor-media-item-name">' + name + '</div>';
+                            item.addEventListener('click', function () {
+                                mediaGrid.querySelectorAll('.editor-media-item').forEach(function (i) { i.classList.remove('selected'); });
+                                item.classList.add('selected');
+                                mediaSelected = fileUrl;
+                                updateMediaSelectBtn();
+                            });
+                            item.addEventListener('dblclick', function () {
+                                mediaSelected = fileUrl;
+                                if (mediaCallback) { mediaCallback(fileUrl); }
+                                closeMediaPanel();
+                            });
+                            mediaGrid.appendChild(item);
+                        });
+                    })
+                    .catch(function () { mediaGrid.innerHTML = '<p class="editor-media-loading">Search failed.</p>'; });
+            } else {
+                loadMediaGrid(mediaCurrentFolder);
+            }
         });
     }
+
+    document.getElementById('editor-media-new-folder-btn').addEventListener('click', function () {
+        var name = prompt('New folder name (letters, numbers, - _ only):');
+        if (!name) { return; }
+        var fd = new FormData();
+        fd.append('csrf_token', CSRF);
+        fd.append('folder', mediaCurrentFolder);
+        fd.append('name', name);
+        fetch('/admin/media/folder', { method: 'POST', body: fd })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) { alert(data.error); return; }
+                loadMediaGrid(mediaCurrentFolder);
+            })
+            .catch(function () { alert('Failed to create folder.'); });
+    });
+
+    document.getElementById('editor-media-delete-folder-btn').addEventListener('click', function () {
+        if (mediaSelected) {
+            // Delete selected image file
+            if (!confirm('Delete this file? This cannot be undone.')) { return; }
+            var fd = new FormData();
+            fd.append('csrf_token', CSRF);
+            fd.append('file', mediaSelected);
+            fetch('/admin/media/delete-file', { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) { alert(data.error); return; }
+                    mediaSelected = null;
+                    loadMediaGrid(mediaCurrentFolder);
+                })
+                .catch(function () { alert('Failed to delete file.'); });
+        } else if (mediaCurrentFolder) {
+            // Delete the current folder
+            if (!confirm('Delete this folder? It must be empty.')) { return; }
+            var parts = mediaCurrentFolder.replace(/\/$/, '').split('/');
+            parts.pop();
+            var parentPath = parts.join('/');
+            if (/^\/storage\/[^\/]+\/media$/.test(parentPath)) { parentPath = ''; }
+            var fd = new FormData();
+            fd.append('csrf_token', CSRF);
+            fd.append('folder', mediaCurrentFolder);
+            fetch('/admin/media/delete', { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) { alert(data.error); return; }
+                    loadMediaGrid(parentPath);
+                })
+                .catch(function () { alert('Failed to delete folder.'); });
+        }
+    });
 
     function openMediaPanel(callback) {
         mediaCallback = callback;
         mediaSelected = null;
-        document.getElementById('editor-media-select-btn').disabled = true;
+        mediaSelectedFolder = null;
+        updateMediaSelectBtn();
         mediaPanel.style.display = 'flex';
-        loadMediaGrid();
+        loadMediaGrid('');
     }
 
     function closeMediaPanel() {
         mediaPanel.style.display = 'none';
         mediaCallback = null;
         mediaSelected = null;
+        mediaSelectedFolder = null;
+        updateMediaSelectBtn();
     }
 
-    function loadMediaGrid() {
+    function loadMediaGrid(folder) {
+        mediaCurrentFolder = folder || '';
+        mediaSelected = null;
+        updateMediaSelectBtn();
+        // Update path display
+        var pathEl = document.getElementById('editor-media-path');
+        if (pathEl) { pathEl.textContent = mediaCurrentFolder ? mediaCurrentFolder.replace(/.*\/media/, '') : '/'; }
+        mediaSelectedFolder = null;
+        updateMediaSelectBtn();
         mediaGrid.innerHTML = '<p class="editor-media-loading">Loading…</p>';
-        fetch('/admin/media', {
+        var url = '/admin/media?_=' + Date.now();
+        if (mediaCurrentFolder) { url += '&folder=' + encodeURIComponent(mediaCurrentFolder); }
+        fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                var files = data.files || data || [];
+                var folders = data.folders || [];
+                var files = data.files || [];
+                var parent = data.parent !== undefined ? data.parent : null;
                 mediaGrid.innerHTML = '';
-                if (!files.length) {
-                    mediaGrid.innerHTML = '<p class="editor-media-loading">No media yet.</p>';
-                    return;
+
+                // Up / parent folder item — always first if not at root
+                if (parent !== null) {
+                    var up = document.createElement('div');
+                    up.className = 'editor-media-item editor-media-folder';
+                    up.innerHTML = '<div class="editor-media-folder-icon">&#8593;</div>'
+                        + '<div class="editor-media-item-name">.. (up)</div>';
+                    up.addEventListener('click', function () { loadMediaGrid(parent); });
+                    mediaGrid.appendChild(up);
                 }
+
+                if (!folders.length && !files.length) {
+                    var empty = document.createElement('p');
+                    empty.className = 'editor-media-loading';
+                    empty.textContent = 'No images here.';
+                    mediaGrid.appendChild(empty);
+                }
+
+                // Subfolder items
+                folders.forEach(function (f) {
+                    var item = document.createElement('div');
+                    item.className = 'editor-media-item editor-media-folder';
+                    item.innerHTML = '<div class="editor-media-folder-icon">&#128193;</div>'
+                        + '<div class="editor-media-item-name">' + f.name + '</div>';
+                    item.addEventListener('click', function () { loadMediaGrid(f.path); });
+                    mediaGrid.appendChild(item);
+                });
+
+                // Image items
                 files.forEach(function (file) {
-                    var url = file.url || file;
-                    var name = url.split('/').pop();
+                    var fileUrl = file.url || file;
+                    var name = (file.name || fileUrl.split('/').pop());
                     var item = document.createElement('div');
                     item.className = 'editor-media-item';
-                    item.dataset.url = url;
-                    item.innerHTML = '<img src="' + url + '" alt="' + name + '" loading="lazy">'
+                    item.dataset.url = fileUrl;
+                    item.innerHTML = '<img src="' + fileUrl + '" alt="' + name + '">'
                         + '<div class="editor-media-item-name">' + name + '</div>';
                     item.addEventListener('click', function () {
                         mediaGrid.querySelectorAll('.editor-media-item').forEach(function (i) {
                             i.classList.remove('selected');
                         });
                         item.classList.add('selected');
-                        mediaSelected = url;
-                        document.getElementById('editor-media-select-btn').disabled = false;
+                        mediaSelected = fileUrl;
+                        updateMediaSelectBtn();
                     });
                     item.addEventListener('dblclick', function () {
-                        mediaSelected = url;
-                        if (mediaCallback) { mediaCallback(url); }
+                        mediaSelected = fileUrl;
+                        if (mediaCallback) { mediaCallback(fileUrl); }
                         closeMediaPanel();
                     });
                     mediaGrid.appendChild(item);
@@ -1425,13 +1579,6 @@
             .catch(function () {
                 mediaGrid.innerHTML = '<p class="editor-media-loading">Failed to load media.</p>';
             });
-    }
-
-    function filterMediaGrid(query) {
-        mediaGrid.querySelectorAll('.editor-media-item').forEach(function (item) {
-            var name = (item.dataset.url || '').toLowerCase();
-            item.style.display = (!query || name.includes(query)) ? '' : 'none';
-        });
     }
 
     // ── Section I — Serialise + recordAction ─────────────────────────

@@ -1074,6 +1074,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         <div class="editor-media-inner">
             <div class="editor-media-header">
                 <h3>Media Library</h3>
+                <span id="editor-media-path" class="editor-media-path"></span>
                 <button type="button" id="editor-media-close" aria-label="Close">&times;</button>
             </div>
             <div class="editor-media-toolbar">
@@ -1081,13 +1082,15 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     Upload
                     <input type="file" id="editor-media-upload" accept="image/*" hidden>
                 </label>
-                <input type="search" id="editor-media-search" class="editor-media-search-input" placeholder="Filter…">
+                <button type="button" class="btn btn-small btn-outline" id="editor-media-new-folder-btn">+ Folder</button>
+                <button type="button" class="btn btn-small btn-danger" id="editor-media-delete-folder-btn" style="display:none">Delete Folder</button>
+                <input type="search" id="editor-media-search" class="editor-media-search-input" placeholder="Search all…">
             </div>
             <div class="editor-media-grid" id="editor-media-grid">
                 <p class="editor-media-loading">Loading…</p>
             </div>
             <div class="editor-media-footer">
-                <button type="button" class="btn btn-primary" id="editor-media-select-btn" disabled>Insert</button>
+                <button type="button" class="btn btn-primary" id="editor-media-select-btn">Upload</button>
                 <button type="button" class="btn btn-outline" id="editor-media-cancel-btn">Cancel</button>
             </div>
         </div>

@@ -819,3 +819,129 @@ textarea.form-input {
     background: #7f1d1d;
     color: #fff;
 }
+
+/* ── Media Browser Modal ─────────────────────────────────────── */
+.media-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.media-modal {
+    background: #fff;
+    border-radius: 8px;
+    width: 720px;
+    max-width: 90vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.media-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e6ea;
+}
+
+.media-modal-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.media-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+}
+
+.media-modal-close:hover {
+    color: #111;
+}
+
+.media-modal-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid #e2e6ea;
+}
+
+.media-modal-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    align-content: start;
+}
+
+.media-item {
+    border: 2px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    background: #f9fafb;
+    transition: border-color 0.1s;
+    display: flex;
+    flex-direction: column;
+}
+
+.media-item:hover {
+    border-color: #1d9e75;
+}
+
+.media-item.selected {
+    border-color: #1d9e75;
+    background: #e0f2eb;
+}
+
+.media-item img {
+    width: 100%;
+    height: 90px;
+    min-height: 90px;
+    object-fit: cover;
+    display: block;
+    flex-shrink: 0;
+}
+
+.media-item-name {
+    font-size: 0.68rem;
+    padding: 2px 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #374151;
+}
+
+.media-item-size {
+    font-size: 0.62rem;
+    padding: 0 4px 3px;
+    color: #9ca3af;
+}
+
+.media-loading,
+.media-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #9ca3af;
+    padding: 2rem;
+}
+
+.media-modal-footer {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e2e6ea;
+    justify-content: flex-end;
+}

@@ -29,6 +29,29 @@ BlockRegistry::register([
             return '';
         }
 
+        // Filter by visibility and min_role (mirrors get_menu() logic)
+        if (!BlockRegistry::isEditMode()) {
+            $loggedIn   = \Cruinn\Auth::check();
+            $userRole   = $loggedIn ? (\Cruinn\Auth::user()['role'] ?? 'member') : null;
+            $roleLevels = ['public' => 0, 'member' => 20, 'council' => 50, 'admin' => 100];
+            $userLevel  = $roleLevels[$userRole] ?? 0;
+
+            $all = array_filter($all, function ($row) use ($loggedIn, $userLevel, $roleLevels) {
+                $vis = $row['visibility'] ?? 'always';
+                if ($vis === 'logged_in' && !$loggedIn) return false;
+                if ($vis === 'logged_out' && $loggedIn) return false;
+                if (!empty($row['min_role'])) {
+                    $reqLevel = $roleLevels[$row['min_role']] ?? 0;
+                    if ($userLevel < $reqLevel) return false;
+                }
+                return true;
+            });
+            $all = array_values($all);
+            if (empty($all)) {
+                return '';
+            }
+        }
+
         // Index by id and group children
         $byId      = [];
         $childrenOf = [];

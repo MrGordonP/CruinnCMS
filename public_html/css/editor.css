@@ -986,6 +986,7 @@
     border-radius: 6px;
     width: 780px;
     max-width: 95vw;
+    height: 600px;
     max-height: 85vh;
     display: flex;
     flex-direction: column;
@@ -994,16 +995,28 @@
 }
 
 .editor-media-header {
+    height: 48px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
+    padding: 0 1rem;
     border-bottom: 1px solid #e2e6ea;
 }
 
 .editor-media-header h3 {
     margin: 0;
     font-size: 1rem;
+}
+
+.editor-media-path {
+    flex: 1;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #editor-media-close {
@@ -1016,16 +1029,17 @@
 }
 
 .editor-media-toolbar {
+    height: 44px;
+    min-height: 44px;
     display: flex;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0 1rem;
     border-bottom: 1px solid #e2e6ea;
     align-items: center;
 }
 
 .editor-media-search-input {
-    flex: 1;
-    max-width: 220px;
+    width: 220px;
     padding: 5px 8px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
@@ -1033,11 +1047,12 @@
 }
 
 .editor-media-grid {
-    flex: 1;
+    height: 440px;
+    min-height: 200px;
     overflow-y: auto;
     padding: 0.75rem;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 8px;
     align-content: start;
 }
@@ -1050,6 +1065,8 @@
 }
 
 .editor-media-item {
+    width: 120px;
+    height: 110px;
     border: 2px solid transparent;
     border-radius: 4px;
     overflow: hidden;
@@ -1066,16 +1083,39 @@
     background: #e0f2eb;
 }
 
+.editor-media-folder {
+    background: #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.editor-media-folder:hover {
+    background: #e0f2eb;
+}
+
+.editor-media-folder-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .editor-media-item img {
-    width: 100%;
+    width: 120px;
     height: 80px;
     object-fit: cover;
     display: block;
 }
 
 .editor-media-item-name {
+    height: 20px;
+    line-height: 20px;
     font-size: 0.68rem;
-    padding: 2px 4px;
+    padding: 0 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1083,11 +1123,14 @@
 }
 
 .editor-media-footer {
+    height: 52px;
+    min-height: 52px;
     display: flex;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0 1rem;
     border-top: 1px solid #e2e6ea;
     justify-content: flex-end;
+    align-items: center;
 }
 
 /* ── Zone badge & links in toolbar ──────────────────────────────── */
