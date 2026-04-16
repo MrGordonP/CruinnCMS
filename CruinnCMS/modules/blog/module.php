@@ -28,8 +28,11 @@ return [
         $router->get('/blog/{slug}', [ArticleController::class, 'show']);
     },
 
+    'public_routes' => [
+        ['route' => '/blog', 'label' => 'Blog'],
+    ],
+
     'migrations' => [
-        __DIR__ . '/migrations/001_articles_core.sql',
         __DIR__ . '/migrations/002_article_blocks.sql',
     ],
 

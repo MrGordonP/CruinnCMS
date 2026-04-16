@@ -10,6 +10,10 @@ return [
     'name'         => 'Documents',
     'description'  => 'Organisation document library: upload, version, approve, and archive documents.',
     'provides'     => ['documents'],
+    'public_routes'  => [
+        ['route' => '/documents', 'label' => 'Documents'],
+    ],
+
     'migrations'   => [__DIR__ . '/migrations/001_documents_tables.sql'],
     'template_path' => __DIR__ . '/templates',
 

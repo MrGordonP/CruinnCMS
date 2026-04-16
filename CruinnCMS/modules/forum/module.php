@@ -20,6 +20,10 @@ return [
 
     'dependencies' => [],
 
+    'public_routes' => [
+        ['route' => '/forum', 'label' => 'Forum'],
+    ],
+
     'migrations' => [
         __DIR__ . '/migrations/009_forum_core.sql',
         __DIR__ . '/migrations/017_forum_hierarchy.sql',

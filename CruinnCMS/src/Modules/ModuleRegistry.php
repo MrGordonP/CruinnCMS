@@ -13,6 +13,7 @@
  *   description      (string)    Short description shown in the ACP Modules panel
  *   dependencies     (string[])  Slugs of modules this module requires
  *   routes           (callable)  function(Router $router): void — registers public + admin routes
+ *   public_routes    (array[])   Menu-linkable public entry points: [['route' => '/path', 'label' => 'Label'], ...]
  *   migrations       (string[])  Absolute paths to SQL migration files, in apply order
  *   acp_sections     (array[])   Sidebar entries: [group, label, url, icon]
  *   template_path    (string)    Absolute path to this module's templates directory
@@ -52,6 +53,7 @@ class ModuleRegistry
                 'description'     => '',
                 'dependencies'    => [],
                 'routes'          => null,
+                'public_routes'   => [],
                 'migrations'      => [],
                 'acp_sections'    => [],
                 'template_path'   => null,
@@ -168,6 +170,25 @@ class ModuleRegistry
             }
         }
         return $widgets;
+    }
+
+    /**
+     * Return all menu-linkable public routes from active modules.
+     * Each entry: ['route' => '/path', 'label' => 'Label']
+     */
+    public static function menuRoutes(): array
+    {
+        self::load();
+        $routes = [];
+        foreach (self::$modules as $slug => $def) {
+            if (self::$statuses[$slug] !== 'active') {
+                continue;
+            }
+            foreach ($def['public_routes'] as $entry) {
+                $routes[] = $entry;
+            }
+        }
+        return $routes;
     }
 
     /**

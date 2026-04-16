@@ -11,6 +11,7 @@
 namespace Cruinn\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\Modules\ModuleRegistry;
 
 class MenuController extends BaseController
 {
@@ -25,6 +26,18 @@ class MenuController extends BaseController
         'topbar'  => ['label' => 'Top Bar — Utility Links',       'description' => 'Slim utility bar above the header (login, register, etc.)'],
         'mobile'  => ['label' => 'Mobile Navigation',             'description' => 'Dedicated menu for mobile/hamburger drawer'],
         'custom'  => ['label' => 'Custom / Unassigned',           'description' => 'Not tied to a template zone — rendered manually'],
+    ];
+
+    /**
+     * Platform-level routes always available for menu linking.
+     * Module routes are added dynamically via ModuleRegistry::menuRoutes().
+     */
+    public const CORE_ROUTES = [
+        ['route' => '/',          'label' => 'Home'],
+        ['route' => '/login',     'label' => 'Login'],
+        ['route' => '/logout',    'label' => 'Logout'],
+        ['route' => '/register',  'label' => 'Register'],
+        ['route' => '/profile',   'label' => 'My Profile'],
     ];
 
     // ══════════════════════════════════════════════════════════════
@@ -62,6 +75,7 @@ class MenuController extends BaseController
             'items'       => [],
             'pages'       => $this->getAvailablePages(),
             'subjects'    => $this->getAvailableSubjects(),
+            'routes'      => $this->getAvailableRoutes(),
             'locations'   => self::LOCATIONS,
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Menus', '/admin/menus'], ['New Menu']],
@@ -98,6 +112,7 @@ class MenuController extends BaseController
                 'items'       => [],
                 'pages'       => $this->getAvailablePages(),
                 'subjects'    => $this->getAvailableSubjects(),
+                'routes'      => $this->getAvailableRoutes(),
                 'locations'   => self::LOCATIONS,
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Menus', '/admin/menus'], ['New Menu']],
@@ -129,9 +144,10 @@ class MenuController extends BaseController
             $this->redirect('/admin/menus');
         }
 
-        $items = $this->getMenuItems((int) $id);
-        $pages = $this->getAvailablePages();
+        $items    = $this->getMenuItems((int) $id);
+        $pages    = $this->getAvailablePages();
         $subjects = $this->getAvailableSubjects();
+        $routes   = $this->getAvailableRoutes();
 
         $this->renderAdmin('admin/menus/edit', [
             'title'       => 'Edit: ' . $menu['name'],
@@ -139,6 +155,7 @@ class MenuController extends BaseController
             'items'       => $items,
             'pages'       => $pages,
             'subjects'    => $subjects,
+            'routes'      => $routes,
             'locations'   => self::LOCATIONS,
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Menus', '/admin/menus'], [$menu['name']]],
@@ -174,15 +191,17 @@ class MenuController extends BaseController
         }
 
         if ($errors) {
-            $items = $this->getMenuItems((int) $id);
-            $pages = $this->getAvailablePages();
+            $items    = $this->getMenuItems((int) $id);
+            $pages    = $this->getAvailablePages();
             $subjects = $this->getAvailableSubjects();
+            $routes   = $this->getAvailableRoutes();
             $this->renderAdmin('admin/menus/edit', [
                 'title'       => 'Edit: ' . $menu['name'],
                 'menu'        => array_merge($menu, $_POST),
                 'items'       => $items,
                 'pages'       => $pages,
                 'subjects'    => $subjects,
+                'routes'      => $routes,
                 'locations'   => self::LOCATIONS,
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Menus', '/admin/menus'], [$menu['name']]],
@@ -420,6 +439,15 @@ class MenuController extends BaseController
             'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
             ['active']
         );
+    }
+
+    /**
+     * Merge platform core routes with public_routes from active modules.
+     * Returns array of ['route' => '/path', 'label' => 'Label'].
+     */
+    private function getAvailableRoutes(): array
+    {
+        return array_merge(self::CORE_ROUTES, ModuleRegistry::menuRoutes());
     }
 
     /**

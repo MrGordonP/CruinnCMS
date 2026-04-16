@@ -310,16 +310,6 @@
                 foreach ($items as $mi) {
                     if ($mi['link_type'] === 'route' && $mi['route']) $usedRoutes[] = $mi['route'];
                 }
-                $commonRoutes = [
-                    ['route' => '/',          'label' => 'Home'],
-                    ['route' => '/events',    'label' => 'Events'],
-                    ['route' => '/blog',      'label' => 'Blog'],
-                    ['route' => '/forum',     'label' => 'Forum'],
-                    ['route' => '/directory', 'label' => 'Directory'],
-                    ['route' => '/login',     'label' => 'Login'],
-                    ['route' => '/register',  'label' => 'Register'],
-                    ['route' => '/council',   'label' => 'Council'],
-                ];
                 ?>
 
                 <!-- Common Routes -->
@@ -327,7 +317,7 @@
                     <button class="menu-source-toggle" data-panel="routes">Routes <span class="nav-caret">▾</span></button>
                     <div class="menu-source-body">
                         <ul class="menu-source-list">
-                            <?php foreach ($commonRoutes as $cr): ?>
+                            <?php foreach ($routes as $cr): ?>
                             <li>
                                 <label class="menu-source-item <?= in_array($cr['route'], $usedRoutes) ? 'menu-source-used' : '' ?>">
                                     <input type="checkbox" class="source-check" data-type="route" data-route="<?= e($cr['route']) ?>" data-label="<?= e($cr['label']) ?>">
