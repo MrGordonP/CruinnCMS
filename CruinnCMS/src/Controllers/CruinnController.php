@@ -202,47 +202,6 @@ class CruinnController extends BaseController
 
         $renderMode = $page['render_mode'] ?? 'cruinn';
 
-        // ── Auto-seed zone blocks for a newly created, empty template canvas ──
-        if ($isTemplatePage && empty($flat) && !$hasDraft) {
-            $sort = 10;
-            foreach ($templateZonesDef as $zoneName) {
-                if (in_array($zoneName, ['header', 'footer'], true)) { continue; }
-                $blockId = 'zone-' . $zoneName . '-' . $pageId;
-                $this->db->execute(
-                    'INSERT IGNORE INTO cruinn_blocks
-                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
-                    [
-                        $blockId, $pageId, 'zone', '',
-                        json_encode(['min-height' => '120px']),
-                        json_encode(['zone_name' => $zoneName]),
-                        $sort,
-                    ]
-                );
-                $sort += 10;
-            }
-            // If no zones defined (or all were header/footer), seed a default main zone
-            if ($sort === 10) {
-                $this->db->execute(
-                    'INSERT IGNORE INTO cruinn_blocks
-                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
-                    [
-                        'zone-main-' . $pageId, $pageId, 'zone', '',
-                        json_encode(['min-height' => '120px']),
-                        json_encode(['zone_name' => 'main']),
-                        10,
-                    ]
-                );
-            }
-            $flat = $this->db->fetchAll(
-                'SELECT * FROM cruinn_blocks
-                  WHERE page_id = ?
-                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$pageId]
-            );
-        }
-
         // ── Auto-import: parse source HTML into typed blocks on first open ──
         if (in_array($renderMode, ['html', 'file'], true) && empty($flat)) {
             $importSvc  = new \Cruinn\Services\ImportService();
@@ -370,6 +329,47 @@ class CruinnController extends BaseController
                     }
                 }
             }
+        }
+
+        // ── Auto-seed zone blocks for a newly created, empty template canvas ──
+        if ($isTemplatePage && empty($flat) && !$hasDraft) {
+            $sort = 10;
+            foreach ($templateZonesDef as $zoneName) {
+                if (in_array($zoneName, ['header', 'footer'], true)) { continue; }
+                $blockId = 'zone-' . $zoneName . '-' . $pageId;
+                $this->db->execute(
+                    'INSERT IGNORE INTO cruinn_blocks
+                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
+                    [
+                        $blockId, $pageId, 'zone', '',
+                        json_encode(['min-height' => '120px']),
+                        json_encode(['zone_name' => $zoneName]),
+                        $sort,
+                    ]
+                );
+                $sort += 10;
+            }
+            // If no content zones defined, seed a default main zone
+            if ($sort === 10) {
+                $this->db->execute(
+                    'INSERT IGNORE INTO cruinn_blocks
+                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
+                    [
+                        'zone-main-' . $pageId, $pageId, 'zone', '',
+                        json_encode(['min-height' => '120px']),
+                        json_encode(['zone_name' => 'main']),
+                        10,
+                    ]
+                );
+            }
+            $flat = $this->db->fetchAll(
+                'SELECT * FROM cruinn_blocks
+                  WHERE page_id = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$pageId]
+            );
         }
 
         // All editable header pages: canvas pages for templates with a header zone
