@@ -215,6 +215,45 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     }
 
     /**
+     * POST /admin/pages/{id}/convert-to-blocks
+     * Parse the page's body_html into Cruinn blocks, persist as a draft,
+     * flip render_mode to 'cruinn', and redirect to the block editor.
+     */
+    public function convertToBlocks(string $id): void
+    {
+        Auth::requireRole('admin');
+        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        if (!$page) {
+            Auth::flash('error', 'Page not found.');
+            $this->redirect('/admin/pages');
+        }
+
+        if (($page['render_mode'] ?? '') !== 'html') {
+            Auth::flash('error', 'Only HTML-mode pages can be converted.');
+            $this->redirect('/admin/pages');
+        }
+
+        $importSvc = new \Cruinn\Services\ImportService();
+        $blocks    = $importSvc->autoImport($page, (int) $id, null);
+
+        if (empty($blocks)) {
+            Auth::flash('error', 'Nothing to import — the page has no HTML content.');
+            $this->redirect('/admin/pages');
+        }
+
+        $importSvc->persistImportedBlocks($blocks, (int) $id, $this->db);
+
+        $this->db->update('pages', [
+            'render_mode' => 'cruinn',
+            'updated_at'  => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$id]);
+
+        $this->logActivity('update', 'page', (int) $id, $page['title'] . ' [convert-to-blocks]');
+        Auth::flash('success', 'Page converted. Review your blocks and publish when ready.');
+        $this->redirect('/admin/editor/' . (int) $id . '/edit');
+    }
+
+    /**
      * POST /admin/pages/{id}/export-html
      * Renders a Cruinn page to a flat .html file and flips render_mode to 'file'.
      */
