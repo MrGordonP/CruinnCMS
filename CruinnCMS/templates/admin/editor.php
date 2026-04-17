@@ -34,6 +34,18 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
      data-start-in-code-view="<?= !empty($startInCodeView) ? '1' : '0' ?>"
      data-html-content="<?= htmlspecialchars($htmlContent ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
+    <!-- ── Draft resume banner ─────────────────────────────────── -->
+    <div id="editor-draft-banner" style="display:none" role="dialog" aria-modal="true" aria-labelledby="editor-draft-banner-title">
+        <div class="editor-draft-banner-card">
+            <h3 id="editor-draft-banner-title">Unsaved draft found</h3>
+            <p>This page has unsaved draft changes. Do you want to continue editing them, or discard and reload from the published version?</p>
+            <div class="editor-draft-banner-actions">
+                <button type="button" class="btn btn-primary" id="editor-draft-continue-btn">Continue with draft</button>
+                <button type="button" class="btn btn-outline btn-danger" id="editor-draft-discard-btn">Discard &amp; reload published</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Toolbar ──────────────────────────────────────────────── -->
     <div id="editor-toolbar">
         <?php if (!empty($isTemplatePage)): ?>
@@ -359,26 +371,31 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         <!-- Canvas -->
         <div id="editor-canvas-wrap">
 
-            <?php if (empty($isZonePage) && isset($headerPageId)): ?>
-            <div class="editor-zone-preview editor-zone--header">
+            <?php if ((empty($isZonePage) || !empty($isTemplatePage)) && isset($headerPageId)): ?>
+            <?php if (!empty($headerPages) && count($headerPages) > 1): ?>
+            <div class="editor-zone-preview editor-zone--header zone-picker">
                 <?php if (!empty($headerZoneHtml)): ?>
                 <div class="editor-zone-inner"><?= $headerZoneHtml ?></div>
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty">Header zone — not yet published.</div>
                 <?php endif; ?>
-                <?php if (!empty($headerPages) && count($headerPages) > 1): ?>
-                <div style="position:relative;display:inline-block" class="zone-picker">
-                    <button type="button" class="editor-zone-edit-link" onclick="this.nextElementSibling.classList.toggle('open')">Edit Header ▾</button>
-                    <div class="zone-picker-menu">
-                        <?php foreach ($headerPages as $_hp): ?>
-                        <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?></a>
-                        <?php endforeach; ?>
-                    </div>
+                <button type="button" class="editor-zone-edit-link" onclick="this.nextElementSibling.classList.toggle('open')">Choose header to edit ▾</button>
+                <div class="zone-picker-menu">
+                    <?php foreach ($headerPages as $_hp): ?>
+                    <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?></a>
+                    <?php endforeach; ?>
                 </div>
-                <?php else: ?>
-                <a href="<?= e($_editorPageHref((int)$headerPageId)) ?>" class="editor-zone-edit-link">Edit Header</a>
-                <?php endif; ?>
             </div>
+            <?php else: ?>
+            <a href="<?= e($_editorPageHref((int)$headerPageId)) ?>" class="editor-zone-preview editor-zone--header">
+                <?php if (!empty($headerZoneHtml)): ?>
+                <div class="editor-zone-inner"><?= $headerZoneHtml ?></div>
+                <?php else: ?>
+                <div class="editor-zone-inner editor-zone-empty">Header zone — not yet published.</div>
+                <?php endif; ?>
+                <span class="editor-zone-edit-link">Click to edit header</span>
+            </a>
+            <?php endif; ?>
             <?php endif; ?>
 
             <div id="editor-canvas" class="editor-mode<?= !empty($isZonePage) ? ' zone-canvas' : '' ?>">
@@ -403,15 +420,15 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
             <?php endif; ?>
 
-            <?php if (empty($isZonePage) && isset($footerPageId)): ?>
-            <div class="editor-zone-preview editor-zone--footer">
+            <?php if ((empty($isZonePage) || !empty($isTemplatePage)) && isset($footerPageId)): ?>
+            <a href="<?= e($_editorPageHref((int)$footerPageId)) ?>" class="editor-zone-preview editor-zone--footer">
                 <?php if (!empty($footerZoneHtml)): ?>
                 <div class="editor-zone-inner"><?= $footerZoneHtml ?></div>
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty">Footer zone — not yet published.</div>
                 <?php endif; ?>
-                <a href="<?= e($_editorPageHref((int)$footerPageId)) ?>" class="editor-zone-edit-link">Edit Footer</a>
-            </div>
+                <span class="editor-zone-edit-link">Click to edit footer</span>
+            </a>
             <?php endif; ?>
 
         </div>
@@ -1067,33 +1084,6 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         <button type="button" data-cmd="underline"><u>U</u></button>
         <button type="button" data-cmd="createLink" data-cmd-prompt="Enter URL">Link</button>
         <button type="button" data-cmd="unlink">Unlink</button>
-    </div>
-
-    <!-- Media panel (self-contained overlay) -->
-    <div id="editor-media-panel" style="display:none">
-        <div class="editor-media-inner">
-            <div class="editor-media-header">
-                <h3>Media Library</h3>
-                <span id="editor-media-path" class="editor-media-path"></span>
-                <button type="button" id="editor-media-close" aria-label="Close">&times;</button>
-            </div>
-            <div class="editor-media-toolbar">
-                <label class="btn btn-small btn-primary">
-                    Upload
-                    <input type="file" id="editor-media-upload" accept="image/*" hidden>
-                </label>
-                <button type="button" class="btn btn-small btn-outline" id="editor-media-new-folder-btn">+ Folder</button>
-                <button type="button" class="btn btn-small btn-danger" id="editor-media-delete-folder-btn" style="display:none">Delete Folder</button>
-                <input type="search" id="editor-media-search" class="editor-media-search-input" placeholder="Search all…">
-            </div>
-            <div class="editor-media-grid" id="editor-media-grid">
-                <p class="editor-media-loading">Loading…</p>
-            </div>
-            <div class="editor-media-footer">
-                <button type="button" class="btn btn-primary" id="editor-media-select-btn">Upload</button>
-                <button type="button" class="btn btn-outline" id="editor-media-cancel-btn">Cancel</button>
-            </div>
-        </div>
     </div>
 
 </div><!-- /#editor-wrap -->

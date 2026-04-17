@@ -182,7 +182,7 @@ class CruinnController extends BaseController
         }
 
         $state    = $this->db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-        $hasDraft = !empty($state);
+        $hasDraft = !empty($state) && (int)($state['current_edit_seq'] ?? 0) > 0;
 
         if ($hasDraft) {
             $flat = $this->db->fetchAll(
@@ -277,7 +277,7 @@ class CruinnController extends BaseController
         $templateCanvasHtml  = '';
         $templateCanvasCss   = '';
 
-        if (!$isZonePage) {
+        if (!$isZonePage || $isTemplatePage) {
             $hp = $this->db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
             $fp = $this->db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
             $headerPageId = $hp ? (int) $hp['id'] : null;
