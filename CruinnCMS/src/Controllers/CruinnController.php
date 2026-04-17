@@ -202,6 +202,47 @@ class CruinnController extends BaseController
 
         $renderMode = $page['render_mode'] ?? 'cruinn';
 
+        // ── Auto-seed zone blocks for a newly created, empty template canvas ──
+        if ($isTemplatePage && empty($flat) && !$hasDraft) {
+            $sort = 10;
+            foreach ($templateZonesDef as $zoneName) {
+                if (in_array($zoneName, ['header', 'footer'], true)) { continue; }
+                $blockId = 'zone-' . $zoneName . '-' . $pageId;
+                $this->db->execute(
+                    'INSERT IGNORE INTO cruinn_blocks
+                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
+                    [
+                        $blockId, $pageId, 'zone', '',
+                        json_encode(['min-height' => '120px']),
+                        json_encode(['zone_name' => $zoneName]),
+                        $sort,
+                    ]
+                );
+                $sort += 10;
+            }
+            // If no zones defined (or all were header/footer), seed a default main zone
+            if ($sort === 10) {
+                $this->db->execute(
+                    'INSERT IGNORE INTO cruinn_blocks
+                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
+                    [
+                        'zone-main-' . $pageId, $pageId, 'zone', '',
+                        json_encode(['min-height' => '120px']),
+                        json_encode(['zone_name' => 'main']),
+                        10,
+                    ]
+                );
+            }
+            $flat = $this->db->fetchAll(
+                'SELECT * FROM cruinn_blocks
+                  WHERE page_id = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$pageId]
+            );
+        }
+
         // ── Auto-import: parse source HTML into typed blocks on first open ──
         if (in_array($renderMode, ['html', 'file'], true) && empty($flat)) {
             $importSvc  = new \Cruinn\Services\ImportService();
@@ -254,13 +295,15 @@ class CruinnController extends BaseController
         $templateSlugName = $isTemplatePage ? substr($page['slug'], 5) : null;
 
         // For template canvas pages: look up which template owns this canvas
-        $templateId = null;
+        $templateId    = null;
+        $templateZonesDef = [];
         if ($isTemplatePage) {
             $tplRow = $this->db->fetch(
-                'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+                'SELECT id, zones FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
                 [$pageId]
             );
-            $templateId = $tplRow ? (int) $tplRow['id'] : null;
+            $templateId       = $tplRow ? (int) $tplRow['id'] : null;
+            $templateZonesDef = $tplRow ? (json_decode($tplRow['zones'] ?? '[]', true) ?: []) : [];
         }
 
         // For body pages: load the zone pages' IDs and their published preview HTML/CSS
