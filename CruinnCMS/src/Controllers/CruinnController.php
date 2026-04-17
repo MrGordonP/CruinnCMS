@@ -327,13 +327,17 @@ class CruinnController extends BaseController
             $footerPageId = $fp ? (int) $fp['id'] : null;
 
             $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
-            if ($headerPageId && $cruinnSvc->hasPublished($headerPageId)) {
-                $headerZoneHtml = $cruinnSvc->buildHtml($headerPageId);
-                $headerZoneCss  = $cruinnSvc->buildCss($headerPageId);
-            }
-            if ($footerPageId && $cruinnSvc->hasPublished($footerPageId)) {
-                $footerZoneHtml = $cruinnSvc->buildHtml($footerPageId);
-                $footerZoneCss  = $cruinnSvc->buildCss($footerPageId);
+            try {
+                if ($headerPageId && $cruinnSvc->hasPublished($headerPageId)) {
+                    $headerZoneHtml = $cruinnSvc->buildHtml($headerPageId);
+                    $headerZoneCss  = $cruinnSvc->buildCss($headerPageId);
+                }
+                if ($footerPageId && $cruinnSvc->hasPublished($footerPageId)) {
+                    $footerZoneHtml = $cruinnSvc->buildHtml($footerPageId);
+                    $footerZoneCss  = $cruinnSvc->buildCss($footerPageId);
+                }
+            } catch (\Throwable $e) {
+                error_log('CruinnController::edit zone render failed: ' . $e->getMessage());
             }
 
             // For non-template-canvas pages: look up the template canvas and extract zones
