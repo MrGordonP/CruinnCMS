@@ -2,9 +2,7 @@
 
 <div class="admin-page-header">
     <h2>🏗️ Site Builder</h2>
-    <?php if (!empty($homePageId)): ?>
-    <a href="<?= url('/admin/editor/' . (int)$homePageId . '/edit') ?>" class="btn btn-primary">Open Site Editor →</a>
-    <?php endif; ?>
+    <a href="<?= url(!empty($homePageId) ? '/admin/editor/' . (int)$homePageId . '/edit' : '/admin/editor') ?>" class="btn btn-primary">Open Site Editor →</a>
 </div>
 
 <!-- ── Hub cards ──────────────────────────────────────────────── -->

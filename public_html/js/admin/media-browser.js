@@ -1,83 +1,164 @@
-﻿/**
+/**
  * Cruinn Admin — Media Browser
  *
- * Modal-based media library browser with single- and multi-select support,
- * search, and inline upload.
- * Depends on: utils.js, api.js
+ * Folder-aware media library modal. Supports folder navigation, upload,
+ * create/delete folder, search, and single-select with callback.
+ * Depends on: utils.js (Cruinn.getCSRFToken, Cruinn.escapeHtml, Cruinn.escapeAttr)
  */
 (function (Cruinn) {
 
     // ── Private state ──────────────────────────────────────────
 
-    var mediaModal = null;
-    var mediaGrid = null;
-    var mediaSearch = null;
-    var mediaUploadInput = null;
+    var modal        = null;
+    var grid         = null;
+    var pathEl       = null;
+    var searchInput  = null;
+    var uploadInput  = null;
+    var selectBtn    = null;
+    var deleteBtn    = null;
 
-    var mediaCallback = null;
-    var mediaSelectedUrl = null;
-    var mediaAllowMultiple = false;
-    var mediaSelectedUrls = [];
+    var mediaCallback      = null;
+    var mediaSelected      = null;   // selected file URL
+    var mediaCurrentFolder = '';
 
     // ── Private helpers ────────────────────────────────────────
 
-    function closeMediaBrowser() {
-        if (mediaModal) mediaModal.style.display = 'none';
-        mediaCallback = null;
-        mediaSelectedUrl = null;
-        mediaSelectedUrls = [];
+    function updateSelectBtn() {
+        if (selectBtn) {
+            selectBtn.textContent = mediaSelected ? 'Insert' : 'Upload';
+        }
+        if (deleteBtn) {
+            deleteBtn.textContent = mediaSelected ? 'Delete File' : 'Delete Folder';
+            deleteBtn.style.display = (mediaSelected || mediaCurrentFolder) ? '' : 'none';
+        }
     }
 
-    function loadMediaFiles(query) {
-        if (!mediaGrid) return;
-        mediaGrid.innerHTML = '<p class="media-loading">Loading\u2026</p>';
+    function closeMediaBrowser() {
+        if (modal) { modal.style.display = 'none'; }
+        mediaCallback      = null;
+        mediaSelected      = null;
+        mediaCurrentFolder = '';
+        updateSelectBtn();
+    }
 
-        var url = '/admin/media';
-        if (query) url += '?q=' + encodeURIComponent(query);
+    function loadMediaGrid(folder) {
+        mediaCurrentFolder = folder || '';
+        mediaSelected      = null;
+        updateSelectBtn();
 
-        fetch(url)
+        if (pathEl) {
+            pathEl.textContent = mediaCurrentFolder
+                ? mediaCurrentFolder.replace(/.*\/media/, '')
+                : '/';
+        }
+
+        if (!grid) { return; }
+        grid.innerHTML = '<p class="media-loading">Loading\u2026</p>';
+
+        var url = '/admin/media?_=' + Date.now();
+        if (mediaCurrentFolder) { url += '&folder=' + encodeURIComponent(mediaCurrentFolder); }
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
             .then(function (r) { return r.json(); })
             .then(function (data) {
-                var files = data.files || [];
-                if (!files.length) {
-                    mediaGrid.innerHTML = '<p class="media-empty">No images found. Upload one above.</p>';
-                    return;
+                var folders = data.folders || [];
+                var files   = data.files   || [];
+                var parent  = data.parent !== undefined ? data.parent : null;
+                grid.innerHTML = '';
+
+                // Up navigation
+                if (parent !== null) {
+                    var up = document.createElement('div');
+                    up.className = 'media-item media-folder';
+                    up.innerHTML = '<div class="media-folder-icon">&#8593;</div>'
+                        + '<div class="media-item-name">.. (up)</div>';
+                    up.addEventListener('click', function () { loadMediaGrid(parent); });
+                    grid.appendChild(up);
                 }
 
-                var html = '';
-                files.forEach(function (f) {
-                    var sizeKB = Math.round(f.size / 1024);
-                    html += '<div class="media-item" data-url="' + Cruinn.escapeAttr(f.url) + '">';
-                    html += '<img src="' + Cruinn.escapeAttr(f.url) + '" alt="' + Cruinn.escapeAttr(f.name) + '">';
-                    html += '<div class="media-item-name">' + Cruinn.escapeHtml(f.name) + '</div>';
-                    html += '<div class="media-item-size">' + sizeKB + ' KB</div>';
-                    html += '</div>';
-                });
-                mediaGrid.innerHTML = html;
+                if (!folders.length && !files.length) {
+                    var empty = document.createElement('p');
+                    empty.className = 'media-loading';
+                    empty.textContent = 'No images here.';
+                    grid.appendChild(empty);
+                }
 
-                mediaGrid.querySelectorAll('.media-item').forEach(function (item) {
+                // Subfolder items
+                folders.forEach(function (f) {
+                    var item = document.createElement('div');
+                    item.className = 'media-item media-folder';
+                    item.innerHTML = '<div class="media-folder-icon">&#128193;</div>'
+                        + '<div class="media-item-name">' + Cruinn.escapeHtml(f.name) + '</div>';
+                    item.addEventListener('click', function () { loadMediaGrid(f.path); });
+                    grid.appendChild(item);
+                });
+
+                // Image items
+                files.forEach(function (file) {
+                    var fileUrl = file.url || file;
+                    var name    = file.name || fileUrl.split('/').pop();
+                    var item    = document.createElement('div');
+                    item.className   = 'media-item';
+                    item.dataset.url = fileUrl;
+                    item.innerHTML = '<img src="' + Cruinn.escapeAttr(fileUrl) + '" alt="' + Cruinn.escapeAttr(name) + '">'
+                        + '<div class="media-item-name">' + Cruinn.escapeHtml(name) + '</div>';
                     item.addEventListener('click', function () {
-                        var itemUrl = this.dataset.url;
-                        var selectBtn = mediaModal.querySelector('.media-select-btn');
-                        if (mediaAllowMultiple) {
-                            this.classList.toggle('selected');
-                            var idx = mediaSelectedUrls.indexOf(itemUrl);
-                            if (idx >= 0) mediaSelectedUrls.splice(idx, 1);
-                            else mediaSelectedUrls.push(itemUrl);
-                            if (selectBtn) selectBtn.disabled = !mediaSelectedUrls.length;
-                        } else {
-                            mediaGrid.querySelectorAll('.media-item').forEach(function (el) {
-                                el.classList.remove('selected');
-                            });
-                            this.classList.add('selected');
-                            mediaSelectedUrl = itemUrl;
-                            if (selectBtn) selectBtn.disabled = false;
-                        }
+                        grid.querySelectorAll('.media-item').forEach(function (i) { i.classList.remove('selected'); });
+                        item.classList.add('selected');
+                        mediaSelected = fileUrl;
+                        updateSelectBtn();
                     });
+                    item.addEventListener('dblclick', function () {
+                        mediaSelected = fileUrl;
+                        if (mediaCallback) { mediaCallback(fileUrl); }
+                        closeMediaBrowser();
+                    });
+                    grid.appendChild(item);
                 });
             })
             .catch(function () {
-                mediaGrid.innerHTML = '<p class="media-empty">Failed to load media library.</p>';
+                if (grid) { grid.innerHTML = '<p class="media-loading">Failed to load media.</p>'; }
+            });
+    }
+
+    function runSearch(q) {
+        if (!grid) { return; }
+        grid.innerHTML = '<p class="media-loading">Searching\u2026</p>';
+        fetch('/admin/media?_=' + Date.now() + '&q=' + encodeURIComponent(q), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var files = data.files || [];
+                grid.innerHTML = '';
+                if (!files.length) {
+                    grid.innerHTML = '<p class="media-loading">No results.</p>';
+                    return;
+                }
+                files.forEach(function (file) {
+                    var fileUrl = file.url;
+                    var name    = file.name;
+                    var item    = document.createElement('div');
+                    item.className   = 'media-item';
+                    item.dataset.url = fileUrl;
+                    item.innerHTML = '<img src="' + Cruinn.escapeAttr(fileUrl) + '" alt="' + Cruinn.escapeAttr(name) + '">'
+                        + '<div class="media-item-name">' + Cruinn.escapeHtml(name) + '</div>';
+                    item.addEventListener('click', function () {
+                        grid.querySelectorAll('.media-item').forEach(function (i) { i.classList.remove('selected'); });
+                        item.classList.add('selected');
+                        mediaSelected = fileUrl;
+                        updateSelectBtn();
+                    });
+                    item.addEventListener('dblclick', function () {
+                        mediaSelected = fileUrl;
+                        if (mediaCallback) { mediaCallback(fileUrl); }
+                        closeMediaBrowser();
+                    });
+                    grid.appendChild(item);
+                });
+            })
+            .catch(function () {
+                if (grid) { grid.innerHTML = '<p class="media-loading">Search failed.</p>'; }
             });
     }
 
@@ -85,72 +166,130 @@
 
     /**
      * Open the media browser modal.
-     * @param {Function} onSelect  Called with the selected URL (string) for single-select,
-     *                             or array of URLs for multi-select.
-     * @param {boolean}  multi     Allow multiple selection.
+     * @param {Function} onSelect  Called with the selected file URL string.
      */
-    Cruinn.openMediaBrowser = function (onSelect, multi) {
-        mediaCallback = onSelect;
-        mediaSelectedUrl = null;
-        mediaSelectedUrls = [];
-        mediaAllowMultiple = !!multi;
-        if (mediaModal) {
-            mediaModal.style.display = '';
-            loadMediaFiles('');
-        }
+    Cruinn.openMediaBrowser = function (onSelect) {
+        mediaCallback = onSelect || null;
+        mediaSelected = null;
+        if (searchInput) { searchInput.value = ''; }
+        updateSelectBtn();
+        if (modal) { modal.style.display = 'flex'; }
+        loadMediaGrid('');
     };
 
     /**
-     * Bind all event handlers for the media browser modal.
-     * Call once after DOMContentLoaded.
+     * Bind all event handlers. Called once after DOMContentLoaded.
      */
     Cruinn.initMediaBrowser = function () {
-        mediaModal = document.getElementById('media-modal');
-        mediaGrid = document.getElementById('media-grid');
-        mediaSearch = document.getElementById('media-search');
-        mediaUploadInput = document.getElementById('media-modal-upload');
+        modal       = document.getElementById('media-modal');
+        grid        = document.getElementById('media-grid');
+        pathEl      = document.getElementById('media-modal-path');
+        searchInput = document.getElementById('media-search');
+        uploadInput = document.getElementById('media-modal-upload');
+        selectBtn   = document.getElementById('media-modal-select-btn');
+        deleteBtn   = document.getElementById('media-modal-delete-btn');
 
-        if (!mediaModal) return;
+        if (!modal) { return; }
 
-        mediaModal.querySelector('.media-modal-close').addEventListener('click', closeMediaBrowser);
-        mediaModal.querySelector('.media-cancel-btn').addEventListener('click', closeMediaBrowser);
+        document.getElementById('media-modal-close-btn').addEventListener('click', closeMediaBrowser);
+        document.getElementById('media-modal-cancel-btn').addEventListener('click', closeMediaBrowser);
 
-        mediaModal.querySelector('.media-select-btn').addEventListener('click', function () {
-            if (mediaCallback) {
-                if (mediaAllowMultiple) {
-                    mediaCallback(mediaSelectedUrls);
-                } else if (mediaSelectedUrl) {
-                    mediaCallback(mediaSelectedUrl);
-                }
-            }
-            closeMediaBrowser();
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) { closeMediaBrowser(); }
         });
 
-        // Click outside modal content to close
-        mediaModal.addEventListener('click', function (e) {
-            if (e.target === mediaModal) closeMediaBrowser();
+        // Select / Upload button
+        selectBtn.addEventListener('click', function () {
+            if (mediaSelected && mediaCallback) {
+                mediaCallback(mediaSelected);
+                closeMediaBrowser();
+            } else {
+                uploadInput.click();
+            }
+        });
+
+        // Upload
+        uploadInput.addEventListener('change', function (e) {
+            var file = e.target.files[0];
+            if (!file) { return; }
+            var fd = new FormData();
+            fd.append('file', file);
+            fd.append('_csrf_token', Cruinn.getCSRFToken());
+            fetch('/admin/upload', { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) { alert('Upload failed: ' + data.error); loadMediaGrid(mediaCurrentFolder); return; }
+                    var destFolder = data.url ? data.url.substring(0, data.url.lastIndexOf('/')) : mediaCurrentFolder;
+                    loadMediaGrid(destFolder);
+                })
+                .catch(function () { alert('Upload request failed.'); loadMediaGrid(mediaCurrentFolder); });
+            e.target.value = '';
+        });
+
+        // New folder
+        document.getElementById('media-modal-new-folder-btn').addEventListener('click', function () {
+            var name = prompt('New folder name (letters, numbers, - _ only):');
+            if (!name) { return; }
+            var fd = new FormData();
+            fd.append('csrf_token', Cruinn.getCSRFToken());
+            fd.append('folder', mediaCurrentFolder);
+            fd.append('name', name);
+            fetch('/admin/media/folder', { method: 'POST', body: fd })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.error) { alert(data.error); return; }
+                    loadMediaGrid(mediaCurrentFolder);
+                })
+                .catch(function () { alert('Failed to create folder.'); });
+        });
+
+        // Delete file / folder
+        deleteBtn.addEventListener('click', function () {
+            if (mediaSelected) {
+                if (!confirm('Delete this file? This cannot be undone.')) { return; }
+                var fd = new FormData();
+                fd.append('csrf_token', Cruinn.getCSRFToken());
+                fd.append('file', mediaSelected);
+                fetch('/admin/media/delete-file', { method: 'POST', body: fd })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.error) { alert(data.error); return; }
+                        mediaSelected = null;
+                        loadMediaGrid(mediaCurrentFolder);
+                    })
+                    .catch(function () { alert('Failed to delete file.'); });
+            } else if (mediaCurrentFolder) {
+                if (!confirm('Delete this folder? It must be empty.')) { return; }
+                var parts      = mediaCurrentFolder.replace(/\/$/, '').split('/');
+                parts.pop();
+                var parentPath = parts.join('/');
+                if (/^\/storage\/[^/]+\/media$/.test(parentPath)) { parentPath = ''; }
+                var fd2 = new FormData();
+                fd2.append('csrf_token', Cruinn.getCSRFToken());
+                fd2.append('folder', mediaCurrentFolder);
+                fetch('/admin/media/delete', { method: 'POST', body: fd2 })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.error) { alert(data.error); return; }
+                        loadMediaGrid(parentPath);
+                    })
+                    .catch(function () { alert('Failed to delete folder.'); });
+            }
         });
 
         // Search with debounce
-        if (mediaSearch) {
+        if (searchInput) {
             var searchTimer = null;
-            mediaSearch.addEventListener('input', function () {
+            searchInput.addEventListener('input', function () {
                 clearTimeout(searchTimer);
-                var q = this.value;
-                searchTimer = setTimeout(function () { loadMediaFiles(q); }, 300);
+                var q = searchInput.value.trim();
+                searchTimer = setTimeout(function () {
+                    if (q) { runSearch(q); } else { loadMediaGrid(mediaCurrentFolder); }
+                }, 300);
             });
         }
 
-        // Upload from within modal
-        if (mediaUploadInput) {
-            mediaUploadInput.addEventListener('change', function () {
-                if (!this.files.length) return;
-                Cruinn.uploadFile(this.files[0], function () {
-                    loadMediaFiles('');
-                });
-                this.value = '';
-            });
-        }
+        updateSelectBtn();
     };
 
 })(window.Cruinn = window.Cruinn || {});

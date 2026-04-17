@@ -44,6 +44,10 @@
             <td style="display:flex;gap:0.25rem;flex-wrap:wrap;">
                 <?php if ($mode === 'html'): ?>
                 <a href="/admin/pages/<?= (int)$pg['id'] ?>/html" class="btn btn-small">HTML Editor</a>
+                <form method="POST" action="/admin/pages/<?= (int)$pg['id'] ?>/convert-to-blocks" style="display:inline">
+                    <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                    <button type="submit" class="btn btn-small btn-primary" onclick="return confirm('Convert this page to block editor mode? The HTML will be parsed into blocks and opened as a draft.')">Convert to blocks</button>
+                </form>
                 <?php else: ?>
                 <a href="/admin/editor/<?= (int)$pg['id'] ?>/edit" class="btn btn-small">Edit</a>
                 <?php endif; ?>

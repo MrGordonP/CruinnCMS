@@ -945,3 +945,34 @@ textarea.form-input {
     border-top: 1px solid #e2e6ea;
     justify-content: flex-end;
 }
+
+/* ── Media browser folder support ──────────────────────────── */
+
+.media-modal-path {
+    font-size: 0.78rem;
+    color: #6b7280;
+    font-family: monospace;
+    flex: 1;
+    margin: 0 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.media-item.media-folder {
+    background: #f0f4f8;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+}
+
+.media-item.media-folder:hover {
+    background: #e0f2eb;
+}
+
+.media-folder-icon {
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 4px;
+}

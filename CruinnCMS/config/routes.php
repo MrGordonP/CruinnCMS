@@ -125,6 +125,7 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/pages/{id}/html',          [AdminPageController::class, 'htmlEditor']);
     $router->post('/admin/pages/{id}/html',         [AdminPageController::class, 'saveHtml']);
     $router->post('/admin/pages/{id}/export-html',  [AdminPageController::class, 'exportHtml']);
+    $router->post('/admin/pages/{id}/convert-to-blocks', [AdminPageController::class, 'convertToBlocks']);
 
     // Admin � Import
     $router->get('/admin/import',                   [\Cruinn\Admin\Controllers\AdminImportController::class, 'index']);

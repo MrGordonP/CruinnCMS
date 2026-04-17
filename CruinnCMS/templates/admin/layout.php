@@ -178,25 +178,28 @@
     </div>
 </div>
 
-<!-- Media Browser Modal -->
+<!-- Cruinn Media Browser -->
 <div class="media-modal-overlay" id="media-modal" style="display:none">
     <div class="media-modal">
         <div class="media-modal-header">
             <h2>Media Library</h2>
-            <button type="button" class="media-modal-close" aria-label="Close">&times;</button>
+            <span id="media-modal-path" class="media-modal-path"></span>
+            <button type="button" class="media-modal-close" id="media-modal-close-btn" aria-label="Close">&times;</button>
         </div>
         <div class="media-modal-toolbar">
             <label class="btn btn-small btn-primary media-upload-btn">
-                Upload New <input type="file" id="media-modal-upload" accept="image/*" hidden>
+                Upload <input type="file" id="media-modal-upload" accept="image/*" hidden>
             </label>
-            <input type="search" id="media-search" class="form-input" placeholder="Search files…" style="max-width:220px">
+            <button type="button" class="btn btn-small btn-outline" id="media-modal-new-folder-btn">+ Folder</button>
+            <button type="button" class="btn btn-small btn-danger" id="media-modal-delete-btn" style="display:none">Delete Folder</button>
+            <input type="search" id="media-search" class="form-input" placeholder="Search all…" style="max-width:180px">
         </div>
         <div class="media-modal-grid" id="media-grid">
             <p class="media-loading">Loading…</p>
         </div>
         <div class="media-modal-footer">
-            <button type="button" class="btn btn-primary media-select-btn" disabled>Insert Selected</button>
-            <button type="button" class="btn btn-outline media-cancel-btn">Cancel</button>
+            <button type="button" class="btn btn-primary" id="media-modal-select-btn">Upload</button>
+            <button type="button" class="btn btn-outline" id="media-modal-cancel-btn">Cancel</button>
         </div>
     </div>
 </div>
@@ -215,23 +218,6 @@ $adminModules = [
     'nav-config.js',
     'index.js',
 ];
-// Load block type registry first, then all registered type files
-$blockTypesDir = $adminJsBase . 'block-types/';
-$blockTypeFiles = [];
-if (is_dir($blockTypesDir)) {
-    // _registry.js first (underscore sorts before letters), then alphabetical type files
-    $allBtFiles = glob($blockTypesDir . '*.js');
-    if ($allBtFiles) {
-        $blockTypeFiles = $allBtFiles;
-    }
-}
-foreach ($blockTypeFiles as $btFile):
-    $btMtime = filemtime($btFile);
-    $btName  = basename($btFile);
-?>
-<script src="<?= url('/js/admin/block-types/' . $btName) ?>?v=<?= $btMtime ?>"></script>
-<?php endforeach; ?>
-<?php
 foreach ($adminModules as $module):
     $mtime = file_exists($adminJsBase . $module) ? filemtime($adminJsBase . $module) : 0;
 ?>
