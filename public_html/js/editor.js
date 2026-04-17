@@ -40,31 +40,6 @@
             _htmlPageMode = true;
             enterCodeView({ html: wrap.dataset.htmlContent || '' });
         }
-        // Draft resume banner
-        if (wrap.dataset.hasDraft === '1') {
-            var draftBanner = document.getElementById('editor-draft-banner');
-            if (draftBanner) {
-                draftBanner.style.display = 'flex';
-                document.getElementById('editor-draft-continue-btn').addEventListener('click', function () {
-                    draftBanner.style.display = 'none';
-                });
-                document.getElementById('editor-draft-discard-btn').addEventListener('click', function () {
-                    var btn = this;
-                    btn.disabled = true;
-                    btn.textContent = 'Discarding…';
-                    fetch(API_BASE + '/' + PAGE_ID + '/discard', {
-                        method: 'POST',
-                        headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
-                    })
-                        .then(function (r) { return r.json(); })
-                        .then(function (data) {
-                            if (data.redirect) { window.location.href = data.redirect; }
-                            else { btn.disabled = false; btn.textContent = 'Discard & reload published'; }
-                        })
-                        .catch(function () { btn.disabled = false; btn.textContent = 'Discard & reload published'; });
-                });
-            }
-        }
     });
 
     /**
