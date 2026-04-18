@@ -181,7 +181,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
 
         $userId = (int) $this->input('user_id', 0);
         if ($userId > 0) {
-            $this->roles->assignGroup($userId, $id, Auth::id());
+            $this->roles->assignGroup($userId, $id, Auth::userId());
             Auth::flash('success', 'Member added.');
         }
         $this->redirect("/admin/groups/{$id}/edit");
