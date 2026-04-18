@@ -66,8 +66,8 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/dashboard', [
             'title'       => 'Social Media',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media'],
+                ['Admin', '/admin'],
+                ['Social Media'],
             ],
             'accounts'    => $accounts,
             'platforms'   => $platforms,
@@ -97,9 +97,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/feed', [
             'title'       => ucfirst($platform) . ' Feed',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => ucfirst($platform) . ' Feed'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                [ucfirst($platform) . ' Feed'],
             ],
             'platform' => $platform,
             'account'  => $account,
@@ -155,9 +155,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/inbox', [
             'title'       => 'Social Inbox',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Inbox'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Inbox'],
             ],
             'messages'     => $messages,
             'unreadCount'  => $unreadCount,
@@ -289,9 +289,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/distribute', [
             'title'       => 'Distribute Content',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Distribute'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Distribute Content'],
             ],
             'articles'        => $articles,
             'events'          => $events,
@@ -473,9 +473,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/accounts', [
             'title'       => 'Social Accounts',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Accounts'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Accounts'],
             ],
             'accounts' => $accounts,
         ]);
@@ -555,9 +555,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/mailing-lists', [
             'title'       => 'Mailing Lists',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Mailing Lists'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Mailing Lists'],
             ],
             'lists' => $lists,
         ]);
