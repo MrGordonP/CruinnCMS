@@ -11,7 +11,10 @@ return [
     'name'         => 'Organisation Workspace',
     'description'  => 'Restricted workspace for organisation members: discussion threads and inbox.',
     'provides'     => ['organisation'],
-    'migrations'   => [__DIR__ . '/migrations/001_organisation_tables.sql'],
+    'migrations'   => [
+        __DIR__ . '/migrations/001_organisation_tables.sql',
+        __DIR__ . '/migrations/002_groups_tables.sql',
+    ],
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [
