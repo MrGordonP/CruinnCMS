@@ -113,7 +113,9 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/groups',              [GroupController::class, 'groupStore']);
     $router->get('/admin/groups/{id}/edit',     [GroupController::class, 'groupEdit']);
     $router->post('/admin/groups/{id}',         [GroupController::class, 'groupUpdate']);
-    $router->post('/admin/groups/{id}/delete',  [GroupController::class, 'groupDelete']);
+    $router->post('/admin/groups/{id}/delete',          [GroupController::class, 'groupDelete']);
+    $router->post('/admin/groups/{id}/members/add',    [GroupController::class, 'groupMemberAdd']);
+    $router->post('/admin/groups/{id}/members/{uid}/remove', [GroupController::class, 'groupMemberRemove']);
 
     // Admin � Pages
     $router->get('/admin/pages',                    [AdminPageController::class, 'listPages']);

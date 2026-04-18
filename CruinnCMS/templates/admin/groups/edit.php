@@ -83,9 +83,23 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
 
 <?php if (!$isNew): ?>
 <div class="detail-card" style="margin-top: 2rem;">
-    <h2>Members (<?= count($members) ?>)</h2>
+    <div class="card-header-row">
+        <h2>Members (<?= count($members) ?>)</h2>
+        <?php if (!empty($nonMembers)): ?>
+        <form method="post" action="/admin/groups/<?= (int)$group['id'] ?>/members/add" class="inline-form">
+            <?= csrf_field() ?>
+            <select name="user_id" class="form-select form-select--sm" required>
+                <option value="">Add a member…</option>
+                <?php foreach ($nonMembers as $u): ?>
+                <option value="<?= (int)$u['id'] ?>"><?= e($u['display_name']) ?> (<?= e($u['email']) ?>)</option>
+                <?php endforeach; ?>
+            </select>
+            <button type="submit" class="btn btn-primary btn-small">Add</button>
+        </form>
+        <?php endif; ?>
+    </div>
     <?php if (empty($members)): ?>
-        <p class="block-empty">No members assigned to this group yet. Assign users via the user edit page.</p>
+        <p class="block-empty">No members assigned to this group yet.</p>
     <?php else: ?>
     <table class="admin-table">
         <thead>
@@ -94,6 +108,7 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
                 <th>Email</th>
                 <th>Role</th>
                 <th>Assigned</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -103,6 +118,13 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
                 <td><?= e($m['email']) ?></td>
                 <td><span class="badge"><?= e($m['role']) ?></span></td>
                 <td><?= format_date($m['assigned_at']) ?></td>
+                <td>
+                    <form method="post" action="/admin/groups/<?= (int)$group['id'] ?>/members/<?= (int)$m['id'] ?>/remove"
+                          onsubmit="return confirm('Remove <?= e(addslashes($m['display_name'])) ?> from this group?')">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-danger btn-small">Remove</button>
+                    </form>
+                </td>
             </tr>
             <?php endforeach; ?>
         </tbody>

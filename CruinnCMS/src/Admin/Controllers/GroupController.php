@@ -45,6 +45,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
             'group'       => null,
             'allRoles'    => $this->roles->all(),
             'members'     => [],
+            'nonMembers'  => [],
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Groups', '/admin/groups'], ['New Group']],
         ]);
@@ -80,6 +81,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
                 'group'       => $data,
                 'allRoles'    => $this->roles->all(),
                 'members'     => [],
+                'nonMembers'  => [],
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Groups', '/admin/groups'], ['New Group']],
             ]);
@@ -104,11 +106,18 @@ class GroupController extends \Cruinn\Controllers\BaseController
             return;
         }
 
+        $members = $this->roles->getGroupMembers($id);
+        $memberIds = array_column($members, 'id');
+        $allUsers = $this->db->fetchAll(
+            'SELECT id, display_name, email FROM users WHERE active = 1 ORDER BY display_name ASC'
+        );
+        $nonMembers = array_filter($allUsers, fn($u) => !in_array((int)$u['id'], $memberIds, true));
         $this->renderAdmin('admin/groups/edit', [
             'title'       => 'Edit Group — ' . $group['name'],
             'group'       => $group,
             'allRoles'    => $this->roles->all(),
-            'members'     => $this->roles->getGroupMembers($id),
+            'members'     => $members,
+            'nonMembers'  => array_values($nonMembers),
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Groups', '/admin/groups'], [$group['name']]],
         ]);
@@ -138,11 +147,18 @@ class GroupController extends \Cruinn\Controllers\BaseController
         if (empty($data['name'])) $errors['name'] = 'Group name is required.';
 
         if ($errors) {
+            $members = $this->roles->getGroupMembers($id);
+            $memberIds = array_column($members, 'id');
+            $allUsers = $this->db->fetchAll(
+                'SELECT id, display_name, email FROM users WHERE active = 1 ORDER BY display_name ASC'
+            );
+            $nonMembers = array_filter($allUsers, fn($u) => !in_array((int)$u['id'], $memberIds, true));
             $this->renderAdmin('admin/groups/edit', [
                 'title'       => 'Edit Group — ' . $group['name'],
                 'group'       => array_merge($group, $data),
                 'allRoles'    => $this->roles->all(),
-                'members'     => $this->roles->getGroupMembers($id),
+                'members'     => $members,
+                'nonMembers'  => array_values($nonMembers),
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Groups', '/admin/groups'], [$group['name']]],
             ]);
@@ -151,6 +167,37 @@ class GroupController extends \Cruinn\Controllers\BaseController
 
         $this->roles->updateGroup($id, $data);
         Auth::flash('success', "Group \"{$data['name']}\" updated.");
+        $this->redirect("/admin/groups/{$id}/edit");
+    }
+
+    /**
+     * POST /admin/groups/{id}/members/add — Add a user to a group.
+     */
+    public function groupMemberAdd(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+        $group = $this->roles->findGroup($id);
+        if (!$group) { http_response_code(404); $this->render('errors/404'); return; }
+
+        $userId = (int) $this->input('user_id', 0);
+        if ($userId > 0) {
+            $this->roles->assignGroup($userId, $id, Auth::id());
+            Auth::flash('success', 'Member added.');
+        }
+        $this->redirect("/admin/groups/{$id}/edit");
+    }
+
+    /**
+     * POST /admin/groups/{id}/members/{uid}/remove — Remove a user from a group.
+     */
+    public function groupMemberRemove(int $id, int $uid): void
+    {
+        Auth::requirePermission('roles.manage');
+        $group = $this->roles->findGroup($id);
+        if (!$group) { http_response_code(404); $this->render('errors/404'); return; }
+
+        $this->roles->removeGroup($uid, $id);
+        Auth::flash('success', 'Member removed.');
         $this->redirect("/admin/groups/{$id}/edit");
     }
 
