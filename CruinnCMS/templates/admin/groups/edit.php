@@ -1,3 +1,4 @@
+<?php
 $isNew = empty($group['id']);
 \Cruinn\Template::requireCss('admin-members.css');
 $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
