@@ -196,6 +196,15 @@ class FileManagerController extends BaseController
             }
         }
 
+        // Quota check
+        $userId = Auth::userId();
+        $user = $this->db->fetch('SELECT drivespace_quota_bytes, drivespace_used_bytes FROM users WHERE id = ?', [$userId]);
+        if ($user && ($user['drivespace_used_bytes'] + $file['size']) > $user['drivespace_quota_bytes']) {
+            $remaining = $user['drivespace_quota_bytes'] - $user['drivespace_used_bytes'];
+            Auth::flash('error', 'Upload would exceed your storage quota. You have ' . $this->formatBytes($remaining) . ' remaining.');
+            $this->redirect('/drivespace/upload');
+        }
+
         // Validate file
         $result = $this->handleFileUpload($file);
         if (!$result['success']) {
@@ -225,7 +234,7 @@ class FileManagerController extends BaseController
             'file_size' => $file['size'],
             'mime_type' => $result['real_mime'],
             'file_ext' => $ext,
-            'owner_id' => Auth::userId(),
+            'owner_id' => $userId,
             'subject_id' => $subjectId,
             'status' => 'draft',
             'version' => 1,
@@ -236,6 +245,12 @@ class FileManagerController extends BaseController
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
 
+        // Increment quota usage
+        $this->db->execute(
+            'UPDATE users SET drivespace_used_bytes = drivespace_used_bytes + ? WHERE id = ?',
+            [$file['size'], $userId]
+        );
+
         // Save initial version
         $this->db->insert('file_versions', [
             'file_id' => $fileId,
@@ -244,7 +259,7 @@ class FileManagerController extends BaseController
             'file_size' => $file['size'],
             'parsed_content' => $parsedContent,
             'notes' => 'Initial upload',
-            'created_by' => Auth::userId(),
+            'created_by' => $userId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
 
@@ -481,6 +496,12 @@ class FileManagerController extends BaseController
 
         // CASCADE handles file_versions, file_shares, file_publications
         $this->db->delete('files', 'id = ?', [$id]);
+
+        // Decrement quota usage (guard against underflow)
+        $this->db->execute(
+            'UPDATE users SET drivespace_used_bytes = GREATEST(0, CAST(drivespace_used_bytes AS SIGNED) - ?) WHERE id = ?',
+            [(int)($file['file_size'] ?? 0), $file['owner_id']]
+        );
 
         $this->logActivity('delete', 'file', $id, "Deleted: {$file['title']}");
 
@@ -946,5 +967,13 @@ class FileManagerController extends BaseController
             'ext'       => $ext,
             'real_mime' => $realMime,
         ];
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1073741824) { return round($bytes / 1073741824, 1) . ' GB'; }
+        if ($bytes >= 1048576)    { return round($bytes / 1048576, 1) . ' MB'; }
+        if ($bytes >= 1024)       { return round($bytes / 1024, 1) . ' KB'; }
+        return $bytes . ' B';
     }
 }

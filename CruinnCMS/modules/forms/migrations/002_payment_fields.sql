@@ -21,20 +21,25 @@ CREATE TABLE IF NOT EXISTS `form_payment_options` (
 -- ── 2. Payment columns on form_submissions ───────────────────
 
 ALTER TABLE `form_submissions`
-    ADD COLUMN `payment_option_id` INT UNSIGNED NULL
+    ADD COLUMN IF NOT EXISTS `payment_option_id` INT UNSIGNED NULL
         COMMENT 'Selected price tier at time of submission'
         AFTER `reviewer_notes`,
-    ADD COLUMN `payment_method` ENUM('bank_transfer','cash','cheque','stripe') NULL
+    ADD COLUMN IF NOT EXISTS `payment_method` ENUM('bank_transfer','cash','cheque','stripe') NULL
         AFTER `payment_option_id`,
-    ADD COLUMN `payment_status` ENUM('not_required','pending','verified','rejected') NOT NULL DEFAULT 'not_required'
+    ADD COLUMN IF NOT EXISTS `payment_status` ENUM('not_required','pending','verified','rejected') NOT NULL DEFAULT 'not_required'
         AFTER `payment_method`,
-    ADD COLUMN `payment_verified_by` INT UNSIGNED NULL
+    ADD COLUMN IF NOT EXISTS `payment_verified_by` INT UNSIGNED NULL
         AFTER `payment_status`,
-    ADD COLUMN `payment_verified_at` DATETIME NULL
+    ADD COLUMN IF NOT EXISTS `payment_verified_at` DATETIME NULL
         AFTER `payment_verified_by`,
-    ADD COLUMN `payment_notes` TEXT NULL
-        AFTER `payment_verified_at`,
-    ADD CONSTRAINT `fk_submissions_payment_option`
-        FOREIGN KEY (`payment_option_id`) REFERENCES `form_payment_options`(`id`) ON DELETE SET NULL,
-    ADD CONSTRAINT `fk_submissions_payment_verifier`
-        FOREIGN KEY (`payment_verified_by`) REFERENCES `users`(`id`) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS `payment_notes` TEXT NULL
+        AFTER `payment_verified_at`;
+
+-- Add FK constraints only if not already present
+SET @fk1 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'form_submissions' AND CONSTRAINT_NAME = 'fk_submissions_payment_option');
+SET @sql1 = IF(@fk1 = 0, 'ALTER TABLE `form_submissions` ADD CONSTRAINT `fk_submissions_payment_option` FOREIGN KEY (`payment_option_id`) REFERENCES `form_payment_options`(`id`) ON DELETE SET NULL', 'SELECT 1');
+PREPARE stmt1 FROM @sql1; EXECUTE stmt1; DEALLOCATE PREPARE stmt1;
+
+SET @fk2 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'form_submissions' AND CONSTRAINT_NAME = 'fk_submissions_payment_verifier');
+SET @sql2 = IF(@fk2 = 0, 'ALTER TABLE `form_submissions` ADD CONSTRAINT `fk_submissions_payment_verifier` FOREIGN KEY (`payment_verified_by`) REFERENCES `users`(`id`) ON DELETE SET NULL', 'SELECT 1');
+PREPARE stmt2 FROM @sql2; EXECUTE stmt2; DEALLOCATE PREPARE stmt2;

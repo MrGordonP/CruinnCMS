@@ -53,6 +53,18 @@ class CSRF
     }
 
     /**
+     * Verify CSRF token on a POST request, aborting with 403 on failure.
+     * Convenience wrapper around validate() for use in controllers.
+     */
+    public static function verify(): void
+    {
+        if (!self::validate()) {
+            http_response_code(403);
+            exit('CSRF token invalid.');
+        }
+    }
+
+    /**
      * Middleware: validate CSRF on all POST requests.
      * Returns null to allow the request, or sends a 403 response.
      */

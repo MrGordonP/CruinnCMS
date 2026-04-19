@@ -21,6 +21,7 @@ return [
         ['group' => 'Comms', 'label' => 'Mailing Lists', 'url' => '/admin/social/mailing-lists', 'icon' => '📧'],
         ['group' => 'Comms', 'label' => 'Accounts', 'url' => '/admin/social/accounts', 'icon' => '🔗'],
         ['group' => 'Comms', 'label' => 'Distribute', 'url' => '/admin/social/distribute', 'icon' => '📤'],
+        ['group' => 'Settings', 'label' => 'Social Config', 'url' => '/admin/settings/social', 'icon' => '📡'],
     ],
 
     'dashboard_sections' => [

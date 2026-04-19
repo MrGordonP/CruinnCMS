@@ -10,21 +10,29 @@ SET NAMES utf8mb4;
 
 -- Post edit tracking and soft-delete
 ALTER TABLE `forum_posts`
-    ADD COLUMN `is_deleted`  TINYINT(1) NOT NULL DEFAULT 0 AFTER `body_html`,
-    ADD COLUMN `deleted_at`  DATETIME NULL DEFAULT NULL AFTER `is_deleted`,
-    ADD COLUMN `deleted_by`  INT UNSIGNED NULL DEFAULT NULL AFTER `deleted_at`,
-    ADD COLUMN `edit_count`  SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `deleted_by`,
-    ADD COLUMN `edited_at`   DATETIME NULL DEFAULT NULL AFTER `edit_count`,
-    ADD KEY `idx_forum_posts_deleted` (`is_deleted`),
-    ADD CONSTRAINT `fk_forum_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS `is_deleted`  TINYINT(1) NOT NULL DEFAULT 0 AFTER `body_html`,
+    ADD COLUMN IF NOT EXISTS `deleted_at`  DATETIME NULL DEFAULT NULL AFTER `is_deleted`,
+    ADD COLUMN IF NOT EXISTS `deleted_by`  INT UNSIGNED NULL DEFAULT NULL AFTER `deleted_at`,
+    ADD COLUMN IF NOT EXISTS `edit_count`  SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `deleted_by`,
+    ADD COLUMN IF NOT EXISTS `edited_at`   DATETIME NULL DEFAULT NULL AFTER `edit_count`;
+
+ALTER TABLE `forum_posts` ADD KEY IF NOT EXISTS `idx_forum_posts_deleted` (`is_deleted`);
+
+SET @fk3 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'forum_posts' AND CONSTRAINT_NAME = 'fk_forum_posts_deleted_by');
+SET @sql3 = IF(@fk3 = 0, 'ALTER TABLE `forum_posts` ADD CONSTRAINT `fk_forum_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL', 'SELECT 1');
+PREPARE stmt3 FROM @sql3; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;
 
 -- Thread soft-delete
 ALTER TABLE `forum_threads`
-    ADD COLUMN `is_deleted`  TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_locked`,
-    ADD COLUMN `deleted_at`  DATETIME NULL DEFAULT NULL AFTER `is_deleted`,
-    ADD COLUMN `deleted_by`  INT UNSIGNED NULL DEFAULT NULL AFTER `deleted_at`,
-    ADD KEY `idx_forum_threads_deleted` (`is_deleted`),
-    ADD CONSTRAINT `fk_forum_threads_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS `is_deleted`  TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_locked`,
+    ADD COLUMN IF NOT EXISTS `deleted_at`  DATETIME NULL DEFAULT NULL AFTER `is_deleted`,
+    ADD COLUMN IF NOT EXISTS `deleted_by`  INT UNSIGNED NULL DEFAULT NULL AFTER `deleted_at`;
+
+ALTER TABLE `forum_threads` ADD KEY IF NOT EXISTS `idx_forum_threads_deleted` (`is_deleted`);
+
+SET @fk4 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'forum_threads' AND CONSTRAINT_NAME = 'fk_forum_threads_deleted_by');
+SET @sql4 = IF(@fk4 = 0, 'ALTER TABLE `forum_threads` ADD CONSTRAINT `fk_forum_threads_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL', 'SELECT 1');
+PREPARE stmt4 FROM @sql4; EXECUTE stmt4; DEALLOCATE PREPARE stmt4;
 
 -- Post reports
 CREATE TABLE IF NOT EXISTS `forum_post_reports` (

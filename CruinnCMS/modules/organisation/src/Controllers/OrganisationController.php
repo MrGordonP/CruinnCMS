@@ -424,8 +424,7 @@ class OrganisationController extends BaseController
      */
     protected function renderOrganisation(string $view, array $data = []): void
     {
-        $this->template->setLayout('organisation/layout');
-        echo $this->template->render($view, $data);
+        $this->renderAdmin($view, $data);
     }
 
 }

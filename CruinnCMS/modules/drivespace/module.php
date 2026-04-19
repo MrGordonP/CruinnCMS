@@ -5,6 +5,7 @@
  */
 
 use Cruinn\Module\Drivespace\Controllers\FileManagerController;
+use Cruinn\Module\Drivespace\Controllers\FileManagerAdminController;
 
 return [
     'slug'         => 'drivespace',
@@ -13,11 +14,13 @@ return [
     'provides'     => ['drivespace'],
     'migrations'   => [
         __DIR__ . '/migrations/001_drivespace_core.sql',
+        __DIR__ . '/migrations/002_drivespace_quotas.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [
-        ['group' => 'Community', 'label' => 'Drivespace', 'url' => '/drivespace', 'icon' => '📁'],
+        ['group' => 'Community', 'label' => 'Drivespace',       'url' => '/drivespace',       'icon' => '📁'],
+        ['group' => 'Community', 'label' => 'Drivespace Admin', 'url' => '/admin/drivespace',  'icon' => '⚙️'],
     ],
 
     'dashboard_sections' => [
@@ -38,5 +41,9 @@ return [
         $router->post('/drivespace/{id}/share',                   [FileManagerController::class, 'share']);
         $router->post('/drivespace/{id}/unshare',                 [FileManagerController::class, 'unshare']);
         $router->post('/drivespace/{id}/delete',                  [FileManagerController::class, 'delete']);
+
+        // Admin quota management
+        $router->get('/admin/drivespace',                         [FileManagerAdminController::class, 'index']);
+        $router->post('/admin/drivespace/{id}/quota',             [FileManagerAdminController::class, 'setQuota']);
     },
 ];

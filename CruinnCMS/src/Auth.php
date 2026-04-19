@@ -394,6 +394,23 @@ class Auth
         return $messages;
     }
 
+    /**
+     * Get and clear the first flash message of a given type.
+     * Returns empty string if none found.
+     */
+    public static function getFlash(string $type): string
+    {
+        $messages = $_SESSION['flash_messages'] ?? [];
+        foreach ($messages as $i => $m) {
+            if ($m['type'] === $type) {
+                unset($messages[$i]);
+                $_SESSION['flash_messages'] = array_values($messages);
+                return $m['message'];
+            }
+        }
+        return '';
+    }
+
     // ── Middleware Callbacks ───────────────────────────────────────
 
     /**

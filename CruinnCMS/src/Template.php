@@ -136,6 +136,12 @@ class Template
         return htmlspecialchars($value ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
+    /** Alias of e() for compatibility with module templates. */
+    public function escape(?string $value): string
+    {
+        return $this->e($value);
+    }
+
     /**
      * Queue additional CSS files to be emitted by the layout's <head>.
      * Call from content templates before the layout outputs its <head>.

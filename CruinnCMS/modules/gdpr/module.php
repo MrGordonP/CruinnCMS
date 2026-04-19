@@ -20,6 +20,10 @@ return [
         ['group' => 'Settings', 'label' => 'GDPR', 'url' => '/admin/settings/gdpr', 'icon' => '🔒', 'roles' => ['admin']],
     ],
 
+    'acp_sections' => [
+        ['group' => 'Settings', 'label' => 'GDPR & Privacy', 'url' => '/admin/settings/gdpr', 'icon' => '🔒'],
+    ],
+
     'routes' => function (\Cruinn\Router $router) {
         $router->get('/privacy',                  [GdprController::class, 'privacyPolicy']);
         $router->get('/cookies',                  [GdprController::class, 'cookiePolicy']);

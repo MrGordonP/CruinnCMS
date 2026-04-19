@@ -8,8 +8,10 @@
 SET NAMES utf8mb4;
 
 ALTER TABLE `forum_categories`
-    ADD COLUMN `parent_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`,
-    ADD KEY `idx_forum_categories_parent` (`parent_id`),
-    ADD CONSTRAINT `fk_forum_categories_parent`
-        FOREIGN KEY (`parent_id`) REFERENCES `forum_categories` (`id`)
-        ON DELETE CASCADE;
+    ADD COLUMN IF NOT EXISTS `parent_id` INT UNSIGNED NULL DEFAULT NULL AFTER `id`;
+
+ALTER TABLE `forum_categories` ADD KEY IF NOT EXISTS `idx_forum_categories_parent` (`parent_id`);
+
+SET @fk = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'forum_categories' AND CONSTRAINT_NAME = 'fk_forum_categories_parent');
+SET @sql = IF(@fk = 0, 'ALTER TABLE `forum_categories` ADD CONSTRAINT `fk_forum_categories_parent` FOREIGN KEY (`parent_id`) REFERENCES `forum_categories` (`id`) ON DELETE CASCADE', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
