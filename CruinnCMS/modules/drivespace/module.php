@@ -30,6 +30,8 @@ return [
     'routes' => function (Cruinn\Router $router) {
         $router->get('/drivespace',                               [FileManagerController::class, 'index']);
         $router->get('/drivespace/search',                        [FileManagerController::class, 'search']);
+        $router->get('/drivespace/folder/{id}/info',              [FileManagerController::class, 'folderInfo']);
+        $router->get('/drivespace/file/{id}/info',                [FileManagerController::class, 'fileInfo']);
         $router->get('/drivespace/upload',                        [FileManagerController::class, 'uploadForm']);
         $router->post('/drivespace/upload',                       [FileManagerController::class, 'upload']);
         $router->post('/drivespace/folders',                      [FileManagerController::class, 'createFolder']);

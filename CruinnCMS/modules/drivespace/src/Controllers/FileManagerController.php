@@ -712,6 +712,100 @@ class FileManagerController extends BaseController
         $this->redirect($folder['parent_id'] ? '/drivespace?folder=' . $folder['parent_id'] : '/drivespace');
     }
 
+    // ── AJAX Info Endpoints ───────────────────────────────────────────────────
+
+    /**
+     * GET /drivespace/folder/{id}/info — AJAX: folder info + shares for the properties panel.
+     */
+    public function folderInfo(int $id): void
+    {
+        $folder = $this->db->fetch(
+            'SELECT f.*, u.display_name as owner_name, s.title as subject_title,
+                    (SELECT COUNT(*) FROM files   WHERE folder_id = f.id) as file_count,
+                    (SELECT COUNT(*) FROM folders WHERE parent_id = f.id) as subfolder_count
+             FROM folders f
+             LEFT JOIN users u    ON f.owner_id   = u.id
+             LEFT JOIN subjects s ON f.subject_id = s.id
+             WHERE f.id = ?',
+            [$id]
+        );
+
+        if (!$folder || !$this->canAccessFolder($folder)) {
+            $this->json(['error' => 'Folder not found or access denied.'], 404);
+        }
+
+        $shares = $this->db->fetchAll(
+            "SELECT fs.*,
+                    CASE fs.target_type
+                        WHEN 'user' THEN (SELECT display_name FROM users WHERE id = fs.target_id)
+                        WHEN 'role' THEN (SELECT name FROM roles WHERE id = fs.target_id)
+                    END as target_name
+             FROM file_shares fs
+             WHERE fs.resource_type = 'folder' AND fs.resource_id = ?
+             ORDER BY fs.created_at DESC",
+            [$id]
+        );
+
+        $canEdit = Auth::role() === 'admin' || (int)$folder['owner_id'] === Auth::userId();
+
+        $this->json([
+            'folder'   => $folder,
+            'shares'   => $shares,
+            'can_edit' => $canEdit,
+        ]);
+    }
+
+    /**
+     * GET /drivespace/file/{id}/info — AJAX: file info + shares + version count.
+     */
+    public function fileInfo(int $id): void
+    {
+        $file = $this->db->fetch(
+            "SELECT f.*, u.display_name as owner_name, s.title as subject_title,
+                    fo.name as folder_name,
+                    (SELECT COUNT(*) FROM file_versions WHERE file_id = f.id) as version_count
+             FROM files f
+             LEFT JOIN users u    ON f.owner_id   = u.id
+             LEFT JOIN subjects s ON f.subject_id = s.id
+             LEFT JOIN folders fo ON f.folder_id  = fo.id
+             WHERE f.id = ?",
+            [$id]
+        );
+
+        if (!$file) {
+            $this->json(['error' => 'File not found.'], 404);
+        }
+
+        $folder = $file['folder_id']
+            ? $this->db->fetch('SELECT * FROM folders WHERE id = ?', [$file['folder_id']])
+            : null;
+
+        if (!$this->canAccessFile($file, $folder)) {
+            $this->json(['error' => 'Access denied.'], 403);
+        }
+
+        $shares = $this->db->fetchAll(
+            "SELECT fs.*,
+                    CASE fs.target_type
+                        WHEN 'user' THEN (SELECT display_name FROM users WHERE id = fs.target_id)
+                        WHEN 'role' THEN (SELECT name FROM roles WHERE id = fs.target_id)
+                    END as target_name
+             FROM file_shares fs
+             WHERE fs.resource_type = 'file' AND fs.resource_id = ?
+             ORDER BY fs.created_at DESC",
+            [$id]
+        );
+
+        $canEdit = $this->canEditFile($file, $folder);
+
+        $this->json([
+            'file'     => $file,
+            'shares'   => $shares,
+            'can_edit' => $canEdit,
+        ]);
+    }
+
+
     // â”€â”€ Access Control Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
