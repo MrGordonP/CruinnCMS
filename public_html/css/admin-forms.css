@@ -1,0 +1,134 @@
+/**
+ * Admin — Forms Module
+ */
+
+/* ══════════════════════════════════════════════════════════════
+   Page Layout
+   ══════════════════════════════════════════════════════════════ */
+
+.admin-form-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.admin-form-list,
+.admin-submissions-list {
+    /* inherits general admin layout */
+}
+
+.admin-submission-detail {
+    max-width: 760px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Form Meta Section (left column)
+   ══════════════════════════════════════════════════════════════ */
+
+.form-meta {
+    background: #fff;
+    border: 1px solid #dce1e6;
+    border-radius: 6px;
+    padding: 1.5rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Form Builder (right column)
+   ══════════════════════════════════════════════════════════════ */
+
+.form-builder {
+    background: #fff;
+    border: 1px solid #dce1e6;
+    border-radius: 6px;
+    padding: 1.5rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Field Cards
+   ══════════════════════════════════════════════════════════════ */
+
+.field-card {
+    border: 1px solid #dce1e6;
+    border-radius: 5px;
+    margin-bottom: 0.6rem;
+    background: #fafbfc;
+    transition: box-shadow 0.15s;
+}
+
+.field-card.dragging {
+    opacity: 0.45;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.field-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 0.9rem;
+}
+
+.field-card-header strong {
+    flex: 1;
+}
+
+.field-drag-handle {
+    cursor: grab;
+    color: #9ba7b4;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    user-select: none;
+}
+
+.field-drag-handle:active {
+    cursor: grabbing;
+}
+
+.field-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.field-card-body {
+    padding: 0.75rem 0.9rem;
+    border-top: 1px solid #dce1e6;
+    font-size: 0.875rem;
+    color: #4a5568;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Filters bar
+   ══════════════════════════════════════════════════════════════ */
+
+.admin-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Submission detail
+   ══════════════════════════════════════════════════════════════ */
+
+.submission-meta {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    color: #4a5568;
+    margin-bottom: 1.25rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Utility
+   ══════════════════════════════════════════════════════════════ */
+
+.text-muted {
+    color: #6b7890;
+}
+
+.strong-link {
+    font-weight: 600;
+}

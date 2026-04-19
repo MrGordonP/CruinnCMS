@@ -1,6 +1,7 @@
 <section class="container forum-page">
-    <header class="forum-header">
+    <header class="forum-header forum-header-row">
         <h1>Forum</h1>
+        <a class="btn btn-outline btn-small" href="<?= url('/forum/search') ?>">&#128269; Search</a>
     </header>
 
     <?php if (empty($categories)): ?>

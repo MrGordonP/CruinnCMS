@@ -1,7 +1,7 @@
 <?php
 /**
  * CruinnCMS — Subject Controller
- * 
+ *
  * Admin CRUD for the Subject correlation index.
  * Subjects organise events, articles, documents, and finances under a single umbrella.
  */
@@ -53,7 +53,6 @@ class SubjectController extends BaseController
 
         $subjects = $this->db->fetchAll(
             "SELECT s.*, u.display_name as creator_name,
-                    (SELECT COUNT(*) FROM events e WHERE e.subject_id = s.id) AS event_count,
                     (SELECT COUNT(*) FROM articles a WHERE a.subject_id = s.id) AS article_count
              FROM subjects s
              LEFT JOIN users u ON s.created_by = u.id

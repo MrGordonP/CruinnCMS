@@ -35,7 +35,6 @@
                 <th>Code</th>
                 <th>Title</th>
                 <th>Type</th>
-                <th>Events</th>
                 <th>Articles</th>
                 <th>Status</th>
                 <th>Created</th>
@@ -48,7 +47,6 @@
                 <td><code><?= e($subject['code']) ?></code></td>
                 <td><a href="/admin/subjects/<?= (int) $subject['id'] ?>/edit"><?= e($subject['title']) ?></a></td>
                 <td><span class="badge badge-type"><?= e(ucfirst($subject['type'])) ?></span></td>
-                <td><?= (int) $subject['event_count'] ?></td>
                 <td><?= (int) $subject['article_count'] ?></td>
                 <td><span class="badge badge-<?= e($subject['status']) ?>"><?= e(ucfirst($subject['status'])) ?></span></td>
                 <td><time datetime="<?= e($subject['created_at']) ?>"><?= format_date($subject['created_at'], 'j M Y') ?></time></td>

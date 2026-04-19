@@ -230,9 +230,30 @@ class AuthController extends BaseController
             $this->redirect('/login');
         }
 
+        $userId = Auth::userId();
+
+        $mySubscriptions = $this->db->fetchAll(
+            "SELECT mls.id AS sub_id, mls.status, ml.id AS list_id, ml.name AS list_name, ml.subscription_mode
+             FROM mailing_list_subscriptions mls
+             JOIN mailing_lists ml ON ml.id = mls.list_id
+             WHERE mls.user_id = ? AND mls.status IN ('active','pending')
+             ORDER BY ml.name",
+            [$userId]
+        );
+
+        $subscribedListIds = array_column($mySubscriptions, 'list_id');
+
+        $availableLists = $this->db->fetchAll(
+            'SELECT * FROM mailing_lists WHERE is_public = 1 AND is_active = 1 ORDER BY name',
+            []
+        );
+        $availableLists = array_values(array_filter($availableLists, fn($l) => !in_array($l['id'], $subscribedListIds)));
+
         $this->render('public/profile', [
-            'title' => 'My Profile',
-            'user'  => $user,
+            'title'           => 'My Profile',
+            'user'            => $user,
+            'mySubscriptions' => $mySubscriptions,
+            'availableLists'  => $availableLists,
         ]);
     }
 

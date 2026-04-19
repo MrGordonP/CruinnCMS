@@ -38,6 +38,7 @@ class FormController extends BaseController
         $this->renderAdmin('admin/forms/edit', [
             'title'       => 'New Form',
             'form'        => null,
+            'paymentOptions' => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Forms', '/admin/forms'], ['New']],
         ]);
     }
@@ -60,6 +61,7 @@ class FormController extends BaseController
             $this->renderAdmin('admin/forms/edit', [
                 'title'  => 'New Form',
                 'form'   => $_POST,
+                'paymentOptions' => [],
                 'errors' => $errors,
             ]);
             return;
@@ -68,6 +70,7 @@ class FormController extends BaseController
         $settings = [];
         if ($this->input('require_login'))      $settings['require_login'] = true;
         if ($this->input('require_approval'))   $settings['require_approval'] = true;
+        if ($this->input('require_payment'))    $settings['require_payment'] = true;
         if ($this->input('notification_email'))  $settings['notification_email'] = $this->input('notification_email');
         if ($this->input('success_message'))    $settings['success_message'] = $this->input('success_message');
         if ($this->input('redirect_url'))       $settings['redirect_url'] = $this->input('redirect_url');
@@ -98,10 +101,13 @@ class FormController extends BaseController
             return;
         }
 
+        $paymentOptions = $this->formService->getPaymentOptions($form['id']);
+
         $this->renderAdmin('admin/forms/edit', [
-            'title'       => 'Edit: ' . $form['title'],
-            'form'        => $form,
-            'breadcrumbs' => [['Admin', '/admin'], ['Forms', '/admin/forms'], [$form['title']]],
+            'title'          => 'Edit: ' . $form['title'],
+            'form'           => $form,
+            'paymentOptions' => $paymentOptions,
+            'breadcrumbs'    => [['Admin', '/admin'], ['Forms', '/admin/forms'], [$form['title']]],
         ]);
     }
 
@@ -123,6 +129,7 @@ class FormController extends BaseController
             $this->renderAdmin('admin/forms/edit', [
                 'title'  => 'Edit: ' . ($form['title'] ?? ''),
                 'form'   => $formData,
+                'paymentOptions' => $this->formService->getPaymentOptions($id),
                 'errors' => $errors,
             ]);
             return;
@@ -131,6 +138,7 @@ class FormController extends BaseController
         $settings = [];
         if ($this->input('require_login'))      $settings['require_login'] = true;
         if ($this->input('require_approval'))   $settings['require_approval'] = true;
+        if ($this->input('require_payment'))    $settings['require_payment'] = true;
         if ($this->input('notification_email'))  $settings['notification_email'] = $this->input('notification_email');
         if ($this->input('success_message'))    $settings['success_message'] = $this->input('success_message');
         if ($this->input('redirect_url'))       $settings['redirect_url'] = $this->input('redirect_url');
@@ -268,6 +276,55 @@ class FormController extends BaseController
 
         $this->json(['success' => true]);
     }
+
+    // ── Admin: Payment Options (AJAX) ─────────────────────────────────
+
+    public function addPaymentOption(int $formId): void
+    {
+        Auth::requirePermission('forms.manage');
+
+        $form = $this->formService->getForm($formId);
+        if (!$form) {
+            $this->json(['error' => 'Form not found.'], 404);
+            return;
+        }
+
+        $label  = trim($this->input('label') ?? '');
+        $amount = (float) $this->input('amount');
+
+        if (!$label) {
+            $this->json(['error' => 'Label is required.'], 400);
+            return;
+        }
+        if ($amount <= 0) {
+            $this->json(['error' => 'Amount must be greater than zero.'], 400);
+            return;
+        }
+
+        $id = $this->formService->addPaymentOption($formId, [
+            'label'      => $label,
+            'amount'     => $amount,
+            'currency'   => $this->input('currency') ?: 'EUR',
+            'sort_order' => (int) $this->input('sort_order'),
+        ]);
+
+        $this->json(['success' => true, 'option_id' => (int) $id]);
+    }
+
+    public function deletePaymentOption(int $formId, int $optionId): void
+    {
+        Auth::requirePermission('forms.manage');
+
+        $form = $this->formService->getForm($formId);
+        if (!$form) {
+            $this->json(['error' => 'Form not found.'], 404);
+            return;
+        }
+
+        $this->formService->deletePaymentOption($optionId);
+        $this->json(['success' => true]);
+    }
+
 
     // â”€â”€ Admin: Submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -443,6 +500,12 @@ class FormController extends BaseController
         }
 
         $successMessage = $settings['success_message'] ?? 'Thank you! Your submission has been received.';
+
+        // If payment is required, hand off to the payments module
+        if (!empty($settings['require_payment'])) {
+            $this->redirect('/payments/initiate?source=form_submission&source_id=' . $result['submission_id']);
+            return;
+        }
 
         if (!empty($settings['redirect_url'])) {
             Auth::flash('success', $successMessage);

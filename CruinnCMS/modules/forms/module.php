@@ -12,6 +12,7 @@ return [
     'provides'     => ['forms'],
     'migrations'   => [
         __DIR__ . '/migrations/001_forms_core.sql',
+        __DIR__ . '/migrations/002_payment_fields.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 
@@ -35,6 +36,8 @@ return [
         $router->post('/admin/forms/{formId}/fields/{fieldId}',         [FormController::class, 'updateField']);
         $router->post('/admin/forms/{formId}/fields/{fieldId}/delete',  [FormController::class, 'deleteField']);
         $router->post('/admin/forms/{formId}/fields/reorder',           [FormController::class, 'reorderFields']);
+        $router->post('/admin/forms/{formId}/payment-options',           [FormController::class, 'addPaymentOption']);
+        $router->post('/admin/forms/{formId}/payment-options/{optionId}/delete', [FormController::class, 'deletePaymentOption']);
         $router->get('/admin/forms/{formId}/submissions',               [FormController::class, 'submissions']);
         $router->get('/admin/forms/{formId}/submissions/{submissionId}',[FormController::class, 'submissionDetail']);
         $router->post('/admin/forms/{formId}/submissions/{submissionId}/approve', [FormController::class, 'approveSubmission']);

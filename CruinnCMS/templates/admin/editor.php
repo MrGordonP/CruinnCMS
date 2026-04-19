@@ -15,7 +15,7 @@ $_editorPageHref = function (int $id) use ($editorPageBase): string {
     }
     return '/admin/editor/' . $id . '/edit';
 };
-$_editorBackHref  = $editorPageBase ?? '/admin/site-builder/pages';
+$_editorBackHref  = $editorBackHref ?? ($editorPageBase ?? '/admin/site-builder/pages');
 $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 ?>
 <?php if (!empty($headerZoneCss) || !empty($footerZoneCss) || !empty($templateCanvasCss)): ?>
@@ -40,7 +40,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         <?php if (!empty($isTemplatePage)): ?>
             <a href="<?= $templateId ? '/admin/templates/' . (int)$templateId . '/edit' : '/admin/templates' ?>" class="editor-back-btn">&larr; Templates</a>
         <?php else: ?>
-            <a href="<?= e($_editorBackHref) ?>" class="editor-back-btn">&larr; All Pages</a>
+            <a href="<?= e($_editorBackHref) ?>" class="editor-back-btn">&larr; <?= e($editorBackLabel ?? 'All Pages') ?></a>
         <?php endif; ?>
         <?php if (!empty($isTemplatePage)): ?>
             <span class="editor-zone-badge">Template Layout: <?= e($templateSlugName ?? '') ?></span>

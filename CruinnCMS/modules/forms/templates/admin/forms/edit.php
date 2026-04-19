@@ -105,6 +105,13 @@
                     Require admin approval
                 </label>
             </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="require_payment" value="1"
+                           <?= !empty($settings['require_payment']) ? 'checked' : '' ?>>
+                    Require payment
+                </label>
+            </div>
         </div>
 
         <div class="form-actions">
@@ -153,6 +160,53 @@
                 </div>
                 <?php endforeach; ?>
             <?php endif; ?>
+        </div>
+    </div>
+
+    <hr>
+    <div class="form-builder" data-form-id="<?= (int)$form['id'] ?>">
+        <div class="admin-list-header">
+            <h2>Payment Options</h2>
+            <button type="button" class="btn btn-primary" id="btn-add-payment-option">+ Add Option</button>
+        </div>
+
+        <div id="payment-option-list">
+            <?php if (empty($paymentOptions)): ?>
+                <p class="admin-empty">No payment options yet.</p>
+            <?php else: ?>
+                <?php foreach ($paymentOptions as $opt): ?>
+                    <div class="field-card" data-payment-option-id="<?= (int)$opt['id'] ?>">
+                        <div class="field-card-header">
+                            <strong><?= e($opt['label']) ?></strong>
+                            <span class="text-muted">€<?= number_format((float) $opt['amount'], 2) ?> <?= e($opt['currency']) ?></span>
+                            <div class="field-actions">
+                                <button type="button" class="btn btn-small btn-danger btn-delete-payment-option">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+
+        <div id="payment-option-form-wrap" style="display:none; margin-top: 1rem;">
+            <form id="payment-option-form" class="form-row">
+                <div class="form-group form-group-half">
+                    <label for="payment-label">Label <span class="required">*</span></label>
+                    <input type="text" id="payment-label" name="label" class="form-input" placeholder="e.g. Full Membership" required>
+                </div>
+                <div class="form-group form-group-third">
+                    <label for="payment-amount">Amount <span class="required">*</span></label>
+                    <input type="number" step="0.01" min="0.01" id="payment-amount" name="amount" class="form-input" placeholder="50.00" required>
+                </div>
+                <div class="form-group form-group-third">
+                    <label for="payment-currency">Currency</label>
+                    <input type="text" id="payment-currency" name="currency" class="form-input" value="EUR" maxlength="3">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Payment Option</button>
+                    <button type="button" class="btn" id="payment-option-cancel">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -247,8 +301,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const formId = <?= (int)$form['id'] ?>;
-    const csrfToken = document.querySelector('input[name="_csrf"]')?.value || '';
+    const csrfToken = document.querySelector('input[name="_csrf_token"]')?.value || '';
     const fieldList = document.getElementById('field-list');
+    const paymentOptionList = document.getElementById('payment-option-list');
+    const paymentOptionFormWrap = document.getElementById('payment-option-form-wrap');
+    const paymentOptionForm = document.getElementById('payment-option-form');
     const modal = document.getElementById('field-modal');
     const fieldForm = document.getElementById('field-form');
     const fieldTypeSelect = document.getElementById('field-type');
@@ -280,7 +337,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fieldForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const data = new FormData(fieldForm);
-        data.append('_csrf', csrfToken);
+        data.append('_csrf_token', csrfToken);
 
         const url = editingFieldId
             ? '/admin/forms/' + formId + '/fields/' + editingFieldId
@@ -337,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const fid = card.dataset.fieldId;
 
         const data = new FormData();
-        data.append('_csrf', csrfToken);
+        data.append('_csrf_token', csrfToken);
 
         fetch('/admin/forms/' + formId + '/fields/' + fid + '/delete', { method: 'POST', body: data })
             .then(r => r.json())
@@ -388,8 +445,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             fetch('/admin/forms/' + formId + '/fields/reorder', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: items, _csrf: csrfToken })
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+                body: JSON.stringify({ items: items })
             });
         });
 
@@ -398,6 +455,56 @@ document.addEventListener('DOMContentLoaded', function() {
             h.closest('.field-card').setAttribute('draggable', 'true');
         });
     })();
+
+        // Payment options
+        const addPaymentBtn = document.getElementById('btn-add-payment-option');
+        if (addPaymentBtn && paymentOptionFormWrap && paymentOptionForm) {
+            addPaymentBtn.addEventListener('click', function() {
+                paymentOptionForm.reset();
+                document.getElementById('payment-currency').value = 'EUR';
+                paymentOptionFormWrap.style.display = '';
+            });
+
+            document.getElementById('payment-option-cancel').addEventListener('click', function() {
+                paymentOptionFormWrap.style.display = 'none';
+            });
+
+            paymentOptionForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const data = new FormData(paymentOptionForm);
+                data.append('_csrf_token', csrfToken);
+
+                fetch('/admin/forms/' + formId + '/payment-options', { method: 'POST', body: data })
+                    .then(r => r.json())
+                    .then(resp => {
+                        if (resp.error) { alert(resp.error); return; }
+                        location.reload();
+                    })
+                    .catch(() => alert('An error occurred.'));
+            });
+        }
+
+        if (paymentOptionList) {
+            paymentOptionList.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('btn-delete-payment-option')) return;
+                if (!confirm('Delete this payment option?')) return;
+
+                const card = e.target.closest('[data-payment-option-id]');
+                if (!card) return;
+
+                const optionId = card.dataset.paymentOptionId;
+                const data = new FormData();
+                data.append('_csrf_token', csrfToken);
+
+                fetch('/admin/forms/' + formId + '/payment-options/' + optionId + '/delete', { method: 'POST', body: data })
+                    .then(r => r.json())
+                    .then(resp => {
+                        if (resp.error) { alert(resp.error); return; }
+                        card.remove();
+                    })
+                    .catch(() => alert('An error occurred.'));
+            });
+        }
 });
 </script>
 <?php endif; ?>

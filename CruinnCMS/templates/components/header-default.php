@@ -58,6 +58,11 @@ $site_tagline = \Cruinn\App::config('site.tagline', '');
                 <a href="<?= url($menuItem['href']) ?>"<?= $menuItem['target'] ? ' target="' . e($menuItem['target']) . '"' : '' ?><?= $menuItem['css_class'] ? ' class="' . e($menuItem['css_class']) . '"' : '' ?>><?= e($menuItem['label']) ?></a>
             </li>
             <?php endforeach; ?>
+            <?php if (\Cruinn\Auth::check()): ?>
+            <li class="utility-nav-user">
+                <a href="<?= url('/profile') ?>" class="utility-nav-user-link">&#x1F464; <?= e(\Cruinn\Auth::user()['display_name'] ?? \Cruinn\Auth::user()['email'] ?? 'My Account') ?></a>
+            </li>
+            <?php endif; ?>
         </ul>
     </div>
 </div>

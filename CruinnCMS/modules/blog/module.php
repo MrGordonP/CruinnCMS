@@ -7,6 +7,7 @@
 
 use Cruinn\Router;
 use Cruinn\Module\Blog\Controllers\ArticleController;
+use Cruinn\Module\Blog\Controllers\ArticleEditorController;
 
 return [
     'slug'        => 'articles',
@@ -15,13 +16,21 @@ return [
     'description' => 'Public-facing blog posts with block editor support.',
 
     'routes' => function (Router $router): void {
-        // Admin (primary blog URLs)
-        $router->get('/admin/blog',                 [ArticleController::class, 'adminList']);
-        $router->get('/admin/blog/new',             [ArticleController::class, 'adminNew']);
-        $router->post('/admin/blog',                [ArticleController::class, 'adminCreate']);
-        $router->get('/admin/blog/{id}/edit',       [ArticleController::class, 'adminEdit']);
-        $router->post('/admin/blog/{id}',           [ArticleController::class, 'adminUpdate']);
-        $router->post('/admin/blog/{id}/delete',    [ArticleController::class, 'adminDelete']);
+        // Admin
+        $router->get('/admin/articles',                 [ArticleController::class, 'adminList']);
+        $router->get('/admin/articles/new',             [ArticleController::class, 'adminNew']);
+        $router->post('/admin/articles',                [ArticleController::class, 'adminCreate']);
+        $router->get('/admin/articles/{id}/edit',       [ArticleController::class, 'adminEdit']);
+        $router->post('/admin/articles/{id}',           [ArticleController::class, 'adminUpdate']);
+        $router->post('/admin/articles/{id}/delete',    [ArticleController::class, 'adminDelete']);
+
+        // Admin article editor (full Cruinn editor for article content)
+        $router->get('/admin/article-editor/{id}/edit',     [ArticleEditorController::class, 'edit']);
+        $router->post('/admin/article-editor/{id}/action',  [ArticleEditorController::class, 'recordAction']);
+        $router->post('/admin/article-editor/{id}/undo',    [ArticleEditorController::class, 'undo']);
+        $router->post('/admin/article-editor/{id}/redo',    [ArticleEditorController::class, 'redo']);
+        $router->post('/admin/article-editor/{id}/publish', [ArticleEditorController::class, 'publish']);
+        $router->post('/admin/article-editor/{id}/discard', [ArticleEditorController::class, 'discardDraft']);
 
         // Public (primary blog URLs)
         $router->get('/blog',        [ArticleController::class, 'index']);
@@ -31,16 +40,17 @@ return [
     'migrations' => [
         __DIR__ . '/migrations/001_articles_core.sql',
         __DIR__ . '/migrations/002_article_blocks.sql',
+        __DIR__ . '/migrations/003_article_editor_tables.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [
-        ['group' => 'Content', 'label' => 'Blog', 'url' => '/admin/blog', 'icon' => '📰'],
+        ['group' => 'Content', 'label' => 'Blog', 'url' => '/admin/articles', 'icon' => '📰'],
     ],
 
     'dashboard_sections' => [
-        ['group' => 'Content', 'label' => 'Blog', 'url' => '/admin/blog', 'icon' => '📰', 'roles' => ['admin']],
+        ['group' => 'Content', 'label' => 'Blog', 'url' => '/admin/articles', 'icon' => '📰', 'roles' => ['admin']],
     ],
 
     'provides' => ['articles'],

@@ -121,6 +121,45 @@ class FormService
         $this->db->delete('forms', 'id = ?', [$id]);
     }
 
+    // ── Payment Options ───────────────────────────────────────────────────
+
+    public function getPaymentOptions(int $formId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT * FROM form_payment_options WHERE form_id = ? AND is_active = 1 ORDER BY sort_order ASC, id ASC',
+            [$formId]
+        );
+    }
+
+    public function addPaymentOption(int $formId, array $data): string
+    {
+        return $this->db->insert('form_payment_options', [
+            'form_id'    => $formId,
+            'label'      => trim($data['label']),
+            'amount'     => round((float) $data['amount'], 2),
+            'currency'   => strtoupper(trim($data['currency'] ?? 'EUR')),
+            'sort_order' => (int) ($data['sort_order'] ?? 0),
+        ]);
+    }
+
+    public function deletePaymentOption(int $optionId): void
+    {
+        $this->db->update('form_payment_options', ['is_active' => 0], 'id = ?', [$optionId]);
+    }
+
+    public function reorderPaymentOptions(int $formId, array $orders): void
+    {
+        foreach ($orders as $item) {
+            $this->db->update(
+                'form_payment_options',
+                ['sort_order' => (int) $item['sort_order']],
+                'id = ? AND form_id = ?',
+                [(int) $item['id'], $formId]
+            );
+        }
+    }
+
+
     // â”€â”€ Field Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
@@ -267,14 +306,16 @@ class FormService
             $cleanData[$field['name']] = $value;
         }
 
-        // Determine initial status
+        // Determine initial review/payment status
         $status = !empty($settings['require_approval']) ? 'pending' : 'approved';
+        $paymentStatus = !empty($settings['require_payment']) ? 'pending' : 'not_required';
 
         $submissionId = $this->db->insert('form_submissions', [
             'form_id'      => $formId,
             'user_id'      => $userId,
             'data'         => json_encode($cleanData),
             'status'       => $status,
+            'payment_status' => $paymentStatus,
             'ip_address'   => \Cruinn\App::clientIp() ?: null,
         ]);
 
@@ -397,10 +438,14 @@ class FormService
         }
 
         $sql = 'SELECT fs.*, u.display_name AS user_name, u.email AS user_email,
-                       r.display_name AS reviewer_name
+                   r.display_name AS reviewer_name,
+                   fpo.label AS payment_option_label,
+                   fpo.amount AS payment_option_amount,
+                   fpo.currency AS payment_option_currency
                 FROM form_submissions fs
                 LEFT JOIN users u ON fs.user_id = u.id
                 LEFT JOIN users r ON fs.reviewer_id = r.id
+            LEFT JOIN form_payment_options fpo ON fs.payment_option_id = fpo.id
                 WHERE ' . implode(' AND ', $where) .
                ' ORDER BY fs.submitted_at DESC
                 LIMIT ? OFFSET ?';
@@ -440,11 +485,15 @@ class FormService
     public function getSubmission(int $submissionId): array|false
     {
         $s = $this->db->fetch(
-            'SELECT fs.*, u.display_name AS user_name, u.email AS user_email,
-                    r.display_name AS reviewer_name
+                'SELECT fs.*, u.display_name AS user_name, u.email AS user_email,
+                    r.display_name AS reviewer_name,
+                    fpo.label AS payment_option_label,
+                    fpo.amount AS payment_option_amount,
+                    fpo.currency AS payment_option_currency
              FROM form_submissions fs
              LEFT JOIN users u ON fs.user_id = u.id
              LEFT JOIN users r ON fs.reviewer_id = r.id
+                 LEFT JOIN form_payment_options fpo ON fs.payment_option_id = fpo.id
              WHERE fs.id = ?',
             [$submissionId]
         );

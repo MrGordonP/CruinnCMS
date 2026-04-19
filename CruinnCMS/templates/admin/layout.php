@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<?= e(\Cruinn\CSRF::getToken()) ?>">
     <title><?= e($title ?? 'Admin') ?> — <?= e(\Cruinn\App::config('site.name', 'Admin')) ?></title>
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
     <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= file_exists(CRUINN_PUBLIC . '/css/admin-base.css') ? filemtime(CRUINN_PUBLIC . '/css/admin-base.css') : 0 ?>">
@@ -145,7 +146,7 @@
                     <a href="/cms/dashboard" class="admin-topbar-cms-link" title="Back to Cruinn CMS platform">← CMS</a>
                     <?php endif; ?>
                     <button class="admin-width-toggle" id="admin-width-btn" title="Toggle layout width" onclick="var w=document.documentElement.classList.toggle('admin-layout-wide');localStorage.setItem('admin-layout-wide',w?'1':'0');this.textContent=w?'\u22A1':'\u229E';">&#x229E;</button><script>document.getElementById('admin-width-btn').textContent=document.documentElement.classList.contains('admin-layout-wide')?'\u22A1':'\u229E';</script>
-                    <span class="admin-topbar-user">&#x1F464; <?= e($current_user['display_name'] ?? $current_user['email'] ?? 'Admin') ?></span>
+                    <a href="<?= url('/profile') ?>" class="admin-topbar-user" title="My Profile">&#x1F464; <?= e($current_user['display_name'] ?? $current_user['email'] ?? 'Admin') ?></a>
                     <a href="<?= url('/logout') ?>">Logout</a>
                 </div>
             </div>

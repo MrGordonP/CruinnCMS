@@ -152,9 +152,11 @@ class NativeForumProvider implements ForumProviderInterface
         $offset = max(0, ($page - 1) * $perPage);
 
         return $this->db->fetchAll(
-            'SELECT p.*, u.display_name AS author_name
+            'SELECT p.*, u.display_name AS author_name, u.id AS author_user_id,
+                    du.display_name AS deleted_by_name
              FROM forum_posts p
              JOIN users u ON u.id = p.user_id
+             LEFT JOIN users du ON du.id = p.deleted_by
              WHERE p.thread_id = ?
              ORDER BY p.created_at ASC
              LIMIT ' . (int)$perPage . ' OFFSET ' . (int)$offset,
@@ -165,6 +167,93 @@ class NativeForumProvider implements ForumProviderInterface
     public function countPosts(int $threadId): int
     {
         return (int)$this->db->fetchColumn('SELECT COUNT(*) FROM forum_posts WHERE thread_id = ?', [$threadId]);
+    }
+
+    public function getPost(int $postId): ?array
+    {
+        $post = $this->db->fetch(
+            'SELECT p.*, u.display_name AS author_name, t.category_id, t.is_locked, c.access_role
+             FROM forum_posts p
+             JOIN forum_threads t ON t.id = p.thread_id
+             JOIN forum_categories c ON c.id = t.category_id
+             JOIN users u ON u.id = p.user_id
+             WHERE p.id = ? LIMIT 1',
+            [$postId]
+        );
+
+        return $post ?: null;
+    }
+
+    public function updatePost(int $postId, string $bodyHtml): void
+    {
+        $this->db->execute(
+            'UPDATE forum_posts SET body_html = ?, edit_count = edit_count + 1, edited_at = NOW(), updated_at = NOW() WHERE id = ?',
+            [$bodyHtml, $postId]
+        );
+    }
+
+    public function softDeletePost(int $postId, int $deletedBy): void
+    {
+        $this->db->execute(
+            'UPDATE forum_posts SET is_deleted = 1, deleted_at = NOW(), deleted_by = ?, updated_at = NOW() WHERE id = ?',
+            [$deletedBy, $postId]
+        );
+    }
+
+    public function reportPost(int $postId, int $reporterId, string $reason, ?string $body): int
+    {
+        return (int)$this->db->insert('forum_post_reports', [
+            'post_id'     => $postId,
+            'reporter_id' => $reporterId,
+            'reason'      => $reason,
+            'body'        => $body,
+            'status'      => 'open',
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function listReports(string $status = 'open', int $limit = 100): array
+    {
+        $where = $status === 'all' ? '' : 'WHERE r.status = ?';
+        $params = $status === 'all' ? [] : [$status];
+
+        return $this->db->fetchAll(
+            "SELECT r.*, u.display_name AS reporter_name, ru.display_name AS reviewer_name,
+                    p.body_html, p.thread_id, t.title AS thread_title
+             FROM forum_post_reports r
+             JOIN users u ON u.id = r.reporter_id
+             LEFT JOIN users ru ON ru.id = r.reviewed_by
+             JOIN forum_posts p ON p.id = r.post_id
+             JOIN forum_threads t ON t.id = p.thread_id
+             {$where}
+             ORDER BY r.created_at DESC
+             LIMIT {$limit}",
+            $params
+        );
+    }
+
+    public function reviewReport(int $reportId, string $status, int $reviewedBy): void
+    {
+        $this->db->execute(
+            'UPDATE forum_post_reports SET status = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?',
+            [$status, $reviewedBy, $reportId]
+        );
+    }
+
+    public function moveThread(int $threadId, int $newCategoryId): void
+    {
+        $this->db->execute(
+            'UPDATE forum_threads SET category_id = ?, updated_at = NOW() WHERE id = ?',
+            [$newCategoryId, $threadId]
+        );
+    }
+
+    public function softDeleteThread(int $threadId, int $deletedBy): void
+    {
+        $this->db->execute(
+            'UPDATE forum_threads SET is_deleted = 1, deleted_at = NOW(), deleted_by = ?, updated_at = NOW() WHERE id = ?',
+            [$deletedBy, $threadId]
+        );
     }
 
     public function createThread(int $categoryId, int $userId, string $title, string $bodyHtml): int

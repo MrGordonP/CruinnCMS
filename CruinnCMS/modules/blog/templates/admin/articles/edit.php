@@ -13,7 +13,7 @@
     <?php endif; ?>
 
     <!-- Blog Post Metadata Form -->
-    <form method="post" action="<?= $article && isset($article['id']) ? '/admin/blog/' . (int)$article['id'] : '/admin/blog' ?>" class="form-article-meta">
+    <form method="post" action="<?= $article && isset($article['id']) ? '/admin/articles/' . (int)$article['id'] : '/admin/articles' ?>" class="form-article-meta">
         <?= csrf_field() ?>
 
         <div class="form-grid">
@@ -92,7 +92,7 @@
             <button type="submit" class="btn btn-primary">
                 <?= $article && isset($article['id']) ? 'Update Blog Post' : 'Create Blog Post' ?>
             </button>
-            <a href="/admin/blog" class="btn btn-outline">Cancel</a>
+            <a href="/admin/articles" class="btn btn-outline">Cancel</a>
             <?php if ($article && isset($article['id']) && ($article['status'] ?? '') === 'published'): ?>
                 <a href="/blog/<?= e($article['slug']) ?>" target="_blank" class="btn btn-outline">Preview</a>
             <?php endif; ?>
@@ -100,12 +100,17 @@
     </form>
 
     <?php if ($article && isset($article['id'])): ?>
-    <!-- Block editor removed — articles use the Cruinn editor -->
+    <!-- Content Editor -->
+    <section class="admin-section" style="margin-top:var(--space-xl)">
+        <h3>Content</h3>
+        <p style="color:var(--color-text-light);margin-bottom:var(--space-md)">Use the Cruinn editor to build the article body.</p>
+        <a href="/admin/article-editor/<?= (int)$article['id'] ?>/edit" class="btn btn-primary">Open Content Editor</a>
+    </section>
 
     <!-- Danger Zone -->
     <section class="danger-zone">
         <h3>Danger Zone</h3>
-                <form method="post" action="/admin/blog/<?= (int)$article['id'] ?>/delete"
+                <form method="post" action="/admin/articles/<?= (int)$article['id'] ?>/delete"
                             onsubmit="return confirm('Are you sure you want to delete this blog post and all its content blocks? This cannot be undone.')">
             <?= csrf_field() ?>
                         <button type="submit" class="btn btn-danger">Delete this blog post</button>
