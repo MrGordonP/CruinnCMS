@@ -33,6 +33,35 @@
                     <span class="badge <?= $statusClass ?>"><?= e(ucfirst($submission['status'])) ?></span>
                 </td>
             </tr>
+            <tr>
+                <th>Payment Status</th>
+                <td>
+                    <?php
+                        $paymentStatus = $submission['payment_status'] ?? 'not_required';
+                        $paymentClass = match($paymentStatus) {
+                            'verified' => 'badge-success',
+                            'rejected' => 'badge-danger',
+                            default    => 'badge-warning',
+                        };
+                    ?>
+                    <span class="badge <?= $paymentClass ?>"><?= e(ucfirst(str_replace('_', ' ', $paymentStatus))) ?></span>
+                </td>
+            </tr>
+            <?php if (!empty($submission['payment_option_label'])): ?>
+            <tr>
+                <th>Payment Option</th>
+                <td>
+                    <?= e($submission['payment_option_label']) ?>
+                    (<?= e($submission['payment_option_currency'] ?: 'EUR') ?> <?= number_format((float) ($submission['payment_option_amount'] ?? 0), 2) ?>)
+                </td>
+            </tr>
+            <?php endif; ?>
+            <?php if (!empty($submission['payment_method'])): ?>
+            <tr>
+                <th>Payment Method</th>
+                <td><?= e(ucfirst(str_replace('_', ' ', $submission['payment_method']))) ?></td>
+            </tr>
+            <?php endif; ?>
             <?php if ($submission['reviewer_name']): ?>
             <tr>
                 <th>Reviewed By</th>

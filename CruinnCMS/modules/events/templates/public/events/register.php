@@ -19,32 +19,45 @@
         <form method="post" action="/events/<?= e($event['slug']) ?>/register" class="register-form">
             <?= csrf_field() ?>
 
-            <div class="form-group">
-                <label for="name">Full Name <span class="required">*</span></label>
-                <input type="text" id="name" name="name" value="<?= e($prefill['name'] ?? '') ?>" required>
+            <div class="register-details-block">
+                <h3>Your Details</h3>
+                <p class="register-details-note">Your registration details are taken from your account for consent and liability purposes. If these are incorrect, please <a href="/profile">update your profile</a> before registering.</p>
+
+                <input type="hidden" name="name" value="<?= e($prefill['name'] ?? '') ?>">
+                <input type="hidden" name="email" value="<?= e($prefill['email'] ?? '') ?>">
+
+                <dl class="register-details-list">
+                    <dt>Name</dt>
+                    <dd><?= e($prefill['name'] ?? '—') ?></dd>
+                    <dt>Email</dt>
+                    <dd><?= e($prefill['email'] ?? '—') ?></dd>
+                </dl>
             </div>
 
             <div class="form-group">
-                <label for="email">Email Address <span class="required">*</span></label>
-                <input type="email" id="email" name="email" value="<?= e($prefill['email'] ?? '') ?>" required>
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" placeholder="Optional contact number">
             </div>
 
             <div class="form-group">
-                <label for="dietary_notes">Dietary Requirements</label>
-                <input type="text" id="dietary_notes" name="dietary_notes" placeholder="e.g. vegetarian, allergies…">
+                <label for="attendees">Number of Attendees</label>
+                <input type="number" id="attendees" name="attendees" value="1" min="1" max="<?= $event['capacity'] > 0 ? (int)$spotsRemaining : 20 ?>">
             </div>
 
             <div class="form-group">
-                <label for="access_notes">Accessibility Needs</label>
-                <input type="text" id="access_notes" name="access_notes" placeholder="e.g. wheelchair access, hearing loop…">
+                <label for="notes">Requirements / Notes</label>
+                <textarea id="notes" name="notes" rows="3" placeholder="Dietary requirements, accessibility needs, or any other information…"></textarea>
             </div>
 
-            <?php if ($event['price'] > 0): ?>
-            <div class="payment-notice">
-                <strong>Payment Required:</strong> &euro;<?= number_format($event['price'], 2) ?>
-                <p>Payment instructions will be included in your confirmation email.</p>
+            <div class="register-payment-status">
+                <strong>Payment:</strong>
+                <?php if ($event['price'] > 0): ?>
+                    <span class="badge badge-warning">Payment required &mdash; &euro;<?= number_format($event['price'], 2) ?></span>
+                    <p class="register-payment-note">Payment instructions will be sent in your confirmation email.</p>
+                <?php else: ?>
+                    <span class="badge badge-success">N/A &mdash; Free event</span>
+                <?php endif; ?>
             </div>
-            <?php endif; ?>
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Confirm Registration</button>

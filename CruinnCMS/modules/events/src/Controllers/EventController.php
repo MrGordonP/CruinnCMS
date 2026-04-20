@@ -82,7 +82,7 @@ class EventController extends BaseController
             $member = $this->db->fetch('SELECT id FROM members WHERE user_id = ?', [Auth::userId()]);
             if ($member) {
                 $existing = $this->db->fetch(
-                    'SELECT id FROM event_registrations WHERE event_id = ? AND member_id = ? AND status = ?',
+                    'SELECT id FROM event_registrations WHERE event_id = ? AND user_id = ? AND status = ?',
                     [$event['id'], $member['id'], 'confirmed']
                 );
                 $userRegistered = (bool) $existing;
@@ -150,24 +150,26 @@ class EventController extends BaseController
         // Pre-fill fields for logged-in members
         $prefill = [];
         if (Auth::check()) {
-            $member = $this->db->fetch(
-                'SELECT m.*, u.email as user_email FROM members m JOIN users u ON m.user_id = u.id WHERE m.user_id = ?',
+            // Check if already registered
+            $existing = $this->db->fetch(
+                'SELECT id FROM event_registrations WHERE event_id = ? AND user_id = ? AND status = ?',
+                [$event['id'], Auth::userId(), 'confirmed']
+            );
+            if ($existing) {
+                Auth::flash('info', 'You are already registered for this event.');
+                $this->redirect("/events/{$slug}");
+            }
+
+            $user = $this->db->fetch(
+                'SELECT u.*, m.forenames, m.surnames FROM users u LEFT JOIN members m ON m.user_id = u.id WHERE u.id = ?',
                 [Auth::userId()]
             );
-            if ($member) {
-                // Check if already registered
-                $existing = $this->db->fetch(
-                    'SELECT id FROM event_registrations WHERE event_id = ? AND member_id = ? AND status = ?',
-                    [$event['id'], $member['id'], 'confirmed']
-                );
-                if ($existing) {
-                    Auth::flash('info', 'You are already registered for this event.');
-                    $this->redirect("/events/{$slug}");
-                }
+            if ($user) {
+                $name = trim(($user['forenames'] ?? '') . ' ' . ($user['surnames'] ?? ''));
                 $prefill = [
-                    'name'      => trim(($member['forenames'] ?? '') . ' ' . ($member['surnames'] ?? '')),
-                    'email'     => $member['user_email'] ?? $member['email'] ?? '',
-                    'member_id' => $member['id'],
+                    'name'    => $name ?: ($user['display_name'] ?? ''),
+                    'email'   => $user['email'] ?? '',
+                    'user_id' => Auth::userId(),
                 ];
             }
         }
@@ -225,16 +227,15 @@ class EventController extends BaseController
             $this->redirect("/events/{$slug}/register");
         }
 
-        // Determine member_id
+        // Determine user_id
         $memberId = null;
         if (Auth::check()) {
-            $member = $this->db->fetch('SELECT id FROM members WHERE user_id = ?', [Auth::userId()]);
+            $memberId = Auth::userId();
+            $member = $this->db->fetch('SELECT id FROM members WHERE user_id = ?', [$memberId]);
             if ($member) {
-                $memberId = $member['id'];
-
                 // Check for duplicate registration
                 $existing = $this->db->fetch(
-                    'SELECT id FROM event_registrations WHERE event_id = ? AND member_id = ? AND status = ?',
+                    'SELECT id FROM event_registrations WHERE event_id = ? AND user_id = ? AND status = ?',
                     [$event['id'], $memberId, 'confirmed']
                 );
                 if ($existing) {
@@ -245,7 +246,7 @@ class EventController extends BaseController
         } else {
             // Check for duplicate guest email registration
             $existing = $this->db->fetch(
-                'SELECT id FROM event_registrations WHERE event_id = ? AND guest_email = ? AND status = ?',
+                'SELECT id FROM event_registrations WHERE event_id = ? AND email = ? AND user_id IS NULL AND status = ?',
                 [$event['id'], strtolower($email), 'confirmed']
             );
             if ($existing) {
@@ -267,7 +268,7 @@ class EventController extends BaseController
         }
 
         // Determine payment status
-        $paymentStatus = ($event['price'] > 0) ? 'pending' : 'free';
+        $paymentStatus = ($event['price'] > 0) ? 'pending' : 'n/a';
 
         // Generate confirmation token
         $token = bin2hex(random_bytes(32));
@@ -275,18 +276,15 @@ class EventController extends BaseController
         // Create registration
         $regId = $this->db->insert('event_registrations', [
             'event_id'           => $event['id'],
-            'member_id'          => $memberId,
-            'guest_name'         => $memberId ? null : $name,
-            'guest_email'        => $memberId ? null : strtolower($email),
-            'dietary_notes'      => $this->input('dietary_notes') ?: null,
-            'access_notes'       => $this->input('access_notes') ?: null,
-            'payment_status'     => $paymentStatus,
-            'payment_ref'        => null,
-            'payment_method'     => null,
+            'user_id'            => $memberId,
+            'name'               => $name,
+            'email'              => strtolower($email),
+            'phone'              => $this->input('phone') ?: null,
+            'attendees'          => (int)($this->input('attendees') ?: 1),
+            'notes'              => $this->input('notes') ?: null,
             'amount_paid'        => 0.00,
             'status'             => 'confirmed',
             'confirmation_token' => $token,
-            'registered_at'      => date('Y-m-d H:i:s'),
         ]);
 
         // Log activity
@@ -337,7 +335,7 @@ class EventController extends BaseController
             'cancel_reason' => 'Self-cancelled via link',
         ], 'id = ?', [$reg['id']]);
 
-        $registrantName = $reg['guest_name'] ?? 'Member #' . $reg['member_id'];
+        $registrantName = $reg['name'] ?? 'Member #' . $reg['user_id'];
         $this->logActivity('cancel', 'event', (int) $event['id'], "Registration #{$reg['id']} cancelled by {$registrantName}");
 
         Auth::flash('success', 'Your registration has been cancelled.');
@@ -432,9 +430,9 @@ class EventController extends BaseController
         $registrations = $this->db->fetchAll(
             'SELECT r.*, m.forenames, m.surnames, m.email as member_email
              FROM event_registrations r
-             LEFT JOIN members m ON r.member_id = m.id
+             LEFT JOIN members m ON m.user_id = r.user_id
              WHERE r.event_id = ?
-             ORDER BY r.registered_at DESC',
+             ORDER BY r.created_at DESC',
             [$id]
         );
 
@@ -447,7 +445,7 @@ class EventController extends BaseController
             if ($reg['status'] === 'confirmed') {
                 $confirmedCount++;
                 $totalRevenue += (float) $reg['amount_paid'];
-                if ($reg['payment_status'] === 'pending') {
+                if (false) { // payment_status not in schema
                     $pendingPayment++;
                 }
             } elseif ($reg['status'] === 'cancelled') {
@@ -497,17 +495,24 @@ class EventController extends BaseController
 
         $slug = $this->generateSlug($this->input('title'));
 
+        $dateStartRaw = $this->input('date_start');
+        $dateEndRaw   = $this->input('date_end') ?: null;
+
         $id = $this->db->insert('events', [
             'title'             => $this->input('title'),
             'slug'              => $slug,
             'event_type'        => $this->input('event_type'),
             'description'       => $this->input('description') ?: null,
-            'date_start'        => $this->input('date_start'),
-            'date_end'          => $this->input('date_end') ?: null,
+            'date_start'        => $dateStartRaw,
+            'date_end'          => $dateEndRaw,
+            'start_date'        => $dateStartRaw ? date('Y-m-d', strtotime($dateStartRaw)) : date('Y-m-d'),
+            'start_time'        => $dateStartRaw ? date('H:i:s', strtotime($dateStartRaw)) : null,
+            'end_date'          => $dateEndRaw   ? date('Y-m-d', strtotime($dateEndRaw))   : null,
+            'end_time'          => $dateEndRaw   ? date('H:i:s', strtotime($dateEndRaw))   : null,
             'location'          => $this->input('location') ?: null,
             'location_lat'      => $this->input('location_lat') ?: null,
             'location_lng'      => $this->input('location_lng') ?: null,
-            'capacity'          => (int) ($this->input('capacity') ?: 0),
+            'capacity'          => (int) ($this->input('capacity') ?: 0) ?: null,
             'price'             => (float) ($this->input('price') ?: 0.00),
             'currency'          => $this->input('currency', 'EUR'),
             'reg_deadline'      => $this->input('reg_deadline') ?: null,
@@ -568,17 +573,24 @@ class EventController extends BaseController
             $slug = $this->generateSlug($this->input('title'), (int) $id);
         }
 
+        $dateStartRaw = $this->input('date_start');
+        $dateEndRaw   = $this->input('date_end') ?: null;
+
         $this->db->update('events', [
             'title'             => $this->input('title'),
             'slug'              => $slug,
             'event_type'        => $this->input('event_type'),
             'description'       => $this->input('description') ?: null,
-            'date_start'        => $this->input('date_start'),
-            'date_end'          => $this->input('date_end') ?: null,
+            'date_start'        => $dateStartRaw,
+            'date_end'          => $dateEndRaw,
+            'start_date'        => $dateStartRaw ? date('Y-m-d', strtotime($dateStartRaw)) : null,
+            'start_time'        => $dateStartRaw ? date('H:i:s', strtotime($dateStartRaw)) : null,
+            'end_date'          => $dateEndRaw   ? date('Y-m-d', strtotime($dateEndRaw))   : null,
+            'end_time'          => $dateEndRaw   ? date('H:i:s', strtotime($dateEndRaw))   : null,
             'location'          => $this->input('location') ?: null,
             'location_lat'      => $this->input('location_lat') ?: null,
             'location_lng'      => $this->input('location_lng') ?: null,
-            'capacity'          => (int) ($this->input('capacity') ?: 0),
+            'capacity'          => (int) ($this->input('capacity') ?: 0) ?: null,
             'price'             => (float) ($this->input('price') ?: 0.00),
             'currency'          => $this->input('currency', 'EUR'),
             'reg_deadline'      => $this->input('reg_deadline') ?: null,
@@ -651,7 +663,7 @@ class EventController extends BaseController
             'cancel_reason' => 'Cancelled by admin',
         ], 'id = ?', [$regId]);
 
-        $registrantName = $reg['guest_name'] ?? "Member #{$reg['member_id']}";
+        $registrantName = $reg['name'] ?? "Member #{$reg['user_id']}";
         $this->logActivity('cancel', 'event', (int) $id, "Admin cancelled registration #{$regId} ({$registrantName})");
 
         Auth::flash('success', 'Registration cancelled.');
@@ -680,13 +692,11 @@ class EventController extends BaseController
         }
 
         $this->db->update('event_registrations', [
-            'payment_status' => 'paid',
-            'payment_method' => $this->input('payment_method', 'manual'),
-            'payment_ref'    => $this->input('payment_ref') ?: 'Admin: ' . date('Y-m-d'),
+            // payment_status/method/ref not in current schema
             'amount_paid'    => (float) $event['price'],
         ], 'id = ?', [$regId]);
 
-        $registrantName = $reg['guest_name'] ?? "Member #{$reg['member_id']}";
+        $registrantName = $reg['name'] ?? "Member #{$reg['user_id']}";
         $this->logActivity('payment', 'event', (int) $id, "Marked registration #{$regId} as paid ({$registrantName})");
 
         Auth::flash('success', 'Payment recorded.');
@@ -707,9 +717,9 @@ class EventController extends BaseController
         $registrations = $this->db->fetchAll(
             'SELECT r.*, m.forenames, m.surnames, m.email as member_email
              FROM event_registrations r
-             LEFT JOIN members m ON r.member_id = m.id
+             LEFT JOIN members m ON m.user_id = r.user_id
              WHERE r.event_id = ?
-             ORDER BY r.registered_at ASC',
+             ORDER BY r.created_at ASC',
             [$id]
         );
 
@@ -723,33 +733,27 @@ class EventController extends BaseController
         fwrite($out, "\xEF\xBB\xBF");
 
         fputcsv($out, [
-            'Reg #', 'Name', 'Email', 'Type', 'Dietary Notes', 'Access Notes',
-            'Payment Status', 'Amount Paid', 'Payment Method', 'Payment Ref',
-            'Status', 'Registered At', 'Cancelled At',
+            'Reg #', 'Name', 'Email', 'Type', 'Notes', 'Amount Paid', 'Status', 'Registered At', 'Cancelled At',
         ]);
 
         foreach ($registrations as $reg) {
-            $name  = $reg['member_id']
+            $name  = $reg['user_id']
                 ? trim(($reg['forenames'] ?? '') . ' ' . ($reg['surnames'] ?? ''))
-                : ($reg['guest_name'] ?? '');
-            $email = $reg['member_id']
+                : ($reg['name'] ?? '');
+            $email = $reg['user_id']
                 ? ($reg['member_email'] ?? '')
-                : ($reg['guest_email'] ?? '');
-            $type  = $reg['member_id'] ? 'Member' : 'Guest';
+                : ($reg['email'] ?? '');
+            $type  = $reg['user_id'] ? 'Member' : 'Guest';
 
             fputcsv($out, [
                 $reg['id'],
                 $name,
                 $email,
                 $type,
-                $reg['dietary_notes'] ?? '',
-                $reg['access_notes'] ?? '',
-                ucfirst($reg['payment_status']),
+                $reg['notes'] ?? '',
                 number_format((float) $reg['amount_paid'], 2),
-                $reg['payment_method'] ?? '',
-                $reg['payment_ref'] ?? '',
                 ucfirst($reg['status']),
-                $reg['registered_at'],
+                $reg['created_at'],
                 $reg['cancelled_at'] ?? '',
             ]);
         }

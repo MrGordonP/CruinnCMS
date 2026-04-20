@@ -35,11 +35,8 @@ return [
         $router->get('/events/{slug}/cancel/{token}',[EventController::class, 'cancelRegistration']);
     },
 
-    'public_routes' => [
-        ['route' => '/events', 'label' => 'Events'],
-    ],
-
     'migrations' => [
+        __DIR__ . '/migrations/001_events_core.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

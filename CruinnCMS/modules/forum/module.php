@@ -20,29 +20,42 @@ return [
 
     'dependencies' => [],
 
-    'public_routes' => [
-        ['route' => '/forum', 'label' => 'Forum'],
-    ],
-
     'migrations' => [
         __DIR__ . '/migrations/009_forum_core.sql',
         __DIR__ . '/migrations/017_forum_hierarchy.sql',
+        __DIR__ . '/migrations/018_forum_post_moderation.sql',
     ],
 
     'routes' => static function (object $router): void {
         // Public forum routes
         $router->get('/forum',                          [ForumController::class, 'index']);
+        $router->get('/forum/search',                   [ForumController::class, 'search']);
         $router->get('/forum/{slug}',                   [ForumController::class, 'category']);
         $router->get('/forum/{slug}/new',               [ForumController::class, 'newThreadForm']);
         $router->post('/forum/{slug}/new',              [ForumController::class, 'createThread']);
         $router->get('/forum/thread/{id}',              [ForumController::class, 'thread']);
         $router->post('/forum/thread/{id}/reply',       [ForumController::class, 'reply']);
+        $router->get('/forum/thread/{id}/edit-title',   [ForumController::class, 'editThreadTitleForm']);
+        $router->post('/forum/thread/{id}/edit-title',  [ForumController::class, 'updateThreadTitle']);
+        $router->get('/forum/post/{id}/edit',           [ForumController::class, 'editPostForm']);
+        $router->post('/forum/post/{id}/edit',          [ForumController::class, 'updatePost']);
+        $router->post('/forum/post/{id}/delete',        [ForumController::class, 'deletePost']);
+        $router->get('/forum/post/{id}/report',         [ForumController::class, 'reportPostForm']);
+        $router->post('/forum/post/{id}/report',        [ForumController::class, 'reportPost']);
 
         // Admin forum moderation routes
         $router->get('/admin/forum',                    [ForumAdminController::class, 'index']);
         $router->post('/admin/forum/{id}/pin',          [ForumAdminController::class, 'togglePin']);
         $router->post('/admin/forum/{id}/lock',         [ForumAdminController::class, 'toggleLock']);
         $router->post('/admin/forum/{id}/delete',       [ForumAdminController::class, 'deleteThread']);
+        $router->post('/admin/forum/{id}/edit-title',   [ForumAdminController::class, 'editThreadTitle']);
+        $router->get('/admin/forum/post/{id}/edit',     [ForumAdminController::class, 'editPost']);
+        $router->post('/admin/forum/post/{id}/edit',    [ForumAdminController::class, 'updatePost']);
+        $router->post('/admin/forum/post/{id}/delete',  [ForumAdminController::class, 'deletePost']);
+        $router->get('/admin/forum/{id}/move',          [ForumAdminController::class, 'moveThreadForm']);
+        $router->post('/admin/forum/{id}/move',         [ForumAdminController::class, 'moveThread']);
+        $router->get('/admin/forum/reports',            [ForumAdminController::class, 'listReports']);
+        $router->post('/admin/forum/report/{id}/review',[ForumAdminController::class, 'reviewReport']);
     },
 
     'acp_sections' => [

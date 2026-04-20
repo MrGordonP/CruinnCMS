@@ -43,6 +43,7 @@
                     <th><?= e($pf['label']) ?></th>
                 <?php endforeach; ?>
                 <th>Status</th>
+                <th>Payment</th>
                 <th></th>
             </tr>
         </thead>
@@ -69,6 +70,20 @@
                     </td>
                 <?php endforeach; ?>
                 <td><span class="badge <?= $statusClass ?>"><?= e(ucfirst($s['status'])) ?></span></td>
+                <td>
+                    <span class="badge <?= ($s['payment_status'] ?? 'not_required') === 'verified' ? 'badge-success' : (($s['payment_status'] ?? 'not_required') === 'rejected' ? 'badge-danger' : 'badge-warning') ?>">
+                        <?= e(ucfirst(str_replace('_', ' ', $s['payment_status'] ?? 'not_required'))) ?>
+                    </span>
+                    <?php if (!empty($s['payment_option_label'])): ?>
+                        <div class="text-muted">
+                            <?= e($s['payment_option_label']) ?>
+                            (<?= e($s['payment_option_currency'] ?: 'EUR') ?> <?= number_format((float) ($s['payment_option_amount'] ?? 0), 2) ?>)
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($s['payment_method'])): ?>
+                        <div class="text-muted"><?= e(ucfirst(str_replace('_', ' ', $s['payment_method']))) ?></div>
+                    <?php endif; ?>
+                </td>
                 <td>
                     <a href="/admin/forms/<?= (int)$form['id'] ?>/submissions/<?= (int)$s['id'] ?>" class="btn btn-small">View</a>
                 </td>

@@ -21,6 +21,7 @@ return [
         ['group' => 'Comms', 'label' => 'Mailing Lists', 'url' => '/admin/social/mailing-lists', 'icon' => '📧'],
         ['group' => 'Comms', 'label' => 'Accounts', 'url' => '/admin/social/accounts', 'icon' => '🔗'],
         ['group' => 'Comms', 'label' => 'Distribute', 'url' => '/admin/social/distribute', 'icon' => '📤'],
+        ['group' => 'Settings', 'label' => 'Social Config', 'url' => '/admin/settings/social', 'icon' => '📡'],
     ],
 
     'dashboard_sections' => [
@@ -50,5 +51,14 @@ return [
         $router->get('/admin/social/mailing-lists',               [SocialController::class, 'mailingLists']);
         $router->post('/admin/social/mailing-lists',              [SocialController::class, 'saveMailingList']);
         $router->post('/admin/social/mailing-lists/{id}/delete',  [SocialController::class, 'deleteMailingList']);
+        $router->get('/admin/social/mailing-lists/{id}/members',                      [SocialController::class, 'listMembers']);
+        $router->post('/admin/social/mailing-lists/{id}/members/add',                 [SocialController::class, 'addMember']);
+        $router->post('/admin/social/mailing-lists/{id}/members/{subId}/remove',      [SocialController::class, 'removeMember']);
+        $router->post('/admin/social/mailing-lists/{id}/members/{subId}/approve',     [SocialController::class, 'approveMember']);
+        $router->post('/admin/social/mailing-lists/{id}/members/{subId}/reject',      [SocialController::class, 'rejectMember']);
+
+        // Member self-service (profile)
+        $router->post('/profile/mailing-lists/{id}/subscribe',   [SocialController::class, 'subscribeSelf']);
+        $router->post('/profile/mailing-lists/{id}/unsubscribe', [SocialController::class, 'unsubscribeSelf']);
     },
 ];

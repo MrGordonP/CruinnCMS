@@ -66,8 +66,8 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/dashboard', [
             'title'       => 'Social Media',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media'],
+                ['Admin', '/admin'],
+                ['Social Media'],
             ],
             'accounts'    => $accounts,
             'platforms'   => $platforms,
@@ -97,9 +97,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/feed', [
             'title'       => ucfirst($platform) . ' Feed',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => ucfirst($platform) . ' Feed'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                [ucfirst($platform) . ' Feed'],
             ],
             'platform' => $platform,
             'account'  => $account,
@@ -155,9 +155,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/inbox', [
             'title'       => 'Social Inbox',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Inbox'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Inbox'],
             ],
             'messages'     => $messages,
             'unreadCount'  => $unreadCount,
@@ -265,7 +265,7 @@ class SocialController extends BaseController
             "SELECT id, title, slug, featured_image FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 50"
         );
         $events = $this->db->fetchAll(
-            "SELECT id, title, slug, image FROM events WHERE status = 'published' ORDER BY start_date DESC LIMIT 50"
+            "SELECT id, title, slug, featured_image FROM events WHERE status = 'published' ORDER BY start_date DESC LIMIT 50"
         );
 
         // Get connected accounts
@@ -289,9 +289,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/distribute', [
             'title'       => 'Distribute Content',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Distribute'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Distribute Content'],
             ],
             'articles'        => $articles,
             'events'          => $events,
@@ -473,9 +473,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/accounts', [
             'title'       => 'Social Accounts',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Accounts'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Accounts'],
             ],
             'accounts' => $accounts,
         ]);
@@ -555,9 +555,9 @@ class SocialController extends BaseController
         $this->renderAdmin('admin/social/mailing-lists', [
             'title'       => 'Mailing Lists',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin'],
-                ['label' => 'Social Media', 'url' => '/admin/social'],
-                ['label' => 'Mailing Lists'],
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Mailing Lists'],
             ],
             'lists' => $lists,
         ]);
@@ -565,20 +565,30 @@ class SocialController extends BaseController
 
     public function saveMailingList(): void
     {
-        $id          = (int) $this->input('id', 0);
-        $name        = $this->input('name', '');
-        $description = $this->input('description', '');
-        $isActive    = $this->input('is_active') ? 1 : 0;
+        $id               = (int) $this->input('id', 0);
+        $name             = $this->input('name', '');
+        $description      = $this->input('description', '');
+        $isActive         = $this->input('is_active') ? 1 : 0;
+        $isPublic         = $this->input('is_public') ? 1 : 0;
+        $subscriptionMode = in_array($this->input('subscription_mode'), ['open', 'request'])
+                            ? $this->input('subscription_mode')
+                            : 'open';
 
         if (!$name) {
             Auth::flash('warning', 'List name is required.');
             $this->redirect('/admin/social/mailing-lists');
         }
 
+        // Generate slug from name
+        $slug = strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $name), '-'));
+
         $data = [
-            'name'        => $name,
-            'description' => $description,
-            'is_active'   => $isActive,
+            'name'              => $name,
+            'slug'              => $slug,
+            'description'       => $description,
+            'is_active'         => $isActive,
+            'is_public'         => $isPublic,
+            'subscription_mode' => $subscriptionMode,
         ];
 
         if ($id) {
@@ -597,6 +607,266 @@ class SocialController extends BaseController
         Auth::flash('success', 'Mailing list deleted.');
         $this->redirect('/admin/social/mailing-lists');
     }
+
+    // ── Mailing List Members ──────────────────────────────────────────
+
+    public function listMembers(string $id): void
+    {
+        $list = $this->db->fetch('SELECT * FROM mailing_lists WHERE id = ?', [(int)$id]);
+        if (!$list) {
+            Auth::flash('danger', 'Mailing list not found.');
+            $this->redirect('/admin/social/mailing-lists');
+        }
+
+        // Current list members (for the bottom table and email exclusion)
+        $members = $this->db->fetchAll(
+            "SELECT mls.id AS sub_id, mls.email, mls.name, mls.status, mls.subscribed_at, u.id AS user_id, u.display_name
+             FROM mailing_list_subscriptions mls
+             LEFT JOIN users u ON u.id = mls.user_id
+             WHERE mls.list_id = ? AND mls.status != 'pending'
+             ORDER BY mls.email",
+            [(int)$id]
+        );
+
+        $pendingMembers = $this->db->fetchAll(
+            "SELECT mls.id AS sub_id, mls.email, mls.name, mls.subscribed_at, u.id AS user_id, u.display_name
+             FROM mailing_list_subscriptions mls
+             LEFT JOIN users u ON u.id = mls.user_id
+             WHERE mls.list_id = ? AND mls.status = 'pending'
+             ORDER BY mls.subscribed_at",
+            [(int)$id]
+        );
+
+        $memberEmails = array_column($members, 'email');
+        $pendingEmails = array_column($pendingMembers, 'email');
+        $excludeEmails = array_merge($memberEmails, $pendingEmails);
+        // Filter params
+        $filterStatus = $this->query('status', '');
+        $filterYear   = $this->query('year', '');
+        $filterActive = $this->query('active', '');
+        $sort         = in_array($this->query('sort'), ['display_name', 'email', 'm.status', 'm.membership_year']) ? $this->query('sort') : 'u.display_name';
+        $dir          = $this->query('dir', 'asc') === 'desc' ? 'DESC' : 'ASC';
+
+        // Build user query with optional membership join
+        $where  = ['u.id IS NOT NULL'];
+        $params = [];
+
+        if ($filterActive !== '') {
+            $where[]  = 'u.active = ?';
+            $params[] = (int)$filterActive;
+        }
+        if ($filterStatus !== '') {
+            $where[]  = 'm.status = ?';
+            $params[] = $filterStatus;
+        }
+        if ($filterYear !== '') {
+            $where[]  = 'm.membership_year = ?';
+            $params[] = (int)$filterYear;
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+        $users = $this->db->fetchAll(
+            "SELECT u.id, u.display_name, u.email, u.active,
+                    m.status AS member_status, m.membership_year
+             FROM users u
+             LEFT JOIN members m ON m.user_id = u.id
+             {$whereClause}
+             ORDER BY {$sort} {$dir}",
+            $params
+        );
+
+        // Exclude already-subscribed
+        $users = array_values(array_filter($users, fn($u) => !in_array($u['email'], $excludeEmails)));
+
+        // Distinct years for filter dropdown
+        $years = $this->db->fetchAll(
+            'SELECT DISTINCT membership_year FROM members WHERE membership_year IS NOT NULL ORDER BY membership_year DESC'
+        );
+
+        $this->renderAdmin('admin/social/members', [
+            'title'       => 'Members: ' . $list['name'],
+            'breadcrumbs' => [
+                ['Admin', '/admin'],
+                ['Social Media', '/admin/social'],
+                ['Mailing Lists', '/admin/social/mailing-lists'],
+                [$list['name']],
+            ],
+            'list'           => $list,
+            'members'        => $members,
+            'pendingMembers' => $pendingMembers,
+            'users'          => $users,
+            'years'         => array_column($years, 'membership_year'),
+            'filterStatus'  => $filterStatus,
+            'filterYear'    => $filterYear,
+            'filterActive'  => $filterActive,
+            'sort'          => $sort,
+            'dir'           => $dir,
+        ]);
+    }
+
+    public function addMember(string $id): void
+    {
+        $list = $this->db->fetch('SELECT * FROM mailing_lists WHERE id = ?', [(int)$id]);
+        if (!$list) {
+            Auth::flash('danger', 'Mailing list not found.');
+            $this->redirect('/admin/social/mailing-lists');
+        }
+
+        $userIds = array_map('intval', array_filter((array)($_POST['user_ids'] ?? []), 'is_numeric'));
+        $email   = trim($this->input('email', ''));
+        $added   = 0;
+
+        // Bulk add selected users
+        foreach ($userIds as $userId) {
+            $user = $this->db->fetch('SELECT id, display_name, email FROM users WHERE id = ?', [$userId]);
+            if (!$user) continue;
+
+            $exists = $this->db->fetch(
+                'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                [(int)$id, $user['email']]
+            );
+            if ($exists) continue;
+
+            $this->db->insert('mailing_list_subscriptions', [
+                'list_id'           => (int)$id,
+                'user_id'           => $userId,
+                'email'             => $user['email'],
+                'name'              => $user['display_name'],
+                'unsubscribe_token' => bin2hex(random_bytes(32)),
+                'status'            => 'active',
+            ]);
+            $added++;
+        }
+
+        // Optional single email add
+        if ($email && empty($userIds)) {
+            $name = trim($this->input('name', $email));
+            $exists = $this->db->fetch(
+                'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                [(int)$id, $email]
+            );
+            if (!$exists) {
+                $this->db->insert('mailing_list_subscriptions', [
+                    'list_id'           => (int)$id,
+                    'user_id'           => null,
+                    'email'             => $email,
+                    'name'              => $name,
+                    'unsubscribe_token' => bin2hex(random_bytes(32)),
+                    'status'            => 'active',
+                ]);
+                $added++;
+            } else {
+                Auth::flash('warning', $email . ' is already on this list.');
+                $this->redirect('/admin/social/mailing-lists/' . (int)$id . '/members');
+            }
+        }
+
+        if ($added === 0 && empty($userIds) && !$email) {
+            Auth::flash('warning', 'No users selected.');
+        } else {
+            Auth::flash('success', $added . ' member(s) added to ' . $list['name'] . '.');
+        }
+
+        $this->redirect('/admin/social/mailing-lists/' . (int)$id . '/members');
+    }
+
+    public function removeMember(string $id, string $subId): void
+    {
+        $this->db->delete('mailing_list_subscriptions', 'id = ? AND list_id = ?', [(int)$subId, (int)$id]);
+        Auth::flash('success', 'Member removed.');
+        $this->redirect('/admin/social/mailing-lists/' . (int)$id . '/members');
+    }
+
+    public function approveMember(string $id, string $subId): void
+    {
+        $this->db->update(
+            'mailing_list_subscriptions',
+            ['status' => 'active'],
+            'id = ? AND list_id = ? AND status = ?',
+            [(int)$subId, (int)$id, 'pending']
+        );
+        Auth::flash('success', 'Subscription approved.');
+        $this->redirect('/admin/social/mailing-lists/' . (int)$id . '/members');
+    }
+
+    public function rejectMember(string $id, string $subId): void
+    {
+        $this->db->delete('mailing_list_subscriptions', 'id = ? AND list_id = ?', [(int)$subId, (int)$id]);
+        Auth::flash('success', 'Subscription request rejected and removed.');
+        $this->redirect('/admin/social/mailing-lists/' . (int)$id . '/members');
+    }
+
+    public function subscribeSelf(string $id): void
+    {
+        if (!Auth::check()) {
+            $this->redirect('/login');
+        }
+
+        $list = $this->db->fetch('SELECT * FROM mailing_lists WHERE id = ? AND is_public = 1', [(int)$id]);
+        if (!$list) {
+            Auth::flash('danger', 'List not found.');
+            $this->redirect('/profile#subscriptions');
+        }
+
+        $userId = Auth::userId();
+        $user   = $this->db->fetch('SELECT id, display_name, email FROM users WHERE id = ?', [$userId]);
+
+        $existing = $this->db->fetch(
+            'SELECT id, status FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+            [(int)$id, $user['email']]
+        );
+
+        if ($existing) {
+            if ($existing['status'] === 'unsubscribed') {
+                // Re-subscribe
+                $newStatus = $list['subscription_mode'] === 'open' ? 'active' : 'pending';
+                $this->db->update('mailing_list_subscriptions', ['status' => $newStatus], 'id = ?', [$existing['id']]);
+                $msg = $newStatus === 'pending' ? 'Subscription request submitted.' : 'Re-subscribed successfully.';
+            } elseif ($existing['status'] === 'pending') {
+                $msg = 'Your request is already pending approval.';
+            } else {
+                $msg = 'You are already subscribed to this list.';
+            }
+            Auth::flash('info', $msg);
+            $this->redirect('/profile#subscriptions');
+        }
+
+        $status = $list['subscription_mode'] === 'open' ? 'active' : 'pending';
+        $this->db->insert('mailing_list_subscriptions', [
+            'list_id'           => (int)$id,
+            'user_id'           => $userId,
+            'email'             => $user['email'],
+            'name'              => $user['display_name'],
+            'unsubscribe_token' => bin2hex(random_bytes(32)),
+            'status'            => $status,
+        ]);
+
+        $msg = $status === 'pending'
+            ? 'Your request to join "' . $list['name'] . '" has been submitted for approval.'
+            : 'You have subscribed to "' . $list['name'] . '".';
+        Auth::flash('success', $msg);
+        $this->redirect('/profile#subscriptions');
+    }
+
+    public function unsubscribeSelf(string $id): void
+    {
+        if (!Auth::check()) {
+            $this->redirect('/login');
+        }
+
+        $user = $this->db->fetch('SELECT email FROM users WHERE id = ?', [Auth::userId()]);
+        $this->db->update(
+            'mailing_list_subscriptions',
+            ['status' => 'unsubscribed'],
+            'list_id = ? AND email = ?',
+            [(int)$id, $user['email']]
+        );
+
+        Auth::flash('success', 'You have unsubscribed from this list.');
+        $this->redirect('/profile#subscriptions');
+    }
+
 
     // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 

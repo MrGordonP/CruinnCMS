@@ -3,6 +3,9 @@
         <h1>Forum Moderation</h1>
         <p class="text-muted">Manage thread visibility, lock state, and cleanup.</p>
     </div>
+    <div class="admin-page-header-actions">
+        <a href="<?= url('/admin/forum/reports') ?>" class="btn btn-outline">Post Reports</a>
+    </div>
 </div>
 
 <form method="get" action="/admin/forum" class="card" style="margin-bottom: var(--space-lg);">
@@ -108,6 +111,8 @@
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn-small btn-danger">Delete</button>
                             </form>
+
+                            <a href="/admin/forum/<?= (int)$thread['id'] ?>/move" class="btn btn-small btn-outline">Move</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

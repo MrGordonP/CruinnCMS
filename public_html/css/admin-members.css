@@ -282,3 +282,27 @@
     padding: 2rem;
     text-align: center;
 }
+
+/* Groups — members card header with inline add form */
+.card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.card-header-row h2 {
+    margin: 0;
+}
+.inline-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.form-select--sm {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    height: auto;
+}

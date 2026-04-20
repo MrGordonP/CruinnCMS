@@ -161,57 +161,23 @@ class OrganisationAdminController extends BaseController
 
         $userId = $this->input('user_id', '') !== '' ? (int) $this->input('user_id') : null;
 
-        $fields = [
-            'position'   => $position,
-            'user_id'    => $userId,
-            'name'       => trim($this->input('name', '')) ?: null,
-            'email'      => trim($this->input('email', '')) ?: null,
-            'bio'        => trim($this->input('bio', '')) ?: null,
-            'sort_order' => (int) $this->input('sort_order', 0),
-            'active'     => $this->input('active', '0') === '1' ? 1 : 0,
-            'term_start' => $this->input('term_start', '') ?: null,
-            'term_end'   => $this->input('term_end', '') ?: null,
-        ];
-
-        // IMAP/SMTP fields — only saved if mailbox module migration has been applied
-        $hasImapColumns = $this->db->fetchColumn(
-            "SELECT COUNT(*) FROM information_schema.COLUMNS
-              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'organisation_officers' AND COLUMN_NAME = 'imap_host'"
-        );
-
-        if ($hasImapColumns) {
-            $config = require CRUINN_ROOT . '/config/config.php';
-            $secret = $config['secret_key'] ?? '';
-            $svc    = new \Cruinn\Module\Mailbox\Services\MailboxService($this->db, $secret);
-
-            $fields['imap_host']       = trim($this->input('imap_host', '')) ?: null;
-            $fields['imap_port']       = (int) $this->input('imap_port', 993);
-            $fields['imap_encryption'] = $this->input('imap_encryption', 'ssl');
-            $fields['imap_user']       = trim($this->input('imap_user', '')) ?: null;
-            $fields['smtp_host']       = trim($this->input('smtp_host', '')) ?: null;
-            $fields['smtp_port']       = (int) $this->input('smtp_port', 587);
-            $fields['smtp_encryption'] = $this->input('smtp_encryption', 'tls');
-            $fields['smtp_user']       = trim($this->input('smtp_user', '')) ?: null;
-            $fields['imap_enabled']    = $this->input('imap_enabled', '0') === '1' ? 1 : 0;
-
-            // Only re-encrypt passwords if a new value was submitted
-            $imapPass = $this->input('imap_pass', '');
-            if ($imapPass !== '') {
-                $fields['imap_pass_enc'] = $svc->encryptPassword($imapPass);
-            }
-            $smtpPass = $this->input('smtp_pass', '');
-            if ($smtpPass !== '') {
-                $fields['smtp_pass_enc'] = $svc->encryptPassword($smtpPass);
-            }
-        }
-
-        $setClauses = implode(', ', array_map(static fn($k) => "`$k` = ?", array_keys($fields)));
-        $values     = array_values($fields);
-        $values[]   = $id;
-
         $this->db->execute(
-            "UPDATE organisation_officers SET $setClauses, updated_at = NOW() WHERE id = ?",
-            $values
+            'UPDATE organisation_officers
+             SET position = ?, user_id = ?, name = ?, email = ?, bio = ?,
+                 sort_order = ?, active = ?, term_start = ?, term_end = ?, updated_at = NOW()
+             WHERE id = ?',
+            [
+                $position,
+                $userId,
+                trim($this->input('name', '')) ?: null,
+                trim($this->input('email', '')) ?: null,
+                trim($this->input('bio', '')) ?: null,
+                (int) $this->input('sort_order', 0),
+                $this->input('active', '0') === '1' ? 1 : 0,
+                $this->input('term_start', '') ?: null,
+                $this->input('term_end', '') ?: null,
+                $id,
+            ]
         );
 
         Auth::flash('success', 'Officer updated.');

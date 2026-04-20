@@ -10,18 +10,18 @@ return [
     'name'         => 'GDPR / Privacy',
     'description'  => 'Privacy policy, cookie consent, Subject Access Request data export, and Right-to-Erasure account deletion.',
     'provides'     => ['gdpr'],
-    'public_routes'  => [
-        ['route' => '/privacy', 'label' => 'Privacy Policy'],
-        ['route' => '/cookies', 'label' => 'Cookie Policy'],
-    ],
-
     'migrations'   => [
+        __DIR__ . '/migrations/001_gdpr_core.sql',
         __DIR__ . '/migrations/002_deleted_accounts.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 
     'dashboard_sections' => [
         ['group' => 'Settings', 'label' => 'GDPR', 'url' => '/admin/settings/gdpr', 'icon' => '🔒', 'roles' => ['admin']],
+    ],
+
+    'acp_sections' => [
+        ['group' => 'Settings', 'label' => 'GDPR & Privacy', 'url' => '/admin/settings/gdpr', 'icon' => '🔒'],
     ],
 
     'routes' => function (\Cruinn\Router $router) {

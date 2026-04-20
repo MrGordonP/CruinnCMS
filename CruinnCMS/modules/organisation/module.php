@@ -5,21 +5,31 @@
  */
 
 use Cruinn\Module\Organisation\Controllers\OrganisationController;
+use Cruinn\Module\Organisation\Controllers\OrganisationAdminController;
+use Cruinn\Module\Organisation\Controllers\FinanceController;
 
 return [
     'slug'         => 'organisation',
     'name'         => 'Organisation Workspace',
     'description'  => 'Restricted workspace for organisation members: discussion threads and inbox.',
     'provides'     => ['organisation'],
-    'public_routes'  => [
-        ['route' => '/organisation', 'label' => 'Organisation'],
+    'migrations'   => [
+        __DIR__ . '/migrations/001_organisation_tables.sql',
+        __DIR__ . '/migrations/002_groups_tables.sql',
+        __DIR__ . '/migrations/003_organisation_profile.sql',
+        __DIR__ . '/migrations/004_organisation_officers.sql',
+        __DIR__ . '/migrations/005_organisation_meetings.sql',
+        __DIR__ . '/migrations/006_organisation_finance.sql',
     ],
-
-    'migrations'   => [__DIR__ . '/migrations/001_organisation_tables.sql'],
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [
-        ['group' => 'Organisation', 'label' => 'Workspace', 'url' => '/organisation', 'icon' => '🏢'],
+        ['group' => 'Organisation', 'label' => 'Workspace',            'url' => '/organisation',                   'icon' => '🏢'],
+        ['group' => 'Organisation', 'label' => 'Discussions',          'url' => '/organisation/discussions',       'icon' => '💬'],
+        ['group' => 'Organisation', 'label' => 'Organisation Profile', 'url' => '/admin/organisation/profile',     'icon' => '⚙️'],
+        ['group' => 'Organisation', 'label' => 'Officers',             'url' => '/admin/organisation/officers',    'icon' => '👤'],
+        ['group' => 'Organisation', 'label' => 'Meetings',             'url' => '/admin/organisation/meetings',    'icon' => '📅'],
+        ['group' => 'Organisation', 'label' => 'Finance',              'url' => '/admin/organisation/finance',     'icon' => '💰'],
     ],
 
     'dashboard_sections' => [
@@ -55,5 +65,32 @@ return [
 
         // Inbox
         $router->get('/organisation/inbox', [OrganisationController::class, 'inbox']);
+
+        // Admin — profile, officers, meetings
+        $router->get('/admin/organisation/profile',                                    [OrganisationAdminController::class, 'profile']);
+        $router->post('/admin/organisation/profile',                                   [OrganisationAdminController::class, 'saveProfile']);
+
+        $router->get('/admin/organisation/officers',                                   [OrganisationAdminController::class, 'officers']);
+        $router->post('/admin/organisation/officers',                                  [OrganisationAdminController::class, 'createOfficer']);
+        $router->post('/admin/organisation/officers/{id}/update',                      [OrganisationAdminController::class, 'updateOfficer']);
+        $router->post('/admin/organisation/officers/{id}/delete',                      [OrganisationAdminController::class, 'deleteOfficer']);
+
+        $router->get('/admin/organisation/meetings',                                   [OrganisationAdminController::class, 'meetings']);
+        $router->post('/admin/organisation/meetings',                                  [OrganisationAdminController::class, 'createMeeting']);
+        $router->post('/admin/organisation/meetings/{id}/update',                      [OrganisationAdminController::class, 'updateMeeting']);
+        $router->post('/admin/organisation/meetings/{id}/delete',                      [OrganisationAdminController::class, 'deleteMeeting']);
+
+        // Admin — finance
+        $router->get('/admin/organisation/finance',                                    [FinanceController::class, 'index']);
+        $router->get('/admin/organisation/finance/new',                                [FinanceController::class, 'newEntry']);
+        $router->post('/admin/organisation/finance/create',                            [FinanceController::class, 'createEntry']);
+        $router->get('/admin/organisation/finance/edit/{id}',                          [FinanceController::class, 'editEntry']);
+        $router->post('/admin/organisation/finance/update/{id}',                       [FinanceController::class, 'updateEntry']);
+        $router->post('/admin/organisation/finance/delete/{id}',                       [FinanceController::class, 'deleteEntry']);
+        $router->post('/admin/organisation/finance/ingest',                            [FinanceController::class, 'ingest']);
+        $router->get('/admin/organisation/finance/export/{periodId}',                  [FinanceController::class, 'exportCsv']);
+        $router->get('/admin/organisation/finance/periods',                            [FinanceController::class, 'periods']);
+        $router->post('/admin/organisation/finance/periods/create',                    [FinanceController::class, 'createPeriod']);
+        $router->post('/admin/organisation/finance/periods/set-current/{id}',          [FinanceController::class, 'setCurrentPeriod']);
     },
 ];
