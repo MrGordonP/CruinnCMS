@@ -10,12 +10,6 @@
         <a href="/admin/documents" class="btn btn-secondary btn-sm">&larr; Back to Documents Admin</a>
     </div>
 
-    <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-        <div class="alert alert-success"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
-    <?php if ($flash = \Cruinn\Auth::getFlash('error')): ?>
-        <div class="alert alert-error"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
 
     <!-- Add category -->
     <div class="admin-card">
@@ -59,9 +53,9 @@
             <tbody>
             <?php foreach ($categories as $cat): ?>
                 <tr>
-                    <td><strong><?= $this->escape($cat['name']) ?></strong></td>
-                    <td><code><?= $this->escape($cat['slug']) ?></code></td>
-                    <td><?= $this->escape($cat['description'] ?? '—') ?></td>
+                    <td><strong><?= e($cat['name']) ?></strong></td>
+                    <td><code><?= e($cat['slug']) ?></code></td>
+                    <td><?= e($cat['description'] ?? '—') ?></td>
                     <td><?= (int)$cat['sort_order'] ?></td>
                     <td><?= (int)$cat['document_count'] ?></td>
                     <td class="actions">
@@ -86,7 +80,7 @@
                                 <div class="form-group">
                                     <label>Name</label>
                                     <input type="text" name="name" class="form-input"
-                                           value="<?= $this->escape($cat['name']) ?>" required>
+                                           value="<?= e($cat['name']) ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label>Order</label>
@@ -97,7 +91,7 @@
                             <div class="form-group">
                                 <label>Description</label>
                                 <input type="text" name="description" class="form-input"
-                                       value="<?= $this->escape($cat['description'] ?? '') ?>">
+                                       value="<?= e($cat['description'] ?? '') ?>">
                             </div>
                             <button type="submit" class="btn btn-sm btn-primary">Save</button>
                             <button type="button" class="btn btn-sm btn-link"

@@ -12,25 +12,25 @@ $baseUrl = '/mail/' . (int) $mailbox['id'];
 <div class="mailbox-shell">
     <nav class="mailbox-sidebar">
         <div class="mailbox-account-header">
-            <span class="mailbox-account-name"><?= $this->escape($mailbox['position']) ?></span>
-            <span class="mailbox-account-email"><?= $this->escape($mailbox['email'] ?? '') ?></span>
+            <span class="mailbox-account-name"><?= e($mailbox['position']) ?></span>
+            <span class="mailbox-account-email"><?= e($mailbox['email'] ?? '') ?></span>
         </div>
         <a class="mailbox-compose-btn" href="<?= $baseUrl ?>/compose">+ Compose</a>
         <div class="mailbox-sidebar-footer"><a href="<?= $baseUrl ?>/INBOX">← Inbox</a></div>
     </nav>
 
     <main class="mailbox-message-list">
-        <div class="mailbox-folder-title">Search results for "<?= $this->escape($query) ?>" in <?= $this->escape($folder) ?></div>
+        <div class="mailbox-folder-title">Search results for "<?= e($query) ?>" in <?= e($folder) ?></div>
 
         <form class="mailbox-search-form" method="get" action="<?= $baseUrl ?>/search">
-            <input type="hidden" name="folder" value="<?= $this->escape($folder) ?>">
+            <input type="hidden" name="folder" value="<?= e($folder) ?>">
             <input class="mailbox-search-input" type="search" name="q"
-                   value="<?= $this->escape($query) ?>" placeholder="Search…">
+                   value="<?= e($query) ?>" placeholder="Search…">
             <button type="submit">Search</button>
         </form>
 
         <?php if (empty($results)): ?>
-            <p class="mailbox-empty">No messages matched "<?= $this->escape($query) ?>".</p>
+            <p class="mailbox-empty">No messages matched "<?= e($query) ?>".</p>
         <?php else: ?>
             <table class="mailbox-table">
                 <thead>
@@ -43,13 +43,13 @@ $baseUrl = '/mail/' . (int) $mailbox['id'];
                 <tbody>
                     <?php foreach ($results as $msg): ?>
                         <tr>
-                            <td><?= $this->escape($msg['from_name'] ?: $msg['from_address']) ?></td>
+                            <td><?= e($msg['from_name'] ?: $msg['from_address']) ?></td>
                             <td>
                                 <a href="<?= $baseUrl ?>/<?= urlencode($folder) ?>/<?= (int) $msg['imap_uid'] ?>">
-                                    <?= $this->escape($msg['subject'] ?? '(no subject)') ?>
+                                    <?= e($msg['subject'] ?? '(no subject)') ?>
                                 </a>
                             </td>
-                            <td><?= $this->escape($msg['sent_at'] ?? '') ?></td>
+                            <td><?= e($msg['sent_at'] ?? '') ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

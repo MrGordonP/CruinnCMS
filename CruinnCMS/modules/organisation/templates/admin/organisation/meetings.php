@@ -17,12 +17,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
         </div>
     </div>
 
-    <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-        <div class="alert alert-success"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
-    <?php if ($flash = \Cruinn\Auth::getFlash('error')): ?>
-        <div class="alert alert-error"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
+
 
     <!-- Add meeting -->
     <div class="admin-card">
@@ -40,7 +35,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                     <label for="meeting_type">Type</label>
                     <select name="meeting_type" id="meeting_type" class="form-select">
                         <?php foreach ($meetingTypes as $val => $label): ?>
-                            <option value="<?= $this->escape($val) ?>"><?= $this->escape($label) ?></option>
+                            <option value="<?= e($val) ?>"><?= e($label) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -72,7 +67,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                     <select name="agenda_doc_id" id="agenda_doc_id" class="form-select">
                         <option value="">— None —</option>
                         <?php foreach ($documents as $d): ?>
-                            <option value="<?= (int)$d['id'] ?>"><?= $this->escape($d['title']) ?></option>
+                            <option value="<?= (int)$d['id'] ?>"><?= e($d['title']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -81,7 +76,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                     <select name="minutes_doc_id" id="minutes_doc_id" class="form-select">
                         <option value="">— None —</option>
                         <?php foreach ($documents as $d): ?>
-                            <option value="<?= (int)$d['id'] ?>"><?= $this->escape($d['title']) ?></option>
+                            <option value="<?= (int)$d['id'] ?>"><?= e($d['title']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -89,7 +84,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                     <label for="status">Status</label>
                     <select name="status" id="status" class="form-select">
                         <?php foreach ($statusLabels as $val => $label): ?>
-                            <option value="<?= $this->escape($val) ?>"><?= $this->escape($label) ?></option>
+                            <option value="<?= e($val) ?>"><?= e($label) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -104,8 +99,8 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
         <select name="status" class="form-select">
             <option value="">All Statuses</option>
             <?php foreach ($statusLabels as $val => $label): ?>
-                <option value="<?= $this->escape($val) ?>" <?= $status === $val ? 'selected' : '' ?>>
-                    <?= $this->escape($label) ?>
+                <option value="<?= e($val) ?>" <?= $status === $val ? 'selected' : '' ?>>
+                    <?= e($label) ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -144,31 +139,31 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
             <?php foreach ($meetings as $m): ?>
                 <tr>
                     <td>
-                        <?= $this->escape($m['meeting_date']) ?>
+                        <?= e($m['meeting_date']) ?>
                         <?php if ($m['start_time']): ?>
-                            <br><small><?= $this->escape(substr($m['start_time'], 0, 5)) ?></small>
+                            <br><small><?= e(substr($m['start_time'], 0, 5)) ?></small>
                         <?php endif; ?>
                     </td>
-                    <td><?= $this->escape($m['title']) ?></td>
-                    <td><?= $this->escape($meetingTypes[$m['meeting_type']] ?? $m['meeting_type']) ?></td>
-                    <td><?= $this->escape($m['location'] ?? '—') ?></td>
+                    <td><?= e($m['title']) ?></td>
+                    <td><?= e($meetingTypes[$m['meeting_type']] ?? $m['meeting_type']) ?></td>
+                    <td><?= e($m['location'] ?? '—') ?></td>
                     <td>
                         <?php if ($m['agenda_title']): ?>
                             <a href="/documents/<?= (int)$m['agenda_doc_id'] ?>">
-                                <?= $this->escape($m['agenda_title']) ?>
+                                <?= e($m['agenda_title']) ?>
                             </a>
                         <?php else: ?>—<?php endif; ?>
                     </td>
                     <td>
                         <?php if ($m['minutes_title']): ?>
                             <a href="/documents/<?= (int)$m['minutes_doc_id'] ?>">
-                                <?= $this->escape($m['minutes_title']) ?>
+                                <?= e($m['minutes_title']) ?>
                             </a>
                         <?php else: ?>—<?php endif; ?>
                     </td>
                     <td>
-                        <span class="badge badge-<?= $this->escape($statusBadge[$m['status']] ?? 'secondary') ?>">
-                            <?= $this->escape($statusLabels[$m['status']] ?? $m['status']) ?>
+                        <span class="badge badge-<?= e($statusBadge[$m['status']] ?? 'secondary') ?>">
+                            <?= e($statusLabels[$m['status']] ?? $m['status']) ?>
                         </span>
                     </td>
                     <td class="actions">
@@ -193,15 +188,15 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                                 <div class="form-group form-group-grow">
                                     <label>Title</label>
                                     <input type="text" name="title" class="form-input"
-                                           value="<?= $this->escape($m['title']) ?>" required>
+                                           value="<?= e($m['title']) ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label>Type</label>
                                     <select name="meeting_type" class="form-select">
                                         <?php foreach ($meetingTypes as $val => $label): ?>
-                                            <option value="<?= $this->escape($val) ?>"
+                                            <option value="<?= e($val) ?>"
                                                 <?= $m['meeting_type'] === $val ? 'selected' : '' ?>>
-                                                <?= $this->escape($label) ?>
+                                                <?= e($label) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -210,9 +205,9 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                                     <label>Status</label>
                                     <select name="status" class="form-select">
                                         <?php foreach ($statusLabels as $val => $label): ?>
-                                            <option value="<?= $this->escape($val) ?>"
+                                            <option value="<?= e($val) ?>"
                                                 <?= $m['status'] === $val ? 'selected' : '' ?>>
-                                                <?= $this->escape($label) ?>
+                                                <?= e($label) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -222,17 +217,17 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                                 <div class="form-group">
                                     <label>Date</label>
                                     <input type="date" name="meeting_date" class="form-input"
-                                           value="<?= $this->escape($m['meeting_date']) ?>" required>
+                                           value="<?= e($m['meeting_date']) ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label>Start Time</label>
                                     <input type="time" name="start_time" class="form-input"
-                                           value="<?= $this->escape(substr($m['start_time'] ?? '', 0, 5)) ?>">
+                                           value="<?= e(substr($m['start_time'] ?? '', 0, 5)) ?>">
                                 </div>
                                 <div class="form-group form-group-grow">
                                     <label>Location</label>
                                     <input type="text" name="location" class="form-input"
-                                           value="<?= $this->escape($m['location'] ?? '') ?>">
+                                           value="<?= e($m['location'] ?? '') ?>">
                                 </div>
                             </div>
                             <div class="form-row">
@@ -243,7 +238,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                                         <?php foreach ($documents as $d): ?>
                                             <option value="<?= (int)$d['id'] ?>"
                                                 <?= (int)$m['agenda_doc_id'] === (int)$d['id'] ? 'selected' : '' ?>>
-                                                <?= $this->escape($d['title']) ?>
+                                                <?= e($d['title']) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -255,7 +250,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                                         <?php foreach ($documents as $d): ?>
                                             <option value="<?= (int)$d['id'] ?>"
                                                 <?= (int)$m['minutes_doc_id'] === (int)$d['id'] ? 'selected' : '' ?>>
-                                                <?= $this->escape($d['title']) ?>
+                                                <?= e($d['title']) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -263,7 +258,7 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
                             </div>
                             <div class="form-group">
                                 <label>Notes</label>
-                                <textarea name="description" class="form-input" rows="2"><?= $this->escape($m['description'] ?? '') ?></textarea>
+                                <textarea name="description" class="form-input" rows="2"><?= e($m['description'] ?? '') ?></textarea>
                             </div>
                             <button type="submit" class="btn btn-sm btn-primary">Save</button>
                             <button type="button" class="btn btn-sm btn-link"

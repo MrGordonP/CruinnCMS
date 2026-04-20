@@ -22,12 +22,6 @@ function fmtBytes(int $bytes): string
         <h1>Drivespace — Quota Management</h1>
     </div>
 
-    <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-        <div class="alert alert-success"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
-    <?php if ($flash = \Cruinn\Auth::getFlash('error')): ?>
-        <div class="alert alert-error"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
 
     <table class="admin-table">
         <thead>
@@ -49,8 +43,8 @@ function fmtBytes(int $bytes): string
             ?>
             <tr>
                 <td>
-                    <strong><?= $this->escape($u['display_name']) ?></strong><br>
-                    <small><?= $this->escape($u['email']) ?></small>
+                    <strong><?= e($u['display_name']) ?></strong><br>
+                    <small><?= e($u['email']) ?></small>
                 </td>
                 <td><?= fmtBytes((int)$u['used_bytes']) ?></td>
                 <td><?= fmtBytes((int)$u['quota_bytes']) ?></td>

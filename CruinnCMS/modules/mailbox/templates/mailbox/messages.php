@@ -18,8 +18,8 @@ $pages   = (int) ceil($total / $per_page);
     <!-- Sidebar: account + folder tree -->
     <nav class="mailbox-sidebar">
         <div class="mailbox-account-header">
-            <span class="mailbox-account-name"><?= $this->escape($mailbox['position']) ?></span>
-            <span class="mailbox-account-email"><?= $this->escape($mailbox['email'] ?? '') ?></span>
+            <span class="mailbox-account-name"><?= e($mailbox['position']) ?></span>
+            <span class="mailbox-account-email"><?= e($mailbox['email'] ?? '') ?></span>
         </div>
 
         <a class="mailbox-compose-btn" href="<?= $baseUrl ?>/compose">+ Compose</a>
@@ -28,7 +28,7 @@ $pages   = (int) ceil($total / $per_page);
             <?php foreach ($folders as $f): ?>
                 <li class="mailbox-folder-item <?= $f === $folder ? 'active' : '' ?>">
                     <a href="<?= $baseUrl ?>/<?= urlencode($f) ?>">
-                        <?= $this->escape($f) ?>
+                        <?= e($f) ?>
                     </a>
                 </li>
             <?php endforeach; ?>
@@ -43,13 +43,13 @@ $pages   = (int) ceil($total / $per_page);
     <main class="mailbox-message-list">
         <div class="mailbox-toolbar">
             <form class="mailbox-search-form" method="get" action="<?= $baseUrl ?>/search">
-                <input type="hidden" name="folder" value="<?= $this->escape($folder) ?>">
+                <input type="hidden" name="folder" value="<?= e($folder) ?>">
                 <input class="mailbox-search-input" type="search" name="q" placeholder="Search…">
                 <button type="submit">Search</button>
             </form>
         </div>
 
-        <div class="mailbox-folder-title"><?= $this->escape($folder) ?></div>
+        <div class="mailbox-folder-title"><?= e($folder) ?></div>
 
         <?php if (empty($messages)): ?>
             <p class="mailbox-empty">No messages in this folder.</p>
@@ -70,7 +70,7 @@ $pages   = (int) ceil($total / $per_page);
                             $state   = $msg['read_state'] ?? 'unread';
                             $msgUrl  = $baseUrl . '/' . urlencode($folder) . '/' . (int) $msg['imap_uid'];
                         ?>
-                        <tr class="mailbox-row state-<?= $this->escape($state) ?>">
+                        <tr class="mailbox-row state-<?= e($state) ?>">
                             <td class="col-state">
                                 <?php if ($state === 'unread'): ?>
                                     <span class="badge badge-unread" title="Unread">●</span>
@@ -81,12 +81,12 @@ $pages   = (int) ceil($total / $per_page);
                                 <?php endif; ?>
                             </td>
                             <td class="col-from">
-                                <a href="<?= $msgUrl ?>"><?= $this->escape($msg['from_name'] ?: $msg['from_address']) ?></a>
+                                <a href="<?= $msgUrl ?>"><?= e($msg['from_name'] ?: $msg['from_address']) ?></a>
                             </td>
                             <td class="col-subject">
-                                <a href="<?= $msgUrl ?>"><?= $this->escape($msg['subject'] ?? '(no subject)') ?></a>
+                                <a href="<?= $msgUrl ?>"><?= e($msg['subject'] ?? '(no subject)') ?></a>
                             </td>
-                            <td class="col-date"><?= $this->escape($msg['sent_at'] ?? '') ?></td>
+                            <td class="col-date"><?= e($msg['sent_at'] ?? '') ?></td>
                             <td class="col-attach"><?= $msg['has_attachments'] ? '📎' : '' ?></td>
                         </tr>
                     <?php endforeach; ?>

@@ -14,20 +14,14 @@
         </div>
     </div>
 
-    <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-        <div class="alert alert-success"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
-    <?php if ($flash = \Cruinn\Auth::getFlash('error')): ?>
-        <div class="alert alert-error"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
 
     <!-- Filters -->
     <form class="filter-bar" method="get" action="/admin/documents">
         <select name="status" class="form-select">
             <option value="">All Statuses</option>
             <?php foreach (['draft', 'submitted', 'approved', 'archived'] as $s): ?>
-                <option value="<?= $this->escape($s) ?>" <?= $status === $s ? 'selected' : '' ?>>
-                    <?= $this->escape(ucfirst($s)) ?>
+                <option value="<?= e($s) ?>" <?= $status === $s ? 'selected' : '' ?>>
+                    <?= e(ucfirst($s)) ?>
                 </option>
             <?php endforeach; ?>
         </select>
@@ -35,11 +29,11 @@
             <option value="">All Categories</option>
             <?php foreach ($categories as $cat): ?>
                 <option value="<?= (int)$cat['id'] ?>" <?= (string)$categoryId === (string)$cat['id'] ? 'selected' : '' ?>>
-                    <?= $this->escape($cat['name']) ?>
+                    <?= e($cat['name']) ?>
                 </option>
             <?php endforeach; ?>
         </select>
-        <input type="text" name="q" value="<?= $this->escape($search) ?>" placeholder="Search…" class="form-input">
+        <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search…" class="form-input">
         <button type="submit" class="btn btn-secondary">Filter</button>
         <?php if ($status || $categoryId || $search): ?>
             <a href="/admin/documents" class="btn btn-link">Clear</a>
@@ -67,20 +61,20 @@
             <?php foreach ($documents as $doc): ?>
                 <tr>
                     <td>
-                        <a href="/documents/<?= (int)$doc['id'] ?>"><?= $this->escape($doc['title']) ?></a>
+                        <a href="/documents/<?= (int)$doc['id'] ?>"><?= e($doc['title']) ?></a>
                         <?php if ($doc['description']): ?>
-                            <br><small class="text-muted"><?= $this->escape(mb_strimwidth($doc['description'], 0, 80, '…')) ?></small>
+                            <br><small class="text-muted"><?= e(mb_strimwidth($doc['description'], 0, 80, '…')) ?></small>
                         <?php endif; ?>
                     </td>
-                    <td><?= $this->escape($doc['category_name'] ?? $doc['category'] ?? '—') ?></td>
+                    <td><?= e($doc['category_name'] ?? $doc['category'] ?? '—') ?></td>
                     <td>v<?= (int)$doc['version'] ?></td>
                     <td>
-                        <span class="badge badge-<?= $this->escape($doc['status']) ?>">
-                            <?= $this->escape(ucfirst(str_replace('_', ' ', $doc['status']))) ?>
+                        <span class="badge badge-<?= e($doc['status']) ?>">
+                            <?= e(ucfirst(str_replace('_', ' ', $doc['status']))) ?>
                         </span>
                     </td>
-                    <td><?= $this->escape($doc['uploader_name'] ?? '—') ?></td>
-                    <td><?= $this->escape(substr($doc['updated_at'], 0, 10)) ?></td>
+                    <td><?= e($doc['uploader_name'] ?? '—') ?></td>
+                    <td><?= e(substr($doc['updated_at'], 0, 10)) ?></td>
                     <td class="actions">
                         <?php if ($doc['status'] === 'submitted'): ?>
                             <form method="post" action="/admin/documents/<?= (int)$doc['id'] ?>/approve" style="display:inline">

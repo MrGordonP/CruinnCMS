@@ -31,8 +31,8 @@ class FileManagerAdminController extends BaseController
         $this->renderAdmin('admin/quota', [
             'title'       => 'Drivespace — Quota Management',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin/dashboard'],
-                ['label' => 'Drivespace Admin'],
+                ['Dashboard', '/admin/dashboard'],
+                ['Drivespace Admin'],
             ],
             'users'       => $users,
         ]);

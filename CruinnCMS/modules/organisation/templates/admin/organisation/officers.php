@@ -13,12 +13,7 @@
         </div>
     </div>
 
-    <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-        <div class="alert alert-success"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
-    <?php if ($flash = \Cruinn\Auth::getFlash('error')): ?>
-        <div class="alert alert-error"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
+
 
     <!-- Add officer -->
     <div class="admin-card">
@@ -45,7 +40,7 @@
                     <select name="user_id" id="user_id" class="form-select">
                         <option value="">— None —</option>
                         <?php foreach ($users as $u): ?>
-                            <option value="<?= (int)$u['id'] ?>"><?= $this->escape($u['display_name']) ?></option>
+                            <option value="<?= (int)$u['id'] ?>"><?= e($u['display_name']) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -92,20 +87,20 @@
             <tbody>
             <?php foreach ($officers as $o): ?>
                 <tr class="<?= $o['active'] ? '' : 'row-inactive' ?>">
-                    <td><strong><?= $this->escape($o['position']) ?></strong></td>
+                    <td><strong><?= e($o['position']) ?></strong></td>
                     <td>
                         <?php if ($o['user_display_name']): ?>
-                            <?= $this->escape($o['user_display_name']) ?>
+                            <?= e($o['user_display_name']) ?>
                             <small class="text-muted">(account)</small>
                         <?php else: ?>
-                            <?= $this->escape($o['name'] ?? '—') ?>
+                            <?= e($o['name'] ?? '—') ?>
                         <?php endif; ?>
                     </td>
-                    <td><?= $this->escape($o['email'] ?? '—') ?></td>
+                    <td><?= e($o['email'] ?? '—') ?></td>
                     <td>
                         <?php if ($o['term_start'] || $o['term_end']): ?>
-                            <?= $this->escape($o['term_start'] ?? '?') ?> –
-                            <?= $this->escape($o['term_end'] ?? 'present') ?>
+                            <?= e($o['term_start'] ?? '?') ?> –
+                            <?= e($o['term_end'] ?? 'present') ?>
                         <?php else: ?>
                             —
                         <?php endif; ?>
@@ -132,7 +127,7 @@
                                 <div class="form-group form-group-grow">
                                     <label>Position</label>
                                     <input type="text" name="position" class="form-input"
-                                           value="<?= $this->escape($o['position']) ?>" required>
+                                           value="<?= e($o['position']) ?>" required>
                                 </div>
                                 <div class="form-group">
                                     <label>Order</label>
@@ -155,7 +150,7 @@
                                         <?php foreach ($users as $u): ?>
                                             <option value="<?= (int)$u['id'] ?>"
                                                 <?= (int)$o['user_id'] === (int)$u['id'] ? 'selected' : '' ?>>
-                                                <?= $this->escape($u['display_name']) ?>
+                                                <?= e($u['display_name']) ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -163,24 +158,24 @@
                                 <div class="form-group form-group-grow">
                                     <label>Name (if no account)</label>
                                     <input type="text" name="name" class="form-input"
-                                           value="<?= $this->escape($o['name'] ?? '') ?>">
+                                           value="<?= e($o['name'] ?? '') ?>">
                                 </div>
                                 <div class="form-group form-group-grow">
                                     <label>Email</label>
                                     <input type="email" name="email" class="form-input"
-                                           value="<?= $this->escape($o['email'] ?? '') ?>">
+                                           value="<?= e($o['email'] ?? '') ?>">
                                 </div>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Term Start</label>
                                     <input type="date" name="term_start" class="form-input"
-                                           value="<?= $this->escape($o['term_start'] ?? '') ?>">
+                                           value="<?= e($o['term_start'] ?? '') ?>">
                                 </div>
                                 <div class="form-group">
                                     <label>Term End</label>
                                     <input type="date" name="term_end" class="form-input"
-                                           value="<?= $this->escape($o['term_end'] ?? '') ?>">
+                                           value="<?= e($o['term_end'] ?? '') ?>">
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-sm btn-primary">Save</button>

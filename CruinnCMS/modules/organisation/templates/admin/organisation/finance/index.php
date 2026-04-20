@@ -40,7 +40,7 @@
                     <?php foreach ($periods as $p): ?>
                         <option value="<?= (int) $p['id'] ?>"
                             <?= $activePeriod && $p['id'] == $activePeriod['id'] ? 'selected' : '' ?>>
-                            <?= $this->escape($p['name']) ?><?= $p['is_current'] ? ' (current)' : '' ?>
+                            <?= e($p['name']) ?><?= $p['is_current'] ? ' (current)' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
@@ -57,7 +57,7 @@
 
     <!-- Summary -->
     <div class="admin-card">
-        <h2>Summary — <?= $this->escape($activePeriod['name']) ?></h2>
+        <h2>Summary — <?= e($activePeriod['name']) ?></h2>
         <div class="stats-row">
             <div class="stat">
                 <span class="stat-label">Income</span>
@@ -109,13 +109,13 @@
             <tbody>
                 <?php foreach ($entries as $e): ?>
                 <tr>
-                    <td><?= $this->escape($e['entry_date']) ?></td>
-                    <td><?= $this->escape($e['type']) ?></td>
-                    <td><?= $this->escape($e['category_name']) ?></td>
-                    <td><?= $this->escape($e['description']) ?></td>
-                    <td><?= $this->escape($e['reference'] ?? '') ?></td>
-                    <td class="text-right"><?= $this->escape($e['currency']) ?> <?= number_format((float) $e['amount'], 2) ?></td>
-                    <td><small><?= $this->escape($e['source_type']) ?></small></td>
+                    <td><?= e($e['entry_date']) ?></td>
+                    <td><?= e($e['type']) ?></td>
+                    <td><?= e($e['category_name']) ?></td>
+                    <td><?= e($e['description']) ?></td>
+                    <td><?= e($e['reference'] ?? '') ?></td>
+                    <td class="text-right"><?= e($e['currency']) ?> <?= number_format((float) $e['amount'], 2) ?></td>
+                    <td><small><?= e($e['source_type']) ?></small></td>
                     <td class="actions">
                         <a href="/admin/organisation/finance/edit/<?= (int) $e['id'] ?>" class="btn btn-sm">Edit</a>
                         <form method="post" action="/admin/organisation/finance/delete/<?= (int) $e['id'] ?>"

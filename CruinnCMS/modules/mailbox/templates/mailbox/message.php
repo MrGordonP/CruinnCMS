@@ -23,32 +23,32 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
     <!-- Sidebar -->
     <nav class="mailbox-sidebar">
         <div class="mailbox-account-header">
-            <span class="mailbox-account-name"><?= $this->escape($mailbox['position']) ?></span>
-            <span class="mailbox-account-email"><?= $this->escape($mailbox['email'] ?? '') ?></span>
+            <span class="mailbox-account-name"><?= e($mailbox['position']) ?></span>
+            <span class="mailbox-account-email"><?= e($mailbox['email'] ?? '') ?></span>
         </div>
         <a class="mailbox-compose-btn" href="<?= $baseUrl ?>/compose">+ Compose</a>
         <ul class="mailbox-folder-list">
             <?php foreach ($folders as $f): ?>
                 <li class="mailbox-folder-item <?= $f === $folder ? 'active' : '' ?>">
-                    <a href="<?= $baseUrl ?>/<?= urlencode($f) ?>"><?= $this->escape($f) ?></a>
+                    <a href="<?= $baseUrl ?>/<?= urlencode($f) ?>"><?= e($f) ?></a>
                 </li>
             <?php endforeach; ?>
         </ul>
-        <div class="mailbox-sidebar-footer"><a href="<?= $baseUrl ?>/<?= urlencode($folder) ?>">← Back to <?= $this->escape($folder) ?></a></div>
+        <div class="mailbox-sidebar-footer"><a href="<?= $baseUrl ?>/<?= urlencode($folder) ?>">← Back to <?= e($folder) ?></a></div>
     </nav>
 
     <!-- Message detail -->
     <main class="mailbox-message-detail">
 
         <div class="message-header">
-            <h2 class="message-subject"><?= $this->escape($h->subject ?? '(no subject)') ?></h2>
+            <h2 class="message-subject"><?= e($h->subject ?? '(no subject)') ?></h2>
             <div class="message-meta">
-                <span class="meta-from"><strong>From:</strong> <?= $this->escape($h->fromaddress ?? '') ?></span>
-                <span class="meta-to"><strong>To:</strong> <?= $this->escape($h->toaddress ?? '') ?></span>
+                <span class="meta-from"><strong>From:</strong> <?= e($h->fromaddress ?? '') ?></span>
+                <span class="meta-to"><strong>To:</strong> <?= e($h->toaddress ?? '') ?></span>
                 <?php if (!empty($h->ccaddress)): ?>
-                    <span class="meta-cc"><strong>Cc:</strong> <?= $this->escape($h->ccaddress) ?></span>
+                    <span class="meta-cc"><strong>Cc:</strong> <?= e($h->ccaddress) ?></span>
                 <?php endif; ?>
-                <span class="meta-date"><strong>Date:</strong> <?= $this->escape($h->date ?? '') ?></span>
+                <span class="meta-date"><strong>Date:</strong> <?= e($h->date ?? '') ?></span>
             </div>
 
             <div class="message-actions">
@@ -56,18 +56,18 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
                 <a class="btn btn-sm" href="<?= $msgBase ?>/forward">Forward</a>
                 <form method="post" action="<?= $msgBase ?>/delete" class="inline-form"
                       onsubmit="return confirm('Move to Trash?')">
-                    <input type="hidden" name="csrf_token" value="<?= $this->escape($csrf_token) ?>">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrf_token) ?>">
                     <button class="btn btn-sm btn-danger" type="submit">Delete</button>
                 </form>
 
                 <!-- Move to folder -->
                 <form method="post" action="<?= $msgBase ?>/move" class="inline-form">
-                    <input type="hidden" name="csrf_token" value="<?= $this->escape($csrf_token) ?>">
+                    <input type="hidden" name="csrf_token" value="<?= e($csrf_token) ?>">
                     <select name="folder" onchange="this.form.submit()">
                         <option value="">Move to…</option>
                         <?php foreach ($folders as $f): ?>
                             <?php if ($f !== $folder): ?>
-                                <option value="<?= $this->escape($f) ?>"><?= $this->escape($f) ?></option>
+                                <option value="<?= e($f) ?>"><?= e($f) ?></option>
                             <?php endif; ?>
                         <?php endforeach; ?>
                     </select>
@@ -76,7 +76,7 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
                 <!-- Mark unread -->
                 <button class="btn btn-sm js-mark-unread"
                         data-url="<?= $msgBase ?>/unread"
-                        data-csrf="<?= $this->escape($csrf_token) ?>">Mark unread</button>
+                        data-csrf="<?= e($csrf_token) ?>">Mark unread</button>
             </div>
 
             <!-- Tags -->
@@ -85,13 +85,13 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
                     <?php foreach ($all_tags as $tag): ?>
                         <?php $applied = in_array($tag['id'], array_column($tags, 'id'), false); ?>
                         <button class="tag-toggle <?= $applied ? 'applied' : '' ?>"
-                                style="--tag-colour: <?= $this->escape($tag['colour']) ?>"
+                                style="--tag-colour: <?= e($tag['colour']) ?>"
                                 data-tag-id="<?= (int) $tag['id'] ?>"
                                 data-applied="<?= $applied ? '1' : '0' ?>"
                                 data-add-url="<?= $msgBase ?>/tag"
                                 data-remove-url="<?= $msgBase ?>/untag"
-                                data-csrf="<?= $this->escape($csrf_token) ?>">
-                            <?= $this->escape($tag['label']) ?>
+                                data-csrf="<?= e($csrf_token) ?>">
+                            <?= e($tag['label']) ?>
                         </button>
                     <?php endforeach; ?>
                 </div>
@@ -107,7 +107,7 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
                         srcdoc="<?= htmlspecialchars($body['html_body'], ENT_QUOTES | ENT_HTML5) ?>"
                         title="Message body"></iframe>
             <?php else: ?>
-                <pre class="message-text"><?= $this->escape($body['text_body'] ?? '') ?></pre>
+                <pre class="message-text"><?= e($body['text_body'] ?? '') ?></pre>
             <?php endif; ?>
         </div>
 
@@ -118,7 +118,7 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
                 <ul>
                     <?php foreach ($body['attachments'] as $att): ?>
                         <li>
-                            📎 <?= $this->escape($att['filename'] ?: 'attachment') ?>
+                            📎 <?= e($att['filename'] ?: 'attachment') ?>
                             <span class="attach-size">(<?= number_format($att['size'] / 1024, 1) ?> KB)</span>
                         </li>
                     <?php endforeach; ?>

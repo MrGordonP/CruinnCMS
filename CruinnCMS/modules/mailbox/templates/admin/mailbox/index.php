@@ -26,9 +26,9 @@
         <tbody>
             <?php foreach ($mailboxes as $mb): ?>
                 <tr>
-                    <td><?= $this->escape($mb['position']) ?></td>
-                    <td><?= $this->escape($mb['email'] ?? '—') ?></td>
-                    <td><?= $this->escape($mb['imap_host'] ?? '—') ?></td>
+                    <td><?= e($mb['position']) ?></td>
+                    <td><?= e($mb['email'] ?? '—') ?></td>
+                    <td><?= e($mb['imap_host'] ?? '—') ?></td>
                     <td><?= (int) $mb['indexed_count'] ?></td>
                     <td><?= $mb['imap_enabled'] ? '✅' : '—' ?></td>
                     <td>
@@ -36,7 +36,7 @@
                         <?php if ($mb['imap_enabled']): ?>
                             <button class="btn btn-sm js-sync-btn"
                                     data-url="/admin/mailbox/<?= (int) $mb['id'] ?>/sync"
-                                    data-csrf="<?= $this->escape($csrf_token ?? '') ?>">Sync now</button>
+                                    data-csrf="<?= e($csrf_token ?? '') ?>">Sync now</button>
                         <?php endif; ?>
                     </td>
                 </tr>

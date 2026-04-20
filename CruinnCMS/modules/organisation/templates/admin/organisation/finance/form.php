@@ -21,7 +21,7 @@ $isEdit = !empty($entry['id']);
                         <?php foreach ($periods as $p): ?>
                             <option value="<?= (int) $p['id'] ?>"
                                 <?= ($entry['period_id'] ?? $periodId) == $p['id'] ? 'selected' : '' ?>>
-                                <?= $this->escape($p['name']) ?>
+                                <?= e($p['name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -42,7 +42,7 @@ $isEdit = !empty($entry['id']);
                             <?php foreach ($categories as $c): if ($c['type'] !== 'income') continue; ?>
                                 <option value="<?= (int) $c['id'] ?>"
                                     <?= ($entry['category_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
-                                    <?= $this->escape($c['name']) ?>
+                                    <?= e($c['name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
@@ -50,7 +50,7 @@ $isEdit = !empty($entry['id']);
                             <?php foreach ($categories as $c): if ($c['type'] !== 'expense') continue; ?>
                                 <option value="<?= (int) $c['id'] ?>"
                                     <?= ($entry['category_id'] ?? 0) == $c['id'] ? 'selected' : '' ?>>
-                                    <?= $this->escape($c['name']) ?>
+                                    <?= e($c['name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </optgroup>
@@ -62,20 +62,20 @@ $isEdit = !empty($entry['id']);
                 <div class="form-group">
                     <label for="entry_date">Date <span class="required">*</span></label>
                     <input type="date" name="entry_date" id="entry_date" class="form-input"
-                           value="<?= $this->escape($entry['entry_date'] ?? date('Y-m-d')) ?>" required>
+                           value="<?= e($entry['entry_date'] ?? date('Y-m-d')) ?>" required>
                 </div>
 
                 <div class="form-group">
                     <label for="amount">Amount <span class="required">*</span></label>
                     <input type="number" name="amount" id="amount" class="form-input input-narrow"
-                           value="<?= $this->escape($entry['amount'] ?? '') ?>"
+                           value="<?= e($entry['amount'] ?? '') ?>"
                            min="0.01" step="0.01" required placeholder="0.00">
                 </div>
 
                 <div class="form-group">
                     <label for="currency">Currency</label>
                     <input type="text" name="currency" id="currency" class="form-input input-narrow"
-                           value="<?= $this->escape($entry['currency'] ?? 'EUR') ?>"
+                           value="<?= e($entry['currency'] ?? 'EUR') ?>"
                            maxlength="3" style="text-transform:uppercase">
                 </div>
             </div>
@@ -83,13 +83,13 @@ $isEdit = !empty($entry['id']);
             <div class="form-group form-group-full">
                 <label for="description">Description <span class="required">*</span></label>
                 <input type="text" name="description" id="description" class="form-input"
-                       value="<?= $this->escape($entry['description'] ?? '') ?>" required maxlength="500">
+                       value="<?= e($entry['description'] ?? '') ?>" required maxlength="500">
             </div>
 
             <div class="form-group">
                 <label for="reference">Reference <span class="form-hint">(cheque no., receipt, etc.)</span></label>
                 <input type="text" name="reference" id="reference" class="form-input"
-                       value="<?= $this->escape($entry['reference'] ?? '') ?>" maxlength="100">
+                       value="<?= e($entry['reference'] ?? '') ?>" maxlength="100">
             </div>
 
             <div class="form-actions">

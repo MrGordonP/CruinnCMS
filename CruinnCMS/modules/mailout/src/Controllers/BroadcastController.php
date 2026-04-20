@@ -30,7 +30,7 @@ class BroadcastController extends BaseController
         $this->renderAdmin('admin/broadcasts/index', [
             'title'       => 'Mailout',
             'broadcasts'  => $broadcasts,
-            'breadcrumbs' => [['label' => 'Mailout']],
+            'breadcrumbs' => [['Mailout']],
         ]);
     }
 
@@ -66,8 +66,8 @@ class BroadcastController extends BaseController
             'portal_user_count'    => $portalUserCount,
             'year_options'         => $yearOptions,
             'breadcrumbs' => [
-                ['label' => 'Mailout', 'url' => '/admin/mailout'],
-                ['label' => 'New'],
+                ['Mailout', '/admin/mailout'],
+                ['New'],
             ],
         ]);
     }
@@ -108,7 +108,7 @@ class BroadcastController extends BaseController
             'broadcast'  => $broadcast,
             'stats'      => $queueStats,
             'breadcrumbs' => [
-                ['label' => 'Mailout', 'url' => '/admin/mailout'],
+                ['Mailout', '/admin/mailout'],
                 ['label' => $broadcast['subject']],
             ],
         ]);
@@ -153,8 +153,8 @@ class BroadcastController extends BaseController
             'portal_user_count'    => $portalUserCount,
             'year_options'         => $yearOptions,
             'breadcrumbs' => [
-                ['label' => 'Mailout', 'url' => '/admin/mailout'],
-                ['label' => 'Edit'],
+                ['Mailout', '/admin/mailout'],
+                ['Edit'],
             ],
         ]);
     }

@@ -13,12 +13,7 @@
         </div>
     </div>
 
-    <?php if ($flash = \Cruinn\Auth::getFlash('success')): ?>
-        <div class="alert alert-success"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
-    <?php if ($flash = \Cruinn\Auth::getFlash('error')): ?>
-        <div class="alert alert-error"><?= $this->escape($flash) ?></div>
-    <?php endif; ?>
+
 
     <form method="post" action="/admin/organisation/profile" class="admin-form">
         <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
@@ -27,62 +22,62 @@
             <div class="form-group form-group-grow">
                 <label for="name">Organisation Name</label>
                 <input type="text" name="name" id="name" class="form-input"
-                       value="<?= $this->escape($profile['name'] ?? '') ?>">
+                       value="<?= e($profile['name'] ?? '') ?>">
             </div>
             <div class="form-group">
                 <label for="short_name">Short Name / Acronym</label>
                 <input type="text" name="short_name" id="short_name" class="form-input"
-                       value="<?= $this->escape($profile['short_name'] ?? '') ?>" placeholder="e.g. IGA">
+                       value="<?= e($profile['short_name'] ?? '') ?>" placeholder="e.g. IGA">
             </div>
         </div>
 
         <div class="form-group">
             <label for="tagline">Tagline</label>
             <input type="text" name="tagline" id="tagline" class="form-input"
-                   value="<?= $this->escape($profile['tagline'] ?? '') ?>">
+                   value="<?= e($profile['tagline'] ?? '') ?>">
         </div>
 
         <div class="form-row">
             <div class="form-group">
                 <label for="founded_year">Year Founded</label>
                 <input type="number" name="founded_year" id="founded_year" class="form-input input-narrow"
-                       value="<?= $this->escape($profile['founded_year'] ?? '') ?>"
+                       value="<?= e($profile['founded_year'] ?? '') ?>"
                        min="1800" max="<?= date('Y') ?>" placeholder="e.g. 1959">
             </div>
             <div class="form-group form-group-grow">
                 <label for="registration_no">Registration Number</label>
                 <input type="text" name="registration_no" id="registration_no" class="form-input"
-                       value="<?= $this->escape($profile['registration_no'] ?? '') ?>">
+                       value="<?= e($profile['registration_no'] ?? '') ?>">
             </div>
         </div>
 
         <div class="form-group">
             <label for="address">Address</label>
-            <textarea name="address" id="address" class="form-input" rows="3"><?= $this->escape($profile['address'] ?? '') ?></textarea>
+            <textarea name="address" id="address" class="form-input" rows="3"><?= e($profile['address'] ?? '') ?></textarea>
         </div>
 
         <div class="form-row">
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" name="email" id="email" class="form-input"
-                       value="<?= $this->escape($profile['email'] ?? '') ?>">
+                       value="<?= e($profile['email'] ?? '') ?>">
             </div>
             <div class="form-group">
                 <label for="phone">Phone</label>
                 <input type="tel" name="phone" id="phone" class="form-input"
-                       value="<?= $this->escape($profile['phone'] ?? '') ?>">
+                       value="<?= e($profile['phone'] ?? '') ?>">
             </div>
             <div class="form-group form-group-grow">
                 <label for="website">Website</label>
                 <input type="url" name="website" id="website" class="form-input"
-                       value="<?= $this->escape($profile['website'] ?? '') ?>" placeholder="https://…">
+                       value="<?= e($profile['website'] ?? '') ?>" placeholder="https://…">
             </div>
         </div>
 
         <div class="form-group">
             <label for="bio">About the Organisation</label>
             <textarea name="bio" id="bio" class="form-input" rows="5"
-                      placeholder="Public-facing description"><?= $this->escape($profile['bio'] ?? '') ?></textarea>
+                      placeholder="Public-facing description"><?= e($profile['bio'] ?? '') ?></textarea>
         </div>
 
         <div class="form-actions">

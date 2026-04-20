@@ -37,11 +37,11 @@
             <tbody>
                 <?php foreach ($periods as $p): ?>
                 <tr>
-                    <td><?= $this->escape($p['name']) ?></td>
-                    <td><?= $this->escape($p['starts_on']) ?></td>
-                    <td><?= $this->escape($p['ends_on']) ?></td>
+                    <td><?= e($p['name']) ?></td>
+                    <td><?= e($p['starts_on']) ?></td>
+                    <td><?= e($p['ends_on']) ?></td>
                     <td><?= $p['is_current'] ? '✓' : '' ?></td>
-                    <td><?= $this->escape($p['notes'] ?? '') ?></td>
+                    <td><?= e($p['notes'] ?? '') ?></td>
                     <td class="actions">
                         <?php if (!$p['is_current']): ?>
                         <form method="post" action="/admin/organisation/finance/periods/set-current/<?= (int) $p['id'] ?>" style="display:inline">

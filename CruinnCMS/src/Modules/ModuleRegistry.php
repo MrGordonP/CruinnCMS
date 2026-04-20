@@ -38,6 +38,14 @@ class ModuleRegistry
     // True if at least one module is in 'discovered' state (new, never configured)
     private static bool  $hasNew     = false;
 
+    /**
+     * Core (non-module) ACP sections surfaced alongside module sections.
+     * Same structure as module acp_sections entries.
+     */
+    private static array $coreSections = [
+        ['group' => 'Content', 'label' => 'Media',  'url' => '/admin/media',  'icon' => '🖼️'],
+    ];
+
     // ── Registration ─────────────────────────────────────────────────────────
 
     /**
@@ -198,7 +206,7 @@ class ModuleRegistry
     public static function acpSections(): array
     {
         self::load();
-        $sections = [];
+        $sections = self::$coreSections;
         foreach (self::$modules as $slug => $def) {
             if (self::$statuses[$slug] !== 'active') {
                 continue;

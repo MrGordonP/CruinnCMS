@@ -1,3 +1,4 @@
+<?php
 include __DIR__ . '/_tabs.php';
 \Cruinn\Template::requireCss('admin-acp.css');
 

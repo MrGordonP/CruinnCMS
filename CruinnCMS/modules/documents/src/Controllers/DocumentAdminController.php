@@ -79,8 +79,8 @@ class DocumentAdminController extends BaseController
         $this->renderAdmin('admin/documents/admin-index', [
             'title'       => 'Documents — Admin',
             'breadcrumbs' => [
-                ['label' => 'Dashboard', 'url' => '/admin/dashboard'],
-                ['label' => 'Documents Admin'],
+                ['Dashboard', '/admin/dashboard'],
+                ['Documents Admin'],
             ],
             'documents'   => $documents,
             'categories'  => $categories,
@@ -190,7 +190,7 @@ class DocumentAdminController extends BaseController
             'breadcrumbs' => [
                 ['label' => 'Dashboard',        'url' => '/admin/dashboard'],
                 ['label' => 'Documents Admin',  'url' => '/admin/documents'],
-                ['label' => 'Categories'],
+                ['Categories'],
             ],
             'categories'  => $categories,
         ]);
@@ -229,7 +229,7 @@ class DocumentAdminController extends BaseController
             'created_at'  => date('Y-m-d H:i:s'),
         ]);
 
-        Auth::flash('success', "Category "{$name}" created.");
+        Auth::flash('success', "Category \"{$name}\" created.");
         $this->redirect('/admin/documents/categories');
     }
 

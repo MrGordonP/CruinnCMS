@@ -14,7 +14,7 @@
 
     <!-- Create tag -->
     <form class="acp-form" method="post" action="/admin/mailbox/tags">
-        <input type="hidden" name="csrf_token" value="<?= $this->escape($csrf_token) ?>">
+        <input type="hidden" name="csrf_token" value="<?= e($csrf_token) ?>">
         <h2>New Tag</h2>
         <div class="form-row">
             <label for="tag-label">Label</label>
@@ -42,14 +42,14 @@
                 <?php foreach ($tags as $tag): ?>
                     <tr>
                         <form method="post" action="/admin/mailbox/tags/<?= (int) $tag['id'] ?>/update">
-                            <input type="hidden" name="csrf_token" value="<?= $this->escape($csrf_token) ?>">
+                            <input type="hidden" name="csrf_token" value="<?= e($csrf_token) ?>">
                             <td>
                                 <input class="form-input form-input-inline" name="label" type="text"
-                                       value="<?= $this->escape($tag['label']) ?>" required maxlength="100">
+                                       value="<?= e($tag['label']) ?>" required maxlength="100">
                             </td>
                             <td>
                                 <input class="form-input" name="colour" type="color"
-                                       value="<?= $this->escape($tag['colour']) ?>">
+                                       value="<?= e($tag['colour']) ?>">
                             </td>
                             <td>
                                 <input class="form-input form-input-sm" name="sort_order" type="number"
@@ -60,7 +60,7 @@
                         </form>
                         <form method="post" action="/admin/mailbox/tags/<?= (int) $tag['id'] ?>/delete"
                               onsubmit="return confirm('Delete tag?')">
-                            <input type="hidden" name="csrf_token" value="<?= $this->escape($csrf_token) ?>">
+                            <input type="hidden" name="csrf_token" value="<?= e($csrf_token) ?>">
                             <button class="btn btn-sm btn-danger" type="submit">Delete</button>
                         </form>
                             </td>
