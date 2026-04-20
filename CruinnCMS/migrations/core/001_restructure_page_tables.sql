@@ -53,9 +53,14 @@ BEGIN
             ADD CONSTRAINT `fk_pages_index_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
         -- Normalise render_mode enum value cruinn → block
+        -- Step 1: expand enum to include both old and new value
+        ALTER TABLE `pages_index`
+            CHANGE `render_mode` `render_mode` ENUM('cruinn','block','html','file') NOT NULL DEFAULT 'block';
+        -- Step 2: migrate data
+        UPDATE `pages_index` SET `render_mode` = 'block' WHERE `render_mode` = 'cruinn';
+        -- Step 3: remove old value now that no rows reference it
         ALTER TABLE `pages_index`
             CHANGE `render_mode` `render_mode` ENUM('block','html','file') NOT NULL DEFAULT 'block';
-        UPDATE `pages_index` SET `render_mode` = 'block' WHERE `render_mode` = 'cruinn';
 
         -- Update FKs on dependent tables
         IF EXISTS (
