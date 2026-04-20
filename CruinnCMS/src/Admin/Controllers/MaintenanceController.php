@@ -10,6 +10,9 @@ namespace Cruinn\Admin\Controllers;
 
 use Cruinn\App;
 use Cruinn\Auth;
+use Cruinn\Database;
+use Cruinn\CSRF;
+use Cruinn\Modules\ModuleRegistry;
 
 class MaintenanceController extends \Cruinn\Controllers\BaseController
 {
@@ -187,5 +190,182 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             if ((int)$p['id'] === $pageId) return $p['slug'];
         }
         return "page #{$pageId}";
+    }
+
+    // ── Migrations ────────────────────────────────────────────────
+
+    /**
+     * GET /admin/maintenance/migrations — Show migration status.
+     */
+    public function migrations(): void
+    {
+        Auth::requireRole('admin');
+
+        [$all, $applied, $slugRemapped] = $this->collectMigrationState();
+
+        $rows = [];
+        foreach ($all as $m) {
+            $key = $m['module'] . '::' . $m['file'];
+            $rows[] = [
+                'module'  => $m['module'],
+                'file'    => $m['file'],
+                'applied' => isset($applied[$key]),
+            ];
+        }
+
+        $pending = count(array_filter($rows, fn($r) => !$r['applied']));
+
+        $this->renderAdmin('admin/maintenance/migrations', [
+            'title'        => 'Database Migrations',
+            'breadcrumbs'  => [['Admin', '/admin'], ['Maintenance'], ['Migrations']],
+            'rows'         => $rows,
+            'pending'      => $pending,
+            'slugRemapped' => $slugRemapped,
+            'results'      => null,
+        ]);
+    }
+
+    /**
+     * POST /admin/maintenance/migrations — Apply all pending migrations.
+     */
+    public function runMigrations(): void
+    {
+        Auth::requireRole('admin');
+        CSRF::verify();
+
+        $db = Database::getInstance();
+
+        [$all, $applied, $slugRemapped] = $this->collectMigrationState();
+
+        $results = [];
+        $errors  = 0;
+
+        foreach ($all as $m) {
+            $key = $m['module'] . '::' . $m['file'];
+
+            if (isset($applied[$key])) {
+                $results[] = ['module' => $m['module'], 'file' => $m['file'], 'status' => 'skipped', 'error' => null];
+                continue;
+            }
+
+            if (!file_exists($m['path'])) {
+                $results[] = ['module' => $m['module'], 'file' => $m['file'], 'status' => 'missing', 'error' => 'File not found'];
+                continue;
+            }
+
+            $sql = file_get_contents($m['path']);
+            if ($sql === false || trim($sql) === '') {
+                $results[] = ['module' => $m['module'], 'file' => $m['file'], 'status' => 'skipped', 'error' => 'Empty file'];
+                continue;
+            }
+
+            try {
+                $db->pdo()->exec($sql);
+                $db->execute(
+                    "INSERT IGNORE INTO module_migrations (module, filename) VALUES (?, ?)",
+                    [$m['module'], $m['file']]
+                );
+                $results[] = ['module' => $m['module'], 'file' => $m['file'], 'status' => 'ok', 'error' => null];
+            } catch (\Throwable $e) {
+                $results[] = ['module' => $m['module'], 'file' => $m['file'], 'status' => 'failed', 'error' => $e->getMessage()];
+                $errors++;
+            }
+        }
+
+        // Re-collect for updated status
+        [$all, $applied,] = $this->collectMigrationState();
+        $rows = [];
+        foreach ($all as $m) {
+            $key = $m['module'] . '::' . $m['file'];
+            $rows[] = ['module' => $m['module'], 'file' => $m['file'], 'applied' => isset($applied[$key])];
+        }
+        $pending = count(array_filter($rows, fn($r) => !$r['applied']));
+
+        $this->renderAdmin('admin/maintenance/migrations', [
+            'title'        => 'Database Migrations',
+            'breadcrumbs'  => [['Admin', '/admin'], ['Maintenance'], ['Migrations']],
+            'rows'         => $rows,
+            'pending'      => $pending,
+            'slugRemapped' => $slugRemapped,
+            'results'      => $results,
+            'errors'       => $errors,
+        ]);
+    }
+
+    /**
+     * Collect all declared migrations + applied set from DB.
+     * Also fixes the articles→blog slug rename in module_migrations if needed.
+     *
+     * @return array{0: array, 1: array<string,bool>, 2: int}
+     *               [all migrations, applied key map, count of rows remapped]
+     */
+    private function collectMigrationState(): array
+    {
+        $db = Database::getInstance();
+
+        // Ensure tracking table exists
+        try {
+            $db->execute("SELECT 1 FROM module_migrations LIMIT 1");
+        } catch (\Throwable) {
+            $db->execute("
+                CREATE TABLE IF NOT EXISTS module_migrations (
+                    id         INT UNSIGNED    AUTO_INCREMENT PRIMARY KEY,
+                    module     VARCHAR(64)     NOT NULL,
+                    filename   VARCHAR(255)    NOT NULL,
+                    applied_at DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uq_module_file (module, filename)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        }
+
+        // Fix articles→blog slug rename (old deployments used 'articles' as module slug).
+        // If blog rows already exist for these filenames, just delete the stale 'articles' rows
+        // to avoid a unique-key collision. Otherwise rename them.
+        $remapped = 0;
+        $articlesRows = $db->fetchAll("SELECT filename FROM module_migrations WHERE module = 'articles'");
+        if (!empty($articlesRows)) {
+            foreach ($articlesRows as $row) {
+                $exists = $db->fetch(
+                    "SELECT id FROM module_migrations WHERE module = 'blog' AND filename = ?",
+                    [$row['filename']]
+                );
+                if ($exists) {
+                    $db->execute("DELETE FROM module_migrations WHERE module = 'articles' AND filename = ?", [$row['filename']]);
+                } else {
+                    $db->execute("UPDATE module_migrations SET module = 'blog' WHERE module = 'articles' AND filename = ?", [$row['filename']]);
+                }
+                $remapped++;
+            }
+        }
+
+        // Collect declared migrations
+        $all = [];
+
+        // Core
+        $coreDir = CRUINN_ROOT . '/migrations/core';
+        if (is_dir($coreDir)) {
+            $files = glob($coreDir . '/*.sql') ?: [];
+            natsort($files);
+            foreach ($files as $path) {
+                $all[] = ['module' => 'core', 'file' => basename($path), 'path' => $path];
+            }
+        }
+
+        // Modules
+        ModuleRegistry::load();
+        foreach (ModuleRegistry::all() as $slug => $def) {
+            foreach ($def['migrations'] as $path) {
+                $all[] = ['module' => $slug, 'file' => basename($path), 'path' => $path];
+            }
+        }
+
+        // Applied set
+        $appliedRows = $db->fetchAll("SELECT module, filename FROM module_migrations");
+        $applied = [];
+        foreach ($appliedRows as $row) {
+            $applied[$row['module'] . '::' . $row['filename']] = true;
+        }
+
+        return [$all, $applied, $remapped];
     }
 }
