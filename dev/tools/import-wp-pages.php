@@ -3,7 +3,7 @@
  * import-wp-pages.php
  *
  * Imports pages from iga_wp_main into iga_cruinn pages table.
- * Content is imported as render_mode=html (body_html), no cruinn_blocks needed.
+ * Content is imported as render_mode=html (body_html), no pages needed.
  *
  * WooCommerce, plugin-shortcode, and placeholder pages are skipped.
  *
@@ -86,7 +86,7 @@ $pages = $srcDb->query(
 
 // Existing slugs in target
 $existingSlugs = [];
-foreach ($dstDb->query('SELECT slug FROM pages')->fetchAll() as $row) {
+foreach ($dstDb->query('SELECT slug FROM pages_index')->fetchAll() as $row) {
     $existingSlugs[$row['slug']] = true;
 }
 

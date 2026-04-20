@@ -114,7 +114,7 @@ class HtmlImportService
      *   - <img> standalone → image block (recognised)
      *   - Everything else → html block with source='imported'
      *
-     * Returns array of block definition arrays ready to be inserted into cruinn_blocks.
+     * Returns array of block definition arrays ready to be inserted into pages.
      */
     public function convertToCruinnBlocks(string $html): array
     {

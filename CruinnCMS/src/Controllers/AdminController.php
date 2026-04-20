@@ -30,10 +30,17 @@ class AdminController extends BaseController
             $widgets = $dashService->buildDashboard($roleId);
         }
 
+        // Persist view preference in session
+        if (isset($_GET['view']) && in_array($_GET['view'], ['groups', 'modules'], true)) {
+            $_SESSION['dashboard_view'] = $_GET['view'];
+        }
+        $dashboardView = $_SESSION['dashboard_view'] ?? 'groups';
+
         $this->renderAdmin('dashboard', [
             'title'          => 'Dashboard',
             'dashboardTitle' => 'Dashboard',
             'widgets'        => $widgets,
+            'dashboardView'  => $dashboardView,
         ]);
     }
 }

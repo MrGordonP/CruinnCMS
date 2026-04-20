@@ -3,7 +3,7 @@
  * Cruinn CMS — Render Service
  *
  * Used by PageController to render published Cruinn pages on the public site.
- * Reads from cruinn_blocks (published table only — never from draft).
+ * Reads from pages (published table only — never from draft).
  */
 
 namespace Cruinn\Services;
@@ -26,20 +26,20 @@ class CruinnRenderService
     public function hasPublished(int $pageId): bool
     {
         $count = (int) $this->db->fetchColumn(
-            'SELECT COUNT(*) FROM cruinn_blocks WHERE page_id = ?',
+            'SELECT COUNT(*) FROM pages WHERE page_id = ?',
             [$pageId]
         );
         return $count > 0;
     }
 
     /**
-     * Build the full page HTML from published cruinn_blocks.
+     * Build the full page HTML from published pages.
      * Dynamic blocks have their content server-rendered here.
      */
     public function buildHtml(int $pageId): string
     {
         $flat = $this->db->fetchAll(
-            'SELECT * FROM cruinn_blocks
+            'SELECT * FROM pages
               WHERE page_id = ?
               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
             [$pageId]
@@ -59,7 +59,7 @@ class CruinnRenderService
     /**
      * Build HTML + CSS for a named global zone ('header' or 'footer').
      * Looks up the reserved page by slug (_header / _footer), reads its published
-     * cruinn_blocks, and returns ['page_id', 'html', 'css'].
+     * pages, and returns ['page_id', 'html', 'css'].
      * Returns null when the zone page does not exist or has no published content.
      * Results are statically cached for the lifetime of the request.
      */
@@ -71,7 +71,7 @@ class CruinnRenderService
         }
 
         $page = $this->db->fetch(
-            'SELECT id FROM pages WHERE slug = ? LIMIT 1',
+            'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',
             ['_' . $zone]
         );
         if (!$page) {
@@ -91,13 +91,13 @@ class CruinnRenderService
     }
 
     /**
-     * Build the CSS stylesheet from published cruinn_blocks css_props.
+     * Build the CSS stylesheet from published pages css_props.
      * Returns a string of #id { ... } rules to be injected as a <style> tag.
      */
     public function buildCss(int $pageId): string
     {
         $flat = $this->db->fetchAll(
-            'SELECT block_id, block_type, css_props, block_config FROM cruinn_blocks WHERE page_id = ?',
+            'SELECT block_id, block_type, css_props, block_config FROM pages WHERE page_id = ?',
             [$pageId]
         );
 
@@ -223,7 +223,7 @@ class CruinnRenderService
     {
         // Template canvas blocks
         $tplFlat = $this->db->fetchAll(
-            'SELECT * FROM cruinn_blocks
+            'SELECT * FROM pages
               WHERE page_id = ?
               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
             [$canvasPageId]
@@ -231,7 +231,7 @@ class CruinnRenderService
 
         // Page content blocks
         $pageFlat = $this->db->fetchAll(
-            'SELECT * FROM cruinn_blocks
+            'SELECT * FROM pages
               WHERE page_id = ?
               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
             [$pageId]

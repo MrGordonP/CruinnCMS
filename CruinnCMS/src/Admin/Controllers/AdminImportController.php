@@ -46,7 +46,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
         $this->requireCsrf();
 
         $file    = $_FILES['import_file'] ?? null;
-        $mode    = $_POST['import_mode'] ?? 'file';   // 'file' or 'cruinn'
+        $mode    = $_POST['import_mode'] ?? 'file';   // 'file' or 'block'
         $errors  = [];
 
         if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
@@ -152,9 +152,9 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
             // Deduplicate slug against pages table
             $slug = $this->ensureUniqueSlug($slug);
 
-            if ($mode === 'cruinn') {
+            if ($mode === 'block') {
                 $pageId = $this->importAsCruinn($slug, $title, $content);
-                $imported[] = ['slug' => $slug, 'title' => $title, 'mode' => 'cruinn', 'id' => $pageId];
+                $imported[] = ['slug' => $slug, 'title' => $title, 'mode' => 'block', 'id' => $pageId];
             } else {
                 $meta = $this->importer->importAsFile($content, $slug, $rootPub);
                 $pageId = $this->createPageRecord($meta['slug'], $meta['title'], 'file', $meta['file_path']);
@@ -178,10 +178,10 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
     {
         $blocks = $this->importer->convertToCruinnBlocks($html);
 
-        $pageId = $this->createPageRecord($slug, $title, 'cruinn', null);
+        $pageId = $this->createPageRecord($slug, $title, 'block', null);
 
         $stmt = $this->db->prepare(
-            'INSERT INTO cruinn_blocks (page_id, block_type, content, properties, sort_order)
+            'INSERT INTO pages (page_id, block_type, content, properties, sort_order)
              VALUES (:pid, :bt, :c, :p, :so)'
         );
 
@@ -215,12 +215,12 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
     private function ensureUniqueSlug(string $slug): string
     {
-        $row = $this->db->query('SELECT COUNT(*) FROM pages WHERE slug = :s', ['s' => $slug])->fetchColumn();
+        $row = $this->db->query('SELECT COUNT(*) FROM pages_index WHERE slug = :s', ['s' => $slug])->fetchColumn();
         if ((int)$row === 0) return $slug;
         $n = 2;
         while (true) {
             $candidate = $slug . '-' . $n;
-            $exists = $this->db->query('SELECT COUNT(*) FROM pages WHERE slug = :s', ['s' => $candidate])->fetchColumn();
+            $exists = $this->db->query('SELECT COUNT(*) FROM pages_index WHERE slug = :s', ['s' => $candidate])->fetchColumn();
             if ((int)$exists === 0) return $candidate;
             $n++;
         }

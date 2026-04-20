@@ -1,0 +1,635 @@
+/**
+ * Drivespace — 3-column file manager layout
+ * Left: folder tree | Middle: contents | Right: properties/permissions
+ */
+
+/* ── Layout ─────────────────────────────────────────────────── */
+
+.drivespace {
+    display: grid;
+    grid-template-columns: 240px 1fr 300px;
+    height: calc(100vh - 52px);
+    /* subtract admin header */
+    overflow: hidden;
+    background: var(--color-bg-light, #f2f5f3);
+}
+
+/* ── Tree Panel (left) ───────────────────────────────────────── */
+
+.fm-tree-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid var(--color-border, #ccd9d3);
+    overflow: hidden;
+}
+
+.fm-tree-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0.9rem 0.6rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.fm-tree-header h3 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.6;
+}
+
+.fm-tree-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.4rem 0;
+}
+
+/* Root — "All Files" link */
+.fm-tree-root {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.38rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--color-text, #0c1614);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.fm-tree-root:hover {
+    background: var(--color-bg-light, #f2f5f3);
+    text-decoration: none;
+}
+
+.fm-tree-root.active {
+    border-left-color: var(--color-primary, #1d9e75);
+    background: #eaf6f1;
+    font-weight: 600;
+}
+
+/* Tree node row */
+.fm-tree-node {
+    position: relative;
+}
+
+.fm-tree-row {
+    display: flex;
+    align-items: center;
+    padding: 0.32rem 0.9rem 0.32rem 0;
+    font-size: 0.84rem;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.1s, border-color 0.1s;
+    user-select: none;
+    color: var(--color-text, #0c1614);
+    text-decoration: none;
+}
+
+.fm-tree-row:hover {
+    background: var(--color-bg-light, #f2f5f3);
+    text-decoration: none;
+}
+
+.fm-tree-row.active {
+    border-left-color: var(--color-primary, #1d9e75);
+    background: #eaf6f1;
+    font-weight: 600;
+}
+
+.fm-tree-caret {
+    width: 20px;
+    text-align: center;
+    font-size: 0.65rem;
+    color: #aaa;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    cursor: pointer;
+}
+
+.fm-tree-caret.open {
+    transform: rotate(90deg);
+}
+
+.fm-tree-caret.leaf {
+    visibility: hidden;
+}
+
+.fm-tree-icon {
+    flex-shrink: 0;
+    margin-right: 0.35rem;
+    font-size: 0.95rem;
+}
+
+.fm-tree-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fm-tree-count {
+    font-size: 0.72rem;
+    color: #aaa;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Nested children */
+.fm-tree-children {
+    display: none;
+}
+
+.fm-tree-children.open {
+    display: block;
+}
+
+/* ── Content Panel (middle) ──────────────────────────────────── */
+
+.fm-content-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--color-border, #ccd9d3);
+}
+
+.fm-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.fm-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.85rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.fm-breadcrumb a {
+    color: var(--color-primary, #1d9e75);
+    text-decoration: none;
+}
+
+.fm-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.fm-breadcrumb-sep {
+    color: #aaa;
+    font-size: 0.9rem;
+}
+
+.fm-breadcrumb-current {
+    font-weight: 600;
+    color: var(--color-text, #0c1614);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fm-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Search bar */
+.fm-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.fm-search-input {
+    flex: 1;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.83rem;
+    border: 1px solid var(--color-border, #ccd9d3);
+    border-radius: 4px;
+    background: var(--color-bg-light, #f2f5f3);
+}
+
+.fm-search-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #1d9e75);
+    background: #fff;
+}
+
+/* Contents scroll area */
+.fm-contents-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+}
+
+.fm-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #888;
+    margin: 0 0 0.4rem;
+}
+
+/* Contents table — shared by folders and files rows */
+.fm-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+.fm-items-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+}
+
+.fm-items-table td {
+    padding: 0.42rem 0.5rem;
+    border-bottom: 1px solid #eef1ef;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.fm-items-table tr {
+    cursor: pointer;
+    transition: background 0.08s;
+}
+
+.fm-items-table tr:hover td {
+    background: #f4faf7;
+}
+
+.fm-items-table tr.selected td {
+    background: #d6f0e5;
+}
+
+.fm-items-table tr:last-child td {
+    border-bottom: none;
+}
+
+.fm-col-icon {
+    width: 28px;
+    text-align: center;
+    font-size: 1rem;
+    padding-left: 0 !important;
+}
+
+.fm-col-name {
+    max-width: none !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fm-col-name strong {
+    font-weight: 600;
+}
+
+.fm-col-name small {
+    display: block;
+    font-size: 0.75rem;
+    color: #999;
+    font-weight: 400;
+}
+
+.fm-col-meta {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+.fm-col-vis .badge {
+    font-size: 0.68rem;
+}
+
+/* Empty state */
+.fm-empty {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #999;
+}
+
+.fm-empty p {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+/* ── Properties Panel (right) ────────────────────────────────── */
+
+.fm-properties-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+}
+
+.fm-props-header {
+    padding: 0.75rem 1rem 0.6rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.fm-props-header h3 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.6;
+}
+
+.fm-props-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* Placeholder */
+.fm-props-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #ccc;
+    font-size: 0.85rem;
+    text-align: center;
+    gap: 0.5rem;
+    padding: 2rem;
+}
+
+.fm-props-placeholder-icon {
+    font-size: 2.5rem;
+    opacity: 0.4;
+}
+
+/* Properties content when item selected */
+.fm-props-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 0.75rem;
+}
+
+.fm-props-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text, #0c1614);
+    word-break: break-word;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+}
+
+.fm-props-subtitle {
+    font-size: 0.78rem;
+    color: #888;
+    margin-bottom: 1rem;
+}
+
+.fm-props-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.fm-props-actions .btn {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+}
+
+/* Meta table */
+.fm-props-meta {
+    width: 100%;
+    font-size: 0.82rem;
+    border-collapse: collapse;
+    margin-bottom: 1.25rem;
+}
+
+.fm-props-meta th {
+    text-align: left;
+    color: #888;
+    font-weight: 600;
+    padding: 0.28rem 0.5rem 0.28rem 0;
+    width: 40%;
+    vertical-align: top;
+}
+
+.fm-props-meta td {
+    color: var(--color-text, #0c1614);
+    padding: 0.28rem 0;
+    word-break: break-word;
+}
+
+/* Section heading inside props */
+.fm-props-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #aaa;
+    margin: 0 0 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border, #ccd9d3);
+}
+
+/* Shares list */
+.fm-shares-list {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+}
+
+.fm-shares-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.82rem;
+}
+
+.fm-shares-list li:last-child {
+    border-bottom: none;
+}
+
+.fm-share-target {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fm-share-perm {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-primary, #1d9e75);
+    flex-shrink: 0;
+}
+
+/* Loading state */
+.fm-props-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+/* Badge variants matching visibility values */
+.badge-private {
+    background: #e0e0e0;
+    color: #555;
+}
+
+.badge-role {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-members {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.badge-public {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Status badges */
+.badge-status-draft {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.badge-status-pending_review {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-status-approved {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.badge-status-published {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-status-archived {
+    background: #e0e0e0;
+    color: #555;
+}
+
+/* Badge base */
+.badge {
+    display: inline-block;
+    padding: 0.18em 0.55em;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.badge-xs {
+    font-size: 0.68rem;
+    padding: 0.12em 0.4em;
+}
+
+/* Modals (re-used from admin-base pattern) */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #fff;
+    border-radius: 6px;
+    padding: 1.5rem;
+    min-width: 360px;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, .25);
+}
+
+.modal-content h3 {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+}
+
+/* Quota bar in tree footer */
+.fm-quota-bar-wrap {
+    padding: 0.6rem 0.9rem 0.75rem;
+    border-top: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.fm-quota-label {
+    font-size: 0.72rem;
+    color: #888;
+    margin-bottom: 0.3rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.fm-quota-bar {
+    height: 5px;
+    background: var(--color-bg-dark, #e5ede8);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.fm-quota-fill {
+    height: 100%;
+    background: var(--color-primary, #1d9e75);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+.fm-quota-fill.warn {
+    background: #f0a500;
+}
+
+.fm-quota-fill.danger {
+    background: #dc3545;
+}

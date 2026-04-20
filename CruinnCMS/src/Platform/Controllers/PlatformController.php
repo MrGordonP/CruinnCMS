@@ -428,7 +428,7 @@ class PlatformController
                              ON DUPLICATE KEY UPDATE title = VALUES(title), render_file = VALUES(render_file)',
                         [$title, $slug, '@cms/' . $fileParam]
                     );
-                    $row = $db->fetch('SELECT id FROM pages WHERE slug = ? LIMIT 1', [$slug]);
+                    $row = $db->fetch('SELECT id FROM pages_index WHERE slug = ? LIMIT 1', [$slug]);
                     if ($row) {
                         header('Location: /cms/editor?instance=__platform__&page=' . (int) $row['id']);
                         exit;
@@ -449,40 +449,38 @@ class PlatformController
             $docBodyBlock = null;
 
             if ($pageId !== null) {
-                $pageRow = $db->fetch('SELECT * FROM pages WHERE id = ? LIMIT 1', [$pageId]);
+                $pageRow = $db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
                 if ($pageRow) {
                     $page     = $pageRow;
-                    $stateRow = $db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-                    $hasDraft = !empty($stateRow);
-                    $state    = $stateRow ?: null;
+                    $hasDraft = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]) > 0;
+                    $state    = null;
 
-                    $flat = $hasDraft
-                        ? $db->fetchAll(
-                            'SELECT * FROM cruinn_draft_blocks
-                              WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
+                    if ($hasDraft) {
+                        $maxSeq = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                        $flat = $db->fetchAll(
+                            'SELECT * FROM pages_draft
+                              WHERE page_id = ? AND edit_seq = ?
                               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                            [$pageId]
-                        )
-                        : $db->fetchAll(
-                            'SELECT * FROM cruinn_blocks
+                            [$pageId, $maxSeq]
+                        );
+                    } else {
+                        $flat = $db->fetchAll(
+                            'SELECT * FROM pages
                               WHERE page_id = ?
                               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
                             [$pageId]
                         );
+                    }
 
                     // ── Auto-import: parse file content into typed blocks on first open ──
-                    $renderMode = $page['render_mode'] ?? 'cruinn';
+                    $renderMode = $page['render_mode'] ?? 'block';
                     $docOnlyTypes = ['doc-html', 'doc-head', 'doc-body'];
                     $hasVisibleBlocks = !empty(array_filter($flat, fn($r) => !in_array($r['block_type'], $docOnlyTypes, true)));
                     if (in_array($renderMode, ['html', 'file'], true) && !$hasVisibleBlocks) {
-                        // Clear any existing doc-only blocks before re-importing
+                            // Clear any existing doc-only blocks before re-importing
                         if (!empty($flat)) {
                             $db->execute(
-                                'DELETE FROM cruinn_draft_blocks WHERE page_id = ?',
-                                [$pageId]
-                            );
-                            $db->execute(
-                                'DELETE FROM cruinn_page_state WHERE page_id = ?',
+                                'DELETE FROM pages_draft WHERE page_id = ?',
                                 [$pageId]
                             );
                             $flat = [];
@@ -498,14 +496,13 @@ class PlatformController
                             } catch (\Throwable $e) {
                                 error_log('Platform Import failed: ' . $e->getMessage());
                             }
-                            $stateRow = $db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-                            $hasDraft = !empty($stateRow);
-                            $state    = $stateRow ?: null;
+                            $hasDraft = true;
+                            $maxSeq   = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
                             $flat     = $db->fetchAll(
-                                'SELECT * FROM cruinn_draft_blocks
-                                  WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
+                                'SELECT * FROM pages_draft
+                                  WHERE page_id = ? AND edit_seq = ?
                                   ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                                [$pageId]
+                                [$pageId, $maxSeq]
                             );
                         }
                     }
@@ -517,7 +514,7 @@ class PlatformController
                         elseif ($row['block_type'] === 'doc-body') { $docBodyBlock = $row; }
                     }
 
-                    $renderMode = $page['render_mode'] ?? 'cruinn';
+                    $renderMode = $page['render_mode'] ?? 'block';
                     $isFileMode = ($renderMode === 'file');
 
                     $editorSvc  = new \Cruinn\Services\EditorRenderService();
@@ -544,7 +541,7 @@ class PlatformController
             // Exclude internal slugs (_cms_platform_*, _cms_src_*) from the pages nav —
             // those appear under their own groups (Platform Pages, source file groups).
             $sitePages       = $db->fetchAll(
-                "SELECT id, title, slug, render_mode FROM pages
+                "SELECT id, title, slug, render_mode FROM pages_index
                  WHERE slug NOT LIKE '\\_cms\\_%'
                  ORDER BY title ASC"
             );
@@ -644,11 +641,11 @@ class PlatformController
         $headerPages = $db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
              FROM page_templates pt
-             JOIN pages p ON p.id = pt.canvas_page_id
+             JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE JSON_CONTAINS(pt.zones, '\"header\"')
              ORDER BY pt.sort_order, pt.name"
         );
-        $hp0 = $db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
+        $hp0 = $db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
         if ($hp0) {
             array_unshift($headerPages, [
                 'id' => (int) $hp0['id'], 'title' => 'Header Zone Page',
@@ -658,11 +655,11 @@ class PlatformController
         $footerPages = $db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
              FROM page_templates pt
-             JOIN pages p ON p.id = pt.canvas_page_id
+             JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
              ORDER BY pt.sort_order, pt.name"
         );
-        $fp0 = $db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
+        $fp0 = $db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
         if ($fp0) {
             array_unshift($footerPages, [
                 'id' => (int) $fp0['id'], 'title' => 'Footer Zone Page',
@@ -670,14 +667,14 @@ class PlatformController
             ]);
         }
         $sitePages = $db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages
+            "SELECT id, title, slug, render_mode FROM pages_index
              WHERE slug NOT LIKE '\\_\\_%'
              ORDER BY title ASC"
         );
         $navTemplates = $db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
-             LEFT JOIN pages p ON p.id = pt.canvas_page_id
+             LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
@@ -736,7 +733,7 @@ class PlatformController
             $tplFile = $tplDir . '/' . $platformPageSlug . '.php';
             if (file_exists($tplFile)) {
                 $ptSlug  = '_cms_platform_' . $platformPageSlug;
-                $ptRow   = $db->fetch('SELECT id, body_html FROM pages WHERE slug = ? LIMIT 1', [$ptSlug]);
+                $ptRow   = $db->fetch('SELECT id, body_html FROM pages_index WHERE slug = ? LIMIT 1', [$ptSlug]);
                 if (!$ptRow) {
                     $renderedHtml = $this->renderPlatformTemplate($platformPageSlug);
                     $db->execute(
@@ -749,7 +746,7 @@ class PlatformController
                     $pageId = (int) $ptRow['id'];
                     if (empty($ptRow['body_html'])) {
                         $renderedHtml = $this->renderPlatformTemplate($platformPageSlug);
-                        $db->execute('UPDATE pages SET body_html = ? WHERE id = ?', [$renderedHtml, $pageId]);
+                        $db->execute('UPDATE pages_index SET body_html = ? WHERE id = ?', [$renderedHtml, $pageId]);
                     }
                 }
             }
@@ -782,33 +779,34 @@ class PlatformController
 
         // ── Load specific page if requested ─────────────────────────────
         if ($pageId !== null) {
-            $pageRow = $db->fetch('SELECT * FROM pages WHERE id = ? LIMIT 1', [$pageId]);
+            $pageRow = $db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
             if ($pageRow) {
-                $page     = $pageRow;
-                $stateRow = $db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-                $hasDraft = !empty($stateRow);
-                $state    = $stateRow ?: null;
+                    $hasDraft = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]) > 0;
+                    $state    = null;
 
-                $flat = $hasDraft
-                    ? $db->fetchAll(
-                        'SELECT * FROM cruinn_draft_blocks
-                          WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
-                          ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                        [$pageId]
-                    )
-                    : $db->fetchAll(
-                        'SELECT * FROM cruinn_blocks
-                          WHERE page_id = ?
-                          ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                        [$pageId]
-                    );
+                    if ($hasDraft) {
+                        $maxSeq = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                        $flat = $db->fetchAll(
+                            'SELECT * FROM pages_draft
+                              WHERE page_id = ? AND edit_seq = ?
+                              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                            [$pageId, $maxSeq]
+                        );
+                    } else {
+                        $flat = $db->fetchAll(
+                            'SELECT * FROM pages
+                              WHERE page_id = ?
+                              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                            [$pageId]
+                        );
+                    }
 
                 $editorSvc  = new \Cruinn\Services\EditorRenderService();
                 $cruinnHtml = $editorSvc->buildCanvasHtml($flat, $db);
                 $cruinnCss  = $editorSvc->buildCanvasCss($flat);
 
                 // ── Auto-import: parse source HTML into typed blocks on first open ──
-                $renderMode = $page['render_mode'] ?? 'cruinn';
+                $renderMode = $page['render_mode'] ?? 'block';
                 if (in_array($renderMode, ['html', 'file'], true) && empty($flat)) {
                     $importSvc      = new \Cruinn\Services\ImportService();
                     $importedBlocks = [];
@@ -832,45 +830,20 @@ class PlatformController
                     }
 
                     if (!empty($importedBlocks)) {
-                        $pdo = $db->pdo();
-                        $pdo->beginTransaction();
                         try {
-                            $db->execute(
-                                'INSERT INTO cruinn_page_state
-                                     (page_id, current_edit_seq, max_edit_seq, last_edited_at)
-                                 VALUES (?, 1, 1, NOW())
-                                 ON DUPLICATE KEY UPDATE
-                                     current_edit_seq = 1, max_edit_seq = 1, last_edited_at = NOW()',
-                                [$pageId]
-                            );
-                            foreach ($importedBlocks as $b) {
-                                $db->execute(
-                                    'INSERT INTO cruinn_draft_blocks
-                                         (page_id, edit_seq, block_id, block_type, inner_html,
-                                          css_props, block_config, sort_order, parent_block_id,
-                                          is_active, is_deletion)
-                                     VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1, 0)',
-                                    [
-                                        $pageId, $b['block_id'], $b['block_type'],
-                                        $b['inner_html'], $b['css_props'], $b['block_config'],
-                                        $b['sort_order'], $b['parent_block_id'],
-                                    ]
-                                );
-                            }
-                            $pdo->commit();
+                            $importSvc->persistImportedBlocks($importedBlocks, $pageId, $db);
                         } catch (\Throwable $e) {
                             $pdo->rollBack();
                             error_log('Platform Import failed: ' . $e->getMessage());
                         }
 
-                        $stateRow = $db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-                        $hasDraft = !empty($stateRow);
-                        $state    = $stateRow ?: null;
-                        $flat     = $db->fetchAll(
-                            'SELECT * FROM cruinn_draft_blocks
-                              WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
+                        $hasDraft   = true;
+                        $maxSeq     = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                        $flat       = $db->fetchAll(
+                            'SELECT * FROM pages_draft
+                              WHERE page_id = ? AND edit_seq = ?
                               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                            [$pageId]
+                            [$pageId, $maxSeq]
                         );
 
                         $editorSvc  = new \Cruinn\Services\EditorRenderService();
@@ -906,8 +879,8 @@ class PlatformController
                 }
 
                 if (!$isZonePage) {
-                    $hp = $db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
-                    $fp = $db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
+                    $hp = $db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
+                    $fp = $db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
                     $headerPageId = $hp ? (int) $hp['id'] : null;
                     $footerPageId = $fp ? (int) $fp['id'] : null;
 
@@ -934,7 +907,7 @@ class PlatformController
                                     $templateCanvasHtml = $cruinnSvc->buildHtml($templateCanvasPageId);
                                     $templateCanvasCss  = $cruinnSvc->buildCss($templateCanvasPageId);
                                     $zoneRows = $db->fetchAll(
-                                        "SELECT block_config FROM cruinn_blocks
+                                        "SELECT block_config FROM pages
                                           WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL",
                                         [$templateCanvasPageId]
                                     );
@@ -1023,7 +996,7 @@ class PlatformController
 
         try {
             [$pdo] = $this->resolveDbConnection($isActive ? null : $instance);
-            $stmt  = $pdo->prepare('SELECT id, title, slug FROM pages ORDER BY title ASC');
+            $stmt  = $pdo->prepare('SELECT id, title, slug FROM pages_index ORDER BY title ASC');
             $stmt->execute();
             $files = [];
             foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
@@ -1396,7 +1369,7 @@ class PlatformController
                     "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2)
                      FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()"
                 )->fetchColumn();
-                try { $stats['pages'] = (int) $pdo->query('SELECT COUNT(*) FROM pages')->fetchColumn(); }
+                try { $stats['pages'] = (int) $pdo->query('SELECT COUNT(*) FROM pages_index')->fetchColumn(); }
                 catch (\Throwable) {}
                 try { $stats['users'] = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn(); }
                 catch (\Throwable) {}
@@ -1438,7 +1411,7 @@ class PlatformController
             return $stats;
         }
         // Instance-specific tables â€” only query if they exist
-        try { $stats['pages'] = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages'); }
+        try { $stats['pages'] = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_index'); }
         catch (\Throwable) { /* not an instance DB */ }
         try { $stats['users'] = (int) $db->fetchColumn('SELECT COUNT(*) FROM users'); }
         catch (\Throwable) { /* not an instance DB */ }
@@ -1542,10 +1515,10 @@ class PlatformController
         if (App::instanceDir() === null) { return false; }
         try {
             $db  = Database::getInstance();
-            $row = $db->fetch('SELECT id FROM pages WHERE slug = ? LIMIT 1', ['_cms_platform_' . $slug]);
+            $row = $db->fetch('SELECT id FROM pages_index WHERE slug = ? LIMIT 1', ['_cms_platform_' . $slug]);
             if (!$row) { return false; }
             $blocks = $db->fetchAll(
-                'SELECT * FROM cruinn_blocks WHERE page_id = ? ORDER BY sort_order',
+                'SELECT * FROM pages WHERE page_id = ? ORDER BY sort_order',
                 [(int) $row['id']]
             );
             if (empty($blocks)) { return false; }

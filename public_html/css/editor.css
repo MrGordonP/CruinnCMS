@@ -57,6 +57,21 @@
     white-space: nowrap;
 }
 
+#editor-draft-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: #7c2d00;
+    color: #ffd7b5;
+    font-size: 0.82rem;
+    border-bottom: 1px solid #a33a00;
+}
+
+#editor-draft-banner span {
+    flex: 1;
+}
+
 .editor-toolbar-actions {
     display: flex;
     gap: 0.5rem;
@@ -362,7 +377,7 @@
 
 #editor-canvas {
     background: #ffffff;
-    min-height: 100%;
+    min-height: 400px;
     max-width: 1200px;
     margin: 0 auto;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -1188,6 +1203,10 @@ a.editor-zone-preview {
 
 .editor-zone--header {
     border-top: 2px solid #6366f1;
+}
+
+.editor-zone--header .editor-zone-inner {
+    min-height: 120px;
 }
 
 .editor-zone--footer {

@@ -251,51 +251,65 @@ class MembershipAdminController extends BaseController
         ]);
     }
 
+    /**
+     * Step 1: Validate upload, store temp file, parse headers, render mapping UI.
+     */
     public function processImport(): void
     {
         Auth::requireRole('admin');
 
-        // Validate uploaded file
         if (empty($_FILES['csv_file']['tmp_name']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
             Auth::flash('error', 'No file uploaded or upload error.');
             $this->redirect('/admin/membership/import');
         }
 
-        $tmpPath = $_FILES['csv_file']['tmp_name'];
+        $nameOk = preg_match('/\.csv$/i', (string) $_FILES['csv_file']['name']) === 1;
         $mimeOk = in_array($_FILES['csv_file']['type'], ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'], true);
-        $nameOk  = preg_match('/\.csv$/i', (string) $_FILES['csv_file']['name']) === 1;
-
         if (!$mimeOk && !$nameOk) {
             Auth::flash('error', 'Uploaded file must be a CSV.');
             $this->redirect('/admin/membership/import');
         }
 
-        $handle = fopen($tmpPath, 'r');
+        // Persist to a session-scoped temp file so the confirm step can re-read it
+        $tmpKey  = bin2hex(random_bytes(16));
+        $tmpDest = sys_get_temp_dir() . '/cruinn_import_' . $tmpKey . '.csv';
+        if (!move_uploaded_file($_FILES['csv_file']['tmp_name'], $tmpDest)) {
+            Auth::flash('error', 'Could not save uploaded file.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $handle = fopen($tmpDest, 'r');
         if ($handle === false) {
             Auth::flash('error', 'Could not read uploaded file.');
             $this->redirect('/admin/membership/import');
         }
 
-        // Read headers
         $rawHeaders = fgetcsv($handle);
         if (!$rawHeaders) {
             fclose($handle);
+            unlink($tmpDest);
             Auth::flash('error', 'CSV file appears to be empty.');
             $this->redirect('/admin/membership/import');
         }
 
-        $headers = array_map(fn($h) => strtolower(trim((string) $h)), $rawHeaders);
+        $csvHeaders = array_map(fn($h) => trim((string) $h), $rawHeaders);
 
-        // Read all rows
-        $rows = [];
-        while (($row = fgetcsv($handle)) !== false) {
-            if (count($row) === count($headers)) {
-                $rows[] = array_combine($headers, $row);
+        // Read up to 3 preview rows
+        $preview = [];
+        while (count($preview) < 3 && ($row = fgetcsv($handle)) !== false) {
+            if (count($row) === count($csvHeaders)) {
+                $preview[] = array_combine($csvHeaders, $row);
             }
+        }
+        // Count total data rows
+        $totalRows = count($preview);
+        while (fgetcsv($handle) !== false) {
+            $totalRows++;
         }
         fclose($handle);
 
-        if (empty($rows)) {
+        if ($totalRows === 0) {
+            unlink($tmpDest);
             Auth::flash('error', 'CSV file contains no data rows.');
             $this->redirect('/admin/membership/import');
         }
@@ -304,17 +318,150 @@ class MembershipAdminController extends BaseController
         if (!in_array($onDuplicate, ['skip', 'update'], true)) {
             $onDuplicate = 'skip';
         }
-
         $defaultStatus = (string) $this->input('default_status', 'applicant');
         $allowedStatuses = ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
         if (!in_array($defaultStatus, $allowedStatuses, true)) {
             $defaultStatus = 'applicant';
         }
 
+        // Auto-detect mapping: if a CSV header matches a known canonical name, pre-select it
+        $systemFields = [
+            'forenames'       => 'Forenames *',
+            'surnames'        => 'Surnames *',
+            'email'           => 'Email *',
+            'phone'           => 'Phone',
+            'organisation'    => 'Organisation',
+            'membership_number' => 'Membership number',
+            'membership_year' => 'Membership year',
+            'status'          => 'Status',
+            'plan'            => 'Plan',
+            'joined_at'       => 'Joined date',
+            'lapsed_at'       => 'Lapsed date',
+            'notes'           => 'Notes',
+            'address_line_1'  => 'Address line 1',
+            'address_line_2'  => 'Address line 2',
+            'city'            => 'City / Town',
+            'county'          => 'County / State',
+            'postcode'        => 'Postcode',
+            'country'         => 'Country',
+        ];
+
+        // Aliases used by importMembers for auto-detect pre-fill
+        $fieldAliases = [
+            'forenames'       => ['forenames', 'first_name', 'firstname', 'first name'],
+            'surnames'        => ['surnames', 'surname', 'last_name', 'lastname', 'last name'],
+            'email'           => ['email', 'email_address'],
+            'phone'           => ['phone', 'telephone', 'mobile'],
+            'organisation'    => ['organisation', 'organization', 'org', 'company'],
+            'membership_number' => ['membership_number', 'membership_no', 'member_number', 'member_no', 'number'],
+            'membership_year' => ['membership_year', 'year'],
+            'status'          => ['status'],
+            'plan'            => ['plan', 'plan_id', 'plan_slug', 'plan_name'],
+            'joined_at'       => ['joined_at', 'joined', 'join_date'],
+            'lapsed_at'       => ['lapsed_at', 'lapsed'],
+            'notes'           => ['notes', 'note', 'comments'],
+            'address_line_1'  => ['address_line_1', 'line_1', 'address1', 'address'],
+            'address_line_2'  => ['address_line_2', 'line_2', 'address2'],
+            'city'            => ['city', 'town'],
+            'county'          => ['county', 'state', 'region', 'province'],
+            'postcode'        => ['postcode', 'postal_code', 'zip'],
+            'country'         => ['country'],
+        ];
+
+        $autoMapping = [];
+        foreach ($systemFields as $fieldKey => $_) {
+            $autoMapping[$fieldKey] = '';
+            $aliases = $fieldAliases[$fieldKey] ?? [$fieldKey];
+            foreach ($csvHeaders as $csvHeader) {
+                if (in_array(strtolower($csvHeader), $aliases, true)) {
+                    $autoMapping[$fieldKey] = $csvHeader;
+                    break;
+                }
+            }
+        }
+
+        $_SESSION['cruinn_import'] = [
+            'tmp'            => $tmpDest,
+            'on_duplicate'   => $onDuplicate,
+            'default_status' => $defaultStatus,
+        ];
+
+        $this->renderAdmin('admin/membership/members/import_map', [
+            'title'          => 'Import Members — Map Columns',
+            'csvHeaders'     => $csvHeaders,
+            'systemFields'   => $systemFields,
+            'autoMapping'    => $autoMapping,
+            'preview'        => $preview,
+            'totalRows'      => $totalRows,
+            'onDuplicate'    => $onDuplicate,
+            'defaultStatus'  => $defaultStatus,
+            'breadcrumbs'    => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Import', '/admin/membership/import'], ['Map Columns']],
+        ]);
+    }
+
+    /**
+     * Step 2: Apply column mapping, run import, show result.
+     */
+    public function confirmImport(): void
+    {
+        Auth::requireRole('admin');
+
+        $importMeta = $_SESSION['cruinn_import'] ?? null;
+        if (!$importMeta || !isset($importMeta['tmp']) || !file_exists($importMeta['tmp'])) {
+            Auth::flash('error', 'Import session expired. Please upload the file again.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        unset($_SESSION['cruinn_import']);
+
+        $tmpPath       = $importMeta['tmp'];
+        $onDuplicate   = $importMeta['on_duplicate'];
+        $defaultStatus = $importMeta['default_status'];
+
+        // Read the mapping from POST: map[system_field] = csv_column_name (or '' to ignore)
+        $rawMapping = isset($_POST['map']) && is_array($_POST['map']) ? $_POST['map'] : [];
+        $mapping    = []; // canonical_field => csv_column_name
+        foreach ($rawMapping as $field => $csvCol) {
+            $csvCol = trim((string) $csvCol);
+            if ($csvCol !== '') {
+                $mapping[$field] = $csvCol;
+            }
+        }
+
+        $handle = fopen($tmpPath, 'r');
+        if ($handle === false) {
+            unlink($tmpPath);
+            Auth::flash('error', 'Could not reopen import file.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $rawHeaders = fgetcsv($handle);
+        $csvHeaders = $rawHeaders ? array_map(fn($h) => trim((string) $h), $rawHeaders) : [];
+
+        $rows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) !== count($csvHeaders)) {
+                continue;
+            }
+            $csvRow    = array_combine($csvHeaders, $row);
+            $canonical = [];
+            foreach ($mapping as $field => $csvCol) {
+                $canonical[$field] = $csvRow[$csvCol] ?? '';
+            }
+            $rows[] = $canonical;
+        }
+        fclose($handle);
+        unlink($tmpPath);
+
+        if (empty($rows)) {
+            Auth::flash('error', 'No data rows found after applying mapping.');
+            $this->redirect('/admin/membership/import');
+        }
+
         $result = $this->membership->importMembers($rows, $onDuplicate, $defaultStatus);
 
         $this->logActivity('import', 'member', null,
-            sprintf('CSV import: %d created, %d updated, %d skipped, %d errors.', 
+            sprintf('CSV import: %d created, %d updated, %d skipped, %d errors.',
                 $result['created'], $result['updated'], $result['skipped'], count($result['errors']))
         );
 

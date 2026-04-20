@@ -28,6 +28,17 @@ class MediaController extends \Cruinn\Controllers\BaseController
     }
 
     /**
+     * GET /admin/media — Display the media browser admin page.
+     */
+    public function index(): void
+    {
+        $this->renderAdmin('admin/media/index', [
+            'title'       => 'Media Library',
+            'breadcrumbs' => [['Admin', '/admin'], ['Media']],
+        ]);
+    }
+
+    /**
      * POST /admin/upload — Handle file upload.
      * Returns JSON with the uploaded file URL.
      */

@@ -246,7 +246,8 @@ CREATE TABLE `subjects` (
 -- PAGES
 -- ============================================================
 
-CREATE TABLE `pages` (
+-- Page index — one row per page, meta only
+CREATE TABLE `pages_index` (
     `id`               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `title`            VARCHAR(255)  NOT NULL,
     `slug`             VARCHAR(255)  NOT NULL,
@@ -254,17 +255,55 @@ CREATE TABLE `pages` (
     `template`         VARCHAR(50)   NOT NULL DEFAULT 'default',
     `editor_mode`      ENUM('structured','freeform') NOT NULL DEFAULT 'structured',
     `meta_description` VARCHAR(320)  NULL DEFAULT '',
-    `render_mode`      ENUM('cruinn','html','file') NOT NULL DEFAULT 'cruinn',
+    `render_mode`      ENUM('block','html','file') NOT NULL DEFAULT 'block',
     `body_html`        MEDIUMTEXT    NULL DEFAULT NULL,
     `render_file`      VARCHAR(500)  NULL DEFAULT NULL COMMENT 'Relative path to static HTML file',
     `created_by`       INT UNSIGNED  NULL,
     `created_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_pages_slug` (`slug`),
-    KEY `idx_pages_status` (`status`),
-    CONSTRAINT `fk_pages_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+    UNIQUE KEY `uk_pages_index_slug` (`slug`),
+    KEY `idx_pages_index_status` (`status`),
+    CONSTRAINT `fk_pages_index_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Published page blocks — one row per block, the canonical published state
+CREATE TABLE `pages` (
+    `block_id`        VARCHAR(20)       NOT NULL,
+    `page_id`         INT UNSIGNED      NOT NULL,
+    `block_type`      VARCHAR(40)       NOT NULL,
+    `inner_html`      MEDIUMTEXT        NULL,
+    `css_props`       JSON              NULL,
+    `block_config`    JSON              NULL,
+    `sort_order`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `parent_block_id` VARCHAR(20)       NULL,
+    `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`block_id`),
+    KEY `idx_pages_page` (`page_id`, `parent_block_id`, `sort_order`),
+    CONSTRAINT `fk_pages_page_id` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Editor draft history — one snapshot per block per edit action
+-- MAX(edit_seq) for a page_id = current working state
+-- Undo deletes forward rows (destructive). Cleared entirely on publish.
+CREATE TABLE `pages_draft` (
+    `id`              INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    `page_id`         INT UNSIGNED      NOT NULL,
+    `edit_seq`        INT UNSIGNED      NOT NULL,
+    `block_id`        VARCHAR(20)       NOT NULL,
+    `block_type`      VARCHAR(40)       NOT NULL,
+    `inner_html`      MEDIUMTEXT        NULL,
+    `css_props`       JSON              NULL,
+    `block_config`    JSON              NULL,
+    `sort_order`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `parent_block_id` VARCHAR(20)       NULL,
+    `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_pages_draft_page_seq` (`page_id`, `edit_seq`),
+    KEY `idx_pages_draft_block`    (`page_id`, `block_id`),
+    CONSTRAINT `fk_pages_draft_page` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- PAGE TEMPLATES
@@ -286,7 +325,7 @@ CREATE TABLE `page_templates` (
     `updated_at`     DATETIME     NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_page_templates_slug` (`slug`),
-    CONSTRAINT `fk_tpl_canvas_page` FOREIGN KEY (`canvas_page_id`) REFERENCES `pages` (`id`) ON DELETE SET NULL
+    CONSTRAINT `fk_tpl_canvas_page` FOREIGN KEY (`canvas_page_id`) REFERENCES `pages_index` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -323,65 +362,11 @@ CREATE TABLE `menu_items` (
     `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `fk_menu_items_menu`    FOREIGN KEY (`menu_id`)    REFERENCES `menus`      (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_menu_items_parent`  FOREIGN KEY (`parent_id`)  REFERENCES `menu_items` (`id`) ON DELETE SET NULL,
-    CONSTRAINT `fk_menu_items_page`    FOREIGN KEY (`page_id`)    REFERENCES `pages`      (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_menu_items_page`    FOREIGN KEY (`page_id`)    REFERENCES `pages_index` (`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_menu_items_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects`   (`id`) ON DELETE SET NULL,
     INDEX `idx_menu_items_menu_order` (`menu_id`, `sort_order`),
     INDEX `idx_menu_items_parent`     (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================================
--- CRUINN BLOCK EDITOR
--- ============================================================
-
--- Published blocks — the public site reads ONLY this table
-CREATE TABLE `cruinn_blocks` (
-    `block_id`        VARCHAR(20)       NOT NULL,
-    `page_id`         INT UNSIGNED      NOT NULL,
-    `block_type`      VARCHAR(40)       NOT NULL,
-    `inner_html`      MEDIUMTEXT        NULL,
-    `css_props`       JSON              NULL,
-    `block_config`    JSON              NULL,
-    `sort_order`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-    `parent_block_id` VARCHAR(20)       NULL,
-    `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`      DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`block_id`),
-    KEY `idx_page` (`page_id`, `parent_block_id`, `sort_order`),
-    CONSTRAINT `fk_cb_page` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Edit history / draft blocks — one row per block per edit action
-CREATE TABLE `cruinn_draft_blocks` (
-    `id`              INT UNSIGNED      NOT NULL AUTO_INCREMENT,
-    `page_id`         INT UNSIGNED      NOT NULL,
-    `edit_seq`        INT UNSIGNED      NOT NULL,
-    `block_id`        VARCHAR(20)       NOT NULL,
-    `block_type`      VARCHAR(40)       NOT NULL,
-    `inner_html`      MEDIUMTEXT        NULL,
-    `css_props`       JSON              NULL,
-    `block_config`    JSON              NULL,
-    `sort_order`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
-    `parent_block_id` VARCHAR(20)       NULL,
-    `is_active`       TINYINT(1)        NOT NULL DEFAULT 1,
-    `is_deletion`     TINYINT(1)        NOT NULL DEFAULT 0,
-    `prev_id`         INT UNSIGNED      NULL,
-    `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    KEY `idx_page_seq`    (`page_id`, `edit_seq`),
-    KEY `idx_page_active` (`page_id`, `block_id`, `is_active`),
-    CONSTRAINT `fk_draftblocks_page` FOREIGN KEY (`page_id`)  REFERENCES `pages`               (`id`) ON DELETE CASCADE,
-    CONSTRAINT `fk_draftblocks_prev` FOREIGN KEY (`prev_id`)  REFERENCES `cruinn_draft_blocks` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Undo cursor — one row per page with an active draft session
-CREATE TABLE `cruinn_page_state` (
-    `page_id`          INT UNSIGNED NOT NULL,
-    `current_edit_seq` INT UNSIGNED NOT NULL DEFAULT 0,
-    `max_edit_seq`     INT UNSIGNED NOT NULL DEFAULT 0,
-    `last_edited_at`   DATETIME     NULL,
-    PRIMARY KEY (`page_id`),
-    CONSTRAINT `fk_cps_page` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Named block library (saved/reusable block structures)
 CREATE TABLE `named_blocks` (

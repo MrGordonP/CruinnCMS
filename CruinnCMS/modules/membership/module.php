@@ -34,6 +34,7 @@ return [
         // Import
         $router->get('/admin/membership/import',                      [MembershipAdminController::class, 'importForm']);
         $router->post('/admin/membership/import',                     [MembershipAdminController::class, 'processImport']);
+        $router->post('/admin/membership/import/confirm',             [MembershipAdminController::class, 'confirmImport']);
     },
 
     'migrations' => [

@@ -34,6 +34,17 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
      data-start-in-code-view="<?= !empty($startInCodeView) ? '1' : '0' ?>"
      data-html-content="<?= htmlspecialchars($htmlContent ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
+    <!-- ── Draft resume banner ─────────────────────────────────── -->
+    <div id="editor-draft-banner" style="display:none" role="dialog" aria-modal="true" aria-labelledby="editor-draft-banner-title">
+        <div class="editor-draft-banner-card">
+            <h3 id="editor-draft-banner-title">Unsaved draft found</h3>
+            <p>This page has unsaved draft changes. Do you want to continue editing them, or discard and reload from the published version?</p>
+            <div class="editor-draft-banner-actions">
+                <button type="button" class="btn btn-primary" id="editor-draft-continue-btn">Continue with draft</button>
+                <button type="button" class="btn btn-outline btn-danger" id="editor-draft-discard-btn">Discard &amp; reload published</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ── Toolbar ──────────────────────────────────────────────── -->
     <div id="editor-toolbar">
@@ -113,8 +124,12 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 Redo
             </button>
             <button id="editor-discard-btn" class="btn btn-small btn-outline"
-                    <?= !$hasDraft ? 'disabled' : '' ?>>
-                Discard Draft
+                    title="Delete draft history for this page">
+                Clear Draft
+            </button>
+            <button id="editor-reload-source-btn" class="btn btn-small btn-outline"
+                    title="Clear draft then rebuild from page source">
+                Reload Source
             </button>
             <button id="editor-publish-btn" class="btn btn-small btn-primary">
                 Publish

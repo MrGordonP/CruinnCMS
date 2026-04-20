@@ -417,7 +417,7 @@ class MenuController extends BaseController
             'SELECT mi.*, p.title AS page_title, p.slug AS page_slug,
                     s.title AS subject_title
              FROM menu_items mi
-             LEFT JOIN pages p ON mi.page_id = p.id
+             LEFT JOIN pages_index p ON mi.page_id = p.id
              LEFT JOIN subjects s ON mi.subject_id = s.id
              WHERE mi.menu_id = ?
              ORDER BY mi.sort_order ASC',
@@ -428,7 +428,7 @@ class MenuController extends BaseController
     private function getAvailablePages(): array
     {
         return $this->db->fetchAll(
-            'SELECT id, title, slug FROM pages WHERE status = ? ORDER BY title ASC',
+            'SELECT id, title, slug FROM pages_index WHERE status = ? ORDER BY title ASC',
             ['published']
         );
     }
@@ -456,7 +456,7 @@ class MenuController extends BaseController
     private function autoLabel(string $linkType): string
     {
         return match ($linkType) {
-            'page'    => $this->db->fetchColumn('SELECT title FROM pages WHERE id = ?', [$this->input('page_id')]) ?: 'Untitled Page',
+            'page'    => $this->db->fetchColumn('SELECT title FROM pages_index WHERE id = ?', [$this->input('page_id')]) ?: 'Untitled Page',
             'subject' => $this->db->fetchColumn('SELECT title FROM subjects WHERE id = ?', [$this->input('subject_id')]) ?: 'Untitled Subject',
             'route'   => ucfirst(trim($this->input('route', '/'), '/')),
             default   => '',
@@ -485,7 +485,7 @@ class MenuController extends BaseController
         // If a block layout page already exists, go straight to it
         if (!empty($menu['block_page_id'])) {
             $existing = $this->db->fetch(
-                'SELECT id FROM pages WHERE id = ? LIMIT 1',
+                'SELECT id FROM pages_index WHERE id = ? LIMIT 1',
                 [(int) $menu['block_page_id']]
             );
             if ($existing) {
@@ -498,7 +498,7 @@ class MenuController extends BaseController
         $slug  = '_menu_' . preg_replace('/[^a-z0-9]/', '-', strtolower($menu['name'])) . '_' . $menu['id'];
         $title = 'Menu Layout: ' . $menu['name'];
 
-        $page = $this->db->fetch('SELECT id FROM pages WHERE slug = ? LIMIT 1', [$slug]);
+        $page = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ? LIMIT 1', [$slug]);
         if ($page) {
             $pageId = (int) $page['id'];
         } else {
@@ -507,7 +507,7 @@ class MenuController extends BaseController
                 'slug'        => $slug,
                 'status'      => 'published',
                 'template'    => 'none',
-                'render_mode' => 'cruinn',
+                'render_mode' => 'block',
             ]);
         }
 

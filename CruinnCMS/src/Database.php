@@ -121,7 +121,7 @@ class Database
     /**
      * Execute a query and return all rows.
      *
-     * Usage: $db->fetchAll('SELECT * FROM pages WHERE status = ?', ['published']);
+     * Usage: $db->fetchAll('SELECT * FROM pages_index WHERE status = ?', ['published']);
      */
     public function fetchAll(string $sql, array $params = []): array
     {
@@ -132,7 +132,7 @@ class Database
     /**
      * Execute a query and return a single row.
      *
-     * Usage: $db->fetch('SELECT * FROM pages WHERE slug = ?', [$slug]);
+     * Usage: $db->fetch('SELECT * FROM pages_index WHERE slug = ?', [$slug]);
      */
     public function fetch(string $sql, array $params = []): array|false
     {
@@ -154,7 +154,7 @@ class Database
     /**
      * Execute an INSERT, UPDATE, or DELETE and return affected row count.
      *
-     * Usage: $db->execute('UPDATE pages SET title = ? WHERE id = ?', [$title, $id]);
+     * Usage: $db->execute('UPDATE pages_index SET title = ? WHERE id = ?', [$title, $id]);
      */
     public function execute(string $sql, array $params = []): PDOStatement
     {

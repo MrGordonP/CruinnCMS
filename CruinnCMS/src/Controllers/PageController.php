@@ -19,7 +19,7 @@ class PageController extends BaseController
     public function home(): void
     {
         $page = $this->db->fetch(
-            'SELECT * FROM pages WHERE slug = ? AND status = ? LIMIT 1',
+            'SELECT * FROM pages_index WHERE slug = ? AND status = ? LIMIT 1',
             ['home', 'published']
         );
 
@@ -60,7 +60,7 @@ class PageController extends BaseController
     public function show(string $slug): void
     {
         $page = $this->db->fetch(
-            'SELECT * FROM pages WHERE slug = ? AND status = ? LIMIT 1',
+            'SELECT * FROM pages_index WHERE slug = ? AND status = ? LIMIT 1',
             [$slug, 'published']
         );
 
@@ -70,7 +70,7 @@ class PageController extends BaseController
             return;
         }
 
-        $renderMode = $page['render_mode'] ?? 'cruinn';
+        $renderMode = $page['render_mode'] ?? 'block';
 
         // ── File mode: serve raw static HTML file, no layout wrapping ──────
         if ($renderMode === 'file') {
@@ -168,7 +168,7 @@ class PageController extends BaseController
 
     /**
      * Legacy content_blocks fallback — table no longer exists.
-     * Pages without cruinn_blocks simply render empty.
+     * Pages without pages simply render empty.
      */
     private function getBlocks(int $pageId): array
     {

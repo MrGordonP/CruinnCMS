@@ -52,7 +52,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
         $results = [];   // ['...link...', 'status' => 'ok'|'broken'|'external'|'skipped', 'detail' => string]
 
         // 1. Collect links from pages table (render_file paths, body_html)
-        $pages = $this->db->fetchAll("SELECT id, title, slug, render_mode, render_file, body_html FROM pages");
+        $pages = $this->db->fetchAll("SELECT id, title, slug, render_mode, render_file, body_html FROM pages_index");
         foreach ($pages as $p) {
             if ($p['render_mode'] === 'file' && !empty($p['render_file'])) {
                 $links[] = ['source' => 'pages: ' . $p['slug'], 'source_id' => (int)$p['id'], 'href' => $p['render_file'], 'type' => 'render_file'];
@@ -64,8 +64,8 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             }
         }
 
-        // 2. Collect links from cruinn_blocks (properties JSON and content)
-        $blocks = $this->db->fetchAll("SELECT id, page_id, block_type, properties, content FROM cruinn_blocks WHERE status = 'published'");
+        // 2. Collect links from pages (properties JSON and content)
+        $blocks = $this->db->fetchAll("SELECT id, page_id, block_type, properties, content FROM pages_index WHERE status = 'published'");
         foreach ($blocks as $b) {
             $pageSlug = $this->getPageSlug((int)$b['page_id'], $pages);
             $source   = "block #{$b['id']} ({$b['block_type']}) on {$pageSlug}";

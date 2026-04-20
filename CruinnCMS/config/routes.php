@@ -53,6 +53,7 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/editor/{pageId}/redo',           [CruinnController::class, 'redo']);
     $router->post('/cms/editor/{pageId}/publish',        [CruinnController::class, 'publish']);
     $router->post('/cms/editor/{pageId}/discard',        [CruinnController::class, 'discardDraft']);
+    $router->post('/cms/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/cms/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
     $router->get('/cms/database',                       [PlatformController::class, 'dbBrowse']);
     $router->get('/cms/database/browse/{table}',             [PlatformController::class, 'dbBrowseTable']);
@@ -176,6 +177,7 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/editor/{pageId}/redo',           [CruinnController::class, 'redo']);
     $router->post('/admin/editor/{pageId}/publish',        [CruinnController::class, 'publish']);
     $router->post('/admin/editor/{pageId}/discard',        [CruinnController::class, 'discardDraft']);
+    $router->post('/admin/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/admin/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
 
     // Named Block Library

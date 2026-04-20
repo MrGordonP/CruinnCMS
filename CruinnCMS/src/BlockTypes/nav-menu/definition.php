@@ -20,7 +20,7 @@ BlockRegistry::register([
         $all = $db->fetchAll(
             'SELECT mi.*, p.slug AS page_slug
              FROM menu_items mi
-             LEFT JOIN pages p ON mi.page_id = p.id
+             LEFT JOIN pages_index p ON mi.page_id = p.id
              WHERE mi.menu_id = ? AND mi.is_active = 1
              ORDER BY mi.sort_order ASC',
             [$menuId]

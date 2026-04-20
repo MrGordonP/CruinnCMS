@@ -3,7 +3,7 @@
  * Cruinn CMS — Page Editor Controller
  *
  * Handles the full-screen page editor, draft/publish/discard flow, and the
- * server-side undo/redo history backed by cruinn_draft_blocks.
+ * server-side undo/redo history backed by pages_draft.
  *
  * Routes:
  *   GET  /admin/editor/{pageId}/edit     → edit()
@@ -55,11 +55,11 @@ class CruinnController extends BaseController
         $headerPages = $this->db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
              FROM page_templates pt
-             JOIN pages p ON p.id = pt.canvas_page_id
+             JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE JSON_CONTAINS(pt.zones, '\"header\"')
              ORDER BY pt.sort_order, pt.name"
         );
-        $hp0 = $this->db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
+        $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
         if ($hp0) {
             array_unshift($headerPages, [
                 'id' => (int) $hp0['id'], 'title' => 'Header Zone Page',
@@ -69,11 +69,11 @@ class CruinnController extends BaseController
         $footerPages = $this->db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
              FROM page_templates pt
-             JOIN pages p ON p.id = pt.canvas_page_id
+             JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
              ORDER BY pt.sort_order, pt.name"
         );
-        $fp0 = $this->db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
+        $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
         if ($fp0) {
             array_unshift($footerPages, [
                 'id' => (int) $fp0['id'], 'title' => 'Footer Zone Page',
@@ -82,14 +82,14 @@ class CruinnController extends BaseController
         }
 
         $sitePages = $this->db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages
+            "SELECT id, title, slug, render_mode FROM pages_index
              WHERE slug NOT LIKE '\\_\\_%'
              ORDER BY title ASC"
         );
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
-             LEFT JOIN pages p ON p.id = pt.canvas_page_id
+             LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
@@ -174,33 +174,37 @@ class CruinnController extends BaseController
         Auth::requireRole('admin');
         $pageId = (int) $pageId;
 
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ? LIMIT 1', [$pageId]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
         if (!$page) {
             http_response_code(404);
             $this->renderAdmin('errors/404', ['title' => 'Page Not Found']);
             return;
         }
 
-        $state    = $this->db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-        $hasDraft = !empty($state) && (int)($state['current_edit_seq'] ?? 0) > 0;
+        $hasDraft = (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]
+        ) > 0;
+        $maxDraftSeq = $hasDraft
+            ? (int) $this->db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId])
+            : 0;
 
         if ($hasDraft) {
             $flat = $this->db->fetchAll(
-                'SELECT * FROM cruinn_draft_blocks
-                  WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
+                'SELECT * FROM pages_draft
+                  WHERE page_id = ? AND edit_seq = ?
                   ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$pageId]
+                [$pageId, $maxDraftSeq]
             );
         } else {
             $flat = $this->db->fetchAll(
-                'SELECT * FROM cruinn_blocks
+                'SELECT * FROM pages
                   WHERE page_id = ?
                   ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
                 [$pageId]
             );
         }
 
-        $renderMode = $page['render_mode'] ?? 'cruinn';
+        $renderMode = $page['render_mode'] ?? 'block';
 
         // ── Auto-import: parse source HTML into typed blocks on first open ──
         if (in_array($renderMode, ['html', 'file'], true) && empty($flat)) {
@@ -221,13 +225,15 @@ class CruinnController extends BaseController
                     error_log('Import failed: ' . $e->getMessage());
                 }
 
-                $state    = $this->db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-                $hasDraft = !empty($state);
-                $flat     = $this->db->fetchAll(
-                    'SELECT * FROM cruinn_draft_blocks
-                      WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
+                $hasDraft = true;
+                $maxDraftSeq = (int) $this->db->fetchColumn(
+                    'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+                );
+                $flat = $this->db->fetchAll(
+                    'SELECT * FROM pages_draft
+                      WHERE page_id = ? AND edit_seq = ?
                       ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                    [$pageId]
+                    [$pageId, $maxDraftSeq]
                 );
             }
         }
@@ -280,8 +286,8 @@ class CruinnController extends BaseController
         $templateCanvasCss   = '';
 
         if (!$isZonePage || $isTemplatePage) {
-            $hp = $this->db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
-            $fp = $this->db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
+            $hp = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
+            $fp = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
             $headerPageId = $hp ? (int) $hp['id'] : null;
             $footerPageId = $fp ? (int) $fp['id'] : null;
 
@@ -314,7 +320,7 @@ class CruinnController extends BaseController
                             $templateCanvasCss  = $cruinnSvc->buildCss($templateCanvasPageId);
                             // Extract distinct zone names from root-level zone blocks
                             $zoneRows = $this->db->fetchAll(
-                                "SELECT block_config FROM cruinn_blocks
+                                "SELECT block_config FROM pages
                                   WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL",
                                 [$templateCanvasPageId]
                             );
@@ -338,7 +344,7 @@ class CruinnController extends BaseController
                 if (in_array($zoneName, ['header', 'footer'], true)) { continue; }
                 $blockId = 'zone-' . $zoneName . '-' . $pageId;
                 $this->db->execute(
-                    'INSERT IGNORE INTO cruinn_blocks
+                    'INSERT IGNORE INTO pages
                          (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
                      VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
                     [
@@ -353,7 +359,7 @@ class CruinnController extends BaseController
             // If no content zones defined, seed a default main zone
             if ($sort === 10) {
                 $this->db->execute(
-                    'INSERT IGNORE INTO cruinn_blocks
+                    'INSERT IGNORE INTO pages
                          (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
                      VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
                     [
@@ -365,7 +371,7 @@ class CruinnController extends BaseController
                 );
             }
             $flat = $this->db->fetchAll(
-                'SELECT * FROM cruinn_blocks
+                'SELECT * FROM pages
                   WHERE page_id = ?
                   ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
                 [$pageId]
@@ -376,11 +382,11 @@ class CruinnController extends BaseController
         $headerPages = $this->db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
              FROM page_templates pt
-             JOIN pages p ON p.id = pt.canvas_page_id
+             JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE JSON_CONTAINS(pt.zones, '\"header\"')
              ORDER BY pt.sort_order, pt.name"
         );
-        $hp0 = $this->db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
+        $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
         if ($hp0) {
             array_unshift($headerPages, [
                 'id' => (int) $hp0['id'], 'title' => 'Header Zone Page',
@@ -390,11 +396,11 @@ class CruinnController extends BaseController
         $footerPages = $this->db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
              FROM page_templates pt
-             JOIN pages p ON p.id = pt.canvas_page_id
+             JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
              ORDER BY pt.sort_order, pt.name"
         );
-        $fp0 = $this->db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
+        $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
         if ($fp0) {
             array_unshift($footerPages, [
                 'id' => (int) $fp0['id'], 'title' => 'Footer Zone Page',
@@ -404,7 +410,7 @@ class CruinnController extends BaseController
 
         // Content pages for the sidebar nav (exclude all zone/template pages starting with _)
         $sitePages = $this->db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages
+            "SELECT id, title, slug, render_mode FROM pages_index
              WHERE slug NOT LIKE '\_%'
              ORDER BY title ASC"
         );
@@ -413,7 +419,7 @@ class CruinnController extends BaseController
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
-             LEFT JOIN pages p ON p.id = pt.canvas_page_id
+             LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
@@ -463,7 +469,7 @@ class CruinnController extends BaseController
             'title'             => 'Editor — ' . $page['title'],
             'page'              => $page,
             'hasDraft'          => $hasDraft,
-            'state'             => $state,
+            'state'             => null,
             'cruinnHtml'        => (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
             'cruinnCss'         => (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
             'menus'             => $menus,
@@ -511,7 +517,7 @@ class CruinnController extends BaseController
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
-        $page = $this->db->fetch('SELECT id, render_mode FROM pages WHERE id = ? LIMIT 1', [$pageId]);
+        $page = $this->db->fetch('SELECT id, render_mode FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
         if (!$page) {
             $this->json(['error' => 'Page not found'], 404);
         }
@@ -555,129 +561,52 @@ class CruinnController extends BaseController
         $pdo->beginTransaction();
 
         try {
-            // Upsert page state and increment edit_seq
-            $state = $this->db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-            if ($state) {
-                $newSeq = (int) $state['current_edit_seq'] + 1;
-                $this->db->execute(
-                    'UPDATE cruinn_page_state
-                        SET current_edit_seq = ?, max_edit_seq = ?, last_edited_at = NOW()
-                      WHERE page_id = ?',
-                    [$newSeq, $newSeq, $pageId]
-                );
-            } else {
-                $newSeq = 1;
-                $this->db->execute(
-                    'INSERT INTO cruinn_page_state (page_id, current_edit_seq, max_edit_seq, last_edited_at)
-                     VALUES (?, 1, 1, NOW())',
-                    [$pageId]
-                );
-            }
-
-            // Clear the redo branch
-            $this->db->execute(
-                'DELETE FROM cruinn_draft_blocks WHERE page_id = ? AND edit_seq > ?',
-                [$pageId, $newSeq]
-            );
-
-            // Load currently active blocks for this page
-            $activeRows = $this->db->fetchAll(
-                'SELECT * FROM cruinn_draft_blocks WHERE page_id = ? AND is_active = 1',
+            // Determine next sequence number
+            $currentSeq = (int) $this->db->fetchColumn(
+                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?',
                 [$pageId]
             );
-            $activeByBlockId = [];
-            foreach ($activeRows as $row) {
-                $activeByBlockId[$row['block_id']] = $row;
-            }
+            $newSeq = $currentSeq + 1;
 
-            $incomingIds = array_flip(array_column($incomingBlocks, 'block_id'));
-
-            // Insert/update incoming blocks
+            // Insert all incoming blocks as a full snapshot at newSeq
             foreach ($incomingBlocks as $b) {
-                $prevId = null;
-                if (isset($activeByBlockId[$b['block_id']])) {
-                    $oldRow = $activeByBlockId[$b['block_id']];
-                    $prevId = $oldRow['id'];
-                    $this->db->execute(
-                        'UPDATE cruinn_draft_blocks SET is_active = 0 WHERE id = ?',
-                        [$prevId]
-                    );
-                }
-
                 $this->db->execute(
-                    'INSERT INTO cruinn_draft_blocks
+                    'INSERT INTO pages_draft
                         (page_id, edit_seq, block_id, block_type, inner_html, css_props,
-                         block_config, sort_order, parent_block_id, is_active, is_deletion, prev_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)',
+                         block_config, sort_order, parent_block_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [
                         $pageId, $newSeq,
                         $b['block_id'], $b['block_type'], $b['inner_html'],
                         $b['css_props'], $b['block_config'],
-                        $b['sort_order'], $b['parent_block_id'], $prevId,
+                        $b['sort_order'], $b['parent_block_id'],
                     ]
                 );
             }
 
-            // Tombstone blocks that were in the active set but not in the incoming data.
-            // Doc-level metadata blocks are never sent by the canvas serialiser — preserve them.
-            $docBlockTypes = ['doc-html', 'doc-head', 'doc-body'];
-            foreach ($activeByBlockId as $blockId => $oldRow) {
-                if (isset($incomingIds[$blockId])) {
-                    continue;
-                }
-                if (in_array($oldRow['block_type'], $docBlockTypes, true)) {
-                    continue;
-                }
-                if ($oldRow['is_deletion']) {
-                    continue; // already a tombstone
-                }
-                $this->db->execute(
-                    'UPDATE cruinn_draft_blocks SET is_active = 0 WHERE id = ?',
-                    [$oldRow['id']]
-                );
-                $this->db->execute(
-                    'INSERT INTO cruinn_draft_blocks
-                        (page_id, edit_seq, block_id, block_type, inner_html, css_props,
-                         block_config, sort_order, parent_block_id, is_active, is_deletion, prev_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?)',
-                    [
-                        $pageId, $newSeq,
-                        $blockId, $oldRow['block_type'], $oldRow['inner_html'],
-                        $oldRow['css_props'], $oldRow['block_config'],
-                        $oldRow['sort_order'], $oldRow['parent_block_id'], $oldRow['id'],
-                    ]
-                );
-            }
-
-            // Enforce 50-action history cap
+            // Enforce 50-action history cap: prune oldest seq if exceeded
             $seqCount = (int) $this->db->fetchColumn(
-                'SELECT COUNT(DISTINCT edit_seq) FROM cruinn_draft_blocks WHERE page_id = ?',
+                'SELECT COUNT(DISTINCT edit_seq) FROM pages_draft WHERE page_id = ?',
                 [$pageId]
             );
             if ($seqCount > 50) {
                 $oldest = (int) $this->db->fetchColumn(
-                    'SELECT MIN(edit_seq) FROM cruinn_draft_blocks WHERE page_id = ?',
+                    'SELECT MIN(edit_seq) FROM pages_draft WHERE page_id = ?',
                     [$pageId]
                 );
                 $this->db->execute(
-                    'DELETE FROM cruinn_draft_blocks WHERE page_id = ? AND edit_seq = ?',
+                    'DELETE FROM pages_draft WHERE page_id = ? AND edit_seq = ?',
                     [$pageId, $oldest]
                 );
             }
 
             $pdo->commit();
 
-            $updatedState = $this->db->fetch(
-                'SELECT * FROM cruinn_page_state WHERE page_id = ?',
-                [$pageId]
-            );
-
             $this->json([
                 'success'  => true,
                 'edit_seq' => $newSeq,
-                'can_undo' => (int) ($updatedState['current_edit_seq'] ?? 0) > 0,
-                'can_redo' => (int) ($updatedState['current_edit_seq'] ?? 0)
-                           <  (int) ($updatedState['max_edit_seq'] ?? 0),
+                'can_undo' => true,
+                'can_redo' => false,
             ]);
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -695,61 +624,52 @@ class CruinnController extends BaseController
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
-        $state = $this->db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-        if (!$state || (int) $state['current_edit_seq'] <= 0) {
+        $maxSeq = (int) $this->db->fetchColumn(
+            'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+        );
+        if ($maxSeq < 1) {
             $this->json(['error' => 'Nothing to undo'], 400);
         }
-
-        $currentSeq = (int) $state['current_edit_seq'];
 
         $pdo = $this->db->pdo();
         $pdo->beginTransaction();
         try {
-            $rows = $this->db->fetchAll(
-                'SELECT * FROM cruinn_draft_blocks
-                  WHERE page_id = ? AND edit_seq = ? AND is_active = 1',
-                [$pageId, $currentSeq]
-            );
-
-            foreach ($rows as $row) {
-                $this->db->execute(
-                    'UPDATE cruinn_draft_blocks SET is_active = 0 WHERE id = ?',
-                    [$row['id']]
-                );
-                if ($row['prev_id'] !== null) {
-                    $this->db->execute(
-                        'UPDATE cruinn_draft_blocks SET is_active = 1 WHERE id = ?',
-                        [$row['prev_id']]
-                    );
-                }
-                // If prev_id IS NULL the block simply vanishes from the active set (it was new)
-            }
-
-            $newSeq = $currentSeq - 1;
+            // Destructive undo: delete the most recent snapshot
             $this->db->execute(
-                'UPDATE cruinn_page_state SET current_edit_seq = ? WHERE page_id = ?',
-                [$newSeq, $pageId]
+                'DELETE FROM pages_draft WHERE page_id = ? AND edit_seq = ?',
+                [$pageId, $maxSeq]
             );
 
             $pdo->commit();
 
-            $activeBlocks = $this->db->fetchAll(
-                'SELECT * FROM cruinn_draft_blocks
-                  WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
-                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+            $newMax = (int) $this->db->fetchColumn(
+                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?',
                 [$pageId]
             );
 
-            $updatedState = $this->db->fetch(
-                'SELECT * FROM cruinn_page_state WHERE page_id = ?',
-                [$pageId]
-            );
+            if ($newMax > 0) {
+                // Return the previous snapshot
+                $activeBlocks = $this->db->fetchAll(
+                    'SELECT * FROM pages_draft
+                      WHERE page_id = ? AND edit_seq = ?
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                    [$pageId, $newMax]
+                );
+            } else {
+                // No draft remains: return published blocks
+                $activeBlocks = $this->db->fetchAll(
+                    'SELECT * FROM pages
+                      WHERE page_id = ?
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                    [$pageId]
+                );
+            }
 
             $this->json([
                 'success'  => true,
                 'blocks'   => $activeBlocks,
-                'can_undo' => $newSeq > 0,
-                'can_redo' => $newSeq < (int) ($updatedState['max_edit_seq'] ?? 0),
+                'can_undo' => $newMax >= 1,
+                'can_redo' => false,
             ]);
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -765,100 +685,42 @@ class CruinnController extends BaseController
     public function redo(string $pageId): void
     {
         $this->requireEditorAuth();
-        $pageId = (int) $pageId;
-
-        $state = $this->db->fetch('SELECT * FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-        if (!$state || (int) $state['current_edit_seq'] >= (int) $state['max_edit_seq']) {
-            $this->json(['error' => 'Nothing to redo'], 400);
-        }
-
-        $newSeq = (int) $state['current_edit_seq'] + 1;
-
-        $pdo = $this->db->pdo();
-        $pdo->beginTransaction();
-        try {
-            // These rows were deactivated by the previous undo
-            $rows = $this->db->fetchAll(
-                'SELECT * FROM cruinn_draft_blocks
-                  WHERE page_id = ? AND edit_seq = ? AND is_active = 0',
-                [$pageId, $newSeq]
-            );
-
-            foreach ($rows as $row) {
-                $this->db->execute(
-                    'UPDATE cruinn_draft_blocks SET is_active = 1 WHERE id = ?',
-                    [$row['id']]
-                );
-                if ($row['prev_id'] !== null) {
-                    $this->db->execute(
-                        'UPDATE cruinn_draft_blocks SET is_active = 0 WHERE id = ?',
-                        [$row['prev_id']]
-                    );
-                }
-            }
-
-            $this->db->execute(
-                'UPDATE cruinn_page_state SET current_edit_seq = ? WHERE page_id = ?',
-                [$newSeq, $pageId]
-            );
-
-            $pdo->commit();
-
-            $activeBlocks = $this->db->fetchAll(
-                'SELECT * FROM cruinn_draft_blocks
-                  WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
-                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$pageId]
-            );
-
-            $updatedState = $this->db->fetch(
-                'SELECT * FROM cruinn_page_state WHERE page_id = ?',
-                [$pageId]
-            );
-
-            $this->json([
-                'success'  => true,
-                'blocks'   => $activeBlocks,
-                'can_undo' => $newSeq > 0,
-                'can_redo' => $newSeq < (int) ($updatedState['max_edit_seq'] ?? 0),
-            ]);
-        } catch (\Throwable $e) {
-            $pdo->rollBack();
-            error_log('CruinnController::redo failed: ' . $e->getMessage());
-            $this->json(['error' => 'Redo failed'], 500);
-        }
+        $this->json(['error' => 'Redo is not supported'], 400);
     }
 
     /**
      * POST /admin/editor/{pageId}/publish
-     * Copy the current draft to cruinn_blocks (the published table).
+     * Copy the current draft to pages (the published table).
      */
     public function publish(string $pageId): void
     {
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
-        $page = $this->db->fetch('SELECT id, render_mode, render_file FROM pages WHERE id = ? LIMIT 1', [$pageId]);
+        $page = $this->db->fetch('SELECT id, render_mode, render_file FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
         if (!$page) {
             $this->json(['error' => 'Page not found'], 404);
         }
 
-        $renderMode = $page['render_mode'] ?? 'cruinn';
+        $renderMode = $page['render_mode'] ?? 'block';
 
         // ── File / HTML mode with imported blocks ─────────────────────────
         // If a draft exists (created by import or subsequent edits),
         // reconstruct the canonical HTML from block records.
         if (in_array($renderMode, ['html', 'file'], true)) {
-            $pageState = $this->db->fetch(
-                'SELECT page_id FROM cruinn_page_state WHERE page_id = ?', [$pageId]
-            );
+            $hasDraft = (int) $this->db->fetchColumn(
+                'SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]
+            ) > 0;
 
-            if ($pageState) {
+            if ($hasDraft) {
+                $maxSeq = (int) $this->db->fetchColumn(
+                    'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+                );
                 $flat = $this->db->fetchAll(
-                    'SELECT * FROM cruinn_draft_blocks
-                      WHERE page_id = ? AND is_active = 1 AND is_deletion = 0
+                    'SELECT * FROM pages_draft
+                      WHERE page_id = ? AND edit_seq = ?
                       ORDER BY sort_order ASC',
-                    [$pageId]
+                    [$pageId, $maxSeq]
                 );
 
                 $importSvc = new \Cruinn\Services\ImportService();
@@ -878,28 +740,27 @@ class CruinnController extends BaseController
                         }
                         // File-mode: the file is the source of truth. Clear all block
                         // tables so the next editor open re-imports fresh from the file.
-                        $this->db->execute('DELETE FROM cruinn_blocks WHERE page_id = ?', [$pageId]);
+                        $this->db->execute('DELETE FROM pages WHERE page_id = ?', [$pageId]);
                     } else {
                         $this->db->execute(
-                            "UPDATE pages SET body_html = ? WHERE id = ?",
+                            "UPDATE pages_index SET body_html = ? WHERE id = ?",
                             [$importSvc->reconstructFragment($flat), $pageId]
                         );
-                        // HTML mode: cruinn_blocks is the published state.
-                        $this->db->execute('DELETE FROM cruinn_blocks WHERE page_id = ?', [$pageId]);
+                        // HTML mode: pages is the published state.
+                        $this->db->execute('DELETE FROM pages WHERE page_id = ?', [$pageId]);
                         $this->db->execute(
-                            'INSERT INTO cruinn_blocks
+                            'INSERT INTO pages
                                  (block_id, page_id, block_type, inner_html, css_props,
                                   block_config, sort_order, parent_block_id)
                              SELECT block_id, page_id, block_type, inner_html, css_props,
                                     block_config, sort_order, parent_block_id
-                               FROM cruinn_draft_blocks
-                              WHERE page_id = ? AND is_active = 1 AND is_deletion = 0',
-                            [$pageId]
+                               FROM pages_draft
+                              WHERE page_id = ? AND edit_seq = ?',
+                            [$pageId, $maxSeq]
                         );
                     }
-                    $this->db->execute('DELETE FROM cruinn_draft_blocks WHERE page_id = ?', [$pageId]);
-                    $this->db->execute('DELETE FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-                    $this->db->execute("UPDATE pages SET status = 'published' WHERE id = ?", [$pageId]);
+                    $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+                    $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
 
                     $pdo->commit();
 
@@ -908,7 +769,7 @@ class CruinnController extends BaseController
                     // doc-html/doc-head/doc-body intact). Undo history is reset.
                     // Done after commit so it runs in its own transaction via persistImportedBlocks.
                     if ($renderMode === 'file' && isset($absPath) && $absPath !== '' && file_exists($absPath)) {
-                        $reimportPage = $this->db->fetch('SELECT * FROM pages WHERE id = ? LIMIT 1', [$pageId]);
+                        $reimportPage = $this->db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
                         if ($reimportPage) {
                             $reimportBlocks = $importSvc->autoImport($reimportPage, $pageId, $absPath);
                             if (!empty($reimportBlocks)) {
@@ -932,28 +793,29 @@ class CruinnController extends BaseController
                 $html = isset($body['html']) ? (string) $body['html'] : null;
                 if ($html !== null) {
                     $this->db->execute(
-                        "UPDATE pages SET body_html = ?, status = 'published' WHERE id = ?",
+                        "UPDATE pages_index SET body_html = ?, status = 'published' WHERE id = ?",
                         [$html, $pageId]
                     );
                 } else {
-                    $this->db->execute("UPDATE pages SET status = 'published' WHERE id = ?", [$pageId]);
+                    $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
                 }
                 $this->json(['success' => true]);
                 return;
             }
 
             // File mode, no draft: mark published only (file on disk is unchanged)
-            $this->db->execute("UPDATE pages SET status = 'published' WHERE id = ?", [$pageId]);
+            $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
             $this->json(['success' => true]);
             return;
         }
 
-        // ── Standard Cruinn block mode ────────────────────────────────────
-        // Only publish if a draft session exists — otherwise there is nothing to promote.
-        $pageState = $this->db->fetch('SELECT page_id FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-        if (!$pageState) {
+        // ── Standard block mode ────────────────────────────────────────────
+        $hasDraftBlock = (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]
+        ) > 0;
+        if (!$hasDraftBlock) {
             // No draft: page is already at its published state, nothing to do.
-            $this->db->execute("UPDATE pages SET status = 'published' WHERE id = ?", [$pageId]);
+            $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
             $this->json(['success' => true]);
             return;
         }
@@ -962,24 +824,23 @@ class CruinnController extends BaseController
         $pdo->beginTransaction();
         try {
             // Wipe existing published blocks for this page
-            $this->db->execute('DELETE FROM cruinn_blocks WHERE page_id = ?', [$pageId]);
+            $this->db->execute('DELETE FROM pages WHERE page_id = ?', [$pageId]);
 
-            // Copy active non-deleted draft blocks into published table
+            // Copy current draft snapshot into published table
             $this->db->execute(
-                'INSERT INTO cruinn_blocks
+                'INSERT INTO pages
                     (block_id, page_id, block_type, inner_html, css_props, block_config,
                      sort_order, parent_block_id)
                  SELECT block_id, page_id, block_type, inner_html, css_props, block_config,
                         sort_order, parent_block_id
-                   FROM cruinn_draft_blocks
-                  WHERE page_id = ? AND is_active = 1 AND is_deletion = 0',
-                [$pageId]
+                   FROM pages_draft
+                  WHERE page_id = ? AND edit_seq = (SELECT MAX(edit_seq) FROM pages_draft pd2 WHERE pd2.page_id = ?)',
+                [$pageId, $pageId]
             );
 
             // Clean up draft
-            $this->db->execute('DELETE FROM cruinn_draft_blocks WHERE page_id = ?', [$pageId]);
-            $this->db->execute('DELETE FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
-            $this->db->execute("UPDATE pages SET status = 'published' WHERE id = ?", [$pageId]);
+            $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+            $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
 
             $pdo->commit();
 
@@ -1008,24 +869,33 @@ class CruinnController extends BaseController
         $bodyAttrs = is_array($body['body_attrs'] ?? null) ? $body['body_attrs'] : null;
 
         if ($htmlAttrs !== null) {
+            $maxSeq = (int) $this->db->fetchColumn(
+                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+            );
             $this->db->execute(
-                "UPDATE cruinn_draft_blocks SET block_config = ?
-                  WHERE page_id = ? AND block_type = 'doc-html' AND is_active = 1",
-                [json_encode($htmlAttrs), $pageId]
+                "UPDATE pages_draft SET block_config = ?
+                  WHERE page_id = ? AND block_type = 'doc-html' AND edit_seq = ?",
+                [json_encode($htmlAttrs), $pageId, $maxSeq]
             );
         }
         if ($headHtml !== null) {
+            $maxSeq = $maxSeq ?? (int) $this->db->fetchColumn(
+                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+            );
             $this->db->execute(
-                "UPDATE cruinn_draft_blocks SET inner_html = ?
-                  WHERE page_id = ? AND block_type = 'doc-head' AND is_active = 1",
-                [$headHtml, $pageId]
+                "UPDATE pages_draft SET inner_html = ?
+                  WHERE page_id = ? AND block_type = 'doc-head' AND edit_seq = ?",
+                [$headHtml, $pageId, $maxSeq]
             );
         }
         if ($bodyAttrs !== null) {
+            $maxSeq = $maxSeq ?? (int) $this->db->fetchColumn(
+                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+            );
             $this->db->execute(
-                "UPDATE cruinn_draft_blocks SET block_config = ?
-                  WHERE page_id = ? AND block_type = 'doc-body' AND is_active = 1",
-                [json_encode($bodyAttrs), $pageId]
+                "UPDATE pages_draft SET block_config = ?
+                  WHERE page_id = ? AND block_type = 'doc-body' AND edit_seq = ?",
+                [json_encode($bodyAttrs), $pageId, $maxSeq]
             );
         }
 
@@ -1041,8 +911,53 @@ class CruinnController extends BaseController
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
-        $this->db->execute('DELETE FROM cruinn_draft_blocks WHERE page_id = ?', [$pageId]);
-        $this->db->execute('DELETE FROM cruinn_page_state WHERE page_id = ?', [$pageId]);
+        $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+
+        if (str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/')) {
+            $redirect = '/cms/editor?instance=__platform__&page=' . $pageId;
+        } else {
+            $redirect = '/admin/editor/' . $pageId . '/edit';
+        }
+        $this->json(['success' => true, 'redirect' => $redirect]);
+    }
+
+    /**
+     * POST /admin/editor/{pageId}/reload-source
+     * Clear draft state and rebuild draft from the page's source where possible.
+     */
+    public function reloadFromSource(string $pageId): void
+    {
+        $this->requireEditorAuth();
+        $pageId = (int) $pageId;
+
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
+        if (!$page) {
+            $this->json(['error' => 'Page not found'], 404);
+        }
+
+        $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+
+        $renderMode = $page['render_mode'] ?? 'block';
+        if (in_array($renderMode, ['html', 'file'], true)) {
+            $importSvc = new \Cruinn\Services\ImportService();
+            $absPath = null;
+
+            if ($renderMode === 'file') {
+                $filePath = $page['render_file'] ?? '';
+                if ($filePath !== '') {
+                    if (str_starts_with($filePath, '@cms/')) {
+                        $absPath = dirname(__DIR__, 2) . '/' . substr($filePath, 5);
+                    } else {
+                        $absPath = CRUINN_PUBLIC . $filePath;
+                    }
+                }
+            }
+
+            $blocks = $importSvc->autoImport($page, $pageId, $absPath);
+            if (!empty($blocks)) {
+                $importSvc->persistImportedBlocks($blocks, $pageId, $this->db);
+            }
+        }
 
         if (str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/')) {
             $redirect = '/cms/editor?instance=__platform__&page=' . $pageId;
@@ -1124,7 +1039,7 @@ class CruinnController extends BaseController
         $items = $this->db->fetchAll(
             'SELECT mi.*, p.slug AS page_slug
              FROM menu_items mi
-             LEFT JOIN pages p ON mi.page_id = p.id
+             LEFT JOIN pages_index p ON mi.page_id = p.id
              WHERE mi.menu_id = ? AND mi.is_active = 1
                AND (mi.parent_id IS NULL OR mi.parent_id = 0)
              ORDER BY mi.sort_order ASC',
@@ -1168,7 +1083,7 @@ class CruinnController extends BaseController
         }
 
         $page = $this->db->fetch(
-            'SELECT id FROM pages WHERE slug = ? LIMIT 1',
+            'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',
             ['_' . $zone]
         );
 

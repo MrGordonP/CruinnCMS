@@ -3,7 +3,7 @@
  * CruinnCMS — HTML Import Service
  *
  * Parses raw HTML (file or body fragment) into flat block records for
- * cruinn_draft_blocks. Every HTML element is mapped to a semantic Cruinn
+ * pages_draft. Every HTML element is mapped to a semantic Cruinn
  * block type based on its tag name.
  *
  * Document-level blocks (file mode only):
@@ -118,7 +118,7 @@ class ImportService
      */
     public function autoImport(array $page, int $pageId, ?string $absFilePath): array
     {
-        $renderMode = $page['render_mode'] ?? 'cruinn';
+        $renderMode = $page['render_mode'] ?? 'block';
         if (!in_array($renderMode, ['html', 'file'], true)) {
             return [];
         }
@@ -160,21 +160,12 @@ class ImportService
         $pdo = $db->pdo();
         $pdo->beginTransaction();
         try {
-            $db->execute(
-                'INSERT INTO cruinn_page_state
-                     (page_id, current_edit_seq, max_edit_seq, last_edited_at)
-                 VALUES (?, 1, 1, NOW())
-                 ON DUPLICATE KEY UPDATE
-                     current_edit_seq = 1, max_edit_seq = 1, last_edited_at = NOW()',
-                [$pageId]
-            );
             foreach ($blocks as $b) {
                 $db->execute(
-                    'INSERT INTO cruinn_draft_blocks
+                    'INSERT INTO pages_draft
                          (page_id, edit_seq, block_id, block_type, inner_html,
-                          css_props, block_config, sort_order, parent_block_id,
-                          is_active, is_deletion)
-                     VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1, 0)',
+                          css_props, block_config, sort_order, parent_block_id)
+                     VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?)',
                     [
                         $pageId, $b['block_id'], $b['block_type'],
                         $b['inner_html'], $b['css_props'], $b['block_config'],
@@ -191,7 +182,7 @@ class ImportService
 
     /**
      * Parse a full HTML document (render_mode='file') into block records.
-     * Returns array of rows ready for INSERT INTO cruinn_draft_blocks.
+     * Returns array of rows ready for INSERT INTO pages_draft.
      */
     public function parseDocument(string $html, int $pageId): array
     {

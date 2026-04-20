@@ -24,7 +24,7 @@ class SiteBuilderController extends BaseController
         // Content pages (exclude zone/template internal pages whose slug starts with _)
         $contentPages = $this->db->fetchAll(
             "SELECT p.*, u.display_name as author_name
-             FROM pages p
+             FROM pages_index p
              LEFT JOIN users u ON p.created_by = u.id
              WHERE p.slug NOT LIKE '\\_%'
              ORDER BY p.updated_at DESC"
@@ -33,14 +33,14 @@ class SiteBuilderController extends BaseController
         // Zone pages
         $headerPages = $this->db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM pages p
+             FROM pages_index p
              LEFT JOIN page_templates pt ON pt.canvas_page_id = p.id
              WHERE p.slug = '_header'
              LIMIT 5"
         );
         $footerPages = $this->db->fetchAll(
             "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM pages p
+             FROM pages_index p
              LEFT JOIN page_templates pt ON pt.canvas_page_id = p.id
              WHERE p.slug = '_footer'
              LIMIT 5"
@@ -49,7 +49,7 @@ class SiteBuilderController extends BaseController
         $templateCount = (int) ($this->db->fetch('SELECT COUNT(*) AS cnt FROM page_templates')['cnt'] ?? 0);
         $menuCount     = (int) ($this->db->fetch('SELECT COUNT(*) AS cnt FROM menus')['cnt'] ?? 0);
 
-        $homePage   = $this->db->fetch("SELECT id FROM pages WHERE slug = 'home' LIMIT 1");
+        $homePage   = $this->db->fetch("SELECT id FROM pages_index WHERE slug = 'home' LIMIT 1");
         $homePageId = $homePage ? (int)$homePage['id'] : null;
 
         $this->renderAdmin('admin/site-builder/pages', [
@@ -77,7 +77,7 @@ class SiteBuilderController extends BaseController
 
         foreach ($templates as &$tpl) {
             $usage = $this->db->fetch(
-                'SELECT COUNT(*) AS cnt FROM pages WHERE template = ?',
+                'SELECT COUNT(*) AS cnt FROM pages_index WHERE template = ?',
                 [$tpl['slug']]
             );
             $tpl['page_count'] = $usage['cnt'] ?? 0;
@@ -145,7 +145,7 @@ class SiteBuilderController extends BaseController
 
         if (!empty($tpl['canvas_page_id'])) {
             $existing = $this->db->fetch(
-                'SELECT id FROM pages WHERE id = ? LIMIT 1',
+                'SELECT id FROM pages_index WHERE id = ? LIMIT 1',
                 [(int) $tpl['canvas_page_id']]
             );
             if ($existing) {
@@ -155,7 +155,7 @@ class SiteBuilderController extends BaseController
         }
 
         $canvasSlug = '_tpl_' . $tpl['slug'];
-        $page = $this->db->fetch('SELECT id FROM pages WHERE slug = ? LIMIT 1', [$canvasSlug]);
+        $page = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ? LIMIT 1', [$canvasSlug]);
 
         if ($page) {
             $canvasPageId = (int) $page['id'];
@@ -191,7 +191,7 @@ class SiteBuilderController extends BaseController
         }
 
         $usage = $this->db->fetch(
-            'SELECT COUNT(*) AS cnt FROM pages WHERE template = ?',
+            'SELECT COUNT(*) AS cnt FROM pages_index WHERE template = ?',
             [$tpl['slug']]
         );
         if (($usage['cnt'] ?? 0) > 0) {
@@ -277,14 +277,14 @@ class SiteBuilderController extends BaseController
         }
 
         $usage = $this->db->fetch(
-            'SELECT COUNT(*) AS cnt FROM pages WHERE template = ?',
+            'SELECT COUNT(*) AS cnt FROM pages_index WHERE template = ?',
             [$tpl['slug']]
         );
         $tpl['page_count'] = $usage['cnt'] ?? 0;
         $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
 
         $pages = $this->db->fetchAll(
-            'SELECT id, title, slug, status FROM pages WHERE template = ? ORDER BY title LIMIT 20',
+            'SELECT id, title, slug, status FROM pages_index WHERE template = ? ORDER BY title LIMIT 20',
             [$tpl['slug']]
         );
 
@@ -524,7 +524,7 @@ class SiteBuilderController extends BaseController
     {
         $pages = $this->db->fetchAll(
             "SELECT p.*, u.display_name AS author_name
-             FROM pages p
+             FROM pages_index p
              LEFT JOIN users u ON p.created_by = u.id
              ORDER BY FIELD(p.status, 'published', 'draft', 'archived'), p.title"
         );

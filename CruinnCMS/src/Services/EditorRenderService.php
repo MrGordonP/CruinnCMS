@@ -92,11 +92,16 @@ class EditorRenderService
         string   $parentKey,
         array    $byId,
         array    $childrenOf,
-        Database $db
+        Database $db,
+        array    &$visited = []
     ): string {
         if (empty($childrenOf[$parentKey])) {
             return '';
         }
+        if (isset($visited[$parentKey])) {
+            return '<!-- cycle detected at ' . htmlspecialchars($parentKey, ENT_QUOTES, 'UTF-8') . ' -->';
+        }
+        $visited[$parentKey] = true;
 
         $html = '';
         foreach ($childrenOf[$parentKey] as $blockId) {
@@ -191,7 +196,7 @@ class EditorRenderService
             $innerContent  = BlockRegistry::isDynamic($row['block_type'])
                 ? BlockRegistry::renderDynamic($row, $db)
                 : ($row['inner_html'] ?? '');
-            $innerContent .= $this->renderTree($blockId, $byId, $childrenOf, $db);
+            $innerContent .= $this->renderTree($blockId, $byId, $childrenOf, $db, $visited);
 
             $html .= "<{$tag} id=\"{$id}\" data-block data-block-type=\"{$type}\"{$extraAttrs}>"
                    . $innerContent

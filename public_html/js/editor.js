@@ -40,6 +40,31 @@
             _htmlPageMode = true;
             enterCodeView({ html: wrap.dataset.htmlContent || '' });
         }
+        // Draft resume banner
+        if (wrap.dataset.hasDraft === '1') {
+            var draftBanner = document.getElementById('editor-draft-banner');
+            if (draftBanner) {
+                draftBanner.style.display = 'flex';
+                document.getElementById('editor-draft-continue-btn').addEventListener('click', function () {
+                    draftBanner.style.display = 'none';
+                });
+                document.getElementById('editor-draft-discard-btn').addEventListener('click', function () {
+                    var btn = this;
+                    btn.disabled = true;
+                    btn.textContent = 'Discarding\u2026';
+                    fetch(API_BASE + '/' + PAGE_ID + '/discard', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (data.redirect) { window.location.href = data.redirect; }
+                            else { btn.disabled = false; btn.textContent = 'Discard & reload published'; }
+                        })
+                        .catch(function () { btn.disabled = false; btn.textContent = 'Discard & reload published'; });
+                });
+            }
+        }
     });
 
     /**
@@ -1141,7 +1166,7 @@
 
     // Default CSS applied to new leaf blocks — portrait ISO proportions (≈ A4 at screen scale),
     // inline-block so that multiple blocks can sit side by side.
-    var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', minHeight: '368px', boxSizing: 'border-box' };
+    var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', boxSizing: 'border-box' };
 
     var BLOCK_DEFS = {
         'text': { tag: 'div', inner: '<p>New text block.</p>', initCss: PORTRAIT_INIT },
@@ -1159,7 +1184,7 @@
                 return '<div data-block data-block-type="site-logo" id="' + newId() + '"><a href="/"><img src="" alt="Site Logo"></a></div>' +
                     '<div data-block data-block-type="site-title" id="' + newId() + '"><h1 class="site-name">Site Name</h1><p class="site-tagline"></p></div>' +
                     '<nav data-block data-block-type="nav-menu" id="' + newId() + '" data-block-config="{&quot;menu_id&quot;:&quot;&quot;}"></nav>';
-            }, isLayout: true, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: '120px', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
+            }, isLayout: true, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
         },
         'gallery': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
         'html': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
@@ -1170,7 +1195,7 @@
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include — visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
-            initCss: { display: 'block', width: '100%', minHeight: '120px', boxSizing: 'border-box' }
+            initCss: { display: 'block', width: '100%', boxSizing: 'border-box' }
         },
     };
 
@@ -1668,9 +1693,7 @@
 
     function showDraftBadge(hasDraft) {
         var badge = document.querySelector('.editor-draft-badge');
-        var discardBtn = document.getElementById('editor-discard-btn');
         if (badge) { badge.style.display = hasDraft ? '' : 'none'; }
-        if (discardBtn) { discardBtn.disabled = !hasDraft; }
     }
 
     // ── Section K — Publish / Discard ────────────────────────────────
@@ -1721,7 +1744,7 @@
         var discardBtn = document.getElementById('editor-discard-btn');
         if (discardBtn) {
             discardBtn.addEventListener('click', function () {
-                if (!window.confirm('Discard all draft changes and revert to published state?')) { return; }
+                if (!window.confirm('Clear all draft history for this page?')) { return; }
                 fetch(API_BASE + '/' + PAGE_ID + '/discard', {
                     method: 'POST',
                     headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
@@ -1734,6 +1757,26 @@
                     })
                     .catch(function (err) {
                         console.error('discard failed:', err);
+                    });
+            });
+        }
+
+        var reloadSourceBtn = document.getElementById('editor-reload-source-btn');
+        if (reloadSourceBtn) {
+            reloadSourceBtn.addEventListener('click', function () {
+                if (!window.confirm('Reload from source? This will clear current draft history first.')) { return; }
+                fetch(API_BASE + '/' + PAGE_ID + '/reload-source', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('reload source failed:', err);
                     });
             });
         }

@@ -19,7 +19,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     {
         $pages = $this->db->fetchAll(
             "SELECT p.*, u.display_name as author_name
-             FROM pages p
+             FROM pages_index p
              LEFT JOIN users u ON p.created_by = u.id
              WHERE p.slug NOT LIKE '\_%'
              ORDER BY p.updated_at DESC"
@@ -66,15 +66,15 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
         $slug = $this->sanitiseSlug($this->input('slug'));
 
         // Check for duplicate slug
-        $existing = $this->db->fetch('SELECT id FROM pages WHERE slug = ?', [$slug]);
+        $existing = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ?', [$slug]);
         if ($existing) {
             Auth::flash('error', 'A page with that URL slug already exists.');
             $this->redirect('/admin/pages/new');
         }
 
-        $renderMode = $this->input('render_mode', 'cruinn');
-        if (!in_array($renderMode, ['cruinn', 'html', 'file'], true)) {
-            $renderMode = 'cruinn';
+        $renderMode = $this->input('render_mode', 'block');
+        if (!in_array($renderMode, ['block', 'html', 'file'], true)) {
+            $renderMode = 'block';
         }
 
         $id = $this->db->insert('pages', [
@@ -113,7 +113,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function updatePage(string $id): void
     {
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
             $this->redirect('/admin/pages');
@@ -122,15 +122,15 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
         $slug = $this->sanitiseSlug($this->input('slug'));
 
         // Check slug uniqueness (excluding this page)
-        $existing = $this->db->fetch('SELECT id FROM pages WHERE slug = ? AND id != ?', [$slug, $id]);
+        $existing = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ? AND id != ?', [$slug, $id]);
         if ($existing) {
             Auth::flash('error', 'A page with that URL slug already exists.');
             $this->redirect("/admin/pages/{$id}/edit");
         }
 
-        $renderMode = $this->input('render_mode', $page['render_mode'] ?? 'cruinn');
-        if (!in_array($renderMode, ['cruinn', 'html', 'file'], true)) {
-            $renderMode = 'cruinn';
+        $renderMode = $this->input('render_mode', $page['render_mode'] ?? 'block');
+        if (!in_array($renderMode, ['block', 'html', 'file'], true)) {
+            $renderMode = 'block';
         }
 
         $this->db->update('pages', [
@@ -153,7 +153,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function deletePage(string $id): void
     {
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
             $this->redirect('/admin/pages');
@@ -175,7 +175,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     public function htmlEditor(string $id): void
     {
         Auth::requireRole('admin');
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
             $this->redirect('/admin/pages');
@@ -194,7 +194,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     public function saveHtml(string $id): void
     {
         Auth::requireRole('admin');
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             http_response_code(404);
             $this->json(['error' => 'Page not found']);
@@ -217,12 +217,12 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     /**
      * POST /admin/pages/{id}/convert-to-blocks
      * Parse the page's body_html into Cruinn blocks, persist as a draft,
-     * flip render_mode to 'cruinn', and redirect to the block editor.
+     * flip render_mode to 'block', and redirect to the block editor.
      */
     public function convertToBlocks(string $id): void
     {
         Auth::requireRole('admin');
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
             $this->redirect('/admin/pages');
@@ -244,7 +244,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
         $importSvc->persistImportedBlocks($blocks, (int) $id, $this->db);
 
         $this->db->update('pages', [
-            'render_mode' => 'cruinn',
+            'render_mode' => 'block',
             'updated_at'  => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);
 
@@ -260,7 +260,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     public function exportHtml(string $id): void
     {
         Auth::requireRole('admin');
-        $page = $this->db->fetch('SELECT * FROM pages WHERE id = ?', [$id]);
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
             $this->redirect('/admin/pages');

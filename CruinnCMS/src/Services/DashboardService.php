@@ -172,7 +172,7 @@ class DashboardService
     {
         $db = Database::getInstance();
         $stats = [
-            'pages'    => $db->fetchColumn('SELECT COUNT(*) FROM pages'),
+            'pages'    => $db->fetchColumn('SELECT COUNT(*) FROM pages_index'),
             'users'    => $db->fetchColumn('SELECT COUNT(*) FROM users'),
             'subjects' => $db->fetchColumn('SELECT COUNT(*) FROM subjects'),
         ];
