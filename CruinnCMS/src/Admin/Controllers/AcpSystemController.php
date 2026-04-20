@@ -313,40 +313,26 @@ class AcpSystemController extends BaseController
 
     public function exportDatabase(): void
     {
-        $dbName = App::config('db.name');
-        $dbHost = App::config('db.host');
-        $dbUser = App::config('db.user');
-        $dbPass = App::config('db.password');
+        Auth::requireRole('admin');
 
+        $dbName   = App::config('db.name');
         $filename = $dbName . '_' . date('Y-m-d_His') . '.sql';
-        $tmpFile = sys_get_temp_dir() . '/' . $filename;
-
-        $cmd = sprintf(
-            'mysqldump -h %s -u %s -p%s %s > %s 2>&1',
-            escapeshellarg($dbHost),
-            escapeshellarg($dbUser),
-            escapeshellarg($dbPass),
-            escapeshellarg($dbName),
-            escapeshellarg($tmpFile)
-        );
-
-        exec($cmd, $output, $returnCode);
-
-        if ($returnCode !== 0 || !file_exists($tmpFile)) {
-            Auth::flash('error', 'Database export failed. Check server logs.');
-            $this->redirect('/admin/settings/database');
-        }
 
         header('Content-Type: application/sql');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Content-Length: ' . filesize($tmpFile));
-        readfile($tmpFile);
-        unlink($tmpFile);
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+
+        $out = fopen('php://output', 'wb');
+        $this->dumpDatabaseSql($out);
+        fclose($out);
         exit;
     }
 
     public function exportInstance(): void
     {
+        Auth::requireRole('admin');
+
         if (!class_exists('ZipArchive')) {
             Auth::flash('error', 'PHP ZipArchive extension is not available on this server.');
             $this->redirect('/admin/settings/database');
@@ -354,28 +340,22 @@ class AcpSystemController extends BaseController
 
         $includeMedia = !empty($_POST['include_media']);
 
-        $dbName = App::config('db.name');
-        $dbHost = App::config('db.host');
-        $dbUser = App::config('db.user');
-        $dbPass = App::config('db.password');
-
+        $dbName  = App::config('db.name');
         $tmpDir  = sys_get_temp_dir();
         $sqlFile = $tmpDir . '/' . $dbName . '_' . date('Y-m-d_His') . '.sql';
         $zipFile = $tmpDir . '/cms-instance-' . date('Y-m-d_His') . '.zip';
 
-        $cmd = sprintf(
-            'mysqldump -h %s -u %s -p%s --single-transaction --routines %s > %s 2>&1',
-            escapeshellarg($dbHost),
-            escapeshellarg($dbUser),
-            escapeshellarg($dbPass),
-            escapeshellarg($dbName),
-            escapeshellarg($sqlFile)
-        );
+        // Pure-PHP dump — no exec/mysqldump required
+        $fh = fopen($sqlFile, 'wb');
+        if ($fh === false) {
+            Auth::flash('error', 'Could not write to temp directory.');
+            $this->redirect('/admin/settings/database');
+        }
+        $this->dumpDatabaseSql($fh);
+        fclose($fh);
 
-        exec($cmd, $output, $returnCode);
-
-        if ($returnCode !== 0 || !file_exists($sqlFile)) {
-            Auth::flash('error', 'Database dump failed. ' . implode(' ', $output));
+        if (!file_exists($sqlFile) || filesize($sqlFile) === 0) {
+            Auth::flash('error', 'Database dump produced no output.');
             $this->redirect('/admin/settings/database');
         }
 
@@ -433,6 +413,88 @@ class AcpSystemController extends BaseController
     }
 
     // ── Database Editor ───────────────────────────────────────────
+
+    /**
+     * Pure-PHP MySQL dump. Writes a complete, importable SQL file to $fh.
+     * No exec(), no mysqldump binary — works on any shared host.
+     *
+     * @param resource $fh  Writable stream (php://output or a file handle)
+     */
+    private function dumpDatabaseSql($fh): void
+    {
+        $db     = Database::getInstance();
+        $pdo    = $db->pdo();
+        $dbName = App::config('db.name');
+
+        $write = fn(string $s) => fwrite($fh, $s);
+
+        $write("-- CruinnCMS Database Dump\n");
+        $write('-- Generated: ' . date('Y-m-d H:i:s') . "\n");
+        $write('-- Database:  ' . $dbName . "\n");
+        $write("\nSET NAMES utf8mb4;\n");
+        $write("SET FOREIGN_KEY_CHECKS = 0;\n");
+        $write("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';\n\n");
+
+        // Table list (sorted for stable output)
+        $tables = $this->getTableNames($db, $dbName);
+        sort($tables);
+
+        foreach ($tables as $table) {
+            // DROP + CREATE
+            $write("-- ----------------------------\n");
+            $write('-- Table: ' . $table . "\n");
+            $write("-- ----------------------------\n");
+            $write('DROP TABLE IF EXISTS `' . $table . '`;' . "\n");
+
+            $row = $pdo->query('SHOW CREATE TABLE `' . $table . '`')->fetch(\PDO::FETCH_NUM);
+            $write($row[1] . ";\n\n");
+
+            // Row count
+            $count = (int) $pdo->query('SELECT COUNT(*) FROM `' . $table . '`')->fetchColumn();
+            if ($count === 0) {
+                continue;
+            }
+
+            // Fetch columns for header
+            $colStmt = $pdo->query('SELECT * FROM `' . $table . '` LIMIT 0');
+            $colCount = $colStmt->columnCount();
+            $cols = [];
+            for ($i = 0; $i < $colCount; $i++) {
+                $meta = $colStmt->getColumnMeta($i);
+                $cols[] = '`' . $meta['name'] . '`';
+            }
+            $colList = implode(', ', $cols);
+
+            // Stream rows in batches of 500
+            $offset = 0;
+            $batch  = 500;
+            while ($offset < $count) {
+                $stmt = $pdo->query('SELECT * FROM `' . $table . '` LIMIT ' . $batch . ' OFFSET ' . $offset);
+                $rows = $stmt->fetchAll(\PDO::FETCH_NUM);
+                if (empty($rows)) {
+                    break;
+                }
+
+                $values = [];
+                foreach ($rows as $r) {
+                    $escaped = array_map(function ($v) use ($pdo) {
+                        if ($v === null) return 'NULL';
+                        return $pdo->quote((string) $v);
+                    }, $r);
+                    $values[] = '(' . implode(', ', $escaped) . ')';
+                }
+
+                $write('INSERT INTO `' . $table . '` (' . $colList . ") VALUES\n");
+                $write(implode(",\n", $values) . ";\n");
+
+                $offset += $batch;
+            }
+            $write("\n");
+        }
+
+        $write("SET FOREIGN_KEY_CHECKS = 1;\n");
+        $write("-- End of dump\n");
+    }
 
     /** Validate table name against information_schema and return list of valid table names. */
     private function getTableNames(Database $db, string $dbName): array
