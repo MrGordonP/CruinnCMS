@@ -9,16 +9,16 @@
 
     // ── Private state ──────────────────────────────────────────
 
-    var modal        = null;
-    var grid         = null;
-    var pathEl       = null;
-    var searchInput  = null;
-    var uploadInput  = null;
-    var selectBtn    = null;
-    var deleteBtn    = null;
+    var modal = null;
+    var grid = null;
+    var pathEl = null;
+    var searchInput = null;
+    var uploadInput = null;
+    var selectBtn = null;
+    var deleteBtn = null;
 
-    var mediaCallback      = null;
-    var mediaSelected      = null;   // selected file URL
+    var mediaCallback = null;
+    var mediaSelected = null;   // selected file URL
     var mediaCurrentFolder = '';
 
     // ── Private helpers ────────────────────────────────────────
@@ -35,15 +35,15 @@
 
     function closeMediaBrowser() {
         if (modal) { modal.style.display = 'none'; }
-        mediaCallback      = null;
-        mediaSelected      = null;
+        mediaCallback = null;
+        mediaSelected = null;
         mediaCurrentFolder = '';
         updateSelectBtn();
     }
 
     function loadMediaGrid(folder) {
         mediaCurrentFolder = folder || '';
-        mediaSelected      = null;
+        mediaSelected = null;
         updateSelectBtn();
 
         if (pathEl) {
@@ -62,8 +62,8 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 var folders = data.folders || [];
-                var files   = data.files   || [];
-                var parent  = data.parent !== undefined ? data.parent : null;
+                var files = data.files || [];
+                var parent = data.parent !== undefined ? data.parent : null;
                 grid.innerHTML = '';
 
                 // Up navigation
@@ -96,9 +96,9 @@
                 // Image items
                 files.forEach(function (file) {
                     var fileUrl = file.url || file;
-                    var name    = file.name || fileUrl.split('/').pop();
-                    var item    = document.createElement('div');
-                    item.className   = 'media-item';
+                    var name = file.name || fileUrl.split('/').pop();
+                    var item = document.createElement('div');
+                    item.className = 'media-item';
                     item.dataset.url = fileUrl;
                     item.innerHTML = '<img src="' + Cruinn.escapeAttr(fileUrl) + '" alt="' + Cruinn.escapeAttr(name) + '">'
                         + '<div class="media-item-name">' + Cruinn.escapeHtml(name) + '</div>';
@@ -137,9 +137,9 @@
                 }
                 files.forEach(function (file) {
                     var fileUrl = file.url;
-                    var name    = file.name;
-                    var item    = document.createElement('div');
-                    item.className   = 'media-item';
+                    var name = file.name;
+                    var item = document.createElement('div');
+                    item.className = 'media-item';
                     item.dataset.url = fileUrl;
                     item.innerHTML = '<img src="' + Cruinn.escapeAttr(fileUrl) + '" alt="' + Cruinn.escapeAttr(name) + '">'
                         + '<div class="media-item-name">' + Cruinn.escapeHtml(name) + '</div>';
@@ -181,13 +181,13 @@
      * Bind all event handlers. Called once after DOMContentLoaded.
      */
     Cruinn.initMediaBrowser = function () {
-        modal       = document.getElementById('media-modal');
-        grid        = document.getElementById('media-grid');
-        pathEl      = document.getElementById('media-modal-path');
+        modal = document.getElementById('media-modal');
+        grid = document.getElementById('media-grid');
+        pathEl = document.getElementById('media-modal-path');
         searchInput = document.getElementById('media-search');
         uploadInput = document.getElementById('media-modal-upload');
-        selectBtn   = document.getElementById('media-modal-select-btn');
-        deleteBtn   = document.getElementById('media-modal-delete-btn');
+        selectBtn = document.getElementById('media-modal-select-btn');
+        deleteBtn = document.getElementById('media-modal-delete-btn');
 
         if (!modal) { return; }
 
@@ -260,7 +260,7 @@
                     .catch(function () { alert('Failed to delete file.'); });
             } else if (mediaCurrentFolder) {
                 if (!confirm('Delete this folder? It must be empty.')) { return; }
-                var parts      = mediaCurrentFolder.replace(/\/$/, '').split('/');
+                var parts = mediaCurrentFolder.replace(/\/$/, '').split('/');
                 parts.pop();
                 var parentPath = parts.join('/');
                 if (/^\/storage\/[^/]+\/media$/.test(parentPath)) { parentPath = ''; }
