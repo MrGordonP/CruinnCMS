@@ -68,6 +68,9 @@ return function (Cruinn\Router $router) {
     $router->get('/login',            [AuthController::class, 'showLogin']);
     $router->post('/login',           [AuthController::class, 'login']);
     $router->get('/logout',           [AuthController::class, 'logout']);
+    $router->get('/register',         [AuthController::class, 'showRegister']);
+    $router->post('/register',        [AuthController::class, 'register']);
+    $router->get('/verify-email/{token}', [AuthController::class, 'verifyEmail']);
 
     // -- Password Reset ---------------------------------------------
     $router->get('/forgot-password',           [AuthController::class, 'showForgotPassword']);

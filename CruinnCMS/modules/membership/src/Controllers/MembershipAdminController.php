@@ -240,6 +240,92 @@ class MembershipAdminController extends BaseController
         $this->redirect('/admin/membership');
     }
 
+    public function importForm(): void
+    {
+        Auth::requireRole('admin');
+
+        $this->renderAdmin('admin/membership/members/import', [
+            'title'       => 'Import Members',
+            'plans'       => $this->membership->allPlans(true),
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Import']],
+        ]);
+    }
+
+    public function processImport(): void
+    {
+        Auth::requireRole('admin');
+
+        // Validate uploaded file
+        if (empty($_FILES['csv_file']['tmp_name']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            Auth::flash('error', 'No file uploaded or upload error.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $tmpPath = $_FILES['csv_file']['tmp_name'];
+        $mimeOk = in_array($_FILES['csv_file']['type'], ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'], true);
+        $nameOk  = preg_match('/\.csv$/i', (string) $_FILES['csv_file']['name']) === 1;
+
+        if (!$mimeOk && !$nameOk) {
+            Auth::flash('error', 'Uploaded file must be a CSV.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $handle = fopen($tmpPath, 'r');
+        if ($handle === false) {
+            Auth::flash('error', 'Could not read uploaded file.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        // Read headers
+        $rawHeaders = fgetcsv($handle);
+        if (!$rawHeaders) {
+            fclose($handle);
+            Auth::flash('error', 'CSV file appears to be empty.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $headers = array_map(fn($h) => strtolower(trim((string) $h)), $rawHeaders);
+
+        // Read all rows
+        $rows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) === count($headers)) {
+                $rows[] = array_combine($headers, $row);
+            }
+        }
+        fclose($handle);
+
+        if (empty($rows)) {
+            Auth::flash('error', 'CSV file contains no data rows.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $onDuplicate = (string) $this->input('on_duplicate', 'skip');
+        if (!in_array($onDuplicate, ['skip', 'update'], true)) {
+            $onDuplicate = 'skip';
+        }
+
+        $defaultStatus = (string) $this->input('default_status', 'applicant');
+        $allowedStatuses = ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
+        if (!in_array($defaultStatus, $allowedStatuses, true)) {
+            $defaultStatus = 'applicant';
+        }
+
+        $result = $this->membership->importMembers($rows, $onDuplicate, $defaultStatus);
+
+        $this->logActivity('import', 'member', null,
+            sprintf('CSV import: %d created, %d updated, %d skipped, %d errors.', 
+                $result['created'], $result['updated'], $result['skipped'], count($result['errors']))
+        );
+
+        $this->renderAdmin('admin/membership/members/import', [
+            'title'       => 'Import Members',
+            'plans'       => $this->membership->allPlans(true),
+            'result'      => $result,
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Import']],
+        ]);
+    }
+
     public function listPlans(): void
     {
         Auth::requireRole('admin');

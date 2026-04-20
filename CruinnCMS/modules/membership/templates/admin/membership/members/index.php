@@ -7,6 +7,7 @@
     </div>
     <div style="display:flex;gap:0.5rem;">
         <a class="btn btn-outline" href="<?= url('/admin/membership/plans') ?>">Plans</a>
+        <a class="btn btn-outline" href="<?= url('/admin/membership/import') ?>">Import CSV</a>
         <a class="btn btn-primary" href="<?= url('/admin/membership/members/new') ?>">New Member</a>
     </div>
 </div>

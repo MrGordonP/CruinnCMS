@@ -3,7 +3,7 @@
  * CruinnCMS — OAuth Service
  *
  * Handles OAuth 2.0 / OAuth 1.0a flows for social login.
- * Supported providers: Google, Facebook, X (Twitter).
+ * Supported providers: Google, Facebook, X (Twitter), GitHub, Microsoft, LinkedIn.
  *
  * Each provider flow:
  *  1. Build authorisation URL → redirect user
@@ -40,6 +40,27 @@ class OAuthService
             'profile_url'  => 'https://api.x.com/2/users/me?user.fields=id,name,username,profile_image_url',
             'scope'        => 'users.read tweet.read offline.access',
             'label'        => 'X',
+        ],
+        'github' => [
+            'auth_url'    => 'https://github.com/login/oauth/authorize',
+            'token_url'   => 'https://github.com/login/oauth/access_token',
+            'profile_url' => 'https://api.github.com/user',
+            'scope'       => 'read:user user:email',
+            'label'       => 'GitHub',
+        ],
+        'microsoft' => [
+            'auth_url'    => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+            'token_url'   => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+            'profile_url' => 'https://graph.microsoft.com/oidc/userinfo',
+            'scope'       => 'openid profile email',
+            'label'       => 'Microsoft',
+        ],
+        'linkedin' => [
+            'auth_url'    => 'https://www.linkedin.com/oauth/v2/authorization',
+            'token_url'   => 'https://www.linkedin.com/oauth/v2/accessToken',
+            'profile_url' => 'https://api.linkedin.com/v2/userinfo',
+            'scope'       => 'openid profile email',
+            'label'       => 'LinkedIn',
         ],
     ];
 
@@ -164,6 +185,11 @@ class OAuthService
 
         $headers = ['Content-Type: application/x-www-form-urlencoded'];
 
+        // GitHub token exchange returns form-encoded by default — request JSON
+        if ($provider === 'github') {
+            $headers[] = 'Accept: application/json';
+        }
+
         // Twitter requires Basic auth header for token exchange
         if ($provider === 'twitter') {
             $credentials = base64_encode($cfg['client_id'] . ':' . $cfg['client_secret']);
@@ -186,8 +212,15 @@ class OAuthService
 
     private static function fetchProfile(string $provider, string $accessToken): array
     {
-        $meta     = self::PROVIDERS[$provider];
-        $headers  = ['Authorization: Bearer ' . $accessToken];
+        $meta    = self::PROVIDERS[$provider];
+        $headers = ['Authorization: Bearer ' . $accessToken];
+
+        // GitHub API requires a User-Agent header
+        if ($provider === 'github') {
+            $headers[] = 'User-Agent: CruinnCMS';
+            $headers[] = 'Accept: application/json';
+        }
+
         $response = self::httpGet($meta['profile_url'], $headers);
         $data     = json_decode($response, true);
 
@@ -196,9 +229,12 @@ class OAuthService
         }
 
         return match ($provider) {
-            'google'   => self::normaliseGoogle($data),
-            'facebook' => self::normaliseFacebook($data),
-            'twitter'  => self::normaliseTwitter($data),
+            'google'    => self::normaliseGoogle($data),
+            'facebook'  => self::normaliseFacebook($data),
+            'twitter'   => self::normaliseTwitter($data),
+            'github'    => self::normaliseGitHub($data, $accessToken),
+            'microsoft' => self::normaliseMicrosoft($data),
+            'linkedin'  => self::normaliseLinkedIn($data),
         };
     }
 
@@ -230,6 +266,60 @@ class OAuthService
             'email'  => null, // Twitter v2 doesn't return email by default
             'name'   => $user['name'] ?? $user['username'] ?? null,
             'avatar' => $user['profile_image_url'] ?? null,
+        ];
+    }
+
+    private static function normaliseGitHub(array $data, string $accessToken): array
+    {
+        $email = $data['email'] ?? null;
+
+        // If the user's email is private on GitHub, fetch from the emails endpoint
+        if (empty($email)) {
+            try {
+                $emailsJson = self::httpGet(
+                    'https://api.github.com/user/emails',
+                    ['Authorization: Bearer ' . $accessToken, 'Accept: application/json', 'User-Agent: CruinnCMS']
+                );
+                $emails = json_decode($emailsJson, true);
+                if (is_array($emails)) {
+                    // Prefer primary + verified address
+                    foreach ($emails as $e) {
+                        if (!empty($e['primary']) && !empty($e['verified'])) {
+                            $email = $e['email'];
+                            break;
+                        }
+                    }
+                }
+            } catch (\RuntimeException) {
+                // Non-fatal — proceed without email
+            }
+        }
+
+        return [
+            'uid'    => (string) $data['id'],
+            'email'  => $email,
+            'name'   => $data['name'] ?? $data['login'] ?? null,
+            'avatar' => $data['avatar_url'] ?? null,
+        ];
+    }
+
+    private static function normaliseMicrosoft(array $data): array
+    {
+        return [
+            'uid'    => $data['sub'],
+            'email'  => $data['email'] ?? null,
+            'name'   => $data['name'] ?? null,
+            'avatar' => $data['picture'] ?? null,
+        ];
+    }
+
+    private static function normaliseLinkedIn(array $data): array
+    {
+        return [
+            'uid'    => $data['sub'],
+            'email'  => $data['email'] ?? null,
+            'name'   => $data['name'] ?? null,
+            'avatar' => $data['picture'] ?? null,
         ];
     }
 

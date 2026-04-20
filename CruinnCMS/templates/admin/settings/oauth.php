@@ -61,6 +61,60 @@
         </div>
     </fieldset>
 
+    <fieldset class="acp-fieldset">
+        <legend>GitHub</legend>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="oauth_github_client_id">Client ID</label>
+                <input type="text" id="oauth_github_client_id" name="oauth_github_client_id" class="form-input"
+                       value="<?= e($settings['oauth.github.client_id'] ?? '') ?>">
+            </div>
+            <div class="form-group">
+                <label for="oauth_github_client_secret">Client Secret</label>
+                <input type="password" id="oauth_github_client_secret" name="oauth_github_client_secret" class="form-input"
+                       value=""
+                       placeholder="<?= !empty($settings['oauth.github.client_secret']) ? '••••••••' : '' ?>">
+                <small class="form-help">Leave blank to keep current secret.</small>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset class="acp-fieldset">
+        <legend>Microsoft</legend>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="oauth_microsoft_client_id">Application (Client) ID</label>
+                <input type="text" id="oauth_microsoft_client_id" name="oauth_microsoft_client_id" class="form-input"
+                       value="<?= e($settings['oauth.microsoft.client_id'] ?? '') ?>">
+            </div>
+            <div class="form-group">
+                <label for="oauth_microsoft_client_secret">Client Secret</label>
+                <input type="password" id="oauth_microsoft_client_secret" name="oauth_microsoft_client_secret" class="form-input"
+                       value=""
+                       placeholder="<?= !empty($settings['oauth.microsoft.client_secret']) ? '••••••••' : '' ?>">
+                <small class="form-help">Leave blank to keep current secret.</small>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset class="acp-fieldset">
+        <legend>LinkedIn</legend>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="oauth_linkedin_client_id">Client ID</label>
+                <input type="text" id="oauth_linkedin_client_id" name="oauth_linkedin_client_id" class="form-input"
+                       value="<?= e($settings['oauth.linkedin.client_id'] ?? '') ?>">
+            </div>
+            <div class="form-group">
+                <label for="oauth_linkedin_client_secret">Client Secret</label>
+                <input type="password" id="oauth_linkedin_client_secret" name="oauth_linkedin_client_secret" class="form-input"
+                       value=""
+                       placeholder="<?= !empty($settings['oauth.linkedin.client_secret']) ? '••••••••' : '' ?>">
+                <small class="form-help">Leave blank to keep current secret.</small>
+            </div>
+        </div>
+    </fieldset>
+
     <div class="form-actions">
         <button type="submit" class="btn btn-primary">Save OAuth Settings</button>
     </div>

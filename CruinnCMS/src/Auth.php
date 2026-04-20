@@ -51,6 +51,18 @@ class Auth
     public static function attempt(string $email, string $password): array|false
     {
         $db = Database::getInstance();
+
+        // Check for unverified account first — surface a helpful message rather than
+        // generic "invalid credentials" which would leave the user confused.
+        $unverified = $db->fetch(
+            'SELECT id FROM users WHERE email = ? AND active = 0 LIMIT 1',
+            [strtolower(trim($email))]
+        );
+        if ($unverified) {
+            $_SESSION['_login_error'] = 'unverified';
+            return false;
+        }
+
         $user = $db->fetch(
             'SELECT * FROM users WHERE email = ? AND active = 1 LIMIT 1',
             [strtolower(trim($email))]

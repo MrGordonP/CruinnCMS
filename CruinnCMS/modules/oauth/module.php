@@ -12,6 +12,7 @@ return [
     'provides'     => ['oauth'],
     'migrations'   => [
         __DIR__ . '/migrations/001_oauth_core.sql',
+        __DIR__ . '/migrations/002_oauth_email_verify.sql',
     ],
     'template_path' => null,
 

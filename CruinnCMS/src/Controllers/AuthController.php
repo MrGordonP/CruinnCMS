@@ -67,6 +67,8 @@ class AuthController extends BaseController
 
         if ($loginError === 'locked') {
             Auth::flash('error', 'Your account has been temporarily locked due to too many failed login attempts. Please try again later or reset your password.');
+        } elseif ($loginError === 'unverified') {
+            Auth::flash('error', 'Please verify your email address before logging in. Check your inbox for the verification link.');
         } else {
             Auth::flash('error', 'Invalid email or password.');
         }
@@ -347,5 +349,201 @@ class AuthController extends BaseController
             'member'  => '/profile',
             default   => '/',
         };
+    }
+
+    // ── Registration ───────────────────────────────────────────────
+
+    /**
+     * GET /register — Show the registration form.
+     */
+    public function showRegister(): void
+    {
+        if (Auth::check()) {
+            $this->redirect($this->defaultRedirectForRole());
+        }
+
+        $this->render('public/register', [
+            'title'          => 'Create Account',
+            'oauth_providers' => OAuthService::enabledProviders(),
+        ]);
+    }
+
+    /**
+     * POST /register — Create a new account and send verification email.
+     */
+    public function register(): void
+    {
+        if (Auth::check()) {
+            $this->redirect($this->defaultRedirectForRole());
+        }
+
+        $displayName = trim($this->input('display_name', ''));
+        $email       = strtolower(trim($this->input('email', '')));
+        $password    = $this->input('password', '');
+        $confirm     = $this->input('password_confirm', '');
+
+        $errors = [];
+
+        if (empty($displayName)) {
+            $errors['display_name'] = 'Please enter your name.';
+        }
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $errors['email'] = 'Please enter a valid email address.';
+        } else {
+            $existing = $this->db->fetchColumn(
+                'SELECT COUNT(*) FROM users WHERE email = ?', [$email]
+            );
+            if ($existing) {
+                $errors['email'] = 'An account with this email address already exists.';
+            }
+        }
+        if (strlen($password) < 8) {
+            $errors['password'] = 'Password must be at least 8 characters.';
+        }
+        if ($password !== $confirm) {
+            $errors['password_confirm'] = 'Passwords do not match.';
+        }
+
+        if (!empty($errors)) {
+            $this->render('public/register', [
+                'title'           => 'Create Account',
+                'oauth_providers' => OAuthService::enabledProviders(),
+                'errors'          => $errors,
+                'old'             => ['display_name' => $displayName, 'email' => $email],
+            ]);
+            return;
+        }
+
+        $rawToken    = bin2hex(random_bytes(32));
+        $hashedToken = hash('sha256', $rawToken);
+        $expiry      = date('Y-m-d H:i:s', strtotime('+24 hours'));
+
+        $this->db->insert('users', [
+            'email'                => $email,
+            'password_hash'        => Auth::hashPassword($password),
+            'display_name'         => $displayName,
+            'role'                 => 'public',
+            'active'               => 0,
+            'email_verify_token'   => $hashedToken,
+            'email_verify_expiry'  => $expiry,
+        ]);
+
+        $this->sendVerificationEmail($email, $displayName, $rawToken);
+        $this->logActivity('register', 'user', null, 'New registration: ' . $email);
+
+        $this->render('public/verify-email-sent', [
+            'title' => 'Verify Your Email',
+            'email' => $email,
+        ]);
+    }
+
+    /**
+     * GET /verify-email/{token} — Verify email address and activate account.
+     */
+    public function verifyEmail(string $token): void
+    {
+        $hashedToken = hash('sha256', $token);
+
+        $user = $this->db->fetch(
+            'SELECT * FROM users WHERE email_verify_token = ? AND email_verify_expiry > NOW() LIMIT 1',
+            [$hashedToken]
+        );
+
+        if (!$user) {
+            Auth::flash('error', 'This verification link is invalid or has expired. Please register again or contact support.');
+            $this->redirect('/register');
+        }
+
+        $this->db->update('users', [
+            'active'               => 1,
+            'email_verify_token'   => null,
+            'email_verify_expiry'  => null,
+        ], 'id = ?', [$user['id']]);
+
+        // Auto-match to a membership record if email matches
+        $this->matchMembershipRecord($user['id'], $user['email']);
+
+        $this->logActivity('email_verified', 'user', $user['id'], null, $user['id']);
+
+        // Log them straight in
+        Auth::loginById($user['id']);
+        Auth::flash('success', 'Your email has been verified. Welcome!');
+        $this->redirect('/profile');
+    }
+
+    // ── Private helpers ────────────────────────────────────────────
+
+    private function sendVerificationEmail(string $email, string $displayName, string $rawToken): void
+    {
+        $baseUrl = rtrim(App::config('site.url', 'http://localhost:8080'), '/');
+        $verifyUrl = $baseUrl . '/verify-email/' . $rawToken;
+
+        $html = '<p>Hello ' . htmlspecialchars($displayName) . ',</p>'
+              . '<p>Thanks for creating an account. Please verify your email address by clicking the link below:</p>'
+              . '<p><a href="' . $verifyUrl . '">' . $verifyUrl . '</a></p>'
+              . '<p>This link will expire in 24 hours.</p>'
+              . '<p>If you did not create an account, you can safely ignore this email.</p>';
+
+        Mailer::send($email, 'Verify your email address', $html);
+    }
+
+    private function linkOAuthAccount(int $userId, array $identity): void
+    {
+        $this->db->insert('user_oauth_accounts', [
+            'user_id'      => $userId,
+            'provider'     => $identity['provider'],
+            'provider_uid' => $identity['uid'],
+            'email'        => $identity['email'],
+            'display_name' => $identity['name'],
+            'avatar_url'   => $identity['avatar'],
+            'access_token' => $identity['access_token'],
+            'refresh_token' => $identity['refresh_token'],
+            'token_expires' => $identity['expires']
+                ? date('Y-m-d H:i:s', time() + (int) $identity['expires'])
+                : null,
+        ]);
+    }
+
+    private function updateOAuthAccount(int $userId, array $identity): void
+    {
+        $this->db->execute(
+            'UPDATE user_oauth_accounts
+             SET display_name = ?, avatar_url = ?, access_token = ?, refresh_token = ?, token_expires = ?, updated_at = NOW()
+             WHERE user_id = ? AND provider = ? AND provider_uid = ?',
+            [
+                $identity['name'],
+                $identity['avatar'],
+                $identity['access_token'],
+                $identity['refresh_token'],
+                $identity['expires'] ? date('Y-m-d H:i:s', time() + (int) $identity['expires']) : null,
+                $userId,
+                $identity['provider'],
+                $identity['uid'],
+            ]
+        );
+    }
+
+    /**
+     * Attempt to link a newly created user to an existing membership record
+     * by email. Only used when email ownership has been confirmed (OAuth or
+     * email verification). Does nothing if the membership module is not active
+     * or no matching record exists.
+     */
+    private function matchMembershipRecord(int $userId, string $email): void
+    {
+        try {
+            $member = $this->db->fetch(
+                'SELECT id FROM members WHERE email = ? LIMIT 1',
+                [strtolower($email)]
+            );
+            if ($member) {
+                $this->db->execute(
+                    'UPDATE members SET user_id = ? WHERE id = ? AND (user_id IS NULL OR user_id = 0)',
+                    [$userId, $member['id']]
+                );
+            }
+        } catch (\Throwable) {
+            // membership table may not exist on this instance — non-fatal
+        }
     }
 }

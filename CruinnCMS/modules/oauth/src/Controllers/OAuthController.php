@@ -1,23 +1,22 @@
 <?php
 /**
- * CruinnCMS â€” OAuth Controller
+ * CruinnCMS — OAuth Controller
  *
  * Handles the OAuth social login flow:
- *  GET  /auth/{provider}          â†’ redirect to provider's auth page
- *  GET  /auth/{provider}/callback â†’ process the callback, log in or register
+ *  GET  /auth/{provider}          → redirect to provider's auth page
+ *  GET  /auth/{provider}/callback → process the callback, log in or register
  */
 
 namespace Cruinn\Module\OAuth\Controllers;
 
 use Cruinn\Auth;
 use Cruinn\Controllers\BaseController;
-use Cruinn\Database;
 use Cruinn\Services\OAuthService;
 
 class OAuthController extends BaseController
 {
     /**
-     * GET /auth/{provider} â€” Redirect to the OAuth provider.
+     * GET /auth/{provider} — Redirect to the OAuth provider.
      */
     public function startAuth(string $provider): void
     {
@@ -31,11 +30,10 @@ class OAuthController extends BaseController
     }
 
     /**
-     * GET /auth/{provider}/callback â€” Handle the OAuth callback.
+     * GET /auth/{provider}/callback — Handle the OAuth callback.
      */
     public function callback(string $provider): void
     {
-        // Check for errors from provider (user denied, etc.)
         $error = $_GET['error'] ?? $_GET['error_description'] ?? null;
         if ($error) {
             Auth::flash('error', 'Login was cancelled or denied.');
@@ -53,54 +51,50 @@ class OAuthController extends BaseController
         try {
             $identity = OAuthService::handleCallback($provider, $code, $state);
         } catch (\RuntimeException $e) {
-            Auth::flash('error', 'Login failed: ' . $e->getMessage());
+            Auth::flash('error', 'Login failed. Please try again.');
             $this->redirect('/login');
         }
 
-        // Look up existing OAuth link
+        // 1. Existing OAuth link — log straight in
         $oauthAccount = $this->db->fetch(
             'SELECT * FROM user_oauth_accounts WHERE provider = ? AND provider_uid = ?',
             [$identity['provider'], $identity['uid']]
         );
 
         if ($oauthAccount) {
-            // Existing linked account â€” log them in
+            $this->updateOAuthTokens($oauthAccount['user_id'], $identity);
             $this->loginOAuthUser($oauthAccount['user_id'], $identity);
             return;
         }
 
-        // No existing link â€” check if user is already logged in (linking flow)
+        // 2. Logged-in user linking a new provider
         if (Auth::check()) {
             $this->linkOAuthAccount(Auth::userId(), $identity);
             Auth::flash('success', ucfirst($identity['provider']) . ' account linked successfully.');
-            $this->redirect('/members/profile');
+            $this->redirect('/profile');
             return;
         }
 
-        // Not logged in â€” try to match by email
-        if ($identity['email']) {
+        // 3. Match by email — provider has verified ownership
+        if (!empty($identity['email'])) {
             $existingUser = $this->db->fetch(
                 'SELECT * FROM users WHERE email = ? AND active = 1',
                 [strtolower($identity['email'])]
             );
 
             if ($existingUser) {
-                // Auto-link and log in (email is verified by the OAuth provider)
                 $this->linkOAuthAccount($existingUser['id'], $identity);
                 $this->loginOAuthUser($existingUser['id'], $identity);
                 return;
             }
         }
 
-        // Brand new user â€” create account from OAuth profile
+        // 4. Brand new user — create user account only (not a member)
         $this->createOAuthUser($identity);
     }
 
-    // â”€â”€ Private Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Private Helpers ───────────────────────────────────────────
 
-    /**
-     * Log in a user by their ID (no password needed â€” OAuth-authenticated).
-     */
     private function loginOAuthUser(int $userId, array $identity): void
     {
         $user = $this->db->fetch(
@@ -113,84 +107,53 @@ class OAuthController extends BaseController
             $this->redirect('/login');
         }
 
-        // Update OAuth token data
-        $this->updateOAuthTokens($userId, $identity);
-
-        // Set session (same as Auth::attempt but without password)
         Auth::loginById($userId);
-
         $this->logActivity('login_oauth', 'user', $userId, 'Provider: ' . $identity['provider']);
 
         $stored = $_SESSION['redirect_after_login'] ?? null;
         unset($_SESSION['redirect_after_login']);
         $isPrivilegedRoute = $stored && (
-            str_starts_with($stored, '/admin') || str_starts_with($stored, '/organisation') || str_starts_with($stored, '/council')
+            str_starts_with($stored, '/admin') || str_starts_with($stored, '/council')
         );
         $redirect = (!$stored || $isPrivilegedRoute) ? $this->defaultRedirectForRole() : $stored;
         $this->redirect($redirect);
     }
 
     /**
-     * Create a new user from OAuth profile data.
+     * Create a new user account from OAuth profile data.
+     * A user account is not a membership — the user can join separately.
      */
     private function createOAuthUser(array $identity): void
     {
-        // Check if registration is open
-        $regOpen = $this->db->fetchColumn("SELECT value FROM settings WHERE `key` = 'registration_open'");
-        if ($regOpen !== '1' && $regOpen !== null) {
-            Auth::flash('error', 'Registration is currently closed. Please log in with an existing account.');
+        if (empty($identity['email'])) {
+            Auth::flash('error', 'Your ' . ucfirst($identity['provider']) . ' account did not provide an email address. Please log in with email and password or use a different provider.');
             $this->redirect('/login');
         }
 
-        $email       = $identity['email'] ? strtolower($identity['email']) : null;
+        $email       = strtolower($identity['email']);
         $displayName = $identity['name'] ?? 'User';
 
-        // Split display name into first/last
-        $nameParts  = explode(' ', $displayName, 2);
-        $forenames  = $nameParts[0];
-        $surnames   = $nameParts[1] ?? '';
-
-        $this->db->transaction(function () use ($email, $displayName, $forenames, $surnames, $identity) {
-            // Create user â€” no password (OAuth-only for now, can set one later)
+        $this->db->transaction(function () use ($email, $displayName, $identity) {
             $userId = $this->db->insert('users', [
-                'email'         => $email ?? ($identity['provider'] . '_' . $identity['uid'] . '@oauth.local'),
+                'email'         => $email,
                 'password_hash' => null,
                 'display_name'  => $displayName,
-                'role'          => 'member',
+                'role'          => 'public',
                 'active'        => 1,
-                'created_at'    => date('Y-m-d H:i:s'),
-                'updated_at'    => date('Y-m-d H:i:s'),
             ]);
 
-            // Create member record
-            $this->db->insert('members', [
-                'user_id'          => $userId,
-                'forenames'        => $forenames,
-                'surnames'         => $surnames,
-                'email'            => $email,
-                'status'           => 'active',
-                'public_directory' => 0,
-                'created_at'       => date('Y-m-d H:i:s'),
-                'updated_at'       => date('Y-m-d H:i:s'),
-            ]);
-
-            // Link OAuth account
             $this->linkOAuthAccount((int) $userId, $identity);
 
             $this->logActivity('register_oauth', 'user', (int) $userId,
                 'Provider: ' . $identity['provider'], (int) $userId);
 
-            // Log them in
             Auth::loginById((int) $userId);
         });
 
-        Auth::flash('success', 'Welcome! Your account has been created. You can update your profile below.');
-        $this->redirect('/members/profile');
+        Auth::flash('success', 'Welcome! Your account has been created.');
+        $this->redirect('/profile');
     }
 
-    /**
-     * Insert or update an OAuth account link.
-     */
     private function linkOAuthAccount(int $userId, array $identity): void
     {
         $existing = $this->db->fetch(
@@ -227,9 +190,6 @@ class OAuthController extends BaseController
         }
     }
 
-    /**
-     * Update tokens for an existing link.
-     */
     private function updateOAuthTokens(int $userId, array $identity): void
     {
         $tokenExpiry = $identity['expires']
@@ -237,15 +197,13 @@ class OAuthController extends BaseController
             : null;
 
         $this->db->execute(
-            'UPDATE user_oauth_accounts SET access_token = ?, refresh_token = ?, token_expires = ?, updated_at = NOW()
+            'UPDATE user_oauth_accounts
+             SET access_token = ?, refresh_token = ?, token_expires = ?, updated_at = NOW()
              WHERE user_id = ? AND provider = ?',
             [$identity['access_token'], $identity['refresh_token'], $tokenExpiry, $userId, $identity['provider']]
         );
     }
 
-    /**
-     * Determine landing page for current role (same logic as AuthController).
-     */
     private function defaultRedirectForRole(): string
     {
         $roleId = Auth::roleId();
@@ -258,9 +216,8 @@ class OAuthController extends BaseController
 
         return match (Auth::role()) {
             'admin'   => '/admin',
-            'organisation' => '/organisation',
-            'council' => '/organisation',
-            'member'  => '/members/profile',
+            'council' => '/profile',
+            'member'  => '/profile',
             default   => '/',
         };
     }

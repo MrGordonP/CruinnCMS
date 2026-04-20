@@ -30,6 +30,10 @@ return [
         $router->post('/admin/membership/plans',                      [MembershipAdminController::class, 'createPlan']);
         $router->get('/admin/membership/plans/{id}/edit',             [MembershipAdminController::class, 'editPlan']);
         $router->post('/admin/membership/plans/{id}',                 [MembershipAdminController::class, 'updatePlan']);
+
+        // Import
+        $router->get('/admin/membership/import',                      [MembershipAdminController::class, 'importForm']);
+        $router->post('/admin/membership/import',                     [MembershipAdminController::class, 'processImport']);
     },
 
     'migrations' => [

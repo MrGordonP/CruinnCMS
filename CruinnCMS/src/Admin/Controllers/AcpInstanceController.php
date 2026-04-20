@@ -127,9 +127,12 @@ class AcpInstanceController extends BaseController
             'title'    => 'OAuth Providers',
             'tab'      => 'oauth',
             'settings' => $this->getSettingsForPanel([
-                'oauth.google.client_id', 'oauth.google.client_secret',
-                'oauth.facebook.client_id', 'oauth.facebook.client_secret',
-                'oauth.twitter.client_id', 'oauth.twitter.client_secret',
+                'oauth.google.client_id',    'oauth.google.client_secret',
+                'oauth.facebook.client_id',  'oauth.facebook.client_secret',
+                'oauth.twitter.client_id',   'oauth.twitter.client_secret',
+                'oauth.github.client_id',    'oauth.github.client_secret',
+                'oauth.microsoft.client_id', 'oauth.microsoft.client_secret',
+                'oauth.linkedin.client_id',  'oauth.linkedin.client_secret',
             ]),
         ];
         $this->renderAcp('admin/settings/oauth', $data);
@@ -138,12 +141,15 @@ class AcpInstanceController extends BaseController
     public function saveOauth(): void
     {
         $this->settings->setMany([
-            'oauth.google.client_id'   => $this->input('oauth_google_client_id', ''),
-            'oauth.facebook.client_id' => $this->input('oauth_facebook_client_id', ''),
-            'oauth.twitter.client_id'  => $this->input('oauth_twitter_client_id', ''),
+            'oauth.google.client_id'    => $this->input('oauth_google_client_id', ''),
+            'oauth.facebook.client_id'  => $this->input('oauth_facebook_client_id', ''),
+            'oauth.twitter.client_id'   => $this->input('oauth_twitter_client_id', ''),
+            'oauth.github.client_id'    => $this->input('oauth_github_client_id', ''),
+            'oauth.microsoft.client_id' => $this->input('oauth_microsoft_client_id', ''),
+            'oauth.linkedin.client_id'  => $this->input('oauth_linkedin_client_id', ''),
         ], 'oauth');
 
-        foreach (['google', 'facebook', 'twitter'] as $provider) {
+        foreach (['google', 'facebook', 'twitter', 'github', 'microsoft', 'linkedin'] as $provider) {
             $secret = $this->input("oauth_{$provider}_client_secret", '');
             if ($secret !== '') {
                 $this->settings->set("oauth.{$provider}.client_secret", $secret, 'oauth');

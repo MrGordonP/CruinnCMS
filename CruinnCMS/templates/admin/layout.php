@@ -141,6 +141,7 @@
                 </div>
                 <?php endif; ?>
                 <div class="admin-topbar-right">
+                    <a href="<?= url('/') ?>" class="admin-topbar-site-link" title="View live site" target="_blank">⬡ View Site</a>
                     <?php if (\Cruinn\Platform\PlatformAuth::check()): ?>
                     <a href="/cms/dashboard" class="admin-topbar-cms-link" title="Back to Cruinn CMS platform">← CMS</a>
                     <?php endif; ?>

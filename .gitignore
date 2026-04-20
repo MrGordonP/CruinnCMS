@@ -41,3 +41,6 @@ release/
 # OS
 .DS_Store
 Thumbs.db
+CruinnCMS.zip
+public_html/public.zip
+*.zip

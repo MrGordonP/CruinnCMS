@@ -192,7 +192,7 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             'email'         => $data['email'],
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'display_name'  => $data['display_name'],
-            'role'          => 'member',
+            'role'          => $data['role'],
             'role_id'       => null,
             'active'        => $data['active'],
         ]);
