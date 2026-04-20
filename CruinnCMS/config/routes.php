@@ -187,10 +187,11 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/editor-mode',      [BlockController::class, 'updateEditorMode']);
 
     // Admin � Media uploads
-    $router->post('/admin/upload',          [MediaController::class, 'uploadFile']);
-    $router->get('/admin/media',            [MediaController::class, 'listMedia']);
-    $router->post('/admin/media/folder',    [MediaController::class, 'createFolder']);
-    $router->post('/admin/media/delete',    [MediaController::class, 'deleteFolder']);
+    $router->post('/admin/upload',            [MediaController::class, 'uploadFile']);
+    $router->get('/admin/media',              [MediaController::class, 'index']);
+    $router->get('/admin/media/list',         [MediaController::class, 'listMedia']);
+    $router->post('/admin/media/folder',      [MediaController::class, 'createFolder']);
+    $router->post('/admin/media/delete',      [MediaController::class, 'deleteFolder']);
     $router->post('/admin/media/delete-file', [MediaController::class, 'deleteFile']);
 
     // Admin � ACP Settings

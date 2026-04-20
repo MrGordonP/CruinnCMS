@@ -55,7 +55,7 @@
         if (!grid) { return; }
         grid.innerHTML = '<p class="media-loading">Loading\u2026</p>';
 
-        var url = '/admin/media?_=' + Date.now();
+        var url = '/admin/media/list?_=' + Date.now();
         if (mediaCurrentFolder) { url += '&folder=' + encodeURIComponent(mediaCurrentFolder); }
 
         fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
@@ -124,7 +124,7 @@
     function runSearch(q) {
         if (!grid) { return; }
         grid.innerHTML = '<p class="media-loading">Searching\u2026</p>';
-        fetch('/admin/media?_=' + Date.now() + '&q=' + encodeURIComponent(q), {
+        fetch('/admin/media/list?_=' + Date.now() + '&q=' + encodeURIComponent(q), {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
         })
             .then(function (r) { return r.json(); })
