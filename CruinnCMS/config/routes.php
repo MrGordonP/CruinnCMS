@@ -24,6 +24,7 @@ use Cruinn\Admin\Controllers\AdminPageController;
 use Cruinn\Admin\Controllers\BlockController;
 use Cruinn\Admin\Controllers\MediaController;
 use Cruinn\Admin\Controllers\UserAdminController;
+use Cruinn\Admin\Controllers\ContentSetController;
 use Cruinn\Platform\Controllers\PlatformController;
 
 return function (Cruinn\Router $router) {
@@ -132,6 +133,19 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/pages/{id}/html',         [AdminPageController::class, 'saveHtml']);
     $router->post('/admin/pages/{id}/export-html',  [AdminPageController::class, 'exportHtml']);
     $router->post('/admin/pages/{id}/convert-to-blocks', [AdminPageController::class, 'convertToBlocks']);
+
+    // Admin — Content Sets (dynamic data)
+    $router->get('/admin/content',                              [\Cruinn\Admin\Controllers\ContentSetController::class, 'index']);
+    $router->get('/admin/content/new',                          [\Cruinn\Admin\Controllers\ContentSetController::class, 'newSet']);
+    $router->post('/admin/content',                             [\Cruinn\Admin\Controllers\ContentSetController::class, 'createSet']);
+    $router->get('/admin/content/{id}/edit',                    [\Cruinn\Admin\Controllers\ContentSetController::class, 'editSet']);
+    $router->post('/admin/content/{id}',                        [\Cruinn\Admin\Controllers\ContentSetController::class, 'updateSet']);
+    $router->post('/admin/content/{id}/delete',                 [\Cruinn\Admin\Controllers\ContentSetController::class, 'deleteSet']);
+    $router->get('/admin/content/{id}/rows',                    [\Cruinn\Admin\Controllers\ContentSetController::class, 'rows']);
+    $router->post('/admin/content/{id}/rows',                   [\Cruinn\Admin\Controllers\ContentSetController::class, 'addRow']);
+    $router->post('/admin/content/{setId}/rows/reorder',        [\Cruinn\Admin\Controllers\ContentSetController::class, 'reorderRows']);
+    $router->post('/admin/content/{setId}/rows/{rowId}',        [\Cruinn\Admin\Controllers\ContentSetController::class, 'updateRow']);
+    $router->post('/admin/content/{setId}/rows/{rowId}/delete', [\Cruinn\Admin\Controllers\ContentSetController::class, 'deleteRow']);
 
     // Admin � Import
     $router->get('/admin/import',                   [\Cruinn\Admin\Controllers\AdminImportController::class, 'index']);

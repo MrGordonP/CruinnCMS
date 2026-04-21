@@ -77,7 +77,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             $renderMode = 'block';
         }
 
-        $id = $this->db->insert('pages', [
+        $id = $this->db->insert('pages_index', [
             'title'            => $this->input('title'),
             'slug'             => $slug,
             'status'           => $this->input('status', 'draft'),

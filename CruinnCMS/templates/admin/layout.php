@@ -57,6 +57,7 @@
                         <a href="<?= url('/admin/blocks/named') ?>">Named Blocks</a>
                         <a href="<?= url('/admin/template-editor') ?>">PHP Templates</a>
                         <a href="<?= url('/admin/media') ?>">Media</a>
+                        <a href="<?= url('/admin/content') ?>">Content Sets</a>
                         <a href="<?= url('/admin/import') ?>">Import</a>
                     </div>
                 </div>

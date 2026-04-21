@@ -253,6 +253,12 @@ class CruinnController extends BaseController
 
         $menus = $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC');
 
+        try {
+            $contentSets = $this->db->fetchAll('SELECT id, name, slug, fields FROM content_sets ORDER BY name ASC');
+        } catch (\Exception $e) {
+            $contentSets = [];
+        }
+
         // Detect global zone pages and template canvas pages (slug starts with '_')
         $isZonePage       = str_starts_with($page['slug'] ?? '', '_');
         $zoneName         = $isZonePage ? ltrim($page['slug'], '_') : null;
@@ -473,6 +479,7 @@ class CruinnController extends BaseController
             'cruinnHtml'        => (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
             'cruinnCss'         => (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
             'menus'             => $menus,
+            'contentSets'       => $contentSets,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
             'isTemplatePage'    => $isTemplatePage,

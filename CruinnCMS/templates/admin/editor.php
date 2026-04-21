@@ -362,6 +362,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <button class="palette-btn palette-btn--site" data-add-block="site-logo">Site Logo</button>
                     <button class="palette-btn palette-btn--site" data-add-block="site-title">Site Title</button>
                     <button class="palette-btn palette-btn--site" data-add-block="event-list">Event List</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="data-list">Data List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="php-include">PHP Include</button>
                     <button class="palette-btn palette-btn--zone" data-add-block="zone">Zone</button>
                 </div>
@@ -1076,6 +1077,32 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                             <button type="button" id="prop-php-edit-source-btn" class="btn btn-small btn-outline" style="width:100%">&lt;/&gt; Edit Template Source</button>
                         </div>
                     </div>
+                    <!-- data-list config -->
+                    <div class="editor-content-group" data-content-type="data-list" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Content Set</label>
+                            <select class="editor-prop-input" data-config="set_slug" id="prop-data-list-set">
+                                <option value="">&mdash; Select set &mdash;</option>
+                                <?php foreach ($contentSets as $_cs): ?>
+                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row">
+                            <label>View</label>
+                            <select class="editor-prop-input" data-config="view" id="prop-data-list-view">
+                                <option value="continuous">Continuous (all rows)</option>
+                                <option value="single">Single (first row)</option>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem">
+                            <label>Card Template</label>
+                            <textarea class="editor-prop-input" data-config="card_html" id="prop-data-list-card"
+                                      rows="8" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
+                                      placeholder="<h3>{{name}}</h3>&#10;<p>{{bio}}</p>"></textarea>
+                            <div id="prop-data-list-tokens" style="font-size:0.72rem;color:#6b7280;line-height:1.8"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div><!-- /#editor-props -->
@@ -1093,6 +1120,11 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 </div><!-- /#editor-wrap -->
 
 <style id="editor-live-styles"><?= $cruinnCss ?></style>
+<script>
+var CONTENT_SETS = <?= json_encode(array_map(function($cs) {
+    return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: []];
+}, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+</script>
 
 
 

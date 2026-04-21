@@ -362,8 +362,8 @@
     var ZONE_TYPES = ['zone'];
     var IMAGE_TYPES = ['image', 'site-logo'];
     var TITLE_TYPES = ['site-title'];
-    var DYNAMIC_TYPES = ['event-list'];
-    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include'];
+    var DYNAMIC_TYPES = ['event-list', 'data-list'];
+    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list'];
     var PHP_CODE_TYPES = ['php-code'];
 
     function loadProps(block) {
@@ -559,6 +559,17 @@
             var phpVarsContainer = panel.querySelector('.php-include-vars');
             if (phpVarsContainer) { buildPhpIncludeVarRows(phpVarsContainer, config, block); }
             refreshPhpIncludePreview(block);
+        }
+
+        // Data List: populate set selector, view, card_html and show token hints
+        if (type === 'data-list') {
+            var dlSetSel = document.getElementById('prop-data-list-set');
+            if (dlSetSel) { dlSetSel.value = config.set_slug || ''; }
+            var dlViewSel = document.getElementById('prop-data-list-view');
+            if (dlViewSel) { dlViewSel.value = config.view || 'continuous'; }
+            var dlCard = document.getElementById('prop-data-list-card');
+            if (dlCard) { dlCard.value = config.card_html || ''; }
+            updateDataListTokenHints(config.set_slug || '');
         }
 
         // Site title / tagline text
@@ -1127,6 +1138,48 @@
             .catch(function () { /* leave existing content on error */ });
     }
 
+    function updateDataListTokenHints(slug) {
+        var hint = document.getElementById('prop-data-list-tokens');
+        if (!hint) { return; }
+        var sets = window.CONTENT_SETS || [];
+        var set = null;
+        for (var i = 0; i < sets.length; i++) { if (sets[i].slug === slug) { set = sets[i]; break; } }
+        if (!set || !set.fields || !set.fields.length) {
+            hint.textContent = 'Select a content set to see available tokens.';
+            return;
+        }
+        hint.innerHTML = '<strong>Tokens:</strong> ' + set.fields.map(function (f) {
+            return '<code style="cursor:pointer;text-decoration:underline dotted" title="Click to insert" data-token="{{' + f.name + '}}">{{' + f.name + '}}</code> <em>' + (f.label || f.name) + '</em>';
+        }).join(' &nbsp; ');
+        hint.querySelectorAll('[data-token]').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                var ta = document.getElementById('prop-data-list-card');
+                if (!ta) { return; }
+                var s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+                ta.value = v.slice(0, s) + chip.dataset.token + v.slice(e);
+                ta.selectionStart = ta.selectionEnd = s + chip.dataset.token.length;
+                ta.dispatchEvent(new Event('input'));
+                ta.focus();
+            });
+        });
+    }
+
+    // Wire data-list config panel inputs (set once; guarded by element existence)
+    (function () {
+        var dlSetSel = document.getElementById('prop-data-list-set');
+        var dlViewSel = document.getElementById('prop-data-list-view');
+        var dlCard = document.getElementById('prop-data-list-card');
+        if (dlSetSel) {
+            dlSetSel.addEventListener('change', function () {
+                updateDataListTokenHints(dlSetSel.value);
+                // writeConfigInput is handled by the global data-config listener
+            });
+        }
+        if (dlCard) {
+            dlCard.addEventListener('input', function () { /* global data-config listener handles save */ });
+        }
+    }());
+
     function writeProps(block, prop, value) {
         block.style[prop] = value;
         rebuildLiveStyles();
@@ -1192,6 +1245,7 @@
         'site-logo': { tag: 'div', inner: '<a href="/"><img src="" alt="Site Logo"></a>', initCss: PORTRAIT_INIT },
         'site-title': { tag: 'div', inner: '<h1 class="site-name">Site Name</h1><p class="site-tagline"></p>', initCss: PORTRAIT_INIT },
         'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list — visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
+        'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List — visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include — visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
