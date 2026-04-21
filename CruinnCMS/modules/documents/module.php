@@ -12,8 +12,7 @@ return [
     'description'  => 'Organisation document library: upload, version, approve, and archive documents.',
     'provides'     => ['documents'],
     'migrations'   => [
-        __DIR__ . '/migrations/001_documents_tables.sql',
-        __DIR__ . '/migrations/002_documents_categories.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 

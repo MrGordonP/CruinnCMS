@@ -234,6 +234,8 @@ return function (Cruinn\Router $router) {
 
     // Admin � Modules panel
     $router->get('/admin/settings/modules',                         [AcpSystemController::class, 'modules']);
+    $router->post('/admin/settings/modules/{slug}/install',         [AcpSystemController::class, 'installModule']);
+    $router->post('/admin/settings/modules/{slug}/uninstall',       [AcpSystemController::class, 'uninstallModule']);
     $router->post('/admin/settings/modules/{slug}/toggle',          [AcpSystemController::class, 'toggleModule']);
     $router->post('/admin/settings/modules/{slug}/settings',        [AcpSystemController::class, 'saveModuleSettings']);
     $router->post('/admin/settings/modules/{slug}/migrate',         [AcpSystemController::class, 'applyModuleMigrations']);

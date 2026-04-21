@@ -11,8 +11,7 @@ return [
     'description'  => 'Social login via OAuth 2.0 providers. OAuthService remains in core to support login page provider listing.',
     'provides'     => ['oauth'],
     'migrations'   => [
-        __DIR__ . '/migrations/001_oauth_core.sql',
-        __DIR__ . '/migrations/002_oauth_email_verify.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
     'template_path' => null,
 

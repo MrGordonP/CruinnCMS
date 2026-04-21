@@ -494,29 +494,29 @@ INSERT INTO `page_templates` (`slug`, `name`, `description`, `zones`, `css_class
 
 -- ── System Zone Pages ─────────────────────────────────────────
 -- Slug prefix '_' marks system pages (excluded from page lists)
-INSERT INTO `pages` (`title`, `slug`, `status`, `template`, `editor_mode`, `render_mode`) VALUES
-    ('Site Header',            '_header',             'published', 'none', 'freeform',   'cruinn'),
-    ('Site Footer',            '_footer',             'published', 'none', 'freeform',   'cruinn'),
-    ('Global Header Template', '_tpl__global_header', 'published', 'none', 'freeform',   'cruinn'),
-    ('Default Template',       '_tpl_default',        'published', 'none', 'structured', 'cruinn'),
-    ('Typography & Styles',    '_typography',         'published', 'none', 'freeform',   'cruinn');
+INSERT INTO `pages_index` (`title`, `slug`, `status`, `template`, `editor_mode`, `render_mode`) VALUES
+    ('Site Header',            '_header',             'published', 'none', 'freeform',   'block'),
+    ('Site Footer',            '_footer',             'published', 'none', 'freeform',   'block'),
+    ('Global Header Template', '_tpl__global_header', 'published', 'none', 'freeform',   'block'),
+    ('Default Template',       '_tpl_default',        'published', 'none', 'structured', 'block'),
+    ('Typography & Styles',    '_typography',         'published', 'none', 'freeform',   'block');
 
 -- ── Seed default header blocks ────────────────────────────────
-SET @hdr_page    = (SELECT `id` FROM `pages` WHERE `slug` = '_header' LIMIT 1);
+SET @hdr_page    = (SELECT `id` FROM `pages_index` WHERE `slug` = '_header' LIMIT 1);
 SET @menu_main   = (SELECT `id` FROM `menus` WHERE `location` = 'main'   LIMIT 1);
 SET @menu_topbar = (SELECT `id` FROM `menus` WHERE `location` = 'topbar' LIMIT 1);
 
-INSERT INTO `cruinn_blocks` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_props`, `block_config`, `sort_order`, `parent_block_id`) VALUES
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_props`, `block_config`, `sort_order`, `parent_block_id`) VALUES
     ('seed_hdr_section', @hdr_page, 'section',    NULL, '{"_class":"site-header"}', '{}',                                        0, NULL),
     ('seed_hdr_title',   @hdr_page, 'site-title', NULL, '{}',                       '{}',                                        0, 'seed_hdr_section'),
     ('seed_hdr_main',    @hdr_page, 'nav-menu',   NULL, '{"_class":"site-nav-bar"}', JSON_OBJECT('menu_id', @menu_main),          1, 'seed_hdr_section'),
     ('seed_hdr_topbar',  @hdr_page, 'nav-menu',   NULL, '{"_class":"utility-bar"}',  JSON_OBJECT('menu_id', @menu_topbar),        2, 'seed_hdr_section');
 
 -- ── Seed default footer blocks ────────────────────────────────
-SET @ftr_page    = (SELECT `id` FROM `pages` WHERE `slug` = '_footer' LIMIT 1);
+SET @ftr_page    = (SELECT `id` FROM `pages_index` WHERE `slug` = '_footer' LIMIT 1);
 SET @menu_footer = (SELECT `id` FROM `menus` WHERE `location` = 'footer' LIMIT 1);
 
-INSERT INTO `cruinn_blocks` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_props`, `block_config`, `sort_order`, `parent_block_id`) VALUES
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_props`, `block_config`, `sort_order`, `parent_block_id`) VALUES
     ('seed_ftr_section', @ftr_page, 'section',  NULL, '{"_class":"site-footer"}', '{}',                                          0, NULL),
     ('seed_ftr_copy',    @ftr_page, 'text',      NULL, '{}',                      '{}',                                          0, 'seed_ftr_section'),
     ('seed_ftr_nav',     @ftr_page, 'nav-menu',  NULL, '{"_class":"footer-nav"}', JSON_OBJECT('menu_id', @menu_footer),          1, 'seed_ftr_section');

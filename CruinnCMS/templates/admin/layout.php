@@ -145,14 +145,6 @@
         </div>
         <?php endif; ?>
 
-        <?php if (!empty($modules_has_new)): ?>
-        <div class="modules-banner" role="alert">
-            🧩 New module(s) detected.
-            <a href="<?= url('/admin/settings/modules') ?>">Go to Modules panel</a> to activate them.
-            <button type="button" class="modules-banner-close" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
-        </div>
-        <?php endif; ?>
-
         <div class="admin-main">
             <div class="admin-content">
                 <?= $content ?>

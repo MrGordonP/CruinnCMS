@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Organisation') ?> — <?= e(\Cruinn\App::config('site.name', 'Organisation')) ?></title>
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= url('/css/admin-panel-layout.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-panel-layout.css') ?>">
     <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-base.css') ?>">
     <link rel="stylesheet" href="<?= url('/css/admin-organisation.css') ?>?v=<?= filemtime(CRUINN_PUBLIC . '/css/admin-organisation.css') ?>">
 </head>

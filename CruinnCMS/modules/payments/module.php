@@ -12,7 +12,7 @@ return [
     'description' => 'Payment processing hub. Handles initiation, gateway callbacks, and manual payment verification. Gateway integrations (Stripe, etc.) are configured here.',
     'provides'    => ['payments'],
     'migrations'  => [
-        __DIR__ . '/migrations/001_payments_core.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 

@@ -67,6 +67,7 @@ class ModuleRegistry
                 'template_path'   => null,
                 'settings_schema' => [],
                 'provides'        => [],
+                'submodules'      => [],
                 'widgets'         => null,
             ], $def);
         }

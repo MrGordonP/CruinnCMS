@@ -14,12 +14,7 @@ return [
     'description'  => 'Restricted workspace for organisation members: discussion threads and inbox.',
     'provides'     => ['organisation'],
     'migrations'   => [
-        __DIR__ . '/migrations/001_organisation_tables.sql',
-        __DIR__ . '/migrations/002_groups_tables.sql',
-        __DIR__ . '/migrations/003_organisation_profile.sql',
-        __DIR__ . '/migrations/004_organisation_officers.sql',
-        __DIR__ . '/migrations/005_organisation_meetings.sql',
-        __DIR__ . '/migrations/006_organisation_finance.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 

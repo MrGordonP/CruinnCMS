@@ -21,9 +21,7 @@ return [
     'dependencies' => [],
 
     'migrations' => [
-        __DIR__ . '/migrations/009_forum_core.sql',
-        __DIR__ . '/migrations/017_forum_hierarchy.sql',
-        __DIR__ . '/migrations/018_forum_post_moderation.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
 
     'routes' => static function (object $router): void {

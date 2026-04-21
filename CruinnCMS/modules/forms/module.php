@@ -11,8 +11,18 @@ return [
     'description'  => 'Dynamic form builder with custom fields, validation, approval workflow, and CSV export.',
     'provides'     => ['forms'],
     'migrations'   => [
-        __DIR__ . '/migrations/001_forms_core.sql',
-        __DIR__ . '/migrations/002_payment_fields.sql',
+        __DIR__ . '/migrations/schema.sql',
+    ],
+
+    'submodules' => [
+        'payment-fields' => [
+            'name'        => 'Payment Fields',
+            'description' => 'Adds payment options and payment tracking to form submissions.',
+            'requires'    => ['payments'],
+            'migrations'  => [
+                __DIR__ . '/migrations/payment_fields.sql',
+            ],
+        ],
     ],
     'template_path' => __DIR__ . '/templates',
 

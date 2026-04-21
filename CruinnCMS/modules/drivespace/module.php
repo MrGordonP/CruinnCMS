@@ -13,8 +13,7 @@ return [
     'description'  => 'Google Drive-style storage with folder tree, upload, version history, and sharing.',
     'provides'     => ['drivespace'],
     'migrations'   => [
-        __DIR__ . '/migrations/001_drivespace_core.sql',
-        __DIR__ . '/migrations/002_drivespace_quotas.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 

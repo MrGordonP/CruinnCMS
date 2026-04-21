@@ -96,9 +96,6 @@ class App
             Template::addTemplatePath($path);
         }
 
-        // Make discovered-module flag available to all admin templates
-        Template::addGlobal('modules_has_new', Modules\ModuleRegistry::hasDiscovered());
-
         // Set up router
         $this->router = new Router();
 

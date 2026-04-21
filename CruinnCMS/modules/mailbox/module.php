@@ -20,8 +20,7 @@ return [
     'dependencies' => ['organisation'],
 
     'migrations' => [
-        __DIR__ . '/migrations/001_mailbox_tables.sql',
-        __DIR__ . '/migrations/002_officers_imap_columns.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

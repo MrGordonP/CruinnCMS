@@ -12,7 +12,7 @@ return [
     'description'  => 'Social Media Command Centre — unified feed, inbox, content distribution, and account management.',
     'provides'     => ['social'],
     'migrations'   => [
-        __DIR__ . '/migrations/001_social_core.sql',
+        __DIR__ . '/migrations/schema.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 

@@ -1209,7 +1209,7 @@ class PlatformController
                 if ($stmt === '') continue;
                 try { $pdo->exec($stmt); } catch (\PDOException $e) {
                     $nativeCode = (int)($e->errorInfo[1] ?? 0);
-                    if (!in_array($nativeCode, [1060,1061,1050,1054,1091,1062], true)) {
+                    if (!in_array($nativeCode, [1060,1061,1050,1054,1091,1062,1826], true)) {
                         throw $e;
                     }
                 }

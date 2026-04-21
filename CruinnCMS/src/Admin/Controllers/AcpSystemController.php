@@ -719,7 +719,8 @@ class AcpSystemController extends BaseController
         Auth::requireRole('admin');
 
         $all     = \Cruinn\Modules\ModuleRegistry::all();
-        $modules = [];
+        $available = [];
+        $installed = [];
 
         try {
             $dbRows = $this->db->fetchAll('SELECT slug, status, settings FROM module_config');
@@ -756,22 +757,46 @@ class AcpSystemController extends BaseController
                 }
             }
 
-            $modules[$slug] = [
-                'def'      => $def,
-                'status'   => $status,
-                'settings' => $settings,
+            // Collect submodule info for the template
+            $submoduleInfo = [];
+            foreach ($def['submodules'] ?? [] as $subSlug => $subDef) {
+                $depsMet = true;
+                foreach ($subDef['requires'] ?? [] as $req) {
+                    if (($dbBySlug[$req]['status'] ?? 'discovered') !== 'active') {
+                        $depsMet = false;
+                        break;
+                    }
+                }
+                $submoduleInfo[$subSlug] = array_merge($subDef, [
+                    'deps_met'        => $depsMet,
+                    'migration_count' => count($subDef['migrations'] ?? []),
+                ]);
+            }
+
+            $entry = [
+                'def'        => $def,
+                'status'     => $status,
+                'settings'   => $settings,
                 'migrations' => [
                     'total'   => $totalMigrations,
                     'applied' => $appliedMigrations,
                     'pending' => $pendingMigrations,
                 ],
+                'submodules' => $submoduleInfo,
             ];
+
+            if ($status === 'discovered') {
+                $available[$slug] = $entry;
+            } else {
+                $installed[$slug] = $entry;
+            }
         }
 
         $this->renderAcp('admin/settings/modules', [
-            'title'   => 'Modules',
-            'tab'     => 'modules',
-            'modules' => $modules,
+            'title'     => 'Modules',
+            'tab'       => 'modules',
+            'available' => $available,
+            'installed' => $installed,
         ]);
     }
 
@@ -894,9 +919,8 @@ class AcpSystemController extends BaseController
                 continue;
             }
 
-            $sql = file_get_contents($path);
             try {
-                $pdo->exec($sql);
+                $this->execSqlFile($pdo, $path);
                 $this->db->execute(
                     'INSERT INTO module_migrations (module, filename, applied_at) VALUES (?, ?, NOW())',
                     [$slug, $filename]
@@ -920,6 +944,162 @@ class AcpSystemController extends BaseController
         $this->redirect('/admin/settings/modules');
     }
 
+    public function installModule(string $slug): void
+    {
+        Auth::requireRole('admin');
+
+        $def = \Cruinn\Modules\ModuleRegistry::get($slug);
+        if (!$def) {
+            Auth::flash('error', "Module '{$slug}' not found.");
+            $this->redirect('/admin/settings/modules');
+        }
+
+        // Check not already installed
+        try {
+            $row = $this->db->fetch('SELECT status FROM module_config WHERE slug = ?', [$slug]);
+            if ($row && $row['status'] !== 'discovered') {
+                Auth::flash('error', "Module '{$def['name']}' is already installed.");
+                $this->redirect('/admin/settings/modules');
+            }
+        } catch (\Throwable) {}
+
+        // Run migrations
+        $applied = 0;
+        $errors  = [];
+        $pdo     = $this->db->pdo();
+
+        foreach ($def['migrations'] as $path) {
+            $filename = basename($path);
+            if (!file_exists($path)) {
+                $errors[] = "Missing migration file: {$filename}";
+                continue;
+            }
+            try {
+                $already = $this->db->fetch(
+                    'SELECT id FROM module_migrations WHERE module = ? AND filename = ?',
+                    [$slug, $filename]
+                );
+                if ($already) continue;
+            } catch (\Throwable) {}
+
+            try {
+                $this->execSqlFile($pdo, $path);
+                $this->db->execute(
+                    'INSERT INTO module_migrations (module, filename, applied_at) VALUES (?, ?, NOW())',
+                    [$slug, $filename]
+                );
+                $applied++;
+            } catch (\Throwable $e) {
+                $errors[] = "{$filename}: " . $e->getMessage();
+                break;
+            }
+        }
+
+        if ($errors) {
+            Auth::flash('error', "Install failed — migration error: " . implode('; ', $errors));
+            $this->redirect('/admin/settings/modules');
+        }
+
+        // Run selected submodule migrations
+        $selectedSubmodules = array_filter((array)($_POST['submodules'] ?? []));
+        $allSubmodules      = $def['submodules'] ?? [];
+        foreach ($selectedSubmodules as $subSlug) {
+            $subDef = $allSubmodules[$subSlug] ?? null;
+            if (!$subDef) continue;
+            $subKey = $slug . ':' . $subSlug;
+            foreach ($subDef['migrations'] as $path) {
+                $filename = basename($path);
+                if (!file_exists($path)) {
+                    $errors[] = "[{$subSlug}] Missing migration file: {$filename}";
+                    continue;
+                }
+                try {
+                    $already = $this->db->fetch(
+                        'SELECT id FROM module_migrations WHERE module = ? AND filename = ?',
+                        [$subKey, $filename]
+                    );
+                    if ($already) continue;
+                } catch (\Throwable) {}
+
+                try {
+                    $this->execSqlFile($pdo, $path);
+                    $this->db->execute(
+                        'INSERT INTO module_migrations (module, filename, applied_at) VALUES (?, ?, NOW())',
+                        [$subKey, $filename]
+                    );
+                    $applied++;
+                } catch (\Throwable $e) {
+                    $errors[] = "[{$subSlug}] {$filename}: " . $e->getMessage();
+                    break 2;
+                }
+            }
+        }
+
+        if ($errors) {
+            Auth::flash('error', "Install failed — sub-module migration error: " . implode('; ', $errors));
+            $this->redirect('/admin/settings/modules');
+        }
+
+        // Mark as active in module_config (store enabled submodules in settings)
+        $initialSettings = ['_submodules' => array_values($selectedSubmodules)];
+        try {
+            $exists = $this->db->fetch('SELECT id FROM module_config WHERE slug = ?', [$slug]);
+            if ($exists) {
+                $this->db->execute(
+                    'UPDATE module_config SET status = ?, settings = ?, updated_at = NOW() WHERE slug = ?',
+                    ['active', json_encode($initialSettings), $slug]
+                );
+            } else {
+                $this->db->execute(
+                    'INSERT INTO module_config (slug, status, settings) VALUES (?, ?, ?)',
+                    [$slug, 'active', json_encode($initialSettings)]
+                );
+            }
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Failed to activate module: ' . $e->getMessage());
+            $this->redirect('/admin/settings/modules');
+        }
+
+        $msg = "Module '{$def['name']}' installed and activated.";
+        if ($applied > 0) {
+            $msg .= " ({$applied} migration(s) applied)";
+        }
+        Auth::flash('success', $msg);
+        $this->redirect('/admin/settings/modules');
+    }
+
+    public function uninstallModule(string $slug): void
+    {
+        Auth::requireRole('admin');
+
+        $def = \Cruinn\Modules\ModuleRegistry::get($slug);
+        if (!$def) {
+            Auth::flash('error', "Module '{$slug}' not found.");
+            $this->redirect('/admin/settings/modules');
+        }
+
+        $dropMigrations = !empty($_POST['drop_migrations']);
+
+        if ($dropMigrations) {
+            // Remove migration records — tables themselves are left; admin chose data removal
+            try {
+                $this->db->execute('DELETE FROM module_migrations WHERE module = ?', [$slug]);
+            } catch (\Throwable) {}
+        }
+
+        // Remove from module_config (returns module to 'discovered' / available state)
+        try {
+            $this->db->execute('DELETE FROM module_config WHERE slug = ?', [$slug]);
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Failed to uninstall module: ' . $e->getMessage());
+            $this->redirect('/admin/settings/modules');
+        }
+
+        $suffix = $dropMigrations ? ' Migration records removed.' : '';
+        Auth::flash('success', "Module '{$def['name']}' uninstalled.{$suffix}");
+        $this->redirect('/admin/settings/modules');
+    }
+
     // ── Helpers ──────────────────────────────────────────────────
 
     private function getSettingsForPanel(array $keys): array
@@ -929,5 +1109,23 @@ class AcpSystemController extends BaseController
             $result[$key] = $this->settings->get($key, '');
         }
         return $result;
+    }
+
+    /**
+     * Execute a SQL file containing multiple statements via PDO.
+     * PDO::exec() with emulate_prepares=false on MariaDB only processes the
+     * first statement and discards the rest without error (or errors on SET).
+     * Split on semicolons and run each statement individually.
+     */
+    private function execSqlFile(\PDO $pdo, string $path): void
+    {
+        $sql        = file_get_contents($path);
+        $statements = array_filter(
+            array_map('trim', explode(';', $sql)),
+            fn($s) => $s !== ''
+        );
+        foreach ($statements as $stmt) {
+            $pdo->exec($stmt);
+        }
     }
 }
