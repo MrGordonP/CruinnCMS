@@ -403,7 +403,7 @@ class SiteBuilderController extends BaseController
                 );
                 if (!$existing) {
                     if ($newSlug !== $slug) {
-                        $this->db->update('pages', ['template' => $newSlug], 'template = ?', [$slug]);
+                        $this->db->update('pages_index', ['template' => $newSlug], 'template = ?', [$slug]);
                     }
                     $slug = $newSlug;
                 } else {

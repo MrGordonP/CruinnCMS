@@ -2,6 +2,7 @@
 
 use Cruinn\BlockTypes\BlockRegistry;
 use Cruinn\Database;
+use Cruinn\Services\QueryBuilderService;
 
 BlockRegistry::register([
     'slug'      => 'data-list',
@@ -12,7 +13,7 @@ BlockRegistry::register([
     'isLayout'  => false,
     'renderer'  => function (array $config, Database $db): string {
         $setSlug  = $config['set_slug'] ?? '';
-        $view     = $config['view'] ?? 'continuous'; // 'continuous' or 'single'
+        $view     = $config['view']     ?? 'continuous';
         $template = $config['card_html'] ?? '';
 
         if ($setSlug === '') {
@@ -24,6 +25,38 @@ BlockRegistry::register([
             return '<p class="cruinn-data-list-empty">Data list: content set "' . htmlspecialchars($setSlug, ENT_QUOTES, 'UTF-8') . '" not found.</p>';
         }
 
+        $setType = $set['type'] ?? 'manual';
+
+        if ($setType === 'query') {
+            // ── Query set: run live query from stored config ──────
+            $queryConfig = json_decode($set['query_config'] ?? '{}', true) ?: [];
+            if (empty($queryConfig['table'])) {
+                return '<p class="cruinn-data-list-empty">Data list: query set has no table configured.</p>';
+            }
+            try {
+                $svc  = new QueryBuilderService($db);
+                $rows = $svc->run($queryConfig);
+            } catch (\Throwable $e) {
+                error_log('data-list QueryBuilderService error: ' . $e->getMessage());
+                return '<p class="cruinn-data-list-empty">Data list: query error — ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>';
+            }
+            if (empty($rows)) {
+                return '<p class="cruinn-data-list-empty">No records found.</p>';
+            }
+            if ($view === 'single') { $rows = [reset($rows)]; }
+            $html = '<div class="cruinn-data-list" data-view="' . htmlspecialchars($view, ENT_QUOTES, 'UTF-8') . '">';
+            foreach ($rows as $row) {
+                $card = $template;
+                foreach ($row as $key => $value) {
+                    $card = str_replace('{{' . $key . '}}', htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'), $card);
+                }
+                $html .= '<div class="cruinn-data-list-item">' . $card . '</div>';
+            }
+            $html .= '</div>';
+            return $html;
+        }
+
+        // ── Manual set: fetch rows from content_set_rows ─────────
         $rows = $db->fetchAll(
             'SELECT * FROM content_set_rows WHERE set_id = ? ORDER BY sort_order ASC, id ASC',
             [(int) $set['id']]
@@ -43,7 +76,7 @@ BlockRegistry::register([
             $card = $template;
             foreach ($data as $key => $value) {
                 $escaped = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-                $card = str_replace('{{' . $key . '}}', $escaped, $card);
+                $card    = str_replace('{{' . $key . '}}', $escaped, $card);
             }
             $html .= '<div class="cruinn-data-list-item">' . $card . '</div>';
         }
@@ -51,3 +84,4 @@ BlockRegistry::register([
         return $html;
     },
 ]);
+

@@ -1,5 +1,6 @@
 <?php
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 
 // Group pages by status and mode for sidebar counts
 $byStatus = ['published' => 0, 'draft' => 0, 'archived' => 0];

@@ -502,7 +502,7 @@ class MenuController extends BaseController
         if ($page) {
             $pageId = (int) $page['id'];
         } else {
-            $pageId = $this->db->insert('pages', [
+            $pageId = $this->db->insert('pages_index', [
                 'title'       => $title,
                 'slug'        => $slug,
                 'status'      => 'published',

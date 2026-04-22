@@ -481,7 +481,7 @@ p {
 .nav-dropdown {
     display: none;
     position: absolute;
-    top: 38px;
+    top: 100%;
     left: 0;
     list-style: none;
     min-width: 180px;
@@ -3277,6 +3277,7 @@ p {
 .site-header-custom .block-nav-menu .nav-dropdown {
     display: none;
     position: absolute;
+    top: 100%;
     background: #222;
     list-style: none;
     padding: 0;

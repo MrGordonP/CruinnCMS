@@ -9,6 +9,7 @@
 namespace Cruinn\Admin\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\Services\QueryBuilderService;
 
 class ContentSetController extends \Cruinn\Controllers\BaseController
 {
@@ -39,9 +40,12 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
      */
     public function newSet(): void
     {
+        $svc    = new QueryBuilderService($this->db);
+        $tables = $svc->getTables();
         $this->renderAdmin('admin/content/edit-set', [
             'title'       => 'New Content Set',
             'set'         => null,
+            'dbTables'    => $tables,
             'breadcrumbs' => [['Admin', '/admin'], ['Content Sets', '/admin/content'], ['New']],
         ]);
     }
@@ -63,11 +67,31 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
             $this->redirect('/admin/content/new');
         }
 
-        $fields = $this->parseFieldsPost();
+        $type = $this->input('type', 'manual') === 'query' ? 'query' : 'manual';
 
+        if ($type === 'query') {
+            $queryConfig = $this->parseQueryConfigPost();
+            $id = $this->db->insert('content_sets', [
+                'name'         => $this->input('name'),
+                'slug'         => $slug,
+                'type'         => 'query',
+                'description'  => $this->input('description', ''),
+                'fields'       => json_encode([], JSON_UNESCAPED_UNICODE),
+                'query_config' => json_encode($queryConfig, JSON_UNESCAPED_UNICODE),
+                'created_by'   => Auth::userId(),
+                'created_at'   => date('Y-m-d H:i:s'),
+                'updated_at'   => date('Y-m-d H:i:s'),
+            ]);
+            $this->logActivity('create', 'content_set', (int) $id, $this->input('name'));
+            Auth::flash('success', 'Content set created.');
+            $this->redirect("/admin/content/{$id}/edit");
+        }
+
+        $fields = $this->parseFieldsPost();
         $id = $this->db->insert('content_sets', [
             'name'        => $this->input('name'),
             'slug'        => $slug,
+            'type'        => 'manual',
             'description' => $this->input('description', ''),
             'fields'      => json_encode($fields, JSON_UNESCAPED_UNICODE),
             'created_by'  => Auth::userId(),
@@ -86,11 +110,14 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
     public function editSet(string $id): void
     {
         $set = $this->requireSet((int) $id);
-        $set['fields'] = json_decode($set['fields'] ?? '[]', true) ?: [];
-
+        $set['fields']       = json_decode($set['fields']       ?? '[]', true) ?: [];
+        $set['query_config'] = json_decode($set['query_config'] ?? '{}', true) ?: [];
+        $svc    = new QueryBuilderService($this->db);
+        $tables = $svc->getTables();
         $this->renderAdmin('admin/content/edit-set', [
             'title'       => 'Edit: ' . $set['name'],
             'set'         => $set,
+            'dbTables'    => $tables,
             'breadcrumbs' => [['Admin', '/admin'], ['Content Sets', '/admin/content'], [e($set['name'])]],
         ]);
     }
@@ -115,15 +142,27 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
             $this->redirect("/admin/content/{$id}/edit");
         }
 
-        $fields = $this->parseFieldsPost();
+        $type = $set['type'] ?? 'manual'; // type is fixed after creation
 
-        $this->db->update('content_sets', [
-            'name'        => $this->input('name'),
-            'slug'        => $slug,
-            'description' => $this->input('description', ''),
-            'fields'      => json_encode($fields, JSON_UNESCAPED_UNICODE),
-            'updated_at'  => date('Y-m-d H:i:s'),
-        ], 'id = ?', [(int) $id]);
+        if ($type === 'query') {
+            $queryConfig = $this->parseQueryConfigPost();
+            $this->db->update('content_sets', [
+                'name'         => $this->input('name'),
+                'slug'         => $slug,
+                'description'  => $this->input('description', ''),
+                'query_config' => json_encode($queryConfig, JSON_UNESCAPED_UNICODE),
+                'updated_at'   => date('Y-m-d H:i:s'),
+            ], 'id = ?', [(int) $id]);
+        } else {
+            $fields = $this->parseFieldsPost();
+            $this->db->update('content_sets', [
+                'name'        => $this->input('name'),
+                'slug'        => $slug,
+                'description' => $this->input('description', ''),
+                'fields'      => json_encode($fields, JSON_UNESCAPED_UNICODE),
+                'updated_at'  => date('Y-m-d H:i:s'),
+            ], 'id = ?', [(int) $id]);
+        }
 
         $this->logActivity('update', 'content_set', (int) $id, $this->input('name'));
         Auth::flash('success', 'Content set updated.');
@@ -151,6 +190,18 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
     {
         $set  = $this->requireSet((int) $id);
         $set['fields'] = json_decode($set['fields'] ?? '[]', true) ?: [];
+
+        // Query sets have no manual rows — send to edit
+        if (($set['type'] ?? 'manual') === 'query') {
+            Auth::flash('info', 'Query sets pull live data — no manual rows to manage.');
+            $this->redirect('/admin/content/' . (int) $id . '/edit');
+        }
+
+        // No fields defined yet — send straight to schema editor
+        if (empty($set['fields'])) {
+            Auth::flash('info', 'Define your fields first, then you can add rows.');
+            $this->redirect('/admin/content/' . (int) $id . '/edit');
+        }
         $rows = $this->db->fetchAll(
             'SELECT * FROM content_set_rows WHERE set_id = ? ORDER BY sort_order ASC, id ASC',
             [(int) $id]
@@ -296,5 +347,15 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
             ];
         }
         return $fields;
+    }
+
+    /**
+     * Parse query config from POST body (hidden JSON field submitted by the query builder JS).
+     */
+    private function parseQueryConfigPost(): array
+    {
+        $raw = $_POST['query_config'] ?? '';
+        $cfg = json_decode($raw, true);
+        return is_array($cfg) ? $cfg : [];
     }
 }

@@ -122,7 +122,12 @@ class Template
         // Extract variables into scope and capture output
         extract($data, EXTR_SKIP);
         ob_start();
-        include $file;
+        try {
+            include $file;
+        } catch (\Throwable $e) {
+            ob_end_clean();
+            throw $e;
+        }
         return ob_get_clean();
     }
 

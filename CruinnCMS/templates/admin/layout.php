@@ -51,13 +51,13 @@
                         <a href="<?= url('/admin/pages') ?>">Pages</a>
                         <a href="<?= url('/admin/templates') ?>">Templates</a>
                         <a href="<?= url('/admin/menus') ?>">Menus</a>
+                        <a href="<?= url('/admin/content') ?>">Dynamic Content</a>
                         <a href="<?= url('/admin/site-builder/structure') ?>">Structure</a>
                         <a href="<?= url('/admin/site-builder/global-header') ?>">Global Header</a>
                         <a href="<?= url('/admin/site-builder/global-footer') ?>">Global Footer</a>
                         <a href="<?= url('/admin/blocks/named') ?>">Named Blocks</a>
                         <a href="<?= url('/admin/template-editor') ?>">PHP Templates</a>
                         <a href="<?= url('/admin/media') ?>">Media</a>
-                        <a href="<?= url('/admin/content') ?>">Content Sets</a>
                         <a href="<?= url('/admin/import') ?>">Import</a>
                     </div>
                 </div>
@@ -147,7 +147,7 @@
         <?php endif; ?>
 
         <div class="admin-main">
-            <div class="admin-content">
+            <div class="admin-content<?= !empty($GLOBALS['admin_flush_layout']) ? ' admin-content--flush' : '' ?>">
                 <?= $content ?>
             </div>
         </div>
@@ -202,5 +202,22 @@ foreach ($adminModules as $module):
 <?php foreach (\Cruinn\Template::flushJs() as $_jsModule): ?>
 <script src="<?= url('/js/admin/' . e($_jsModule)) ?>?v=<?= file_exists($adminJsBase . $_jsModule) ? filemtime($adminJsBase . $_jsModule) : 0 ?>"></script>
 <?php endforeach; ?>
+<script>
+(function () {
+    var currentPath = location.pathname;
+    document.querySelectorAll('.admin-sidebar-group').forEach(function (group) {
+        var flyout = group.querySelector('.admin-sidebar-flyout');
+        if (!flyout) { return; }
+        // Auto-open if current page is within this group
+        if (flyout.querySelector('a[href="' + currentPath + '"]')) {
+            group.classList.add('open');
+        }
+        group.querySelector('.admin-sidebar-parent').addEventListener('click', function (e) {
+            e.preventDefault();
+            group.classList.toggle('open');
+        });
+    });
+}());
+</script>
 </body>
 </html>

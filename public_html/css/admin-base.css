@@ -21,16 +21,19 @@
     --color-border: #ccd9d3;
     background: #f2f5f3;
     margin: 0;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* ── Sidebar + Right Column Wrapper ─────────────────────────── */
 .admin-wrap {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
     box-shadow: 0 0 60px rgba(0, 0, 0, .12);
+    overflow: hidden;
 }
 
 /* Wide mode: remove outer constraint — toggled via html.admin-layout-wide */
@@ -130,23 +133,20 @@ html.admin-layout-wide .admin-wrap {
 
 .admin-sidebar-flyout {
     display: none;
-    position: absolute;
-    left: 100%;
-    top: 0;
-    background: var(--color-text, #2c3e50);
-    border: 1px solid rgba(255, 255, 255, .12);
-    border-radius: 4px;
-    min-width: 160px;
-    padding: 4px 0;
-    z-index: 200;
-    box-shadow: 4px 4px 16px rgba(0, 0, 0, .35);
+    position: static;
+    background: rgba(0, 0, 0, .18);
+    border: none;
+    border-radius: 0;
+    min-width: 0;
+    padding: 2px 0 4px;
+    box-shadow: none;
 }
 
 .admin-sidebar-flyout a {
     display: block;
-    padding: 0.35rem 0.9rem;
+    padding: 0.3rem 0.9rem 0.3rem 1.4rem;
     font-size: 0.8rem;
-    color: rgba(255, 255, 255, .7);
+    color: rgba(255, 255, 255, .65);
     text-decoration: none;
     border-right: none;
     white-space: nowrap;
@@ -158,12 +158,11 @@ html.admin-layout-wide .admin-wrap {
     border-right: none;
 }
 
-.admin-sidebar-group:hover>.admin-sidebar-flyout,
-.admin-sidebar-group:focus-within>.admin-sidebar-flyout {
+.admin-sidebar-group.open > .admin-sidebar-flyout {
     display: block;
 }
 
-.admin-sidebar-group:hover>.admin-sidebar-parent .sidebar-caret {
+.admin-sidebar-group.open > .admin-sidebar-parent .sidebar-caret {
     transform: rotate(90deg);
     opacity: 0.8;
 }
@@ -205,6 +204,7 @@ html.admin-layout-wide .admin-wrap {
 .admin-right {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
@@ -312,14 +312,18 @@ html.admin-layout-wide .admin-wrap {
     flex-direction: column;
 }
 
+/* Normal pages: admin-content scrolls within admin-main */
 .admin-content {
     padding: var(--space-xl) var(--space-md);
     flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
-/* When the editor is loaded, remove padding but allow natural scroll */
-.admin-content:has(#editor-wrap) {
+/* Full-bleed layouts (editor, 3-panel): no padding, no scroll — child fills 100% */
+.admin-content.admin-content--flush {
     padding: 0;
+    overflow: hidden;
 }
 
 .admin-flash {
@@ -401,7 +405,7 @@ html.admin-layout-wide .admin-wrap {
         min-width: 0;
     }
 
-    .admin-sidebar-group:hover>.admin-sidebar-flyout {
+    .admin-sidebar-group.open > .admin-sidebar-flyout {
         display: flex;
         flex-wrap: wrap;
     }

@@ -187,6 +187,9 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/editor/zone/{zone}',              [CruinnController::class, 'editZone']);
     $router->get('/admin/editor/nav-menu-preview',         [CruinnController::class, 'navMenuPreview']);
     $router->get('/admin/editor/php-include-preview',      [CruinnController::class, 'phpIncludePreview']);
+    $router->get('/admin/editor/db-tables',                [CruinnController::class, 'dbTables']);
+    $router->get('/admin/editor/db-columns',               [CruinnController::class, 'dbColumns']);
+    $router->get('/admin/editor/db-preview',               [CruinnController::class, 'dbPreview']);
     $router->get('/admin/editor/{pageId}/edit',            [CruinnController::class, 'edit']);
     $router->post('/admin/editor/{pageId}/action',         [CruinnController::class, 'recordAction']);
     $router->post('/admin/editor/{pageId}/undo',           [CruinnController::class, 'undo']);

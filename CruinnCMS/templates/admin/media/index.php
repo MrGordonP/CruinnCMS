@@ -3,6 +3,7 @@
  * Admin — Media Library (3-panel layout)
  */
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <style>

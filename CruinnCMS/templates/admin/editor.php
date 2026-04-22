@@ -6,6 +6,7 @@
  * Requires admin/layout wrapper (set by CruinnController::edit via renderAdmin).
  */
 \Cruinn\Template::requireCss('editor.css');
+$GLOBALS['admin_flush_layout'] = true;
 
 // Context-aware page URL helper.
 // $editorPageBase: null = admin context, string = platform context url prefix e.g. '/cms/editor?instance=testsite'
@@ -1079,23 +1080,23 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <!-- data-list config -->
                     <div class="editor-content-group" data-content-type="data-list" style="display:none">
-                        <div class="editor-prop-row">
-                            <label>Content Set</label>
-                            <select class="editor-prop-input" data-config="set_slug" id="prop-data-list-set">
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
+                            <label>Content Set &nbsp;<a href="<?= url('/admin/content') ?>" target="_blank" style="font-size:0.72rem;font-weight:400">Manage ↗</a></label>
+                            <select class="editor-prop-input" data-config="set_slug" id="prop-data-list-set" style="width:100%">
                                 <option value="">&mdash; Select set &mdash;</option>
                                 <?php foreach ($contentSets as $_cs): ?>
-                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?><?= ($cs_type = $_cs['type'] ?? 'manual') === 'query' ? ' (Query)' : '' ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="editor-prop-row">
+                        <div class="editor-prop-row" style="margin-top:0.5rem">
                             <label>View</label>
                             <select class="editor-prop-input" data-config="view" id="prop-data-list-view">
                                 <option value="continuous">Continuous (all rows)</option>
                                 <option value="single">Single (first row)</option>
                             </select>
                         </div>
-                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem">
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem;margin-top:0.25rem">
                             <label>Card Template</label>
                             <textarea class="editor-prop-input" data-config="card_html" id="prop-data-list-card"
                                       rows="8" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"

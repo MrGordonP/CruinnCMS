@@ -385,9 +385,15 @@ class App
         }
 
         if (self::config('site.debug')) {
-            echo '<pre style="background:#1e1e1e;color:#d4d4d4;padding:1rem;font-size:13px">'
+            // Flush any buffered output so the error is always visible
+            while (ob_get_level() > 0) { ob_end_clean(); }
+            ini_set('display_errors', '1');
+            header('Content-Type: text/html; charset=UTF-8', true, 500);
+            echo '<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'
+                . '<pre style="background:#1e1e1e;color:#d4d4d4;padding:1rem;font-size:13px;white-space:pre-wrap">'
                 . htmlspecialchars((string) $e, ENT_QUOTES | ENT_HTML5, 'UTF-8')
-                . '</pre>';
+                . '</pre></body></html>';
+            exit;
         } else {
             // Render a plain, safe 500 page without template engine
             // (the error may have occurred inside the template system).

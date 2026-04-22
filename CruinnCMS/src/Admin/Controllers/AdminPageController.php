@@ -133,7 +133,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             $renderMode = 'block';
         }
 
-        $this->db->update('pages', [
+        $this->db->update('pages_index', [
             'title'            => $this->input('title'),
             'slug'             => $slug,
             'status'           => $this->input('status', 'draft'),
@@ -161,7 +161,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
 
         $this->db->transaction(function () use ($id, $page) {
             $this->db->delete('content_blocks', 'parent_type = ? AND parent_id = ?', ['page', $id]);
-            $this->db->delete('pages', 'id = ?', [$id]);
+            $this->db->delete('pages_index', 'id = ?', [$id]);
             $this->logActivity('delete', 'page', (int) $id, $page['title']);
         });
 
@@ -203,7 +203,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
 
         $html = $_POST['body_html'] ?? '';
 
-        $this->db->update('pages', [
+        $this->db->update('pages_index', [
             'body_html'   => $html,
             'render_mode' => 'html',
             'updated_at'  => date('Y-m-d H:i:s'),
@@ -233,24 +233,29 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             $this->redirect('/admin/pages');
         }
 
-        $importSvc = new \Cruinn\Services\ImportService();
-        $blocks    = $importSvc->autoImport($page, (int) $id, null);
+        try {
+            $importSvc = new \Cruinn\Services\ImportService();
+            $blocks    = $importSvc->autoImport($page, (int) $id, null);
 
-        if (empty($blocks)) {
-            Auth::flash('error', 'Nothing to import — the page has no HTML content.');
+            if (empty($blocks)) {
+                Auth::flash('error', 'Nothing to import — the page has no HTML content.');
+                $this->redirect('/admin/pages');
+            }
+
+            $importSvc->persistImportedBlocks($blocks, (int) $id, $this->db);
+
+            $this->db->update('pages_index', [
+                'render_mode' => 'block',
+                'updated_at'  => date('Y-m-d H:i:s'),
+            ], 'id = ?', [$id]);
+
+            $this->logActivity('update', 'page', (int) $id, $page['title'] . ' [convert-to-blocks]');
+            Auth::flash('success', 'Page converted. Review your blocks and publish when ready.');
+            $this->redirect('/admin/editor/' . (int) $id . '/edit');
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Convert failed: ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine());
             $this->redirect('/admin/pages');
         }
-
-        $importSvc->persistImportedBlocks($blocks, (int) $id, $this->db);
-
-        $this->db->update('pages', [
-            'render_mode' => 'block',
-            'updated_at'  => date('Y-m-d H:i:s'),
-        ], 'id = ?', [$id]);
-
-        $this->logActivity('update', 'page', (int) $id, $page['title'] . ' [convert-to-blocks]');
-        Auth::flash('success', 'Page converted. Review your blocks and publish when ready.');
-        $this->redirect('/admin/editor/' . (int) $id . '/edit');
     }
 
     /**
@@ -304,7 +309,7 @@ HTML;
         file_put_contents($filePath, $document);
 
         $webPath = '/storage/pages/' . $filename;
-        $this->db->update('pages', [
+        $this->db->update('pages_index', [
             'render_mode' => 'file',
             'render_file' => $webPath,
             'updated_at'  => date('Y-m-d H:i:s'),

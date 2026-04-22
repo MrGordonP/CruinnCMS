@@ -128,6 +128,12 @@ class CruinnController extends BaseController
         foreach ($phpGroups as &$g) { sort($g); }
         unset($g);
 
+        try {
+            $openEditorContentSets = $this->db->fetchAll('SELECT id, name, slug, fields FROM content_sets ORDER BY name ASC');
+        } catch (\Exception $e) {
+            $openEditorContentSets = [];
+        }
+
         $this->renderAdmin('admin/editor', [
             'title'           => 'Editor',
             'page'            => null,
@@ -136,6 +142,7 @@ class CruinnController extends BaseController
             'cruinnHtml'      => '',
             'cruinnCss'       => '',
             'menus'           => $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC'),
+            'contentSets'     => $openEditorContentSets,
             'isZonePage'      => false,
             'zoneName'        => null,
             'isTemplatePage'  => false,
@@ -1172,6 +1179,83 @@ class CruinnController extends BaseController
             $output .= $doc->saveHTML($child);
         }
         return $output;
+    }
+
+    /**
+     * GET /admin/editor/db-tables
+     * Returns all table names in the instance DB as JSON.
+     */
+    public function dbTables(): void
+    {
+        Auth::requireRole('admin');
+        header('Content-Type: application/json');
+        try {
+            $svc    = new \Cruinn\Services\QueryBuilderService($this->db);
+            $tables = $svc->getTables();
+            echo json_encode(['tables' => $tables]);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * GET /admin/editor/db-columns?tables[]=t1&tables[]=t2
+     * Returns column names for the requested tables as JSON.
+     */
+    public function dbColumns(): void
+    {
+        Auth::requireRole('admin');
+        header('Content-Type: application/json');
+        $tables = array_values(array_filter((array) ($_GET['tables'] ?? []), fn($t) => is_string($t) && $t !== ''));
+        if (empty($tables)) {
+            echo json_encode(['columns' => (object) []]);
+            exit;
+        }
+        // Reject obviously invalid table names before hitting DB
+        foreach ($tables as $t) {
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $t)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid table name: ' . $t]);
+                exit;
+            }
+        }
+        try {
+            $svc  = new \Cruinn\Services\QueryBuilderService($this->db);
+            $cols = $svc->getColumns($tables);
+            echo json_encode(['columns' => $cols]);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * GET /admin/editor/db-preview?table=X&column=Y
+     * Returns up to 8 distinct non-null values for a column as JSON.
+     */
+    public function dbPreview(): void
+    {
+        Auth::requireRole('admin');
+        header('Content-Type: application/json');
+        $table  = trim($_GET['table']  ?? '');
+        $column = trim($_GET['column'] ?? '');
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid table or column name']);
+            exit;
+        }
+        try {
+            $svc    = new \Cruinn\Services\QueryBuilderService($this->db);
+            $values = $svc->getPreviewValues($table, $column);
+            echo json_encode(['values' => $values]);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => $e->getMessage()]);
+        }
+        exit;
     }
 
 }

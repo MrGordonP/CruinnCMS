@@ -1,3 +1,4 @@
+<?php
 $isNew = empty($role['id']);
 \Cruinn\Template::requireCss('admin-acp.css'); \Cruinn\Template::requireCss('admin-site-builder.css');
 $formAction = $isNew ? '/admin/roles' : '/admin/roles/' . (int)$role['id'];

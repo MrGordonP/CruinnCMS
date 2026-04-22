@@ -1,5 +1,5 @@
-/**
- * Cruinn CMS — Page Editor
+﻿/**
+ * Cruinn CMS â€” Page Editor
  * Standalone IIFE. No external dependencies. No build step.
  * Sections: A Init, B IDs, C Selection, D contenteditable, E DnD,
  *           F Properties, G Palette, H Media, I Serialise, J Undo/Redo,
@@ -8,7 +8,7 @@
 (function () {
     'use strict';
 
-    // ── Section A — Init ────────────────────────────────────────────
+    // â”€â”€ Section A â€” Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     var wrap = document.getElementById('editor-wrap');
     var canvas = document.getElementById('editor-canvas');
@@ -112,17 +112,17 @@
         rebuildLiveStyles();
     }
 
-    // ── Section B — Block ID generation ────────────────────────────
+    // â”€â”€ Section B â€” Block ID generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     function newId() {
         return 'b-' + Math.random().toString(36).slice(2, 10);
     }
 
-    // ── Section C — Block selection ─────────────────────────────────
+    // â”€â”€ Section C â€” Block selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     var activeBlock = null;
 
-    // Intercept all interactive element clicks in the canvas — prevent navigation/submission.
+    // Intercept all interactive element clicks in the canvas â€” prevent navigation/submission.
     // Ctrl+click or Cmd+click opens anchor href in a new tab (for preview).
     canvas.addEventListener('click', function (e) {
         // Prevent anchor navigation
@@ -186,7 +186,7 @@
         if (e.key === 'Escape') { deselect(); }
     });
 
-    // ── Section D — contenteditable + mini-toolbar ──────────────────
+    // â”€â”€ Section D â€” contenteditable + mini-toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     var EDITABLE_TYPES = ['text', 'heading', 'html', 'site-title'];
     var miniBar = document.getElementById('editor-mini-toolbar');
@@ -237,7 +237,7 @@
         });
     });
 
-    // ── Section E — Drag and Drop ────────────────────────────────────
+    // â”€â”€ Section E â€” Drag and Drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     var dragSrc = null;
 
@@ -356,7 +356,7 @@
         });
     }
 
-    // ── Section F — Properties panel ────────────────────────────────
+    // â”€â”€ Section F â€” Properties panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     var LAYOUT_TYPES = ['section', 'columns', 'table', 'site-header', 'nav-menu'];
     var ZONE_TYPES = ['zone'];
@@ -460,7 +460,7 @@
         var collapsedCb = document.getElementById('prop-collapsed');
         if (collapsedCb) { collapsedCb.checked = block.classList.contains('collapsed'); }
 
-        // CSS properties — read computed styles so users see actual values
+        // CSS properties â€” read computed styles so users see actual values
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
             var prop = inp.dataset.prop;
             var val = cs[prop] || '';
@@ -500,7 +500,7 @@
             swatch.value = isTransparent ? '#000000' : (rgbToHex(val) || '#000000');
         });
 
-        // Numeric + unit props — read computed styles
+        // Numeric + unit props â€” read computed styles
         panel.querySelectorAll('[data-prop-num]').forEach(function (inp) {
             var prop = inp.dataset.propNum;
             // Check inline style first for 'auto', then fall back to computed
@@ -561,10 +561,10 @@
             refreshPhpIncludePreview(block);
         }
 
-        // Data List: populate set selector, view, card_html and show token hints
+        // Data List: populate props from config
         if (type === 'data-list') {
-            var dlSetSel = document.getElementById('prop-data-list-set');
-            if (dlSetSel) { dlSetSel.value = config.set_slug || ''; }
+            var dlSetSel2 = document.getElementById('prop-data-list-set');
+            if (dlSetSel2) { dlSetSel2.value = config.set_slug || ''; }
             var dlViewSel = document.getElementById('prop-data-list-view');
             if (dlViewSel) { dlViewSel.value = config.view || 'continuous'; }
             var dlCard = document.getElementById('prop-data-list-card');
@@ -607,7 +607,7 @@
             }
         }
 
-        // Text shadow — parse back into sub-fields (from computed style)
+        // Text shadow â€” parse back into sub-fields (from computed style)
         (function () {
             var tsX = document.getElementById('prop-text-shadow-x');
             var tsY = document.getElementById('prop-text-shadow-y');
@@ -630,7 +630,7 @@
             }
         }());
 
-        // Box shadow — parse back into sub-fields (from computed style)
+        // Box shadow â€” parse back into sub-fields (from computed style)
         (function () {
             var bsX = document.getElementById('prop-box-shadow-x');
             var bsY = document.getElementById('prop-box-shadow-y');
@@ -683,7 +683,7 @@
 
     function bindPropInputs(block) {
         // Remove previous listeners by cloning nodes for [data-prop] inputs
-        // We use a delegated approach on panel instead — re-bind on each select
+        // We use a delegated approach on panel instead â€” re-bind on each select
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
             var handler = function () {
                 writeProps(block, inp.dataset.prop, inp.value);
@@ -1059,7 +1059,7 @@
             }
         }
 
-        // Colour swatches — pre-apply on click (solves first-pick = same colour),
+        // Colour swatches â€” pre-apply on click (solves first-pick = same colour),
         // update live while dragging, commit on close
         panel.querySelectorAll('[data-color-swatch]').forEach(function (swatch) {
             var prop = swatch.dataset.colorSwatch;
@@ -1073,7 +1073,7 @@
             swatch.onchange = applyColor;
         });
 
-        // PHP Code textarea — write back to block_config._php on change
+        // PHP Code textarea â€” write back to block_config._php on change
         if (PHP_CODE_TYPES.indexOf(block.dataset.blockType) !== -1) {
             var phpCodeTa = document.getElementById('prop-php-code');
             if (phpCodeTa) {
@@ -1121,7 +1121,7 @@
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
         var rel = cfg.template || '';
         if (!rel) {
-            block.innerHTML = '<p style="color:#9ca3af;font-size:0.8rem;padding:0.5rem">PHP Include — no template selected</p>';
+            block.innerHTML = '<p style="color:#9ca3af;font-size:0.8rem;padding:0.5rem">PHP Include â€” no template selected</p>';
             return;
         }
         var qs = 'template=' + encodeURIComponent(rel);
@@ -1138,6 +1138,8 @@
             .catch(function () { /* leave existing content on error */ });
     }
 
+    // â”€â”€ Data List token hints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
     function updateDataListTokenHints(slug) {
         var hint = document.getElementById('prop-data-list-tokens');
         if (!hint) { return; }
@@ -1145,7 +1147,9 @@
         var set = null;
         for (var i = 0; i < sets.length; i++) { if (sets[i].slug === slug) { set = sets[i]; break; } }
         if (!set || !set.fields || !set.fields.length) {
-            hint.textContent = 'Select a content set to see available tokens.';
+            hint.textContent = set && set.type === 'query'
+                ? 'Query set â€” tokens depend on selected fields.'
+                : 'Select a content set to see available tokens.';
             return;
         }
         hint.innerHTML = '<strong>Tokens:</strong> ' + set.fields.map(function (f) {
@@ -1164,19 +1168,13 @@
         });
     }
 
-    // Wire data-list config panel inputs (set once; guarded by element existence)
+    // Wire data-list inputs (one-time setup)
     (function () {
         var dlSetSel = document.getElementById('prop-data-list-set');
-        var dlViewSel = document.getElementById('prop-data-list-view');
-        var dlCard = document.getElementById('prop-data-list-card');
         if (dlSetSel) {
             dlSetSel.addEventListener('change', function () {
                 updateDataListTokenHints(dlSetSel.value);
-                // writeConfigInput is handled by the global data-config listener
             });
-        }
-        if (dlCard) {
-            dlCard.addEventListener('input', function () { /* global data-config listener handles save */ });
         }
     }());
 
@@ -1193,6 +1191,7 @@
         block.dataset.blockConfig = JSON.stringify(config);
         debounceAction();
     }
+
 
     function rebuildLiveStyles() {
         if (!liveStyles) { return; }
@@ -1215,9 +1214,9 @@
             ('0' + parseInt(m[3]).toString(16)).slice(-2);
     }
 
-    // ── Section G — Block palette + delete ──────────────────────────
+    // ΓöÇΓöÇ Section G ΓÇö Block palette + delete ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
-    // Default CSS applied to new leaf blocks — portrait ISO proportions (≈ A4 at screen scale),
+    // Default CSS applied to new leaf blocks ΓÇö portrait ISO proportions (Γëê A4 at screen scale),
     // inline-block so that multiple blocks can sit side by side.
     var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', boxSizing: 'border-box' };
 
@@ -1244,9 +1243,9 @@
         'nav-menu': { tag: 'nav', inner: '', defaultConfig: { menu_id: '' }, initCss: PORTRAIT_INIT },
         'site-logo': { tag: 'div', inner: '<a href="/"><img src="" alt="Site Logo"></a>', initCss: PORTRAIT_INIT },
         'site-title': { tag: 'div', inner: '<h1 class="site-name">Site Name</h1><p class="site-tagline"></p>', initCss: PORTRAIT_INIT },
-        'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list — visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
-        'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List — visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
-        'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include — visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
+        'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
+        'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
+        'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
             initCss: { display: 'block', width: '100%', boxSizing: 'border-box' }
@@ -1362,7 +1361,7 @@
         recordAction();
     }
 
-    // ── Block tree ───────────────────────────────────────────────────
+    // ΓöÇΓöÇ Block tree ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function updateBlockTree() {
         var tree = document.getElementById('editor-block-tree');
@@ -1401,7 +1400,7 @@
         return item;
     }
 
-    // ── Accordion behaviour ──────────────────────────────────────────
+    // ΓöÇΓöÇ Accordion behaviour ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function bindAccordions() {
         panel.querySelectorAll('.editor-accordion-toggle').forEach(function (btn) {
@@ -1412,14 +1411,14 @@
         });
     }
 
-    // ── Section H — Media panel ──────────────────────────────────────
+    // ΓöÇΓöÇ Section H ΓÇö Media panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     // Delegated to Cruinn.openMediaBrowser (media-browser.js)
 
     function openMediaPanel(callback) {
         Cruinn.openMediaBrowser(callback);
     }
 
-    // ── Section I — Serialise + recordAction ─────────────────────────
+    // ΓöÇΓöÇ Section I ΓÇö Serialise + recordAction ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function serialiseCanvas() {
         var blocks = [];
@@ -1478,7 +1477,7 @@
         return blocks;
     }
 
-    // ── Document panel (file-mode) ────────────────────────────────────
+    // ΓöÇΓöÇ Document panel (file-mode) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     var _docSaveTimer = null;
 
     function bindDocPanel() {
@@ -1538,11 +1537,11 @@
             console.error('[Cruinn] saveDocAttrs failed:', err);
         });
     }
-    // ── End Document panel ────────────────────────────────────────────
+    // ΓöÇΓöÇ End Document panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function parseCssProps(style) {
         if (!style) { return null; }
-        // Always return an object (possibly empty {}) — an empty object signals
+        // Always return an object (possibly empty {}) ΓÇö an empty object signals
         // "this block's styles have been managed and are currently empty", which
         // lets reconstructTree strip a previously-baked style attr on publish.
         var obj = {};
@@ -1594,7 +1593,7 @@
         _debounceTimer = setTimeout(recordAction, 2000);
     }
 
-    // ── Section J — Undo / Redo ──────────────────────────────────────
+    // ΓöÇΓöÇ Section J ΓÇö Undo / Redo ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     // Local ring-buffer for optimistic undo (stores canvas.innerHTML snapshots)
     var localUndoStack = [];
@@ -1750,7 +1749,7 @@
         if (badge) { badge.style.display = hasDraft ? '' : 'none'; }
     }
 
-    // ── Section K — Publish / Discard ────────────────────────────────
+    // ΓöÇΓöÇ Section K ΓÇö Publish / Discard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function bindToolbar() {
         var publishBtn = document.getElementById('editor-publish-btn');
@@ -1776,7 +1775,7 @@
                     .then(function (data) {
                         if (data.success) {
                             if (data.reimported) {
-                                alert('Published. Reloading editor — undo history has been reset.');
+                                alert('Published. Reloading editor ΓÇö undo history has been reset.');
                                 location.reload();
                             } else {
                                 showDraftBadge(false);
@@ -1841,19 +1840,19 @@
         var redoBtn = document.getElementById('editor-redo-btn');
         if (redoBtn) { redoBtn.addEventListener('click', redo); }
 
-        // ── Code view toggle ─────────────────────────────────────────
+        // ΓöÇΓöÇ Code view toggle ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         var codeBtn = document.getElementById('editor-code-toggle-btn');
         if (codeBtn) { codeBtn.addEventListener('click', toggleCodeView); }
     }
 
-    // ── Section N — Code View ─────────────────────────────────────────
+    // ΓöÇΓöÇ Section N ΓÇö Code View ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     var _inCodeView = false;
     var _codeArea = null;
     var _codeFileMode = null; // { rel } when editing a template file
     var _htmlPageMode = false; // true when page render_mode=html
 
-    // Block type → HTML tag mapping (mirrors PHP BlockRegistry)
+    // Block type ΓåÆ HTML tag mapping (mirrors PHP BlockRegistry)
     var BLOCK_TAGS = {
         'text': 'div', 'heading': 'h2', 'image': 'figure', 'gallery': 'div',
         'html': 'div', 'section': 'section', 'columns': 'div', 'site-logo': 'div',
@@ -2004,7 +2003,7 @@
         var btn = document.getElementById('editor-code-toggle-btn');
         if (btn) {
             btn.classList.add('active');
-            btn.textContent = _codeFileMode ? '× Close File' : 'Blocks';
+            btn.textContent = _codeFileMode ? '├ù Close File' : 'Blocks';
         }
 
         deselect();
@@ -2059,7 +2058,7 @@
     }
 
     /**
-     * Very basic HTML formatter — adds newlines before block-level tags.
+     * Very basic HTML formatter ΓÇö adds newlines before block-level tags.
      */
     function formatHtml(html) {
         return html
@@ -2084,7 +2083,7 @@
                 return;
             }
             editSrcBtn.disabled = true;
-            editSrcBtn.textContent = 'Loading…';
+            editSrcBtn.textContent = 'LoadingΓÇª';
             fetch('/admin/template-editor/edit?f=' + encodeURIComponent(rel) + '&format=json', {
                 headers: { 'Accept': 'application/json' },
             })
@@ -2102,7 +2101,7 @@
         });
     }());
 
-    // ── Section M — Canvas resize ─────────────────────────────────────
+    // ΓöÇΓöÇ Section M ΓÇö Canvas resize ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function initCanvasResize() {
         var handle = document.getElementById('cruinn-canvas-resize-handle');
@@ -2165,7 +2164,7 @@
         });
     }
 
-    // ── Section L — Keyboard shortcuts ───────────────────────────────
+    // ΓöÇΓöÇ Section L ΓÇö Keyboard shortcuts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function bindKeyboard() {
         document.addEventListener('keydown', function (e) {
@@ -2182,7 +2181,7 @@
         });
     }
 
-    // ── Section M — Public API ────────────────────────────────────────
+    // ΓöÇΓöÇ Section M ΓÇö Public API ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     // Expose serialiseCanvas for the Code panel inline script.
     window.serialiseCanvasPublic = serialiseCanvas;
 
