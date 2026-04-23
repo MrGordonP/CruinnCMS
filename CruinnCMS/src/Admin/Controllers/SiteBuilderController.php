@@ -95,11 +95,14 @@ class SiteBuilderController extends BaseController
 
     public function builderCreateTemplate(): void
     {
-        $name        = trim($this->input('name', ''));
-        $slug        = trim($this->input('slug', ''));
-        $description = trim($this->input('description', ''));
-        $zones       = trim($this->input('zones', '["main"]'));
-        $cssClass    = trim($this->input('css_class', ''));
+        $name         = trim($this->input('name', ''));
+        $slug         = trim($this->input('slug', ''));
+        $description  = trim($this->input('description', ''));
+        $zones        = trim($this->input('zones', '["main"]'));
+        $cssClass     = trim($this->input('css_class', ''));
+        $templateType  = in_array($this->input('template_type', 'page'), ['page', 'content'], true)
+                         ? $this->input('template_type', 'page') : 'page';
+        $contextSource = $this->sanitiseContextSource($this->input('context_source', ''));
 
         if (!$name || !$slug) {
             Auth::flash('error', 'Name and slug are required.');
@@ -125,9 +128,9 @@ class SiteBuilderController extends BaseController
         $maxSort = $this->db->fetch('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM page_templates');
 
         $this->db->execute(
-            'INSERT INTO page_templates (slug, name, description, zones, css_class, is_system, sort_order)
-             VALUES (?, ?, ?, ?, ?, 0, ?)',
-            [$slug, $name, $description, $zones, $cssClass, $maxSort['next_sort'] ?? 99]
+            'INSERT INTO page_templates (slug, name, description, zones, css_class, is_system, sort_order, template_type, context_source)
+             VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
+            [$slug, $name, $description, $zones, $cssClass, $maxSort['next_sort'] ?? 99, $templateType, $contextSource ?: null]
         );
 
         Auth::flash('success', "Template '{$name}' created.");
@@ -161,7 +164,7 @@ class SiteBuilderController extends BaseController
             $canvasPageId = (int) $page['id'];
         } else {
             $this->db->execute(
-                'INSERT INTO pages (title, slug, status, template, editor_mode) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO pages_index (title, slug, status, template, editor_mode) VALUES (?, ?, ?, ?, ?)',
                 ['Template: ' . $tpl['name'], $canvasSlug, 'published', 'none', 'freeform']
             );
             $canvasPageId = (int) $this->db->pdo()->lastInsertId();
@@ -296,6 +299,10 @@ class SiteBuilderController extends BaseController
             [(int) $id]
         );
 
+        $contentSets = $this->db->fetchAll(
+            'SELECT slug, name FROM content_sets ORDER BY name'
+        );
+
         $this->renderAdmin('admin/site-builder/template-settings', [
             'title'           => 'Edit Template: ' . $tpl['name'],
             'section'         => 'builder',
@@ -303,6 +310,7 @@ class SiteBuilderController extends BaseController
             'tpl'             => $tpl,
             'pages'           => $pages,
             'headerTemplates' => $headerTemplates,
+            'contentSets'     => $contentSets,
         ]);
     }
 
@@ -377,11 +385,12 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/templates');
         }
 
-        $name        = trim($this->input('name', ''));
-        $description = trim($this->input('description', ''));
-        $zones       = trim($this->input('zones', '["main"]'));
-        $cssClass    = trim($this->input('css_class', ''));
-        $sortOrder   = (int) $this->input('sort_order', $tpl['sort_order']);
+        $name          = trim($this->input('name', ''));
+        $description   = trim($this->input('description', ''));
+        $zones         = trim($this->input('zones', '["main"]'));
+        $cssClass      = trim($this->input('css_class', ''));
+        $sortOrder     = (int) $this->input('sort_order', $tpl['sort_order']);
+        $contextSource = $this->sanitiseContextSource($this->input('context_source', $tpl['context_source'] ?? ''));
 
         if (!$name) {
             Auth::flash('error', 'Name is required.');
@@ -435,13 +444,14 @@ class SiteBuilderController extends BaseController
         }
 
         $this->db->update('page_templates', [
-            'name'        => $name,
-            'slug'        => $slug,
-            'description' => $description,
-            'zones'       => $zones,
-            'css_class'   => $cssClass,
-            'sort_order'  => $sortOrder,
-            'settings'    => json_encode($settings),
+            'name'           => $name,
+            'slug'           => $slug,
+            'description'    => $description,
+            'zones'          => $zones,
+            'css_class'      => $cssClass,
+            'sort_order'     => $sortOrder,
+            'settings'       => json_encode($settings),
+            'context_source' => $contextSource ?: null,
         ], 'id = ?', [$id]);
 
         Auth::flash('success', "Template '{$name}' updated.");
@@ -464,6 +474,20 @@ class SiteBuilderController extends BaseController
             }
         }
         return 'default';
+    }
+
+    /**
+     * Sanitise a context_source value.
+     * Valid formats: 'content_set:{slug}' or a dotted identifier like 'blog.post'.
+     * Returns empty string if invalid.
+     */
+    private function sanitiseContextSource(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') { return ''; }
+        if (preg_match('/^content_set:[a-z0-9_\-]+$/', $value)) { return $value; }
+        if (preg_match('/^[a-z0-9_\-]+\.[a-z0-9_\-]+$/', $value)) { return $value; }
+        return '';
     }
 
     public function builderUpdateZoneSettings(string $id): void

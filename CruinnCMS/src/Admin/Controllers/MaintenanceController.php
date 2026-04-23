@@ -231,7 +231,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
     public function runMigrations(): void
     {
         Auth::requireRole('admin');
-        CSRF::verify();
+        CSRF::validate();
 
         $db = Database::getInstance();
 
@@ -260,7 +260,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             }
 
             try {
-                $db->pdo()->exec($sql);
+                $this->execSqlWithDelimiters($db->pdo(), $sql);
                 $db->execute(
                     "INSERT IGNORE INTO module_migrations (module, filename) VALUES (?, ?)",
                     [$m['module'], $m['file']]
@@ -293,6 +293,46 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
     }
 
     /**
+     * Execute a SQL file that may contain DELIMITER directives (e.g. stored procedures).
+     * PDO does not understand DELIMITER — this strips them and splits on the active delimiter.
+     */
+    private function execSqlWithDelimiters(\PDO $pdo, string $sql): void
+    {
+        $delimiter = ';';
+        $buffer    = '';
+
+        foreach (explode("\n", $sql) as $line) {
+            $trimmed = rtrim($line);
+
+            // DELIMITER directive — switch active delimiter, do not execute
+            if (preg_match('/^\s*DELIMITER\s+(\S+)\s*$/i', $trimmed, $m)) {
+                $delimiter = $m[1];
+                continue;
+            }
+
+            $buffer .= $line . "\n";
+
+            // If buffer ends with the current delimiter, execute it
+            if (str_ends_with(rtrim($buffer), $delimiter)) {
+                $stmt = rtrim($buffer);
+                // Strip the trailing delimiter
+                $stmt = substr($stmt, 0, strlen($stmt) - strlen($delimiter));
+                $stmt = trim($stmt);
+                if ($stmt !== '') {
+                    $pdo->exec($stmt);
+                }
+                $buffer = '';
+            }
+        }
+
+        // Execute any remaining buffered SQL
+        $stmt = trim($buffer);
+        if ($stmt !== '' && $stmt !== $delimiter) {
+            $pdo->exec($stmt);
+        }
+    }
+
+    /**
      * Collect all declared migrations + applied set from DB.
      * Also fixes the articles→blog slug rename in module_migrations if needed.
      *
@@ -318,25 +358,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             ");
         }
 
-        // Fix articles→blog slug rename (old deployments used 'articles' as module slug).
-        // If blog rows already exist for these filenames, just delete the stale 'articles' rows
-        // to avoid a unique-key collision. Otherwise rename them.
         $remapped = 0;
-        $articlesRows = $db->fetchAll("SELECT filename FROM module_migrations WHERE module = 'articles'");
-        if (!empty($articlesRows)) {
-            foreach ($articlesRows as $row) {
-                $exists = $db->fetch(
-                    "SELECT id FROM module_migrations WHERE module = 'blog' AND filename = ?",
-                    [$row['filename']]
-                );
-                if ($exists) {
-                    $db->execute("DELETE FROM module_migrations WHERE module = 'articles' AND filename = ?", [$row['filename']]);
-                } else {
-                    $db->execute("UPDATE module_migrations SET module = 'blog' WHERE module = 'articles' AND filename = ?", [$row['filename']]);
-                }
-                $remapped++;
-            }
-        }
 
         // Collect declared migrations
         $all = [];

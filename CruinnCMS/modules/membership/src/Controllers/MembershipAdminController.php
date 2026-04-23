@@ -26,37 +26,31 @@ class MembershipAdminController extends BaseController
             'q'       => trim((string) $this->query('q', '')),
         ];
 
-        $members = $this->membership->listMembers($filters);
+        $memberId      = (int) $this->query('member', 0);
+        $members       = $this->membership->listMembers($filters);
+        $member        = $memberId ? $this->membership->findById($memberId) : null;
+        $subscriptions = $member ? $this->membership->subscriptionsForMember($memberId) : [];
+        $payments      = $member ? $this->membership->paymentsForMember($memberId) : [];
 
         $this->renderAdmin('admin/membership/members/index', [
-            'title'       => 'Membership',
-            'members'     => $members,
-            'plans'       => $this->membership->allPlans(),
-            'filters'     => $filters,
-            'statusCount' => $this->membership->countByStatus(),
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership']],
+            'title'         => 'Membership',
+            'members'       => $members,
+            'plans'         => $this->membership->allPlans(true),
+            'filters'       => $filters,
+            'statusCount'   => $this->membership->countByStatus(),
+            'member'        => $member,
+            'memberId'      => $memberId,
+            'subscriptions' => $subscriptions,
+            'payments'      => $payments,
+            'errors'        => [],
+            'breadcrumbs'   => [['Admin', '/admin'], ['Membership']],
         ]);
     }
 
     public function showMember(int $id): void
     {
         Auth::requireRole('admin');
-
-        $member = $this->membership->findById($id);
-        if (!$member) {
-            http_response_code(404);
-            $this->render('errors/404');
-            return;
-        }
-
-        $this->renderAdmin('admin/membership/members/show', [
-            'title'         => trim(($member['forenames'] ?? '') . ' ' . ($member['surnames'] ?? '')),
-            'member'        => $member,
-            'plans'         => $this->membership->allPlans(true),
-            'subscriptions' => $this->membership->subscriptionsForMember($id),
-            'payments'      => $this->membership->paymentsForMember($id),
-            'breadcrumbs'   => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Member']],
-        ]);
+        $this->redirect('/admin/membership?member=' . $id);
     }
 
     public function newMember(): void
@@ -93,27 +87,13 @@ class MembershipAdminController extends BaseController
         $memberId = $this->membership->createMember($data);
         $this->logActivity('create', 'member', $memberId, 'Membership record created.');
         Auth::flash('success', 'Member created.');
-        $this->redirect('/admin/membership/members/' . $memberId);
+        $this->redirect('/admin/membership?member=' . $memberId);
     }
 
     public function editMember(int $id): void
     {
         Auth::requireRole('admin');
-
-        $member = $this->membership->findById($id);
-        if (!$member) {
-            http_response_code(404);
-            $this->render('errors/404');
-            return;
-        }
-
-        $this->renderAdmin('admin/membership/members/form', [
-            'title'       => 'Edit Member',
-            'member'      => $member,
-            'plans'       => $this->membership->allPlans(true),
-            'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Edit Member']],
-        ]);
+        $this->redirect('/admin/membership?member=' . $id);
     }
 
     public function updateMember(int $id): void
@@ -131,12 +111,19 @@ class MembershipAdminController extends BaseController
         $errors = $this->validateMemberPayload($data, $id);
 
         if ($errors) {
-            $this->renderAdmin('admin/membership/members/form', [
-                'title'       => 'Edit Member',
-                'member'      => array_merge($existing, $data),
-                'plans'       => $this->membership->allPlans(true),
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Edit Member']],
+            $filters = ['status' => '', 'plan_id' => '', 'q' => ''];
+            $this->renderAdmin('admin/membership/members/index', [
+                'title'         => 'Membership',
+                'members'       => $this->membership->listMembers($filters),
+                'plans'         => $this->membership->allPlans(true),
+                'filters'       => $filters,
+                'statusCount'   => $this->membership->countByStatus(),
+                'member'        => array_merge($existing, $data),
+                'memberId'      => $id,
+                'subscriptions' => $this->membership->subscriptionsForMember($id),
+                'payments'      => $this->membership->paymentsForMember($id),
+                'errors'        => $errors,
+                'breadcrumbs'   => [['Admin', '/admin'], ['Membership']],
             ]);
             return;
         }
@@ -144,7 +131,7 @@ class MembershipAdminController extends BaseController
         $this->membership->updateMember($id, $data);
         $this->logActivity('update', 'member', $id, 'Membership record updated.');
         Auth::flash('success', 'Member updated.');
-        $this->redirect('/admin/membership/members/' . $id);
+        $this->redirect('/admin/membership?member=' . $id);
     }
 
     public function createSubscription(int $id): void
@@ -179,7 +166,7 @@ class MembershipAdminController extends BaseController
         $subId = $this->membership->createSubscription($id, $data);
         $this->logActivity('create', 'membership_subscription', $subId, 'Subscription created for member #' . $id . '.');
         Auth::flash('success', 'Subscription created.');
-        $this->redirect('/admin/membership/members/' . $id);
+        $this->redirect('/admin/membership?member=' . $id);
     }
 
     public function updateSubscriptionStatus(int $id): void
@@ -199,7 +186,7 @@ class MembershipAdminController extends BaseController
 
         $memberId = (int) $this->input('member_id', 0);
         if ($memberId > 0) {
-            $this->redirect('/admin/membership/members/' . $memberId);
+            $this->redirect('/admin/membership?member=' . $memberId);
         }
 
         $this->redirect('/admin/membership');
@@ -234,7 +221,7 @@ class MembershipAdminController extends BaseController
 
         $memberId = (int) $this->input('member_id', 0);
         if ($memberId > 0) {
-            $this->redirect('/admin/membership/members/' . $memberId);
+            $this->redirect('/admin/membership?member=' . $memberId);
         }
 
         $this->redirect('/admin/membership');

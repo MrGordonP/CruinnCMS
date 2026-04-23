@@ -10,6 +10,7 @@
 namespace Cruinn\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\Database;
 use Cruinn\Services\DashboardService;
 
 class AdminController extends BaseController
@@ -21,13 +22,15 @@ class AdminController extends BaseController
      */
     public function dashboard(): void
     {
-        $roleId  = Auth::roleId();
-        $isAdmin = (Auth::role() === 'admin');
         $widgets = [];
 
-        if ($roleId && !$isAdmin) {
+        $primaryRoleId = Database::getInstance()->fetchColumn(
+            'SELECT r.id FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = ? ORDER BY r.level DESC LIMIT 1',
+            [Auth::userId()]
+        );
+        if ($primaryRoleId) {
             $dashService = new DashboardService();
-            $widgets = $dashService->buildDashboard($roleId);
+            $widgets = $dashService->buildDashboard((int) $primaryRoleId);
         }
 
         // Persist view preference in session

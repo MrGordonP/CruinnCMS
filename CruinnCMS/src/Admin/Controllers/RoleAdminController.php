@@ -30,11 +30,37 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
     {
         Auth::requirePermission('roles.manage');
 
-        $roles = $this->roles->all();
+        $allRoles = $this->roles->all();
+        $selectedId = isset($_GET['role']) ? (int)$_GET['role'] : null;
+
+        $role            = null;
+        $permissions     = [];
+        $rolePermissions = [];
+        $roleUsers       = [];
+        $usersNotInRole  = [];
+
+        if ($selectedId) {
+            $role = $this->roles->find($selectedId);
+            if ($role) {
+                $permissions    = $this->roles->allPermissions();
+                $rolePermissions = $this->roles->rolePermissionIds($selectedId);
+                $roleUsers      = $this->roles->getRoleUsers($selectedId);
+                $usersNotInRole = $this->roles->getUsersNotInRole($selectedId);
+            } else {
+                $selectedId = null;
+            }
+        }
+
         $this->renderAdmin('admin/roles/index', [
-            'title'       => 'Roles & Permissions',
-            'roles'       => $roles,
-            'breadcrumbs' => [['Admin', '/admin'], ['Roles']],
+            'title'           => 'Roles & Permissions',
+            'allRoles'        => $allRoles,
+            'role'            => $role,
+            'permissions'     => $permissions,
+            'rolePermissions' => $rolePermissions,
+            'roleUsers'       => $roleUsers,
+            'usersNotInRole'  => $usersNotInRole,
+            'errors'          => [],
+            'breadcrumbs'     => [['Admin', '/admin'], ['Roles']],
         ]);
     }
 
@@ -87,7 +113,7 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
 
         $this->logActivity('create', 'role', (int) $id, "Created role: {$data['name']}");
         Auth::flash('success', "Role \"{$data['name']}\" created.");
-        $this->redirect("/admin/roles/{$id}/edit");
+        $this->redirect("/admin/roles?role={$id}");
     }
 
     /**
@@ -96,24 +122,7 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
     public function edit(int $id): void
     {
         Auth::requirePermission('roles.manage');
-
-        $role = $this->roles->find($id);
-        if (!$role) {
-            Auth::flash('error', 'Role not found.');
-            $this->redirect('/admin/roles');
-        }
-
-        $permissions = $this->roles->allPermissions();
-        $rolePermissions = $this->roles->rolePermissionIds($id);
-
-        $this->renderAdmin('admin/roles/edit', [
-            'title'            => 'Edit Role — ' . $role['name'],
-            'role'             => $role,
-            'permissions'      => $permissions,
-            'rolePermissions'  => $rolePermissions,
-            'errors'           => [],
-            'breadcrumbs'      => [['Admin', '/admin'], ['Roles', '/admin/roles'], [$role['name']]],
-        ]);
+        $this->redirect('/admin/roles?role=' . $id);
     }
 
     /**
@@ -141,14 +150,20 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
         }
 
         if ($errors) {
-            $permissions = $this->roles->allPermissions();
-            $this->renderAdmin('admin/roles/edit', [
-                'title'            => 'Edit Role — ' . $role['name'],
-                'role'             => array_merge($role, $data),
-                'permissions'      => $permissions,
-                'rolePermissions'  => array_map('intval', $data['permission_ids'] ?? []),
-                'errors'           => $errors,
-                'breadcrumbs'      => [['Admin', '/admin'], ['Roles', '/admin/roles'], [$role['name']]],
+            $allRoles        = $this->roles->all();
+            $roleUsers       = $this->roles->getRoleUsers($id);
+            $usersNotInRole  = $this->roles->getUsersNotInRole($id);
+            $permissions     = $this->roles->allPermissions();
+            $this->renderAdmin('admin/roles/index', [
+                'title'           => 'Edit Role — ' . $role['name'],
+                'allRoles'        => $allRoles,
+                'role'            => array_merge($role, $data),
+                'permissions'     => $permissions,
+                'rolePermissions' => array_map('intval', $data['permission_ids'] ?? []),
+                'roleUsers'       => $roleUsers,
+                'usersNotInRole'  => $usersNotInRole,
+                'errors'          => $errors,
+                'breadcrumbs'     => [['Admin', '/admin'], ['Roles', '/admin/roles'], [$role['name']]],
             ]);
             return;
         }
@@ -160,7 +175,7 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
 
         $this->logActivity('update', 'role', $id, "Updated role: {$data['name']}");
         Auth::flash('success', "Role \"{$data['name']}\" updated.");
-        $this->redirect("/admin/roles/{$id}/edit");
+        $this->redirect("/admin/roles?role={$id}");
     }
 
     /**
@@ -217,6 +232,63 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
         $this->logActivity('create', 'role', (int) $newId, "Cloned role from: {$role['name']}");
         Auth::flash('success', "Role cloned. Edit the new role below.");
         $this->redirect("/admin/roles/{$newId}/edit");
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ROLE MEMBERSHIP (AJAX)
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * POST /admin/roles/{id}/users/add — Add a user to a role (AJAX).
+     */
+    public function addRoleUser(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+
+        $role = $this->roles->find($id);
+        if (!$role) {
+            $this->json(['ok' => false, 'error' => 'Role not found'], 404);
+        }
+
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        if (!$userId) {
+            $this->json(['ok' => false, 'error' => 'Invalid user_id']);
+        }
+
+        $this->roles->addUserToRole($id, $userId, Auth::userId());
+        $this->logActivity('update', 'role', $id, "Added user #{$userId} to role: {$role['name']}");
+
+        $users = $this->roles->getRoleUsers($id);
+        $this->json(['ok' => true, 'users' => $users]);
+    }
+
+    /**
+     * POST /admin/roles/{id}/users/remove — Remove a user from a role (AJAX).
+     */
+    public function removeRoleUser(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+
+        $role = $this->roles->find($id);
+        if (!$role) {
+            $this->json(['ok' => false, 'error' => 'Role not found'], 404);
+        }
+
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        if (!$userId) {
+            $this->json(['ok' => false, 'error' => 'Invalid user_id']);
+        }
+
+        // Prevent removing admin from the admin role
+        if ($role['slug'] === 'admin' && $userId === Auth::userId()) {
+            $this->json(['ok' => false, 'error' => 'You cannot remove yourself from the Admin role.']);
+        }
+
+        $this->roles->removeUserFromRole($id, $userId);
+        $this->logActivity('update', 'role', $id, "Removed user #{$userId} from role: {$role['name']}");
+
+        $users = $this->roles->getRoleUsers($id);
+        $this->json(['ok' => true, 'users' => $users]);
     }
 
     // ══════════════════════════════════════════════════════════════

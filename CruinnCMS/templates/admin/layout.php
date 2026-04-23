@@ -25,7 +25,7 @@
         <nav class="admin-sidebar-nav">
             <?php if (!empty($acp_mode)): ?>
                 <a href="<?= url('/admin/dashboard') ?>">← Dashboard</a>
-            <?php elseif (!empty($role_nav_items) && ($current_user['role'] ?? '') !== 'admin'): ?>
+            <?php elseif (!empty($role_nav_items) && ($current_user['role_level'] ?? 0) < 100): ?>
                 <?php foreach ($role_nav_items as $item): ?>
                     <?php if (!empty($item['children'])): ?>
                     <div class="admin-sidebar-group">

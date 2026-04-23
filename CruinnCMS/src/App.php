@@ -74,17 +74,24 @@ class App
         Template::addGlobal('site_name', self::config('site.name'));
         Template::addGlobal('site_tagline', self::config('site.tagline', ''));
         Template::addGlobal('current_user', Auth::check() ? [
-            'id'   => Auth::userId(),
-            'name' => $_SESSION['user_name'] ?? '',
-            'role' => Auth::role(),
+            'id'         => Auth::userId(),
+            'name'       => $_SESSION['user_name'] ?? '',
+            'role_level' => Auth::roleLevel(),
+            'group_level'=> Auth::groupLevel(),
         ] : null);
         Template::addGlobal('flashes', Auth::getFlashes());
 
         // Load dynamic navigation for the user's role
         $roleNavItems = [];
-        if (Auth::check() && Auth::roleId()) {
+        if (Auth::check() && Auth::roleLevel() > 0) {
             $navService = new Services\NavService();
-            $roleNavItems = $navService->getNavForRole(Auth::roleId());
+            $primaryRoleId = Database::getInstance()->fetchColumn(
+                'SELECT role_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ? ORDER BY r.level DESC LIMIT 1',
+                [Auth::userId()]
+            );
+            if ($primaryRoleId) {
+                $roleNavItems = $navService->getNavForRole((int) $primaryRoleId);
+            }
         }
         Template::addGlobal('role_nav_items', $roleNavItems);
 

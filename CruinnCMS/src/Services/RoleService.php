@@ -3,7 +3,7 @@
  * CruinnCMS — Role Service
  *
  * CRUD operations for the database-driven role & permission system.
- * System roles (admin, council, member, public) cannot be deleted
+ * System roles (admin, council, editor, public) cannot be deleted
  * but can have their permissions and dashboard reconfigured.
  */
 
@@ -103,16 +103,7 @@ class RoleService
             return false;
         }
 
-        // Reassign users on this role to the 'public' role before deleting
-        $publicRole = $this->findBySlug('public');
-        if ($publicRole) {
-            $this->db->update(
-                'users',
-                ['role_id' => $publicRole['id'], 'role' => 'public'],
-                'role_id = ?',
-                [$id]
-            );
-        }
+        // Users removed from user_roles via ON DELETE CASCADE when role is deleted.
 
         $this->db->delete('roles', 'id = ?', [$id]);
         return true;
@@ -301,25 +292,12 @@ class RoleService
 
     /**
      * Set the users.role and users.role_id to the highest-level assigned role.
+     * @deprecated — users table no longer has role/role_id columns (migration 005)
      */
     public function setPrimaryRole(int $userId): void
     {
-        $primaryRole = $this->db->fetch(
-            'SELECT r.id, r.slug
-             FROM roles r
-             JOIN user_roles ur ON ur.role_id = r.id
-             WHERE ur.user_id = ?
-             ORDER BY r.level DESC
-             LIMIT 1',
-            [$userId]
-        );
-
-        if ($primaryRole) {
-            $this->db->update('users', [
-                'role'    => $primaryRole['slug'],
-                'role_id' => $primaryRole['id'],
-            ], 'id = ?', [$userId]);
-        }
+        // No-op: users.role and users.role_id were removed in migration 005.
+        // Role level is derived at login from user_roles via Auth::loadRoleLevel().
     }
 
     // ── Group Management ──────────────────────────────────────────
@@ -402,7 +380,7 @@ class RoleService
     public function getGroupMembers(int $groupId): array
     {
         return $this->db->fetchAll(
-            'SELECT u.id, u.display_name, u.email, u.role, ug.assigned_at
+            'SELECT u.id, u.display_name, u.email, ug.assigned_at
              FROM users u
              JOIN user_groups ug ON ug.user_id = u.id
              WHERE ug.group_id = ?
@@ -482,5 +460,214 @@ class RoleService
             [$userId, $userId]
         );
         return array_column($rows, 'slug');
+    }
+
+    // ── Role membership ───────────────────────────────────────────
+
+    /**
+     * Get all users assigned to a role.
+     */
+    public function getRoleUsers(int $roleId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT u.id, u.display_name, u.email, ur.assigned_at
+             FROM users u
+             JOIN user_roles ur ON ur.user_id = u.id
+             WHERE ur.role_id = ?
+             ORDER BY u.display_name ASC',
+            [$roleId]
+        );
+    }
+
+    /**
+     * Get all users NOT currently assigned to a role.
+     */
+    public function getUsersNotInRole(int $roleId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT u.id, u.display_name, u.email
+             FROM users u
+             WHERE u.id NOT IN (
+                 SELECT user_id FROM user_roles WHERE role_id = ?
+             )
+             ORDER BY u.display_name ASC',
+            [$roleId]
+        );
+    }
+
+    /**
+     * Add a user to a role.
+     */
+    public function addUserToRole(int $roleId, int $userId, ?int $assignedBy = null): void
+    {
+        $exists = $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM user_roles WHERE user_id = ? AND role_id = ?',
+            [$userId, $roleId]
+        );
+        if (!$exists) {
+            $this->db->insert('user_roles', [
+                'user_id'     => $userId,
+                'role_id'     => $roleId,
+                'assigned_by' => $assignedBy,
+            ]);
+            Auth::clearPermissionCache();
+        }
+    }
+
+    /**
+     * Remove a user from a role.
+     */
+    public function removeUserFromRole(int $roleId, int $userId): void
+    {
+        $this->db->delete('user_roles', 'user_id = ? AND role_id = ?', [$userId, $roleId]);
+        Auth::clearPermissionCache();
+    }
+
+    /**
+     * Get all users NOT currently in a group.
+     */
+    public function getUsersNotInGroup(int $groupId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT u.id, u.display_name, u.email
+             FROM users u
+             WHERE u.id NOT IN (
+                 SELECT user_id FROM user_groups WHERE group_id = ?
+             )
+             ORDER BY u.display_name ASC',
+            [$groupId]
+        );
+    }
+
+    /**
+     * Get all roles NOT currently assigned to a user.
+     */
+    public function getRolesNotAssignedToUser(int $userId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT * FROM roles WHERE id NOT IN (SELECT role_id FROM user_roles WHERE user_id = ?) ORDER BY level DESC',
+            [$userId]
+        );
+    }
+
+    /**
+     * Get all groups NOT currently assigned to a user.
+     */
+    public function getGroupsNotAssignedToUser(int $userId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT * FROM `groups` WHERE id NOT IN (SELECT group_id FROM user_groups WHERE user_id = ?) ORDER BY name ASC',
+            [$userId]
+        );
+    }
+
+    // ── Group Positions ───────────────────────────────────────────
+
+    /**
+     * Get all positions defined for a group, ordered by sort_order.
+     */
+    public function getGroupPositions(int $groupId): array
+    {
+        return $this->db->fetchAll(
+            'SELECT * FROM group_positions WHERE group_id = ? ORDER BY sort_order ASC, name ASC',
+            [$groupId]
+        );
+    }
+
+    /**
+     * Create a new position in a group.
+     */
+    public function createGroupPosition(int $groupId, string $name, int $sortOrder = 0): int
+    {
+        $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($name)));
+        $slug = trim($slug, '-');
+        return (int) $this->db->insert('group_positions', [
+            'group_id'   => $groupId,
+            'name'       => trim($name),
+            'slug'       => $slug,
+            'sort_order' => $sortOrder,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * Delete a position (cascades user_group_positions).
+     */
+    public function deleteGroupPosition(int $positionId): void
+    {
+        $this->db->execute('DELETE FROM group_positions WHERE id = ?', [$positionId]);
+    }
+
+    /**
+     * Get all members of a group with their positions (if any).
+     * Returns one row per user; position data as a sub-array.
+     */
+    public function getGroupMembersWithPositions(int $groupId): array
+    {
+        $members = $this->db->fetchAll(
+            'SELECT u.id, u.display_name, u.email, ug.assigned_at
+             FROM users u
+             JOIN user_groups ug ON ug.user_id = u.id
+             WHERE ug.group_id = ?
+             ORDER BY u.display_name ASC',
+            [$groupId]
+        );
+
+        if (empty($members)) {
+            return [];
+        }
+
+        $posRows = $this->db->fetchAll(
+            'SELECT ugp.user_id, gp.id AS position_id, gp.name AS position_name
+             FROM user_group_positions ugp
+             JOIN group_positions gp ON gp.id = ugp.position_id
+             WHERE ugp.group_id = ?',
+            [$groupId]
+        );
+
+        // Index by user_id → [positions]
+        $byUser = [];
+        foreach ($posRows as $p) {
+            $byUser[$p['user_id']][] = ['id' => $p['position_id'], 'name' => $p['position_name']];
+        }
+
+        foreach ($members as &$m) {
+            $m['positions'] = $byUser[$m['id']] ?? [];
+        }
+        unset($m);
+
+        return $members;
+    }
+
+    /**
+     * Assign a user to a position within a group.
+     */
+    public function assignUserPosition(int $userId, int $groupId, int $positionId, ?int $assignedBy = null): void
+    {
+        $exists = $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM user_group_positions WHERE user_id = ? AND position_id = ?',
+            [$userId, $positionId]
+        );
+        if ($exists) {
+            return;
+        }
+        $this->db->insert('user_group_positions', [
+            'user_id'     => $userId,
+            'group_id'    => $groupId,
+            'position_id' => $positionId,
+            'assigned_at' => date('Y-m-d H:i:s'),
+            'assigned_by' => $assignedBy,
+        ]);
+    }
+
+    /**
+     * Remove a user from a position.
+     */
+    public function removeUserPosition(int $userId, int $positionId): void
+    {
+        $this->db->execute(
+            'DELETE FROM user_group_positions WHERE user_id = ? AND position_id = ?',
+            [$userId, $positionId]
+        );
     }
 }

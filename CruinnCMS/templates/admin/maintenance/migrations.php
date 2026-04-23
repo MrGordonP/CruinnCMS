@@ -8,6 +8,11 @@ include dirname(__DIR__) . '/settings/_tabs.php';
 \Cruinn\Template::requireCss('admin-acp.css');
 ?>
 
+<nav class="sub-tabs" style="display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid #e5e7eb;padding-bottom:.75rem;">
+    <a href="/admin/maintenance/links"      class="sub-tab"                style="padding:.35rem .85rem;border-radius:4px;color:#374151;text-decoration:none;font-size:.875rem;">🔗 Link Checker</a>
+    <a href="/admin/maintenance/migrations" class="sub-tab sub-tab-active" style="padding:.35rem .85rem;border-radius:4px;background:#1d9e75;color:#fff;text-decoration:none;font-size:.875rem;">🗄️ Migrations</a>
+</nav>
+
 <h2>Database Migrations</h2>
 <p style="color:#6b7280;margin-bottom:1.5rem;">
     Tracked migrations for core and all modules. Apply pending migrations to update the database schema.

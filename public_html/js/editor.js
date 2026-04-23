@@ -26,6 +26,12 @@
         try { return JSON.parse(wrap.dataset.templateZones || '[]'); } catch (e) { return []; }
     }());
 
+    // Context fields for content templates: [{key, label, type}]
+    // Non-empty only when editing a content template canvas with a context_source assigned.
+    var CONTEXT_FIELDS = (function () {
+        try { return JSON.parse(wrap.dataset.contextFields || '[]'); } catch (e) { return []; }
+    }());
+
     document.addEventListener('DOMContentLoaded', function () {
         restoreCssProps();
         reInitAll();
@@ -365,6 +371,12 @@
     var DYNAMIC_TYPES = ['event-list', 'data-list'];
     var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list'];
     var PHP_CODE_TYPES = ['php-code'];
+    // Block types whose inner_html slot is bindable
+    var BIND_INNER_TYPES = ['text', 'html', 'heading', 'inline', 'anchor'];
+    // Block types whose src slot is bindable
+    var BIND_SRC_TYPES = ['image', 'site-logo'];
+    // Block types whose href slot is bindable
+    var BIND_HREF_TYPES = ['anchor'];
 
     function loadProps(block) {
         var type = block.dataset.blockType;
@@ -435,6 +447,20 @@
         var phpCodeAcc = panel.querySelector('[data-group="php-code"]');
         if (phpCodeAcc) {
             phpCodeAcc.style.display = PHP_CODE_TYPES.indexOf(type) !== -1 ? '' : 'none';
+        }
+
+        // Bind group — only when this page has context fields and the block type has bindable slots
+        var bindAcc = panel.querySelector('[data-group="bind"]');
+        if (bindAcc) {
+            var isBindable = CONTEXT_FIELDS.length > 0 && (
+                BIND_INNER_TYPES.indexOf(type) !== -1 ||
+                BIND_SRC_TYPES.indexOf(type) !== -1 ||
+                BIND_HREF_TYPES.indexOf(type) !== -1
+            );
+            bindAcc.style.display = isBindable ? '' : 'none';
+            if (isBindable) {
+                populateBindAccordion(block, type);
+            }
         }
 
         // Site title group
@@ -674,6 +700,55 @@
         bindPropInputs(block);
     }
 
+    function populateBindAccordion(block, type) {
+        var bindCfg = {};
+        try { bindCfg = (JSON.parse(block.dataset.blockConfig || '{}')).bind || {}; } catch (e) { }
+
+        // Show/hide slot rows based on block type
+        var innerRow = panel.querySelector('.editor-bind-row[data-bind-slot="inner_html"]');
+        var srcRow = panel.querySelector('.editor-bind-row[data-bind-slot="src"]');
+        var hrefRow = panel.querySelector('.editor-bind-row[data-bind-slot="href"]');
+
+        if (innerRow) { innerRow.style.display = BIND_INNER_TYPES.indexOf(type) !== -1 ? '' : 'none'; }
+        if (srcRow) { srcRow.style.display = BIND_SRC_TYPES.indexOf(type) !== -1 ? '' : 'none'; }
+        if (hrefRow) { hrefRow.style.display = BIND_HREF_TYPES.indexOf(type) !== -1 ? '' : 'none'; }
+
+        // Populate each select with context fields filtered by compatible type
+        panel.querySelectorAll('.editor-bind-select').forEach(function (sel) {
+            var slot = sel.dataset.bindSlot;
+            // Determine which field types are compatible for this slot
+            var compatTypes = slot === 'src' ? ['image'] :
+                slot === 'href' ? ['url', 'text'] :
+                    ['text', 'html', 'date', 'number', 'url'];
+            // Rebuild options
+            sel.innerHTML = '<option value="">— none —</option>';
+            CONTEXT_FIELDS.forEach(function (f) {
+                if (compatTypes.indexOf(f.type) !== -1 || slot === 'inner_html') {
+                    var opt = document.createElement('option');
+                    opt.value = f.key;
+                    opt.textContent = f.label + ' (' + f.type + ')';
+                    sel.appendChild(opt);
+                }
+            });
+            // Restore saved binding
+            sel.value = bindCfg[slot] || '';
+            // Write binding back to block_config on change
+            sel.onchange = function () {
+                var cfg = {};
+                try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+                cfg.bind = cfg.bind || {};
+                if (sel.value) {
+                    cfg.bind[slot] = sel.value;
+                } else {
+                    delete cfg.bind[slot];
+                    if (Object.keys(cfg.bind).length === 0) { delete cfg.bind; }
+                }
+                block.dataset.blockConfig = JSON.stringify(cfg);
+                recordAction();
+            };
+        });
+    }
+
     function clearPanel() {
         panel.querySelector('.editor-props-empty').style.display = '';
         panel.querySelectorAll('.editor-accordion').forEach(function (acc) {
@@ -788,6 +863,18 @@
                     })
                         .then(function (r) { return r.json(); })
                         .then(function (data) { block.innerHTML = data.html || ''; });
+                };
+            }
+            // data-list: show/hide card HTML wrap depending on whether a content template is chosen
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'template_slug' && block.dataset.blockType === 'data-list') {
+                var cardWrap = document.getElementById('prop-data-list-card-wrap');
+                var syncCardWrap = function () {
+                    if (cardWrap) { cardWrap.style.display = inp.value ? 'none' : ''; }
+                };
+                syncCardWrap();
+                inp.onchange = function () {
+                    writeConfig(block, 'template_slug', inp.value);
+                    syncCardWrap();
                 };
             }
         });

@@ -10,7 +10,7 @@ use Cruinn\Module\Blog\Controllers\ArticleController;
 use Cruinn\Module\Blog\Controllers\ArticleEditorController;
 
 return [
-    'slug'        => 'articles',
+    'slug'        => 'blog',
     'name'        => 'Blog',
     'version'     => '1.0.0',
     'description' => 'Public-facing blog posts with block editor support.',

@@ -141,7 +141,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         $data = [
             'email'        => $this->input('email'),
             'display_name' => $this->input('display_name'),
-            'role'         => $this->input('role', 'member'),
             'active'       => $this->input('active') ? 1 : 0,
         ];
         $password = $this->input('password', '');
@@ -192,8 +191,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             'email'         => $data['email'],
             'password_hash' => password_hash($password, PASSWORD_DEFAULT),
             'display_name'  => $data['display_name'],
-            'role'          => $data['role'],
-            'role_id'       => null,
             'active'        => $data['active'],
         ]);
 
@@ -219,14 +216,14 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
 
         $roleService = new RoleService();
         $this->renderAdmin('admin/users/edit', [
-            'title'       => 'Edit User — ' . $user['display_name'],
-            'user'        => $user,
-            'allRoles'    => $roleService->all(),
-            'allGroups'   => $roleService->allGroups(),
-            'userGroups'  => $roleService->getUserGroups($id),
-            'userRoleIds' => $roleService->getUserRoleIds($id),
-            'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
+            'title'             => 'Edit User — ' . $user['display_name'],
+            'user'              => $user,
+            'userRoles'         => $roleService->getUserRoles($id),
+            'rolesNotAssigned'  => $roleService->getRolesNotAssignedToUser($id),
+            'userGroups'        => $roleService->getUserGroups($id),
+            'groupsNotAssigned' => $roleService->getGroupsNotAssignedToUser($id),
+            'errors'            => [],
+            'breadcrumbs'       => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
         ]);
     }
 
@@ -248,7 +245,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             'active'       => $this->input('active') ? 1 : 0,
         ];
         $password = $this->input('password', '');
-        $roleIds = array_map('intval', $this->input('role_ids') ?? []);
 
         $errors = $this->validateRequired([
             'email'        => 'Email',
@@ -278,19 +274,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
 
         $roleService = new RoleService();
 
-        // Validate at least one role selected
-        if (empty($roleIds)) {
-            $errors['role'] = 'At least one role must be assigned.';
-        }
-
-        // Prevent self-demotion from admin
-        if ($id === Auth::userId()) {
-            $adminRole = $roleService->findBySlug('admin');
-            if ($adminRole && !in_array((int)$adminRole['id'], $roleIds, true)) {
-                $errors['role'] = 'You cannot remove admin from your own account.';
-            }
-        }
-
         // Prevent deactivating self
         if ($id === Auth::userId() && !$data['active']) {
             $errors['active'] = 'You cannot deactivate your own account.';
@@ -299,14 +282,14 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         if ($errors) {
             $data['id'] = $id;
             $this->renderAdmin('admin/users/edit', [
-                'title'       => 'Edit User — ' . $user['display_name'],
-                'user'        => $data,
-                'allRoles'    => $roleService->all(),
-                'allGroups'   => $roleService->allGroups(),
-                'userGroups'  => $roleService->getUserGroups($id),
-                'userRoleIds' => $roleIds,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
+                'title'             => 'Edit User — ' . $user['display_name'],
+                'user'              => $data,
+                'userRoles'         => $roleService->getUserRoles($id),
+                'rolesNotAssigned'  => $roleService->getRolesNotAssignedToUser($id),
+                'userGroups'        => $roleService->getUserGroups($id),
+                'groupsNotAssigned' => $roleService->getGroupsNotAssignedToUser($id),
+                'errors'            => $errors,
+                'breadcrumbs'       => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
             ]);
             return;
         }
@@ -323,13 +306,6 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         }
 
         $this->db->update('users', $updateData, 'id = ?', [$id]);
-
-        // Sync roles (also sets primary role on users table)
-        $roleService->syncUserRoles($id, $roleIds, Auth::userId());
-
-        // Sync group memberships
-        $groupIds = array_map('intval', $_POST['group_ids'] ?? []);
-        $roleService->syncUserGroups($id, $groupIds, Auth::userId());
 
         $changes = [];
         if ($user['active'] != $data['active']) {
@@ -397,5 +373,56 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         $this->logActivity('delete', 'user', $id, "Deleted user: {$email}");
         Auth::flash('success', "User {$email} deleted.");
         $this->redirect('/admin/users');
+    }
+
+    /** POST /admin/users/{id}/roles/add — AJAX */
+    public function userAddRole(int $id): void
+    {
+        header('Content-Type: application/json');
+        $roleId = (int) $this->input('role_id', 0);
+        if (!$roleId) { echo json_encode(['ok' => false, 'error' => 'Invalid role.']); return; }
+        $roleService = new RoleService();
+        $roleService->addUserToRole($roleId, $id, Auth::userId());
+        echo json_encode(['ok' => true, 'roles' => $roleService->getUserRoles($id)]);
+    }
+
+    /** POST /admin/users/{id}/roles/remove — AJAX */
+    public function userRemoveRole(int $id): void
+    {
+        header('Content-Type: application/json');
+        $roleId = (int) $this->input('role_id', 0);
+        if (!$roleId) { echo json_encode(['ok' => false, 'error' => 'Invalid role.']); return; }
+        $roleService = new RoleService();
+        if ($id === Auth::userId()) {
+            $adminRole = $roleService->findBySlug('admin');
+            if ($adminRole && (int) $adminRole['id'] === $roleId) {
+                echo json_encode(['ok' => false, 'error' => 'Cannot remove admin from your own account.']);
+                return;
+            }
+        }
+        $roleService->removeUserFromRole($roleId, $id);
+        echo json_encode(['ok' => true, 'roles' => $roleService->getUserRoles($id)]);
+    }
+
+    /** POST /admin/users/{id}/groups/add — AJAX */
+    public function userAddGroup(int $id): void
+    {
+        header('Content-Type: application/json');
+        $groupId = (int) $this->input('group_id', 0);
+        if (!$groupId) { echo json_encode(['ok' => false, 'error' => 'Invalid group.']); return; }
+        $roleService = new RoleService();
+        $roleService->assignGroup($id, $groupId, Auth::userId());
+        echo json_encode(['ok' => true, 'groups' => $roleService->getUserGroups($id)]);
+    }
+
+    /** POST /admin/users/{id}/groups/remove — AJAX */
+    public function userRemoveGroup(int $id): void
+    {
+        header('Content-Type: application/json');
+        $groupId = (int) $this->input('group_id', 0);
+        if (!$groupId) { echo json_encode(['ok' => false, 'error' => 'Invalid group.']); return; }
+        $roleService = new RoleService();
+        $roleService->removeGroup($id, $groupId);
+        echo json_encode(['ok' => true, 'groups' => $roleService->getUserGroups($id)]);
     }
 }

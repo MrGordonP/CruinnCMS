@@ -1,3 +1,4 @@
+<?php
 $roleId = (int) $role['id'];
 \Cruinn\Template::requireCss('admin-acp.css'); \Cruinn\Template::requireCss('admin-site-builder.css'); \Cruinn\Template::requireCss('admin-menus.css');
 

@@ -2,9 +2,8 @@
 /**
  * CruinnCMS — Authentication
  *
- * Session-based authentication with role support.
- * Supports both legacy ENUM roles and the new database-driven
- * roles & permissions system (migration 010).
+ * Session-based authentication with role and group level support.
+ * Roles control CMS admin access. Groups control content access.
  * Passwords hashed with bcrypt via password_hash().
  */
 
@@ -84,11 +83,11 @@ class Auth
             // Regenerate session ID to prevent fixation
             session_regenerate_id(true);
 
-            $_SESSION['user_id']    = $user['id'];
-            $_SESSION['user_role']  = $user['role'];
-            $_SESSION['user_name']  = $user['display_name'];
-            $_SESSION['role_id']    = $user['role_id'] ?? null;
-            $_SESSION['login_time'] = time();
+            $_SESSION['user_id']         = $user['id'];
+            $_SESSION['user_name']       = $user['display_name'];
+            $_SESSION['user_role_level'] = self::loadRoleLevel($user['id']);
+            $_SESSION['user_group_level']= self::loadGroupLevel($user['id']);
+            $_SESSION['login_time']      = time();
             unset($_SESSION['_login_error']);
 
             // Clear permission cache so it reloads for new session
@@ -155,11 +154,11 @@ class Auth
 
         session_regenerate_id(true);
 
-        $_SESSION['user_id']    = $user['id'];
-        $_SESSION['user_role']  = $user['role'];
-        $_SESSION['user_name']  = $user['display_name'];
-        $_SESSION['role_id']    = $user['role_id'] ?? null;
-        $_SESSION['login_time'] = time();
+        $_SESSION['user_id']         = $user['id'];
+        $_SESSION['user_name']       = $user['display_name'];
+        $_SESSION['user_role_level'] = self::loadRoleLevel($user['id']);
+        $_SESSION['user_group_level']= self::loadGroupLevel($user['id']);
+        $_SESSION['login_time']      = time();
 
         self::$permissionCache = null;
         unset($_SESSION['user_permissions']);
@@ -203,49 +202,69 @@ class Auth
     }
 
     /**
-     * Get the current user's role, or 'public' if not logged in.
-     */
-    public static function role(): string
-    {
-        return $_SESSION['user_role'] ?? 'public';
-    }
-
-    /**
-     * Get the current user's role_id from the roles table, or null.
-     */
-    public static function roleId(): ?int
-    {
-        return $_SESSION['role_id'] ?? null;
-    }
-
-    /**
-     * Get the role level for the current user from the DB roles table.
-     * Falls back to the legacy hierarchy if role_id is not set.
+     * Get the current user's maximum role level (CMS admin access).
+     * Returns 0 if not logged in or no roles assigned.
      */
     public static function roleLevel(): int
     {
-        $roleId = self::roleId();
-        if ($roleId) {
-            $db = Database::getInstance();
-            $level = $db->fetchColumn('SELECT level FROM roles WHERE id = ?', [$roleId]);
-            return $level !== false ? (int) $level : 0;
-        }
-        // Legacy fallback
-        $hierarchy = ['public' => 0, 'member' => 20, 'council' => 50, 'admin' => 100];
-        return $hierarchy[self::role()] ?? 0;
+        return (int) ($_SESSION['user_role_level'] ?? 0);
     }
 
     /**
-     * Check if the current user has at least the given role level.
-     * Role hierarchy: admin > council > member > public
-     * Supports both legacy string roles and numeric levels.
+     * Get the current user's maximum group level (content access).
+     * Returns 0 if not logged in or no groups assigned.
+     */
+    public static function groupLevel(): int
+    {
+        return (int) ($_SESSION['user_group_level'] ?? 0);
+    }
+
+    /**
+     * Load the maximum role level for a user from the DB.
+     * Called at login — result stored in session.
+     */
+    private static function loadRoleLevel(int $userId): int
+    {
+        $db = Database::getInstance();
+        $level = $db->fetchColumn(
+            'SELECT MAX(r.level) FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = ?',
+            [$userId]
+        );
+        return $level !== false && $level !== null ? (int) $level : 0;
+    }
+
+    /**
+     * Load the maximum group level for a user from the DB.
+     * Called at login — result stored in session.
+     */
+    private static function loadGroupLevel(int $userId): int
+    {
+        $db = Database::getInstance();
+        $level = $db->fetchColumn(
+            'SELECT MAX(g.level) FROM `groups` g JOIN user_groups ug ON ug.group_id = g.id WHERE ug.user_id = ?',
+            [$userId]
+        );
+        return $level !== false && $level !== null ? (int) $level : 0;
+    }
+
+    /**
+     * Check if the current user has at least the given CMS role.
+     * Accepts legacy slug names mapped to levels, or a numeric level.
+     * admin=100, council=50, editor=20, public=0
      */
     public static function hasRole(string $minimumRole): bool
     {
-        $hierarchy = ['public' => 0, 'member' => 1, 'council' => 2, 'admin' => 3];
-        $currentLevel = $hierarchy[self::role()] ?? 0;
-        $requiredLevel = $hierarchy[$minimumRole] ?? 0;
-        return $currentLevel >= $requiredLevel;
+        $levels = ['public' => 0, 'editor' => 20, 'council' => 50, 'admin' => 100];
+        $required = $levels[$minimumRole] ?? 0;
+        return self::roleLevel() >= $required;
+    }
+
+    /**
+     * Check if the current user has at least the given group (content access) level.
+     */
+    public static function hasGroupLevel(int $minimumLevel): bool
+    {
+        return self::groupLevel() >= $minimumLevel;
     }
 
     // ── Permission Checks ─────────────────────────────────────────
@@ -280,16 +299,8 @@ class Auth
             'SELECT DISTINCT p.slug FROM permissions p
              JOIN role_permissions rp ON rp.permission_id = p.id
              JOIN user_roles ur ON ur.role_id = rp.role_id
-             WHERE ur.user_id = ?
-
-             UNION
-
-             SELECT DISTINCT p.slug FROM permissions p
-             JOIN role_permissions rp ON rp.permission_id = p.id
-             JOIN `groups` g ON g.role_id = rp.role_id
-             JOIN user_groups ug ON ug.group_id = g.id
-             WHERE ug.user_id = ?',
-            [self::userId(), self::userId()]
+             WHERE ur.user_id = ?',
+            [self::userId()]
         );
 
         $perms = array_column($rows, 'slug');
@@ -303,8 +314,8 @@ class Auth
      */
     public static function can(string $permission): bool
     {
-        // Admin role always has all permissions (belt & braces)
-        if (self::role() === 'admin') {
+        // Admin role level (>=100) always has all permissions
+        if (self::roleLevel() >= 100) {
             return true;
         }
         return in_array($permission, self::permissions(), true);
@@ -440,7 +451,7 @@ class Auth
             exit;
         }
 
-        if (self::roleLevel() < 100 && !self::hasRole('admin')) {
+        if (self::roleLevel() < 100) {
             http_response_code(403);
             $template = new Template();
             echo $template->render('errors/403');
@@ -451,8 +462,7 @@ class Auth
     }
 
     /**
-     * Middleware: require council role for /council routes.
-     * Uses role level (>= 50) with legacy ENUM fallback.
+     * Middleware: require council-level group access for /council routes.
      */
     public static function councilMiddleware(string $uri, string $method): ?string
     {
@@ -462,7 +472,7 @@ class Auth
             exit;
         }
 
-        if (self::roleLevel() < 50 && !self::hasRole('council')) {
+        if (self::groupLevel() < 50) {
             http_response_code(403);
             $template = new Template();
             echo $template->render('errors/403');
@@ -473,8 +483,7 @@ class Auth
     }
 
     /**
-     * Middleware: require member role for /members routes.
-     * Uses role level (>= 20) with legacy ENUM fallback.
+     * Middleware: require member-level group access for /members routes.
      */
     public static function memberMiddleware(string $uri, string $method): ?string
     {
@@ -484,7 +493,7 @@ class Auth
             exit;
         }
 
-        if (self::roleLevel() < 20 && !self::hasRole('member')) {
+        if (self::groupLevel() < 20) {
             http_response_code(403);
             $template = new Template();
             echo $template->render('errors/403');

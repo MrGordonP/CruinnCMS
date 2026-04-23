@@ -1,11 +1,10 @@
 <?php
-$isNew = empty($group['id']);
 \Cruinn\Template::requireCss('admin-members.css');
-$formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
+$formAction = '/admin/groups';
 ?>
 
 <div class="admin-page-header">
-    <h1><?= $isNew ? 'New Group' : 'Edit Group' ?></h1>
+    <h1>New Group</h1>
     <div class="header-actions">
         <a href="/admin/groups" class="btn btn-outline btn-small">Back to Groups</a>
     </div>
@@ -33,8 +32,6 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
                 <input type="text" name="name" id="name" class="form-input"
                        value="<?= e($group['name'] ?? '') ?>" required>
             </div>
-
-            <?php if ($isNew): ?>
             <div class="form-group">
                 <label for="slug">Slug <span class="required">*</span></label>
                 <input type="text" name="slug" id="slug" class="form-input"
@@ -42,7 +39,6 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
                        pattern="[a-z0-9\-]+" placeholder="e.g. field-trip-committee">
                 <p class="form-help">Lowercase letters, numbers, and hyphens only.</p>
             </div>
-            <?php endif; ?>
         </div>
 
         <div class="form-group">
@@ -58,10 +54,9 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
                     <option value="committee" <?= ($group['group_type'] ?? '') === 'committee' ? 'selected' : '' ?>>Committee</option>
                     <option value="working_group" <?= ($group['group_type'] ?? '') === 'working_group' ? 'selected' : '' ?>>Working Group</option>
                     <option value="interest" <?= ($group['group_type'] ?? '') === 'interest' ? 'selected' : '' ?>>Interest Group</option>
-                    <option value="custom" <?= ($group['group_type'] ?? '') === 'custom' ? 'selected' : '' ?>>Custom</option>
+                    <option value="custom" <?= ($group['group_type'] ?? 'custom') === 'custom' ? 'selected' : '' ?>>Custom</option>
                 </select>
             </div>
-
             <div class="form-group">
                 <label for="role_id">Linked Role (optional)</label>
                 <select name="role_id" id="role_id" class="form-select">
@@ -70,51 +65,13 @@ $formAction = $isNew ? '/admin/groups' : '/admin/groups/' . (int)$group['id'];
                     <option value="<?= (int)$r['id'] ?>" <?= ((int)($group['role_id'] ?? 0)) === (int)$r['id'] ? 'selected' : '' ?>><?= e($r['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
-                <p class="form-help">Members of this group inherit the linked role's permissions.</p>
+                <p class="form-help">Members inherit the linked role's permissions.</p>
             </div>
         </div>
     </div>
 
     <div class="form-actions">
-        <button type="submit" class="btn btn-primary"><?= $isNew ? 'Create Group' : 'Save Changes' ?></button>
+        <button type="submit" class="btn btn-primary">Create Group</button>
         <a href="/admin/groups" class="btn btn-secondary">Cancel</a>
     </div>
 </form>
-
-<?php if (!$isNew): ?>
-<div class="detail-card" style="margin-top: 2rem;">
-    <h2>Members (<?= count($members) ?>)</h2>
-    <?php if (empty($members)): ?>
-        <p class="block-empty">No members assigned to this group yet. Assign users via the user edit page.</p>
-    <?php else: ?>
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Assigned</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($members as $m): ?>
-            <tr>
-                <td><a href="/admin/users/<?= (int)$m['id'] ?>/edit"><?= e($m['display_name']) ?></a></td>
-                <td><?= e($m['email']) ?></td>
-                <td><span class="badge"><?= e($m['role']) ?></span></td>
-                <td><?= format_date($m['assigned_at']) ?></td>
-            </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-    <?php endif; ?>
-</div>
-
-<div class="detail-card danger-zone" style="margin-top: 2rem;">
-    <h2>Danger Zone</h2>
-    <form method="post" action="/admin/groups/<?= (int)$group['id'] ?>/delete" onsubmit="return confirm('Delete this group? Members will be unlinked.')">
-        <?= csrf_field() ?>
-        <button type="submit" class="btn btn-danger">Delete Group</button>
-    </form>
-</div>
-<?php endif; ?>

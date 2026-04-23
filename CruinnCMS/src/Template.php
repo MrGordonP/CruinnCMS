@@ -286,10 +286,9 @@ namespace {
             [$menu['id']]
         );
 
-        $loggedIn = \Cruinn\Auth::check();
-        $userRole = $loggedIn ? (\Cruinn\Auth::user()['role'] ?? 'member') : null;
-        $roleLevels = ['public' => 0, 'member' => 20, 'council' => 50, 'admin' => 100];
-        $userLevel = $roleLevels[$userRole] ?? 0;
+        $loggedIn  = \Cruinn\Auth::check();
+        $userLevel = $loggedIn ? \Cruinn\Auth::groupLevel() : 0;
+        $roleLevels = ['public' => 0, 'editor' => 20, 'council' => 50, 'admin' => 100];
 
         // Filter by visibility and role
         $rows = array_filter($rows, function ($row) use ($loggedIn, $userLevel, $roleLevels) {

@@ -18,18 +18,19 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ============================================================
 
 CREATE TABLE `users` (
-    `id`            INT UNSIGNED    NOT NULL AUTO_INCREMENT,
-    `email`         VARCHAR(255)    NOT NULL,
-    `password_hash` VARCHAR(255)    NOT NULL,
-    `display_name`  VARCHAR(100)    NOT NULL,
-    `role`          ENUM('admin','council','member','public') NOT NULL DEFAULT 'member',
-    `role_id`       INT UNSIGNED    NULL DEFAULT NULL,
-    `active`        TINYINT(1)      NOT NULL DEFAULT 1,
-    `last_login`    DATETIME        NULL,
-    `failed_logins` INT UNSIGNED    NOT NULL DEFAULT 0,
-    `locked_until`  DATETIME        NULL DEFAULT NULL,
-    `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `email`          VARCHAR(255) NOT NULL,
+    `password_hash`  VARCHAR(255) NOT NULL,
+    `forenames`      VARCHAR(100) NOT NULL DEFAULT '',
+    `surname`        VARCHAR(100) NOT NULL DEFAULT '',
+    `display_name`   VARCHAR(100) NOT NULL DEFAULT '',
+    `active`         TINYINT(1)   NOT NULL DEFAULT 1,
+    `email_verified` TINYINT(1)   NOT NULL DEFAULT 0,
+    `verified_at`    DATETIME     NULL,
+    `failed_logins`  INT UNSIGNED NOT NULL DEFAULT 0,
+    `locked_until`   DATETIME     NULL,
+    `last_login`     DATETIME     NULL,
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_users_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -43,18 +44,13 @@ CREATE TABLE `roles` (
     `slug`             VARCHAR(50)   NOT NULL UNIQUE,
     `name`             VARCHAR(100)  NOT NULL,
     `description`      VARCHAR(255)  DEFAULT '',
-    `level`            INT UNSIGNED  NOT NULL DEFAULT 0 COMMENT 'Higher = more privilege',
+    `level`            INT UNSIGNED  NOT NULL DEFAULT 0 COMMENT 'Higher = more privilege; admin=100',
     `is_system`        TINYINT(1)    NOT NULL DEFAULT 0 COMMENT 'System roles cannot be deleted',
     `colour`           VARCHAR(7)    DEFAULT '#6c757d',
     `default_redirect` VARCHAR(100)  DEFAULT '/',
     `created_at`       DATETIME      DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`       DATETIME      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_roles_level` (`level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- FK from users to roles (added after roles table exists)
-ALTER TABLE `users`
-    ADD CONSTRAINT `fk_users_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL;
 
 CREATE TABLE `permissions` (
     `id`          INT UNSIGNED  AUTO_INCREMENT PRIMARY KEY,
@@ -113,13 +109,12 @@ CREATE TABLE `groups` (
     `slug`        VARCHAR(50)  NOT NULL,
     `name`        VARCHAR(100) NOT NULL,
     `description` VARCHAR(255) DEFAULT '',
-    `group_type`  ENUM('committee','working_group','interest','custom') NOT NULL DEFAULT 'custom',
-    `role_id`     INT UNSIGNED NULL,
-    `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `level`       INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Content access level; higher = more access',
+    `is_system`   TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'System groups cannot be deleted',
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_groups_slug` (`slug`),
-    CONSTRAINT `fk_groups_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
+    INDEX `idx_groups_level` (`level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `user_groups` (
@@ -412,7 +407,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ── System Roles ─────────────────────────────────────────────
 INSERT INTO `roles` (`slug`, `name`, `description`, `level`, `is_system`, `colour`, `default_redirect`) VALUES
     ('admin',  'Administrator', 'Full site administration',              100, 1, '#dc3545', '/profile'),
-    ('member', 'Member',        'Authenticated user with standard access', 20, 1, '#198754', '/profile'),
+    ('editor', 'Editor',        'Authenticated user with standard access', 20, 1, '#198754', '/profile'),
     ('public', 'Public',        'Basic account with no special access',     0, 1, '#6c757d', '/');
 
 -- ── Core Permissions ─────────────────────────────────────────

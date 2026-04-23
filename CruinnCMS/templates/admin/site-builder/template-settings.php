@@ -206,6 +206,30 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
             <input type="hidden" name="css_class" value="<?= e($tpl['css_class'] ?? '') ?>">
             <input type="hidden" name="sort_order" value="<?= (int)($tpl['sort_order'] ?? 0) ?>">
 
+            <?php if (($tpl['template_type'] ?? 'page') === 'content'): ?>
+            <div class="form-group" style="margin-top:1.25rem">
+                <label for="tpl_context_source">Data Source</label>
+                <select id="tpl_context_source" name="context_source" class="form-input">
+                    <option value="">— None —</option>
+                    <?php if (!empty($contentSets)): ?>
+                    <optgroup label="Content Sets">
+                        <?php foreach ($contentSets as $cs): ?>
+                        <option value="content_set:<?= e($cs['slug']) ?>"
+                            <?= ($tpl['context_source'] ?? '') === 'content_set:' . $cs['slug'] ? 'selected' : '' ?>>
+                            <?= e($cs['name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                    <?php endif; ?>
+                    <optgroup label="Built-in">
+                        <option value="blog.post"  <?= ($tpl['context_source'] ?? '') === 'blog.post'  ? 'selected' : '' ?>>Blog — Single Post</option>
+                        <option value="blog.list"  <?= ($tpl['context_source'] ?? '') === 'blog.list'  ? 'selected' : '' ?>>Blog — Post List</option>
+                    </optgroup>
+                </select>
+                <small class="form-help">Used to populate the Bind panel in the block editor.</small>
+            </div>
+            <?php endif; ?>
+
             <div class="form-actions" style="margin-top:2rem">
                 <button type="submit" class="btn btn-primary">Save Template</button>
                 <a href="<?= url('/admin/templates') ?>" class="btn btn-outline">Cancel</a>
@@ -235,7 +259,7 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
                 <h3 style="color:#dc2626">Danger Zone</h3>
                 <p style="font-size:0.85rem;color:#6b7280;margin-bottom:0.75rem">Permanently delete this template.</p>
                 <button type="button" class="btn btn-danger btn-small"
-                        onclick="if(confirm('Permanently delete template \'<?= e(addslashes($tpl['name'])) ?>\'?')){var f=document.createElement('form');f.method='post';f.action='<?= url('/admin/templates/' . (int)$tpl['id'] . '/delete') ?>';var t=document.createElement('input');t.type='hidden';t.name='_csrf_token';t.value='<?= e(\Cruinn\CSRF::token()) ?>';f.appendChild(t);document.body.appendChild(f);f.submit();}">
+                        onclick="if(confirm('Permanently delete template \'<?= e(addslashes($tpl['name'])) ?>\'?')){var f=document.createElement('form');f.method='post';f.action='<?= url('/admin/templates/' . (int)$tpl['id'] . '/delete') ?>';var t=document.createElement('input');t.type='hidden';t.name='csrf_token';t.value='<?= e(\Cruinn\CSRF::getToken()) ?>';f.appendChild(t);document.body.appendChild(f);f.submit();}">
                     Delete Template
                 </button>
             </div>

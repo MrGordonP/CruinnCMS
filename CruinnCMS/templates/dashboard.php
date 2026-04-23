@@ -13,14 +13,14 @@
 <div class="dynamic-dashboard">
     <h1><?= e($dashboardTitle ?? 'Dashboard') ?></h1>
 
-    <?php if (($current_user['role'] ?? '') === 'admin'): ?>
+    <?php if (($current_user['role_level'] ?? 0) >= 100): ?>
     <div class="dashboard-view-toggle">
         <a href="?view=groups"  class="btn btn-small <?= ($dashboardView ?? 'groups') === 'groups'  ? 'btn-primary' : 'btn-outline' ?>">By Group</a>
         <a href="?view=modules" class="btn btn-small <?= ($dashboardView ?? 'groups') === 'modules' ? 'btn-primary' : 'btn-outline' ?>">By Module</a>
     </div>
     <?php endif; ?>
 
-    <?php if (($current_user['role'] ?? '') === 'admin' && ($dashboardView ?? 'groups') === 'groups'): ?>
+    <?php if (($current_user['role_level'] ?? 0) >= 100 && ($dashboardView ?? 'groups') === 'groups'): ?>
     <div class="dashboard-widget-stack">
 
         <div class="dashboard-widget">

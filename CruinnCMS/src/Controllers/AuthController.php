@@ -331,24 +331,22 @@ class AuthController extends BaseController
      */
     private function defaultRedirectForRole(): string
     {
-        // Try DB-driven redirect first
-        $roleId = Auth::roleId();
-        if ($roleId) {
+        // Try DB-driven redirect from highest-level assigned role
+        if (Auth::roleLevel() > 0) {
             $db = \Cruinn\Database::getInstance();
-            $redirect = $db->fetchColumn('SELECT default_redirect FROM roles WHERE id = ?', [$roleId]);
+            $redirect = $db->fetchColumn(
+                'SELECT r.default_redirect FROM roles r
+                 JOIN user_roles ur ON ur.role_id = r.id
+                 WHERE ur.user_id = ?
+                 ORDER BY r.level DESC LIMIT 1',
+                [Auth::userId()]
+            );
             if ($redirect) {
                 return $redirect;
             }
         }
 
-        // Legacy fallback — all roles land on the user portal; admin/council
-        // can navigate to their control panel from there.
-        return match (Auth::role()) {
-            'admin'   => '/profile',
-            'council' => '/profile',
-            'member'  => '/profile',
-            default   => '/',
-        };
+        return '/profile';
     }
 
     // ── Registration ───────────────────────────────────────────────
@@ -422,7 +420,6 @@ class AuthController extends BaseController
             'email'                => $email,
             'password_hash'        => Auth::hashPassword($password),
             'display_name'         => $displayName,
-            'role'                 => 'public',
             'active'               => 0,
             'email_verify_token'   => $hashedToken,
             'email_verify_expiry'  => $expiry,

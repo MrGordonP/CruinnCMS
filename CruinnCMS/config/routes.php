@@ -98,8 +98,12 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/users/{id}',         [UserAdminController::class, 'userShow']);
     $router->get('/admin/users/{id}/edit',    [UserAdminController::class, 'userEdit']);
     $router->post('/admin/users/{id}',        [UserAdminController::class, 'userUpdate']);
-    $router->post('/admin/users/{id}/toggle', [UserAdminController::class, 'userToggleActive']);
-    $router->post('/admin/users/{id}/delete', [UserAdminController::class, 'userDelete']);
+    $router->post('/admin/users/{id}/toggle',        [UserAdminController::class, 'userToggleActive']);
+    $router->post('/admin/users/{id}/delete',        [UserAdminController::class, 'userDelete']);
+    $router->post('/admin/users/{id}/roles/add',     [UserAdminController::class, 'userAddRole']);
+    $router->post('/admin/users/{id}/roles/remove',  [UserAdminController::class, 'userRemoveRole']);
+    $router->post('/admin/users/{id}/groups/add',    [UserAdminController::class, 'userAddGroup']);
+    $router->post('/admin/users/{id}/groups/remove', [UserAdminController::class, 'userRemoveGroup']);
 
     // Admin � Roles & Permissions
     $router->get('/admin/roles',                [RoleAdminController::class, 'index']);
@@ -109,6 +113,8 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/roles/{id}',          [RoleAdminController::class, 'update']);
     $router->post('/admin/roles/{id}/delete',   [RoleAdminController::class, 'delete']);
     $router->post('/admin/roles/{id}/clone',    [RoleAdminController::class, 'cloneRole']);
+    $router->post('/admin/roles/{id}/users/add',    [RoleAdminController::class, 'addRoleUser']);
+    $router->post('/admin/roles/{id}/users/remove', [RoleAdminController::class, 'removeRoleUser']);
     $router->get('/admin/roles/{id}/dashboard',  [RoleAdminController::class, 'dashboardConfig']);
     $router->post('/admin/roles/{id}/dashboard', [RoleAdminController::class, 'saveDashboardConfig']);
     $router->get('/admin/roles/{id}/navigation',  [RoleAdminController::class, 'navConfig']);
@@ -119,8 +125,15 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/groups/new',           [GroupController::class, 'groupCreate']);
     $router->post('/admin/groups',              [GroupController::class, 'groupStore']);
     $router->get('/admin/groups/{id}/edit',     [GroupController::class, 'groupEdit']);
-    $router->post('/admin/groups/{id}',         [GroupController::class, 'groupUpdate']);
-    $router->post('/admin/groups/{id}/delete',  [GroupController::class, 'groupDelete']);
+    $router->get('/admin/groups/{id}/members-json', [GroupController::class, 'groupMembersJson']);
+    $router->post('/admin/groups/{id}',              [GroupController::class, 'groupUpdate']);
+    $router->post('/admin/groups/{id}/delete',       [GroupController::class, 'groupDelete']);
+    $router->post('/admin/groups/{id}/users/add',    [GroupController::class, 'addGroupUser']);
+    $router->post('/admin/groups/{id}/users/remove',                              [GroupController::class, 'removeGroupUser']);
+    $router->post('/admin/groups/{id}/positions/add',                             [GroupController::class, 'addGroupPosition']);
+    $router->post('/admin/groups/{id}/positions/{positionId}/delete',             [GroupController::class, 'deleteGroupPosition']);
+    $router->post('/admin/groups/{id}/users/{userId}/positions/assign',           [GroupController::class, 'assignUserPosition']);
+    $router->post('/admin/groups/{id}/users/{userId}/positions/{positionId}/remove', [GroupController::class, 'removeUserPosition']);
 
     // Admin � Pages
     $router->get('/admin/pages',                    [AdminPageController::class, 'listPages']);
@@ -139,6 +152,7 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/content/new',                          [\Cruinn\Admin\Controllers\ContentSetController::class, 'newSet']);
     $router->post('/admin/content',                             [\Cruinn\Admin\Controllers\ContentSetController::class, 'createSet']);
     $router->get('/admin/content/{id}/edit',                    [\Cruinn\Admin\Controllers\ContentSetController::class, 'editSet']);
+    $router->get('/admin/content/{id}/preview',                 [\Cruinn\Admin\Controllers\ContentSetController::class, 'previewSet']);
     $router->post('/admin/content/{id}',                        [\Cruinn\Admin\Controllers\ContentSetController::class, 'updateSet']);
     $router->post('/admin/content/{id}/delete',                 [\Cruinn\Admin\Controllers\ContentSetController::class, 'deleteSet']);
     $router->get('/admin/content/{id}/rows',                    [\Cruinn\Admin\Controllers\ContentSetController::class, 'rows']);

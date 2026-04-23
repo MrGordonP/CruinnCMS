@@ -94,10 +94,11 @@ class BlockRegistry
      * Invoke the renderer callback for a dynamic block.
      * Returns an empty string if no renderer is registered for this type.
      *
-     * @param array    $block  Full DB row for the block.
-     * @param Database $db     Active database connection.
+     * @param array    $block    Full DB row for the block.
+     * @param Database $db       Active database connection.
+     * @param array    $context  Optional render context (e.g. ['article' => $row]).
      */
-    public static function renderDynamic(array $block, Database $db): string
+    public static function renderDynamic(array $block, Database $db, array $context = []): string
     {
         self::load();
         $def = self::$types[$block['block_type']] ?? null;
@@ -107,7 +108,7 @@ class BlockRegistry
         $config = !empty($block['block_config'])
             ? (json_decode($block['block_config'], true) ?? [])
             : [];
-        return ($def['renderer'])($config, $db);
+        return ($def['renderer'])($config, $db, $context);
     }
 
     /**

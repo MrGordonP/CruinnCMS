@@ -195,30 +195,55 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
 
     </div>
 
-    <!-- ── Right: Reference ───────────────────────────────────── -->
+    <!-- ── Right: Output results ──────────────────────────────── -->
     <div class="cse-ref-panel">
-        <div class="cse-panel-header">
-            <h3 id="cse-ref-title">Field Types</h3>
+        <div class="cse-panel-header" style="justify-content:space-between">
+            <h3 id="cse-ref-title"><?= $setType === 'query' ? 'Results' : 'Rows' ?></h3>
+            <?php if (!$isNew && $setType === 'query'): ?>
+            <button type="button" class="btn btn-small btn-outline" id="cse-preview-btn" onclick="cseRunPreview()">&#9654; Run</button>
+            <?php endif; ?>
         </div>
+
+        <!-- Manual: rows table -->
         <div class="cse-panel-scroll cse-ref-body" id="cse-ref-manual">
-            <dl class="cse-type-list">
-                <dt>text</dt><dd>Single-line plain text</dd>
-                <dt>richtext</dt><dd>Multi-line formatted text (rendered as HTML)</dd>
-                <dt>image</dt><dd>URL to an image (stored as path/URL string)</dd>
-                <dt>url</dt><dd>A hyperlink URL</dd>
-                <dt>date</dt><dd>ISO date (YYYY-MM-DD)</dd>
-            </dl>
-            <hr class="form-divider">
-            <p class="form-help"><strong>Using in the editor</strong><br>
-            Drop a <em>Data List</em> block onto the canvas, pick this set, and use <code>{{field_name}}</code> tokens in the card template.</p>
+        <?php if ($isNew): ?>
+            <p class="form-help" style="padding:0.75rem">Save the set first, then add rows.</p>
+        <?php elseif (empty($rows)): ?>
+            <p class="form-help" style="padding:0.75rem">No rows yet. <a href="<?= e('/admin/content/' . (int)$set['id'] . '/rows') ?>">Add rows →</a></p>
+        <?php else: ?>
+            <div style="padding:0.5rem 0.75rem;font-size:0.75rem;color:var(--color-text-muted)"><?= count($rows) ?> row<?= count($rows) !== 1 ? 's' : '' ?> · <a href="<?= e('/admin/content/' . (int)$set['id'] . '/rows') ?>">Manage →</a></div>
+            <div style="overflow-x:auto">
+            <table style="font-size:0.75rem;border-collapse:collapse;width:100%">
+                <thead>
+                <tr>
+                    <?php foreach ($fields as $f): ?>
+                    <th style="text-align:left;padding:3px 8px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:var(--color-text-muted)"><?= e($f['label'] ?? $f['name']) ?></th>
+                    <?php endforeach; ?>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($rows as $row): ?>
+                <tr>
+                    <?php foreach ($fields as $f): ?>
+                    <td style="padding:3px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<?= e((string)($row['data'][$f['name']] ?? '')) ?>">
+                        <?= e((string)($row['data'][$f['name']] ?? '')) ?>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            </div>
+        <?php endif; ?>
         </div>
-        <div class="cse-panel-scroll cse-ref-body" id="cse-ref-query" style="display:none">
-            <p class="form-help"><strong>Query Set</strong><br>
-            This set pulls live rows directly from the database. No manual data entry needed.</p>
-            <p class="form-help">Pick a primary table, optionally join other tables, add filters, and choose which fields to expose as tokens.</p>
-            <p class="form-help">In the editor, drop a <em>Data List</em> block, select this set, and use <code>{{column_name}}</code> tokens in the card template.</p>
-            <hr class="form-divider">
+
+        <!-- Query: preview area -->
+        <div class="cse-panel-scroll cse-ref-body" id="cse-ref-query" style="<?= $setType !== 'query' ? 'display:none' : '' ?>">
+            <?php if ($isNew): ?>
+            <p class="form-help" style="padding:0.75rem">Save the set first to preview results.</p>
+            <?php else: ?>
             <div id="cse-preview-area" style="font-size:0.78rem"></div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -251,7 +276,9 @@ function toggleSetType(type) {
     queryPanel.style.display  = type === 'query'  ? 'flex' : 'none';
     document.getElementById('cse-ref-manual').style.display   = type === 'manual' ? '' : 'none';
     document.getElementById('cse-ref-query').style.display    = type === 'query'  ? '' : 'none';
-    document.getElementById('cse-ref-title').textContent      = type === 'query' ? 'About Query Sets' : 'Field Types';
+    document.getElementById('cse-ref-title').textContent      = type === 'query' ? 'Results' : 'Rows';
+    var previewBtn = document.getElementById('cse-preview-btn');
+    if (previewBtn) { previewBtn.style.display = type === 'query' ? '' : 'none'; }
     if (type === 'query') { cseInitQuery(); }
 }
 
@@ -424,7 +451,12 @@ function cseAddJoin(def) {
     var r3 = document.createElement('div'); r3.style.cssText = 'display:flex;gap:0.3rem;align-items:center';
     var leftSel  = document.createElement('select'); leftSel.className  = 'cse-join-left form-select';
     var rightSel = document.createElement('select'); rightSel.className = 'cse-join-right form-select';
-    var opts = cseAllColOpts();
+    // Build opts including the join table even before this row is in the DOM
+    var activeTabs = cseActiveTables();
+    var joinTab = def.table || tblSel.value || '';
+    if (joinTab && activeTabs.indexOf(joinTab) === -1) { activeTabs.push(joinTab); }
+    var opts = [];
+    activeTabs.forEach(function (t) { (CSE_COLS[t] || []).forEach(function (c) { opts.push(t + '.' + c); }); });
     csePopulateSelect(leftSel,  opts, def.on_left  || '', '— left col —');
     csePopulateSelect(rightSel, opts, def.on_right || '', '— right col —');
     r3.appendChild(leftSel);
@@ -488,7 +520,9 @@ function cseSerialise() {
         if (f) config.filters.push({ field: f, op: row.querySelector('.cse-filter-op')?.value || '=', value: row.querySelector('.cse-filter-val')?.value || '' });
     });
     config.fields = [];
-    document.querySelectorAll('#cse-fields input[type=checkbox]:checked').forEach(function (cb) { config.fields.push(cb.value); });
+    document.querySelectorAll('#cse-fields input[type=checkbox]:checked').forEach(function (cb) {
+        if (/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(cb.value)) { config.fields.push(cb.value); }
+    });
     var ob = document.getElementById('cse-orderby'); var od = document.getElementById('cse-orderdir'); var lm = document.getElementById('cse-limit');
     if (ob) config.order_by  = ob.value;
     if (od) config.order_dir = od.value;
@@ -523,6 +557,46 @@ document.getElementById('cse-orderby')?.addEventListener('change', cseSerialise)
 document.getElementById('cse-orderdir')?.addEventListener('change', cseSerialise);
 document.getElementById('cse-limit')?.addEventListener('input', cseSerialise);
 
+// ── Query preview ────────────────────────────────────────────────
+<?php if (!$isNew && $setType === 'query'): ?>
+var CSE_PREVIEW_URL = '/admin/content/<?= (int)$set['id'] ?>/preview';
+function cseRunPreview() {
+    var btn = document.getElementById('cse-preview-btn');
+    var area = document.getElementById('cse-preview-area');
+    if (!area) { return; }
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    area.innerHTML = '<p style="color:#6b7280;font-size:0.8rem;padding:0.5rem">Running…</p>';
+    fetch(CSE_PREVIEW_URL, { headers: { Accept: 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#9654; Run'; }
+            if (!d.ok) { area.innerHTML = '<p style="color:#dc2626;font-size:0.8rem;padding:0.5rem">Error: ' + (d.error || 'unknown') + '</p>'; return; }
+            if (!d.rows.length) { area.innerHTML = '<p style="color:#6b7280;font-size:0.8rem;padding:0.5rem">Query returned 0 rows.</p>'; return; }
+            var cols = d.columns;
+            var html = '<div style="padding:4px 8px;font-size:0.72rem;color:#6b7280">' + d.count + ' row' + (d.count !== 1 ? 's' : '') + '</div>';
+            html += '<div style="overflow-x:auto"><table style="font-size:0.72rem;border-collapse:collapse;width:100%">';
+            html += '<thead><tr>';
+            cols.forEach(function (c) { html += '<th style="text-align:left;padding:2px 6px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#6b7280">' + c + '</th>'; });
+            html += '</tr></thead><tbody>';
+            d.rows.forEach(function (row) {
+                html += '<tr>';
+                cols.forEach(function (c) {
+                    var v = row[c] !== null && row[c] !== undefined ? String(row[c]) : '';
+                    var display = v.length > 40 ? v.slice(0, 40) + '…' : v;
+                    html += '<td style="padding:2px 6px;border-bottom:1px solid #f1f5f9;white-space:nowrap" title="' + v.replace(/"/g, '&quot;') + '">' + display + '</td>';
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            area.innerHTML = html;
+        })
+        .catch(function (err) {
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#9654; Run'; }
+            area.innerHTML = '<p style="color:#dc2626;font-size:0.8rem;padding:0.5rem">Request failed.</p>';
+        });
+}
+<?php endif ?>
+
 // Init on load for query sets
 (function () {
     var typeSel = document.getElementById('set-type');
@@ -535,7 +609,7 @@ document.getElementById('cse-limit')?.addEventListener('input', cseSerialise);
         // Show correct panels (already handled by PHP, but ensure ref panel is right)
         document.getElementById('cse-ref-manual').style.display = 'none';
         document.getElementById('cse-ref-query').style.display  = '';
-        document.getElementById('cse-ref-title').textContent    = 'About Query Sets';
+        document.getElementById('cse-ref-title').textContent    = 'Results';
     }
 }());
 </script>

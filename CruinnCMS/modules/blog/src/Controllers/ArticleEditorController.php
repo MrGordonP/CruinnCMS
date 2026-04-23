@@ -167,18 +167,18 @@ class ArticleEditorController extends BaseController
     private function buildNavData(): array
     {
         $sitePages = $this->db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages
-             WHERE slug NOT LIKE '\_%'
+            "SELECT id, title, slug, render_mode FROM pages_index
+             WHERE slug NOT LIKE '\_\%'
              ORDER BY title ASC"
         );
 
         $headerPages = [];
-        $hp0 = $this->db->fetch("SELECT id FROM pages WHERE slug = '_header' LIMIT 1");
+        $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
         if ($hp0) {
             $headerPages[] = ['id' => (int) $hp0['id'], 'title' => 'Header Zone Page', 'slug' => '_header', 'template_name' => null];
         }
         $footerPages = [];
-        $fp0 = $this->db->fetch("SELECT id FROM pages WHERE slug = '_footer' LIMIT 1");
+        $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
         if ($fp0) {
             $footerPages[] = ['id' => (int) $fp0['id'], 'title' => 'Footer Zone Page', 'slug' => '_footer', 'template_name' => null];
         }
@@ -192,7 +192,7 @@ class ArticleEditorController extends BaseController
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
-             LEFT JOIN pages p ON p.id = pt.canvas_page_id
+             LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
              WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
@@ -278,11 +278,12 @@ class ArticleEditorController extends BaseController
                 'status'      => $article['status'],
                 'template'    => 'none',
             ],
-            'hasDraft'          => !empty($state) && (int) ($state['current_edit_seq'] ?? 0) > 0,
+            'hasDraft'          => !empty($state) && (int) ($state['current_edit_seq'] ?? 0) > 1,
             'state'             => $state,
             'cruinnHtml'        => (new EditorRenderService())->buildCanvasHtml($flat, $this->db),
             'cruinnCss'         => (new EditorRenderService())->buildCanvasCss($flat),
             'menus'             => $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC'),
+            'contentSets'       => $this->db->fetchAll('SELECT id, name, slug, type, fields FROM content_sets ORDER BY name ASC'),
             'isZonePage'        => false,
             'zoneName'          => null,
             'isTemplatePage'    => false,

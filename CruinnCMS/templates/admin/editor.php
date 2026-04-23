@@ -32,6 +32,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
      data-api-base="<?= htmlspecialchars($apiBase ?? '/admin/editor', ENT_QUOTES, 'UTF-8') ?>"
      data-has-draft="<?= $hasDraft ? '1' : '0' ?>"
      data-template-zones="<?= htmlspecialchars(json_encode($templateZones ?? []), ENT_QUOTES, 'UTF-8') ?>"
+     data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
      data-start-in-code-view="<?= !empty($startInCodeView) ? '1' : '0' ?>"
      data-html-content="<?= htmlspecialchars($htmlContent ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
@@ -505,6 +506,43 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <textarea id="prop-php-code" class="editor-prop-input editor-prop-code"
                                   rows="12" spellcheck="false" autocomplete="off"
                                   placeholder="<?php echo 'Hello'; ?>"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bind accordion (content templates with a context_source only) -->
+            <div class="editor-accordion collapsed" data-group="bind" style="display:none">
+                <button class="editor-accordion-toggle">Bind to Data</button>
+                <div class="editor-accordion-body">
+                    <p class="editor-bind-hint" style="font-size:0.75rem;color:#9ca3af;margin:0 0 0.5rem">
+                        Map this block's content to a field from the template's data source.
+                    </p>
+                    <!-- inner_html binding (text / html / heading / inline / anchor blocks) -->
+                    <div class="editor-bind-row" data-bind-slot="inner_html">
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
+                            <label style="font-size:0.78rem">Content field</label>
+                            <select class="editor-prop-input editor-bind-select" data-bind-slot="inner_html" style="width:100%">
+                                <option value="">— none —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- src binding (image / site-logo blocks) -->
+                    <div class="editor-bind-row" data-bind-slot="src" style="display:none">
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
+                            <label style="font-size:0.78rem">Image source field</label>
+                            <select class="editor-prop-input editor-bind-select" data-bind-slot="src" style="width:100%">
+                                <option value="">— none —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- href binding (anchor blocks) -->
+                    <div class="editor-bind-row" data-bind-slot="href" style="display:none">
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
+                            <label style="font-size:0.78rem">Link URL field</label>
+                            <select class="editor-prop-input editor-bind-select" data-bind-slot="href" style="width:100%">
+                                <option value="">— none —</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1085,7 +1123,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                             <select class="editor-prop-input" data-config="set_slug" id="prop-data-list-set" style="width:100%">
                                 <option value="">&mdash; Select set &mdash;</option>
                                 <?php foreach ($contentSets as $_cs): ?>
-                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?><?= ($cs_type = $_cs['type'] ?? 'manual') === 'query' ? ' (Query)' : '' ?></option>
+                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?><?= ($_cs['type'] ?? 'manual') === 'query' ? ' (Query)' : '' ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -1096,12 +1134,23 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                                 <option value="single">Single (first row)</option>
                             </select>
                         </div>
-                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem;margin-top:0.25rem">
-                            <label>Card Template</label>
-                            <textarea class="editor-prop-input" data-config="card_html" id="prop-data-list-card"
-                                      rows="8" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
-                                      placeholder="<h3>{{name}}</h3>&#10;<p>{{bio}}</p>"></textarea>
-                            <div id="prop-data-list-tokens" style="font-size:0.72rem;color:#6b7280;line-height:1.8"></div>
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem;margin-top:0.5rem">
+                            <label>Content Template &nbsp;<small style="font-weight:400;color:#9ca3af">(optional — overrides card HTML)</small></label>
+                            <select class="editor-prop-input" data-config="template_slug" id="prop-data-list-template" style="width:100%">
+                                <option value="">&mdash; Use card HTML &mdash;</option>
+                                <?php foreach ($contentTemplates ?? [] as $_ct): ?>
+                                <option value="<?= htmlspecialchars($_ct['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_ct['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div id="prop-data-list-card-wrap" style="margin-top:0.25rem">
+                            <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem">
+                                <label>Card HTML &nbsp;<small style="font-weight:400;color:#9ca3af">Use {{field}} tokens</small></label>
+                                <textarea class="editor-prop-input" data-config="card_html" id="prop-data-list-card"
+                                          rows="8" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
+                                          placeholder="<h3>{{name}}</h3>&#10;<p>{{bio}}</p>"></textarea>
+                                <div id="prop-data-list-tokens" style="font-size:0.72rem;color:#6b7280;line-height:1.8"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

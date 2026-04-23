@@ -14,10 +14,20 @@ use Cruinn\Database;
 class CruinnRenderService
 {
     private Database $db;
+    private array $context = [];
 
     public function __construct()
     {
         $this->db = Database::getInstance();
+    }
+
+    /**
+     * Set a render context (e.g. current article, articles list).
+     * Context is passed to every dynamic block renderer.
+     */
+    public function setContext(array $context): void
+    {
+        $this->context = $context;
     }
 
     /**
@@ -198,7 +208,7 @@ class CruinnRenderService
             $isDynamic    = $this->isDynamicType($row['block_type']);
             $innerContent = $isDynamic
                 ? $this->renderDynamicBlock($row)
-                : ($row['inner_html'] ?? '');
+                : $this->resolveBinding($row, $cfg);
 
             $innerContent .= $this->renderTree($blockId, $byId, $childrenOf);
 
@@ -343,6 +353,90 @@ class CruinnRenderService
         return $html;
     }
 
+    /**
+     * Render a content template page with a given context.
+     * Used by modules (blog, events, etc.) to render their content templates.
+     * Falls back to empty string if no blocks published for the page.
+     */
+    public function buildWithContext(int $pageId, array $context): string
+    {
+        $this->context = $context;
+        return $this->buildHtml($pageId);
+    }
+
+    /**
+     * Same as buildWithContext but using a named template slug.
+     * Looks up the page_templates record, finds its canvas_page_id, renders it.
+     * Returns null if no such template or no canvas page.
+     */
+    public function buildContentTemplate(string $slug, array $context): ?string
+    {
+        $tpl = $this->db->fetch(
+            "SELECT pt.canvas_page_id FROM page_templates pt WHERE pt.slug = ? AND pt.template_type = 'content' LIMIT 1",
+            [$slug]
+        );
+        if (!$tpl || !$tpl['canvas_page_id']) {
+            return null;
+        }
+        return $this->buildWithContext((int) $tpl['canvas_page_id'], $context);
+    }
+
+    /**
+     * Resolve a block's content, substituting context field values when a bind is configured.
+     *
+     * block_config.bind is a map of slot → context key, e.g.:
+     *   {"inner_html": "title", "src": "featured_image", "href": "url"}
+     *
+     * For inner_html: replaces the block's stored inner_html with the context value.
+     * For image src:  the inner_html should contain an <img> — we patch the src attribute.
+     * For href:       patches the href of the first <a> inside the block.
+     */
+    private function resolveBinding(array $row, array $cfg): string
+    {
+        $bind    = $cfg['bind'] ?? [];
+        $inner   = $row['inner_html'] ?? '';
+
+        if (empty($bind) || empty($this->context)) {
+            return $inner;
+        }
+
+        // inner_html binding: direct content replacement
+        if (!empty($bind['inner_html'])) {
+            $value = $this->context[$bind['inner_html']] ?? null;
+            if ($value !== null) {
+                $inner = (string) $value;
+            }
+        }
+
+        // src binding: patch src on first <img> inside the block
+        if (!empty($bind['src'])) {
+            $value = $this->context[$bind['src']] ?? null;
+            if ($value !== null) {
+                $src = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+                if (str_contains($inner, '<img')) {
+                    $inner = preg_replace('/(<img\b[^>]*)\bsrc="[^"]*"/', '$1 src="' . $src . '"', $inner);
+                    if (!str_contains($inner, 'src=')) {
+                        $inner = preg_replace('/(<img\b)/', '$1 src="' . $src . '"', $inner);
+                    }
+                } else {
+                    // No img tag — synthesise one
+                    $inner = '<img src="' . $src . '" alt="">';
+                }
+            }
+        }
+
+        // href binding: patch href on first <a> inside the block
+        if (!empty($bind['href'])) {
+            $value = $this->context[$bind['href']] ?? null;
+            if ($value !== null) {
+                $href = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+                $inner = preg_replace('/(<a\b[^>]*)\bhref="[^"]*"/', '$1 href="' . $href . '"', $inner, 1);
+            }
+        }
+
+        return $inner;
+    }
+
     private function isDynamicType(string $type): bool
     {
         return BlockRegistry::isDynamic($type);
@@ -350,7 +444,7 @@ class CruinnRenderService
 
     private function renderDynamicBlock(array $block): string
     {
-        return BlockRegistry::renderDynamic($block, $this->db);
+        return BlockRegistry::renderDynamic($block, $this->db, $this->context);
     }
 
     private function tagForType(string $type): string

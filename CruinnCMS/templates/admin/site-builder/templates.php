@@ -39,8 +39,10 @@
             <td>
                 <?php if ($tpl['is_system']): ?>
                     <span class="badge badge-published">System</span>
+                <?php elseif (($tpl['template_type'] ?? 'page') === 'content'): ?>
+                    <span class="badge badge-info">Content</span>
                 <?php else: ?>
-                    <span class="badge badge-draft">Custom</span>
+                    <span class="badge badge-draft">Page</span>
                 <?php endif; ?>
             </td>
             <td class="sb-actions">
@@ -63,6 +65,19 @@
     <h3>Create Custom Template</h3>
     <form method="post" action="<?= url('/admin/templates') ?>" class="sb-create-form">
         <?= csrf_field() ?>
+        <div class="form-group">
+            <label>Template Type</label>
+            <div class="radio-group" id="tpl_type_group">
+                <label class="radio-label">
+                    <input type="radio" name="template_type" value="page" checked> Page template
+                    <small class="text-muted"> — defines zones for regular CMS pages</small>
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="template_type" value="content"> Content template
+                    <small class="text-muted"> — used to render dynamic content (e.g. blog post, article list)</small>
+                </label>
+            </div>
+        </div>
         <div class="form-row">
             <div class="form-group">
                 <label for="tpl_name">Name</label>
@@ -79,6 +94,7 @@
             <input type="text" id="tpl_description" name="description" class="form-input"
                    placeholder="Brief description of this template layout">
         </div>
+        <div id="tpl_page_fields">
         <div class="form-row">
             <div class="form-group">
                 <label for="tpl_zones">Zones <small>(JSON array)</small></label>
@@ -92,10 +108,23 @@
                        placeholder="Optional class for template wrapper">
             </div>
         </div>
+        </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Create Template</button>
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    var radios = document.querySelectorAll('input[name="template_type"]');
+    var pageFields = document.getElementById('tpl_page_fields');
+    function toggle() {
+        var isContent = document.querySelector('input[name="template_type"]:checked').value === 'content';
+        pageFields.style.display = isContent ? 'none' : '';
+    }
+    radios.forEach(function (r) { r.addEventListener('change', toggle); });
+}());
+</script>
 
 <?php include __DIR__ . '/_tabs_close.php'; ?>

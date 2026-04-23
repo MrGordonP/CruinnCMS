@@ -114,12 +114,59 @@ class ContentSetController extends \Cruinn\Controllers\BaseController
         $set['query_config'] = json_decode($set['query_config'] ?? '{}', true) ?: [];
         $svc    = new QueryBuilderService($this->db);
         $tables = $svc->getTables();
+
+        $rows = [];
+        if (($set['type'] ?? 'manual') === 'manual') {
+            $rawRows = $this->db->fetchAll(
+                'SELECT * FROM content_set_rows WHERE set_id = ? ORDER BY sort_order ASC, id ASC',
+                [(int) $id]
+            );
+            foreach ($rawRows as $r) {
+                $r['data'] = json_decode($r['data'] ?? '{}', true) ?: [];
+                $rows[] = $r;
+            }
+        }
+
         $this->renderAdmin('admin/content/edit-set', [
             'title'       => 'Edit: ' . $set['name'],
             'set'         => $set,
             'dbTables'    => $tables,
+            'rows'        => $rows,
             'breadcrumbs' => [['Admin', '/admin'], ['Content Sets', '/admin/content'], [e($set['name'])]],
         ]);
+    }
+
+    /**
+     * GET /admin/content/{id}/preview — Run saved query config and return JSON rows.
+     * Query sets only; manual sets return their stored rows.
+     */
+    public function previewSet(string $id): void
+    {
+        $set = $this->requireSet((int) $id);
+
+        if (($set['type'] ?? 'manual') === 'query') {
+            $config = json_decode($set['query_config'] ?? '{}', true) ?: [];
+            try {
+                $svc  = new QueryBuilderService($this->db);
+                $rows = $svc->run($config);
+                $columns = !empty($rows) ? array_keys($rows[0]) : [];
+                $this->json(['ok' => true, 'columns' => $columns, 'rows' => $rows, 'count' => count($rows)]);
+            } catch (\Throwable $e) {
+                $this->json(['ok' => false, 'error' => $e->getMessage()]);
+            }
+        } else {
+            $rawRows = $this->db->fetchAll(
+                'SELECT * FROM content_set_rows WHERE set_id = ? ORDER BY sort_order ASC, id ASC',
+                [(int) $id]
+            );
+            $fields = json_decode($set['fields'] ?? '[]', true) ?: [];
+            $columns = array_column($fields, 'name');
+            $rows = [];
+            foreach ($rawRows as $r) {
+                $rows[] = json_decode($r['data'] ?? '{}', true) ?: [];
+            }
+            $this->json(['ok' => true, 'columns' => $columns, 'rows' => $rows, 'count' => count($rows)]);
+        }
     }
 
     /**

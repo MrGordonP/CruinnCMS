@@ -266,6 +266,14 @@ class CruinnController extends BaseController
             $contentSets = [];
         }
 
+        try {
+            $contentTemplates = $this->db->fetchAll(
+                "SELECT id, name, slug FROM page_templates WHERE template_type = 'content' ORDER BY name ASC"
+            );
+        } catch (\Exception $e) {
+            $contentTemplates = [];
+        }
+
         // Detect global zone pages and template canvas pages (slug starts with '_')
         $isZonePage       = str_starts_with($page['slug'] ?? '', '_');
         $zoneName         = $isZonePage ? ltrim($page['slug'], '_') : null;
@@ -273,15 +281,21 @@ class CruinnController extends BaseController
         $templateSlugName = $isTemplatePage ? substr($page['slug'], 5) : null;
 
         // For template canvas pages: look up which template owns this canvas
-        $templateId    = null;
+        $templateId      = null;
         $templateZonesDef = [];
+        $contextFields   = [];   // [{key, label, type}] for content template binding
         if ($isTemplatePage) {
             $tplRow = $this->db->fetch(
-                'SELECT id, zones FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+                'SELECT id, zones, context_source FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
                 [$pageId]
             );
             $templateId       = $tplRow ? (int) $tplRow['id'] : null;
             $templateZonesDef = $tplRow ? (json_decode($tplRow['zones'] ?? '[]', true) ?: []) : [];
+
+            // Resolve context fields from context_source
+            if ($tplRow && !empty($tplRow['context_source'])) {
+                $contextFields = $this->resolveContextFields($tplRow['context_source']);
+            }
         }
 
         // For body pages: load the zone pages' IDs and their published preview HTML/CSS
@@ -487,6 +501,7 @@ class CruinnController extends BaseController
             'cruinnCss'         => (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
             'menus'             => $menus,
             'contentSets'       => $contentSets,
+            'contentTemplates'  => $contentTemplates,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
             'isTemplatePage'    => $isTemplatePage,
@@ -509,6 +524,7 @@ class CruinnController extends BaseController
             'templateCanvasPageId' => $templateCanvasPageId,
             'templateCanvasHtml'  => $templateCanvasHtml,
             'templateCanvasCss'   => $templateCanvasCss,
+            'contextFields'       => $contextFields,
             'startInCodeView'   => !$hasImportedBlocks && $renderMode === 'html',
             'htmlContent'       => !$hasImportedBlocks && $renderMode === 'html' ? ($page['body_html'] ?? '') : null,
             'isFileMode'        => $renderMode === 'file',
@@ -1256,6 +1272,78 @@ class CruinnController extends BaseController
             echo json_encode(['error' => $e->getMessage()]);
         }
         exit;
+    }
+
+    /**
+     * Resolve context fields for a content template from its context_source string.
+     *
+     * Format 'content_set:{slug}' — reads fields JSON from content_sets.
+     * Each field entry is expected to be {key, label, type} or {name, label, type}.
+     * Returns a normalised array of [{key, label, type}].
+     */
+    private function resolveContextFields(string $contextSource): array
+    {
+        if (str_starts_with($contextSource, 'content_set:')) {
+            $slug = substr($contextSource, strlen('content_set:'));
+            $set  = $this->db->fetch(
+                'SELECT type, query_config FROM content_sets WHERE slug = ? LIMIT 1',
+                [$slug]
+            );
+            if (!$set) { return []; }
+
+            if (($set['type'] ?? 'manual') === 'query') {
+                // Run query with LIMIT 1 and derive fields from actual result columns
+                try {
+                    $svc  = new \Cruinn\Services\QueryBuilderService($this->db);
+                    $qcfg = json_decode($set['query_config'] ?? '{}', true) ?: [];
+                    $qcfg['limit'] = 1;
+                    $rows = $svc->run($qcfg);
+                    if (empty($rows)) { return []; }
+                    $out = [];
+                    foreach (array_keys($rows[0]) as $col) {
+                        $out[] = ['key' => $col, 'label' => $col, 'type' => 'text'];
+                    }
+                    return $out;
+                } catch (\Throwable $e) {
+                    return [];
+                }
+            }
+
+            // Manual set — derive fields from first row's data keys
+            $row = $this->db->fetch(
+                'SELECT data FROM content_set_rows
+                  WHERE set_id = (SELECT id FROM content_sets WHERE slug = ? LIMIT 1)
+                  ORDER BY sort_order ASC, id ASC LIMIT 1',
+                [$slug]
+            );
+            if (!$row) { return []; }
+            $data = json_decode($row['data'] ?? '{}', true);
+            if (!is_array($data)) { return []; }
+            $out = [];
+            foreach (array_keys($data) as $col) {
+                $out[] = ['key' => $col, 'label' => $col, 'type' => 'text'];
+            }
+            return $out;
+        }
+        // Built-in sources — define their fields inline
+        $builtIn = [
+            'blog.post' => [
+                ['key' => 'title',         'label' => 'Post Title',       'type' => 'text'],
+                ['key' => 'body_html',      'label' => 'Post Body',        'type' => 'html'],
+                ['key' => 'excerpt',        'label' => 'Excerpt',          'type' => 'text'],
+                ['key' => 'featured_image', 'label' => 'Featured Image',   'type' => 'image'],
+                ['key' => 'author_name',    'label' => 'Author Name',      'type' => 'text'],
+                ['key' => 'published_at',   'label' => 'Published Date',   'type' => 'date'],
+                ['key' => 'subject_title',  'label' => 'Subject',          'type' => 'text'],
+                ['key' => 'slug',           'label' => 'Post Slug',        'type' => 'text'],
+            ],
+            'blog.list' => [
+                ['key' => 'articles',   'label' => 'Articles (list)',  'type' => 'collection'],
+                ['key' => 'page',       'label' => 'Current Page',     'type' => 'number'],
+                ['key' => 'totalPages', 'label' => 'Total Pages',      'type' => 'number'],
+            ],
+        ];
+        return $builtIn[$contextSource] ?? [];
     }
 
 }

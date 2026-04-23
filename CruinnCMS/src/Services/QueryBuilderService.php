@@ -101,9 +101,13 @@ class QueryBuilderService
             }
         } else {
             foreach ($fieldDefs as $fieldRef) {
+                if (!is_string($fieldRef) || !preg_match('/^[a-zA-Z0-9_]+(?:\.[a-zA-Z0-9_]+)?$/', $fieldRef)) {
+                    continue; // skip malformed entries silently
+                }
                 [$t, $c] = $this->parseFieldRef($fieldRef, $primaryTable);
-                $this->assertCol($validCols, $t, $c);
-                $alias         = $c; // bare column name as token
+                if (!isset($validCols[$t][$c])) { continue; } // skip unknown cols silently
+                // Use table__col alias if bare column name is already taken to avoid PDO collision
+                $alias         = isset($tokenMap[$c]) ? $t . '__' . $c : $c;
                 $selectParts[] = $this->quoteCol($t, $c) . ' AS ' . $this->quoteAlias($alias);
                 $tokenMap[$alias] = $fieldRef;
             }
