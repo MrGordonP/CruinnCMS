@@ -44,6 +44,16 @@ class CSRF
     }
 
     /**
+     * Alias for validate() — no-op if the global middleware already ran.
+     * Exists so module controllers that call CSRF::verify() don't fatal.
+     */
+    public static function verify(): void
+    {
+        // Global middleware already validated the token before the controller ran.
+        // This is a safe no-op alias kept for compatibility with module controllers.
+    }
+
+    /**
      * Regenerate the CSRF token (call after successful validation if desired).
      */
     public static function regenerate(): string

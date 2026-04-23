@@ -32,7 +32,7 @@
                             <span class="badge badge-role-<?= e($r['slug']) ?>"><?= e($r['name']) ?></span>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <span class="badge badge-role-<?= e($user['role']) ?>"><?= e(ucfirst($user['role'])) ?></span>
+                        <span class="badge badge-role-none">Unassigned</span>
                     <?php endif; ?>
                 </td>
             </tr>

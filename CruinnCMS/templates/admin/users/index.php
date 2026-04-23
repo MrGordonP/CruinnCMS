@@ -10,9 +10,9 @@
     <!-- Role Summary -->
     <div class="role-summary">
         <?php foreach ($roleCounts as $rc): ?>
-            <a href="?role=<?= e($rc['role']) ?>"
-               class="role-chip <?= $role === $rc['role'] ? 'role-chip-active' : '' ?>">
-                <span class="role-chip-label"><?= e(ucfirst($rc['role'])) ?></span>
+            <a href="?role=<?= e((string) ($rc['role_slug'] ?? '')) ?>"
+               class="role-chip <?= $role === (string) ($rc['role_slug'] ?? '') ? 'role-chip-active' : '' ?>">
+                <span class="role-chip-label"><?= e((string) ($rc['role_name'] ?? 'Unassigned')) ?></span>
                 <span class="role-chip-count"><?= (int)$rc['cnt'] ?></span>
             </a>
         <?php endforeach; ?>
@@ -26,8 +26,8 @@
         <div class="filter-group">
             <select name="role" class="form-select">
                 <option value="">All Roles</option>
-                <?php foreach (['admin', 'council', 'member', 'public'] as $r): ?>
-                    <option value="<?= e($r) ?>" <?= $role === $r ? 'selected' : '' ?>><?= e(ucfirst($r)) ?></option>
+                <?php foreach ($roleOptions as $r): ?>
+                    <option value="<?= e($r['slug']) ?>" <?= $role === $r['slug'] ? 'selected' : '' ?>><?= e($r['name']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -71,7 +71,8 @@
                     </td>
                     <td class="text-muted"><?= e($u['email']) ?></td>
                     <td>
-                        <span class="badge badge-role-<?= e($u['role']) ?>"><?= e(ucfirst($u['role'])) ?></span>
+                        <?php $roleSlug = $u['primary_role_slug'] ?? null; ?>
+                        <span class="badge badge-role-<?= e($roleSlug ?: 'none') ?>"><?= e($u['primary_role_name'] ?? 'Unassigned') ?></span>
                     </td>
                     <td>
                         <?php if ($u['active']): ?>

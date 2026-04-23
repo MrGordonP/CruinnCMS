@@ -28,7 +28,12 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         $params = [];
 
         if ($role !== '') {
-            $where[]  = 'u.role = ?';
+            $where[] = 'EXISTS (
+                SELECT 1
+                FROM user_roles urf
+                JOIN roles rf ON rf.id = urf.role_id
+                WHERE urf.user_id = u.id AND rf.slug = ?
+            )';
             $params[] = $role;
         }
         if ($status === 'active') {
@@ -50,7 +55,23 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
 
         $users = $this->db->fetchAll(
             "SELECT u.*,
-                    (SELECT COUNT(*) FROM activity_log al WHERE al.user_id = u.id) AS activity_count
+                    (SELECT COUNT(*) FROM activity_log al WHERE al.user_id = u.id) AS activity_count,
+                    (
+                        SELECT r.slug
+                        FROM user_roles ur
+                        JOIN roles r ON r.id = ur.role_id
+                        WHERE ur.user_id = u.id
+                        ORDER BY r.level DESC, r.id ASC
+                        LIMIT 1
+                    ) AS primary_role_slug,
+                    (
+                        SELECT r.name
+                        FROM user_roles ur
+                        JOIN roles r ON r.id = ur.role_id
+                        WHERE ur.user_id = u.id
+                        ORDER BY r.level DESC, r.id ASC
+                        LIMIT 1
+                    ) AS primary_role_name
              FROM users u
              {$whereSQL}
              ORDER BY u.created_at DESC
@@ -60,7 +81,25 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
 
         // Role counts for summary
         $roleCounts = $this->db->fetchAll(
-            'SELECT role, COUNT(*) AS cnt FROM users GROUP BY role ORDER BY FIELD(role, "admin", "council", "member", "public")'
+            'SELECT r.slug AS role_slug,
+                    r.name AS role_name,
+                    COUNT(*) AS cnt,
+                    COALESCE(MAX(r.level), 0) AS max_level
+             FROM users u
+             LEFT JOIN roles r ON r.id = (
+                 SELECT ur.role_id
+                 FROM user_roles ur
+                 JOIN roles r2 ON r2.id = ur.role_id
+                 WHERE ur.user_id = u.id
+                 ORDER BY r2.level DESC, r2.id ASC
+                 LIMIT 1
+             )
+             GROUP BY r.slug, r.name
+             ORDER BY max_level DESC, role_name ASC'
+        );
+
+        $roleOptions = $this->db->fetchAll(
+            'SELECT slug, name FROM roles ORDER BY level DESC, name ASC'
         );
 
         $this->renderAdmin('admin/users/index', [
@@ -73,6 +112,7 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             'totalPages'  => $totalPages,
             'total'       => $total,
             'roleCounts'  => $roleCounts,
+            'roleOptions' => $roleOptions,
             'breadcrumbs' => [['Admin', '/admin'], ['Users']],
         ]);
     }

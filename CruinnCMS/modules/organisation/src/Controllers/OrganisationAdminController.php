@@ -111,7 +111,6 @@ class OrganisationAdminController extends BaseController
     public function createOfficer(): void
     {
         Auth::requireRole('admin');
-        CSRF::verify();
 
         $position = trim($this->input('position', ''));
         if ($position === '') {
@@ -145,7 +144,6 @@ class OrganisationAdminController extends BaseController
     public function updateOfficer(int $id): void
     {
         Auth::requireRole('admin');
-        CSRF::verify();
 
         $officer = $this->db->fetch('SELECT id FROM organisation_officers WHERE id = ?', [$id]);
         if (!$officer) {
@@ -190,7 +188,6 @@ class OrganisationAdminController extends BaseController
     public function deleteOfficer(int $id): void
     {
         Auth::requireRole('admin');
-        CSRF::verify();
 
         $this->db->delete('organisation_officers', 'id = ?', [$id]);
 

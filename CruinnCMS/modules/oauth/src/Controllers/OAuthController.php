@@ -138,7 +138,6 @@ class OAuthController extends BaseController
                 'email'         => $email,
                 'password_hash' => null,
                 'display_name'  => $displayName,
-                'role'          => 'public',
                 'active'        => 1,
             ]);
 

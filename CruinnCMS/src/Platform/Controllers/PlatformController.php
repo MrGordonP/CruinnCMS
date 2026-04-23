@@ -1960,6 +1960,26 @@ class PlatformController
             if (!empty($groups['PHP — src'])) { ksort($groups['PHP — src']); }
         }
 
+        // 9. Modules (php + templates, grouped per module slug)
+        $modulesBase = $rcRoot . '/modules';
+        if (is_dir($modulesBase)) {
+            foreach (glob($modulesBase . '/*/') ?: [] as $modDir) {
+                $slug = basename($modDir);
+                if ($slug === '_template') { continue; }
+                $label = 'Module — ' . $slug;
+                $allowedModExt = ['php', 'css', 'js', 'html'];
+                $iter = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($modDir, \FilesystemIterator::SKIP_DOTS)
+                );
+                foreach ($iter as $file) {
+                    if (!in_array($file->getExtension(), $allowedModExt, true)) { continue; }
+                    $rel = 'modules/' . $slug . '/' . str_replace('\\', '/', $iter->getSubPathname());
+                    $groups[$label][$rel] = $iter->getSubPathname();
+                }
+                if (!empty($groups[$label])) { ksort($groups[$label]); }
+            }
+        }
+
         return array_filter($groups);
     }
 
