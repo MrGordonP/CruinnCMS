@@ -37,15 +37,19 @@ class MailboxAdminController extends BaseController
     public function index(): void
     {
         $mailboxes = $this->db->fetchAll(
-            'SELECT id, position, email, imap_host, imap_user, imap_enabled,
-                    (SELECT COUNT(*) FROM mailbox_messages mm WHERE mm.mailbox_id = organisation_officers.id) AS indexed_count
-               FROM organisation_officers
-              WHERE imap_host IS NOT NULL
-              ORDER BY sort_order, position'
+            'SELECT o.id, o.position, o.email, o.active,
+                    o.imap_host, o.imap_port, o.imap_encryption, o.imap_user, o.imap_enabled, o.imap_last_uid,
+                    o.smtp_host, o.smtp_port, o.smtp_encryption, o.smtp_user,
+                    u.display_name AS user_display_name,
+                    (SELECT COUNT(*) FROM mailbox_messages mm WHERE mm.mailbox_id = o.id) AS indexed_count
+               FROM organisation_officers o
+               LEFT JOIN users u ON o.user_id = u.id
+              ORDER BY o.sort_order, o.position'
         );
 
         $this->renderAdmin('admin/mailbox/index', [
             'mailboxes'   => $mailboxes,
+            'csrf_token'  => \Cruinn\CSRF::getToken(),
             'page_title'  => 'Mailbox — Overview',
             'breadcrumbs' => [['Admin', '/admin'], ['Mailbox']],
         ]);
@@ -179,6 +183,20 @@ class MailboxAdminController extends BaseController
         if (!$officer) {
             Auth::flash('error', 'Officer not found.');
             $this->redirect('/admin/organisation/officers');
+        }
+
+        // Pre-fill host/port/encryption from system email settings when not yet set on the officer
+        if (empty($officer['imap_host'])) {
+            $officer['imap_host']       = \Cruinn\App::config('imap.host', '');
+            $officer['imap_port']       = \Cruinn\App::config('imap.port', 993);
+            $officer['imap_encryption'] = 'ssl';
+            $officer['imap_user']       = $officer['email'] ?? '';
+        }
+        if (empty($officer['smtp_host'])) {
+            $officer['smtp_host']       = \Cruinn\App::config('mail.host', '');
+            $officer['smtp_port']       = \Cruinn\App::config('mail.port', 587);
+            $officer['smtp_encryption'] = \Cruinn\App::config('mail.encryption', 'tls');
+            $officer['smtp_user']       = $officer['email'] ?? '';
         }
 
         $this->renderAdmin('admin/mailbox/officer-credentials', [
