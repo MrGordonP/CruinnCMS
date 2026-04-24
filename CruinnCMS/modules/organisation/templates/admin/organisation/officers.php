@@ -111,6 +111,10 @@
                                 onclick="this.closest('tr').nextElementSibling.style.display='table-row';this.style.display='none'">
                             Edit
                         </button>
+                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('mailbox')): ?>
+                        <a href="/admin/mailbox/officer/<?= (int)$o['id'] ?>/credentials"
+                           class="btn btn-xs btn-secondary" title="Configure mailbox credentials">✉️</a>
+                        <?php endif; ?>
                         <form method="post" action="/admin/organisation/officers/<?= (int)$o['id'] ?>/delete" style="display:inline">
                             <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
                             <button type="submit" class="btn btn-xs btn-danger"

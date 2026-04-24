@@ -81,6 +81,10 @@ return [
         // Overview: all mailboxes, sync status
         $router->get('/admin/mailbox', [MailboxAdminController::class, 'index']);
 
+        // Officer mailbox credentials (IMAP/SMTP per officer position)
+        $router->get('/admin/mailbox/officer/{id}/credentials',  [MailboxAdminController::class, 'credentials']);
+        $router->post('/admin/mailbox/officer/{id}/credentials', [MailboxAdminController::class, 'saveCredentials']);
+
         // Tag management
         $router->get('/admin/mailbox/tags',             [MailboxAdminController::class, 'tags']);
         $router->post('/admin/mailbox/tags',            [MailboxAdminController::class, 'createTag']);
