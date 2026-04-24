@@ -111,6 +111,12 @@
             try {
                 var props = JSON.parse(raw);
                 Object.keys(props).forEach(function (p) {
+                    if (p[0] === '_') { return; } // internal keys
+                    // Skip zero-value height/width — these are artefacts of
+                    // serialising blocks that were measured at 0 during import
+                    // and collapse the block in the editor canvas.
+                    if ((p === 'height' || p === 'width') &&
+                        (props[p] === '0' || props[p] === '0px')) { return; }
                     block.style.setProperty(p, props[p]);
                 });
             } catch (e) { /* ignore malformed */ }
