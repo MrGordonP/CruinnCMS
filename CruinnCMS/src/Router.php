@@ -158,11 +158,17 @@ class Router
         }
 
         // Convert {param} placeholders to named regex groups
-        // {id} matches digits only, {slug} and others match word chars + hyphens
+        // {id}    matches digits only
+        // {name*} matches multiple path segments (slashes allowed) — use for catch-alls
+        // others  match a single segment: word chars + hyphens
         $regex = preg_replace_callback(
-            '/\{(\w+)\}/',
+            '/\{(\w+)(\*)?\}/',
             function ($matches) {
-                $name = $matches[1];
+                $name     = $matches[1];
+                $wildcard = ($matches[2] ?? '') === '*';
+                if ($wildcard) {
+                    return '(?P<' . $name . '>[a-zA-Z0-9/_-]+)';
+                }
                 if ($name === 'id') {
                     return '(?P<' . $name . '>\d+)';
                 }

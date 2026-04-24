@@ -136,8 +136,8 @@ class App
         Template::addGlobal('sidebar_widgets', Modules\ModuleRegistry::collectWidgets());
 
         // ── Public page catch-alls (must be last) ──────────────────────────
-        $this->router->get('/',        [Controllers\PageController::class, 'home']);
-        $this->router->get('/{slug}',  [Controllers\PageController::class, 'show']);
+        $this->router->get('/',         [Controllers\PageController::class, 'home']);
+        $this->router->get('/{slug*}',  [Controllers\PageController::class, 'show']);
     }
 
     /**
