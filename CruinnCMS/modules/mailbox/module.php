@@ -27,7 +27,8 @@ return [
     'template_path' => __DIR__ . '/templates',
 
     'acp_sections' => [
-        ['group' => 'Organisation', 'label' => 'Mailbox Settings', 'url' => '/admin/mailbox', 'icon' => '✉️'],
+        ['group' => 'Organisation', 'label' => 'Email',            'url' => '/mail',          'icon' => '✉️'],
+        ['group' => 'Organisation', 'label' => 'Mailbox Settings', 'url' => '/admin/mailbox', 'icon' => '⚙️'],
     ],
 
     'dashboard_sections' => [
