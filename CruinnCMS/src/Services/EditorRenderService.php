@@ -160,11 +160,21 @@ class EditorRenderService
             // Use _tag from config (imported blocks) or registry default
             $tag = $cfg['_tag'] ?? BlockRegistry::getTag($row['block_type']);
 
-            // script/style must not execute in the canvas — render as inert div
+            // Tags whose content model forbids block-level children — if rendered as-is
+            // the browser auto-closes them before any nested block element, leaving the
+            // [data-block] element empty in the canvas.  Coerce to div; the original tag
+            // is already stored in block_config._tag and applied correctly on publish.
+            $restrictedTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                               'dt', 'figcaption', 'caption', 'pre'];
+            // Tags that must not execute or render raw in the canvas.
             $inertTags = ['script', 'style', 'noscript'];
+
             if (in_array($tag, $inertTags, true)) {
                 $tag = 'div';
                 $extraAttrs = ' data-editor-tag="' . htmlspecialchars($cfg['_tag'], ENT_QUOTES, 'UTF-8') . '"';
+            } elseif (in_array($tag, $restrictedTags, true)) {
+                $tag = 'div';
+                $extraAttrs = '';
             } else {
                 $extraAttrs = '';
             }
