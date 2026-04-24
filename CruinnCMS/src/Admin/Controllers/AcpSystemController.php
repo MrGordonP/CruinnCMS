@@ -1157,7 +1157,13 @@ class AcpSystemController extends BaseController
             fn($s) => $s !== ''
         );
         foreach ($statements as $stmt) {
-            $pdo->exec($stmt);
+            $result = $pdo->exec($stmt);
+            if ($result === false) {
+                $err = $pdo->errorInfo();
+                throw new \RuntimeException(
+                    'SQL error [' . ($err[0] ?? '?') . '/' . ($err[1] ?? '?') . ']: ' . ($err[2] ?? 'unknown error')
+                );
+            }
         }
     }
 }
