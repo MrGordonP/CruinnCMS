@@ -271,6 +271,7 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/settings/modules/{slug}/toggle',          [AcpSystemController::class, 'toggleModule']);
     $router->post('/admin/settings/modules/{slug}/settings',        [AcpSystemController::class, 'saveModuleSettings']);
     $router->post('/admin/settings/modules/{slug}/migrate',         [AcpSystemController::class, 'applyModuleMigrations']);
+    $router->post('/admin/settings/modules/{slug}/remigrate',      [AcpSystemController::class, 'rerunModuleMigrations']);
 
     // Admin � Site Builder
     $router->get('/admin/site-builder',                       [SiteBuilderController::class, 'builderPages']);

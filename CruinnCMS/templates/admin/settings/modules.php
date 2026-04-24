@@ -41,6 +41,15 @@ $allAvailable = array_merge($available ?? [], []);
                     </button>
                 </form>
                 <?php endif; ?>
+                <?php if ($mig['total'] > 0): ?>
+                <form method="post" action="<?= url('/admin/settings/modules/' . $slug . '/remigrate') ?>" style="display:inline">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-secondary btn-small"
+                            onclick="return confirm('Re-run ALL <?= (int)$mig['total'] ?> migration(s) for <?= e($def['name']) ?>? Migration records will be cleared and all SQL re-applied. Safe for IF NOT EXISTS migrations.')">
+                        ↺ Re-run Migrations
+                    </button>
+                </form>
+                <?php endif; ?>
                 <form method="post" action="<?= url('/admin/settings/modules/' . $slug . '/toggle') ?>" style="display:inline">
                     <?= csrf_field() ?>
                     <?php if ($isActive): ?>

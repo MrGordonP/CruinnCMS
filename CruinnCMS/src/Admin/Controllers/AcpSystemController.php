@@ -944,6 +944,38 @@ class AcpSystemController extends BaseController
         $this->redirect('/admin/settings/modules');
     }
 
+    /**
+     * POST /admin/settings/modules/{slug}/remigrate
+     *
+     * Removes all migration records for the module then re-applies every
+     * migration file from scratch. Safe because all migration SQL uses
+     * CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS.
+     */
+    public function rerunModuleMigrations(string $slug): void
+    {
+        Auth::requireRole('admin');
+
+        $def = \Cruinn\Modules\ModuleRegistry::get($slug);
+        if (!$def) {
+            Auth::flash('error', "Module '{$slug}' not found.");
+            $this->redirect('/admin/settings/modules');
+        }
+
+        // Strip existing records so applyModuleMigrations will re-run them all
+        try {
+            $this->db->execute(
+                'DELETE FROM module_migrations WHERE module = ?',
+                [$slug]
+            );
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Could not clear migration records: ' . $e->getMessage());
+            $this->redirect('/admin/settings/modules');
+        }
+
+        // Reuse existing apply logic
+        $this->applyModuleMigrations($slug);
+    }
+
     public function installModule(string $slug): void
     {
         Auth::requireRole('admin');
