@@ -1070,4 +1070,47 @@ class FileManagerController extends BaseController
         if ($bytes >= 1024)       { return round($bytes / 1024, 1) . ' KB'; }
         return $bytes . ' B';
     }
+
+    // ── Push local file to Google Drive ─────────────────────────
+
+    /**
+     * POST /drivespace/{id}/push-to-drive
+     * Upload a local Drivespace file to Google Drive.
+     * Requires the write role configured in gdrive.write_role.
+     */
+    public function pushToDrive(int $id): void
+    {
+        $gdrive = new \Cruinn\Module\Drivespace\Services\GoogleDriveService();
+        \Cruinn\Auth::requireRole($gdrive->getWriteRole());
+
+        $row = $this->db->row('SELECT * FROM files WHERE id = ?', [$id]);
+        if (!$row) {
+            $this->json(['success' => false, 'error' => 'File not found.']);
+            return;
+        }
+
+        // Resolve local path — see SETUP.md cPanel note: CRUINN_PUBLIC is public_html/
+        $localPath = defined('CRUINN_PUBLIC')
+            ? CRUINN_PUBLIC . $row['file_path']
+            : dirname(__DIR__, 6) . '/public_html' . $row['file_path'];
+
+        if (!file_exists($localPath)) {
+            $this->json(['success' => false, 'error' => 'Local file not found.']);
+            return;
+        }
+
+        $folderId = $this->input('folder_id') ?: null;
+
+        try {
+            $result = $gdrive->uploadFile(
+                $localPath,
+                $row['original_name'] ?? basename($row['file_path']),
+                $row['mime_type'] ?? 'application/octet-stream',
+                $folderId
+            );
+            $this->json(['success' => true, 'drive_file' => $result]);
+        } catch (\Throwable $e) {
+            $this->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+    }
 }

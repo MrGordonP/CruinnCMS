@@ -33,11 +33,19 @@ class MenuController extends BaseController
      * Module routes are added dynamically via ModuleRegistry::menuRoutes().
      */
     public const CORE_ROUTES = [
-        ['route' => '/',          'label' => 'Home'],
-        ['route' => '/login',     'label' => 'Login'],
-        ['route' => '/logout',    'label' => 'Logout'],
-        ['route' => '/register',  'label' => 'Register'],
-        ['route' => '/profile',   'label' => 'My Profile'],
+        ['route' => '/',                    'label' => 'Home'],
+        ['route' => '/login',               'label' => 'Login'],
+        ['route' => '/logout',              'label' => 'Logout'],
+        ['route' => '/register',            'label' => 'Register'],
+        ['route' => '/profile',             'label' => 'My Profile'],
+        // Admin routes — use with Visibility: Logged In + Min Role: Admin/Council
+        ['route' => '/admin',               'label' => 'Admin — Dashboard'],
+        ['route' => '/admin/pages',         'label' => 'Admin — Pages'],
+        ['route' => '/admin/menus',         'label' => 'Admin — Menus'],
+        ['route' => '/admin/media',         'label' => 'Admin — Media'],
+        ['route' => '/admin/users',         'label' => 'Admin — Users'],
+        ['route' => '/admin/roles',         'label' => 'Admin — Roles'],
+        ['route' => '/admin/settings',      'label' => 'Admin — Settings'],
     ];
 
     // ══════════════════════════════════════════════════════════════
@@ -130,7 +138,7 @@ class MenuController extends BaseController
 
         $this->logActivity('create', 'menu', (int) $id, $this->input('name'));
         Auth::flash('success', 'Menu created. Add some items to it.');
-        $this->redirect("/admin/menus/{$id}/edit");
+        $this->redirect('/admin/menus');
     }
 
     /**
@@ -160,6 +168,35 @@ class MenuController extends BaseController
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Menus', '/admin/menus'], [$menu['name']]],
         ]);
+    }
+
+    /**
+     * GET /admin/menus/{id}/items-panel — Items editor fragment (no layout).
+     * Used by the 3-panel menus index to load items into the middle panel via AJAX.
+     */
+    public function adminItemsPanel(string $id): void
+    {
+        $menu = $this->db->fetch('SELECT * FROM menus WHERE id = ?', [$id]);
+        if (!$menu) {
+            http_response_code(404);
+            echo '<p class="pl-empty">Menu not found.</p>';
+            return;
+        }
+
+        $items    = $this->getMenuItems((int) $id);
+        $pages    = $this->getAvailablePages();
+        $subjects = $this->getAvailableSubjects();
+        $routes   = $this->getAvailableRoutes();
+
+        // Render fragment — no admin layout wrapper
+        extract([
+            'menu'     => $menu,
+            'items'    => $items,
+            'pages'    => $pages,
+            'subjects' => $subjects,
+            'routes'   => $routes,
+        ]);
+        require CRUINN_ROOT . '/templates/admin/menus/_items-panel.php';
     }
 
     /**
@@ -218,7 +255,7 @@ class MenuController extends BaseController
 
         $this->logActivity('update', 'menu', (int) $id, $this->input('name'));
         Auth::flash('success', 'Menu updated.');
-        $this->redirect("/admin/menus/{$id}/edit");
+        $this->redirect('/admin/menus');
     }
 
     /**

@@ -139,7 +139,6 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/pages',                    [AdminPageController::class, 'listPages']);
     $router->get('/admin/pages/new',                [AdminPageController::class, 'newPage']);
     $router->post('/admin/pages',                   [AdminPageController::class, 'createPage']);
-    $router->get('/admin/pages/{id}/edit',          [AdminPageController::class, 'editPage']);
     $router->post('/admin/pages/{id}',              [AdminPageController::class, 'updatePage']);
     $router->post('/admin/pages/{id}/delete',       [AdminPageController::class, 'deletePage']);
     $router->get('/admin/pages/{id}/html',          [AdminPageController::class, 'htmlEditor']);
@@ -180,6 +179,7 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/menus/new',                          [MenuController::class, 'adminNew']);
     $router->post('/admin/menus',                             [MenuController::class, 'adminCreate']);
     $router->get('/admin/menus/{id}/edit',                    [MenuController::class, 'adminEdit']);
+    $router->get('/admin/menus/{id}/items-panel',             [MenuController::class, 'adminItemsPanel']);
     $router->post('/admin/menus/{id}',                        [MenuController::class, 'adminUpdate']);
     $router->post('/admin/menus/{id}/delete',                 [MenuController::class, 'adminDelete']);
     $router->post('/admin/menus/{menuId}/items',              [MenuController::class, 'addItem']);

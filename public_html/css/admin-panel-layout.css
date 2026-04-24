@@ -17,6 +17,29 @@
 
 /* ── Outer grid ────────────────────────────────────────────────── */
 
+/* When panel-layout lives inside the ACP tab wrapper, pass height through */
+.sb-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.sb-wrapper .acp-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+
+.sb-wrapper .acp-panel>.panel-layout {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
 .panel-layout {
     display: grid;
     grid-template-columns: 240px 1fr 280px;
@@ -328,6 +351,58 @@
     padding: 0.3rem 0.5rem;
 }
 
+.pl-detail-actions-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.pl-detail-actions-stack .btn,
+.pl-detail-actions-stack form {
+    width: 100%;
+}
+
+.pl-detail-actions-stack form .btn {
+    width: 100%;
+}
+
+.pl-detail-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pl-detail-settings .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.pl-detail-settings .form-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pl-detail-settings .form-input {
+    font-size: 0.83rem;
+    padding: 0.3rem 0.5rem;
+}
+
+.pl-detail-settings-section {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #aaa;
+    padding: 0.5rem 0 0.25rem;
+    border-top: 1px solid var(--color-border, #ddd);
+    margin-top: 0.25rem;
+}
+
 /* Meta table */
 .pl-meta {
     width: 100%;
@@ -415,4 +490,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* ── Menu editor inside the middle panel: stack tree + sources vertically ── */
+#menus-items-panel .menu-editor-columns {
+    grid-template-columns: 1fr;
+}
+
+#menus-items-panel .menu-editor-sidebar {
+    position: static;
 }

@@ -20,8 +20,8 @@ function fmtBytes(int $bytes): string
 <div class="admin-section">
     <div class="admin-section-header">
         <h1>Drivespace — Quota Management</h1>
+        <a href="/admin/drivespace/gdrive" class="btn btn-outline btn-sm">☁️ Google Drive Settings</a>
     </div>
-
 
     <table class="admin-table">
         <thead>

@@ -16,13 +16,7 @@
 
 /* ── Tree Panel (left) ───────────────────────────────────────── */
 
-.fm-tree-panel {
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    border-right: 1px solid var(--color-border, #ccd9d3);
-    overflow: hidden;
-}
+/* .fm-tree-panel — see source panes section below */
 
 .fm-tree-header {
     display: flex;
@@ -151,12 +145,7 @@
 
 /* ── Content Panel (middle) ──────────────────────────────────── */
 
-.fm-content-panel {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border-right: 1px solid var(--color-border, #ccd9d3);
-}
+/* .fm-content-panel — see content source sections below */
 
 .fm-toolbar {
     display: flex;
@@ -632,4 +621,166 @@
 
 .fm-quota-fill.danger {
     background: #dc3545;
+}
+
+/* ── Source divider in tree panel (legacy) ──────────────────── */
+.fm-tree-section-divider {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #aaa;
+    padding: 0.9rem 0.9rem 0.3rem;
+}
+
+/* ── Source panes (left panel) ───────────────────────────────── */
+
+.fm-tree-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid var(--color-border, #ccd9d3);
+    overflow: hidden;
+}
+
+/* Each source pane fills available space; collapses to header height */
+.fm-source-pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.fm-source-pane.collapsed {
+    flex: 0 0 auto;
+}
+
+.fm-source-pane-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.7rem;
+    background: #f8faf9;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    border-top: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+}
+
+.fm-source-pane-header:hover {
+    background: #eef4f1;
+}
+
+.fm-source-pane-caret {
+    font-size: 0.65rem;
+    color: #aaa;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+    width: 12px;
+    display: inline-block;
+}
+
+.fm-source-pane-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.75;
+}
+
+/* Body of source pane — scroll internally */
+.fm-source-pane-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.fm-source-pane-body .fm-tree-scroll {
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* ── Drag handles ────────────────────────────────────────────── */
+
+.fm-source-drag-handle,
+.fm-content-drag-handle {
+    flex-shrink: 0;
+    background: var(--color-border, #ccd9d3);
+    cursor: row-resize;
+    transition: background 0.1s;
+}
+
+.fm-source-drag-handle {
+    height: 4px;
+}
+
+.fm-content-drag-handle {
+    height: 4px;
+}
+
+.fm-source-drag-handle:hover,
+.fm-content-drag-handle:hover {
+    background: var(--color-primary, #1d9e75);
+}
+
+/* ── Content source sections (center panel) ──────────────────── */
+
+.fm-content-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--color-border, #ccd9d3);
+}
+
+.fm-content-source {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.fm-content-source.collapsed {
+    flex: 0 0 auto;
+}
+
+.fm-content-source-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    background: #f8faf9;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+}
+
+.fm-content-source-header:hover {
+    background: #eef4f1;
+}
+
+.fm-content-source-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.fm-content-source-body .fm-contents-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+}
+
+.fm-content-source-body .fm-search-bar {
+    flex-shrink: 0;
 }

@@ -211,6 +211,45 @@ class Auth
     }
 
     /**
+     * Get the current user's highest role slug (admin, council, editor, public).
+     * Derived from the session role level — no DB query.
+     * Returns null if not logged in.
+     */
+    public static function role(): ?string
+    {
+        if (!self::check()) {
+            return null;
+        }
+        $level = self::roleLevel();
+        if ($level >= 100) return 'admin';
+        if ($level >= 50)  return 'council';
+        if ($level >= 20)  return 'editor';
+        return 'member';
+    }
+
+    /**
+     * Get the current user's primary role ID (highest level role).
+     * Returns null if not logged in or no roles assigned.
+     */
+    public static function roleId(): ?int
+    {
+        $userId = self::userId();
+        if (!$userId) {
+            return null;
+        }
+        $db = Database::getInstance();
+        $id = $db->fetchColumn(
+            'SELECT r.id FROM roles r
+             JOIN user_roles ur ON ur.role_id = r.id
+             WHERE ur.user_id = ?
+             ORDER BY r.level DESC
+             LIMIT 1',
+            [$userId]
+        );
+        return $id !== false && $id !== null ? (int) $id : null;
+    }
+
+    /**
      * Get the current user's maximum group level (content access).
      * Returns 0 if not logged in or no groups assigned.
      */

@@ -59,163 +59,225 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
 
 <div class="drivespace" id="drivespace-app">
 
-    <!-- ── Left: Folder Tree ──────────────────────────────────── -->
+    <!-- ── Left: Source Panes ────────────────────────────────── -->
     <div class="fm-tree-panel">
-        <div class="fm-tree-header">
-            <h3>Folders</h3>
-            <button type="button" class="btn btn-sm btn-primary"
-                    onclick="document.getElementById('new-folder-modal').style.display='flex'">+ New</button>
-        </div>
-        <div class="fm-tree-scroll">
-            <a href="/drivespace"
-               class="fm-tree-root<?= !$currentFolder ? ' active' : '' ?>">
-                <span>🏠</span> All Files
-            </a>
-            <?php if (!empty($folderTree)): ?>
-                <?php renderTreeNodes($folderTree, $currentFolder['id'] ?? null); ?>
-            <?php endif; ?>
-        </div>
-        <?php if ($quotaTotal > 0): ?>
-        <div class="fm-quota-bar-wrap">
-            <div class="fm-quota-label">
-                <span>Storage</span>
-                <span><?= \Cruinn\Module\Drivespace\Services\DocumentService::formatSize($quotaUsed) ?> / <?= \Cruinn\Module\Drivespace\Services\DocumentService::formatSize($quotaTotal) ?></span>
+
+        <!-- Local Folders source pane -->
+        <div class="fm-source-pane" id="src-pane-local">
+            <div class="fm-source-pane-header" onclick="toggleSourcePane('local')">
+                <span class="fm-source-pane-caret" id="src-caret-local">▼</span>
+                <span class="fm-source-pane-title">🏠 Local Folders</span>
+                <button type="button" class="btn btn-sm btn-primary"
+                        onclick="event.stopPropagation(); document.getElementById('new-folder-modal').style.display='flex'"
+                        style="margin-left:auto;font-size:0.72rem;padding:0.15rem 0.45rem">+</button>
             </div>
-            <div class="fm-quota-bar">
-                <div class="fm-quota-fill <?= $quotaClass ?>" style="width:<?= $quotaPct ?>%"></div>
+            <div class="fm-source-pane-body" id="src-body-local">
+                <div class="fm-tree-scroll">
+                    <a href="/drivespace"
+                       class="fm-tree-root<?= !$currentFolder ? ' active' : '' ?>">
+                        <span>🏠</span> All Files
+                    </a>
+                    <?php if (!empty($folderTree)): ?>
+                        <?php renderTreeNodes($folderTree, $currentFolder['id'] ?? null); ?>
+                    <?php endif; ?>
+                </div>
+                <?php if ($quotaTotal > 0): ?>
+                <div class="fm-quota-bar-wrap">
+                    <div class="fm-quota-label">
+                        <span>Storage</span>
+                        <span><?= \Cruinn\Module\Drivespace\Services\DocumentService::formatSize($quotaUsed) ?> / <?= \Cruinn\Module\Drivespace\Services\DocumentService::formatSize($quotaTotal) ?></span>
+                    </div>
+                    <div class="fm-quota-bar">
+                        <div class="fm-quota-fill <?= $quotaClass ?>" style="width:<?= $quotaPct ?>%"></div>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <?php if (\Cruinn\Module\Drivespace\Services\GoogleDriveService::isConfiguredStatic()): ?>
+        <!-- Drag handle between source panes -->
+        <div class="fm-source-drag-handle" id="src-drag-handle"
+             title="Drag to resize"></div>
+
+        <!-- Google Drive source pane -->
+        <div class="fm-source-pane" id="src-pane-drive">
+            <div class="fm-source-pane-header" onclick="toggleSourcePane('drive')">
+                <span class="fm-source-pane-caret" id="src-caret-drive">▼</span>
+                <span class="fm-source-pane-title" style="color:#1d9e75">☁️ Google Drive</span>
+            </div>
+            <div class="fm-source-pane-body" id="src-body-drive">
+                <div class="fm-tree-scroll" id="gdrive-tree-scroll">
+                    <div class="fm-props-loading" style="font-size:0.8rem">Loading…</div>
+                </div>
             </div>
         </div>
         <?php endif; ?>
+
     </div>
 
     <!-- ── Middle: Contents ───────────────────────────────────── -->
     <div class="fm-content-panel">
 
-        <!-- Toolbar / breadcrumb -->
-        <div class="fm-toolbar">
-            <div class="fm-breadcrumb">
-                <?php foreach ($breadcrumb as $i => $crumb): ?>
-                    <?php if ($i > 0): ?><span class="fm-breadcrumb-sep">›</span><?php endif; ?>
-                    <?php if ($i < count($breadcrumb) - 1): ?>
-                        <a href="<?= url($crumb['url']) ?>"><?= e($crumb['name']) ?></a>
-                    <?php else: ?>
-                        <span class="fm-breadcrumb-current"><?= e($crumb['name']) ?></span>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-            <div class="fm-toolbar-actions">
-                <?php if ($currentFolder): ?>
-                    <button type="button" class="btn btn-sm btn-secondary"
-                            onclick="document.getElementById('edit-folder-modal').style.display='flex'">⚙ Folder</button>
-                <?php endif; ?>
-                <a href="/drivespace/upload<?= $currentFolder ? '?folder=' . (int)$currentFolder['id'] : '' ?>"
-                   class="btn btn-sm btn-primary">⬆ Upload</a>
-            </div>
-        </div>
-
-        <!-- Search bar -->
-        <form class="fm-search-bar" method="get" action="/drivespace">
-            <?php if ($currentFolder): ?>
-                <input type="hidden" name="folder" value="<?= (int)$currentFolder['id'] ?>">
-            <?php endif; ?>
-            <input type="text" name="q" value="<?= e($search) ?>"
-                   placeholder="Search files…" class="fm-search-input">
-            <select name="type" style="font-size:0.82rem;padding:0.3rem 0.5rem;border:1px solid var(--color-border,#ccd9d3);border-radius:4px;background:var(--color-bg-light,#f2f5f3)">
-                <option value="">All types</option>
-                <option value="docx" <?= $type === 'docx' ? 'selected' : '' ?>>Word (.docx)</option>
-                <option value="pdf"  <?= $type === 'pdf'  ? 'selected' : '' ?>>PDF</option>
-                <option value="xlsx" <?= $type === 'xlsx' ? 'selected' : '' ?>>Excel</option>
-                <option value="txt"  <?= $type === 'txt'  ? 'selected' : '' ?>>Text</option>
-                <option value="html" <?= $type === 'html' ? 'selected' : '' ?>>HTML</option>
-            </select>
-            <button type="submit" class="btn btn-sm">Filter</button>
-            <?php if ($search || $type): ?>
-                <a href="/drivespace<?= $currentFolder ? '?folder=' . (int)$currentFolder['id'] : '' ?>"
-                   class="btn btn-sm btn-link">Clear</a>
-            <?php endif; ?>
-        </form>
-
-        <!-- Contents -->
-        <div class="fm-contents-scroll" id="fm-contents">
-
-            <?php if (empty($subfolders) && empty($files)): ?>
-                <div class="fm-empty">
-                    <p>This folder is empty.</p>
-                    <a href="/drivespace/upload<?= $currentFolder ? '?folder=' . (int)$currentFolder['id'] : '' ?>"
-                       class="btn btn-primary">Upload a File</a>
+        <!-- ── Local contents section ───────────────────────── -->
+        <div class="fm-content-source" id="content-source-local">
+            <div class="fm-content-source-header" onclick="toggleSourcePane('local')">
+                <span class="fm-source-pane-caret" id="content-caret-local">▼</span>
+                <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;opacity:0.6">🏠 Local</span>
+                <div class="fm-breadcrumb" style="flex:1;margin-left:0.6rem">
+                    <?php foreach ($breadcrumb as $i => $crumb): ?>
+                        <?php if ($i > 0): ?><span class="fm-breadcrumb-sep">›</span><?php endif; ?>
+                        <?php if ($i < count($breadcrumb) - 1): ?>
+                            <a href="<?= url($crumb['url']) ?>"><?= e($crumb['name']) ?></a>
+                        <?php else: ?>
+                            <span class="fm-breadcrumb-current"><?= e($crumb['name']) ?></span>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
-            <?php else: ?>
+                <div class="fm-toolbar-actions" style="margin-left:auto">
+                    <?php if ($currentFolder): ?>
+                        <button type="button" class="btn btn-sm btn-secondary"
+                                onclick="event.stopPropagation(); document.getElementById('edit-folder-modal').style.display='flex'">⚙</button>
+                    <?php endif; ?>
+                    <a href="/drivespace/upload<?= $currentFolder ? '?folder=' . (int)$currentFolder['id'] : '' ?>"
+                       class="btn btn-sm btn-primary"
+                       onclick="event.stopPropagation()">⬆ Upload</a>
+                </div>
+            </div>
+            <div class="fm-content-source-body" id="content-body-local">
+                <!-- Search bar -->
+                <form class="fm-search-bar" method="get" action="/drivespace">
+                    <?php if ($currentFolder): ?>
+                        <input type="hidden" name="folder" value="<?= (int)$currentFolder['id'] ?>">
+                    <?php endif; ?>
+                    <input type="text" name="q" value="<?= e($search) ?>"
+                           placeholder="Search files…" class="fm-search-input">
+                    <select name="type" style="font-size:0.82rem;padding:0.3rem 0.5rem;border:1px solid var(--color-border,#ccd9d3);border-radius:4px;background:var(--color-bg-light,#f2f5f3)">
+                        <option value="">All types</option>
+                        <option value="docx" <?= $type === 'docx' ? 'selected' : '' ?>>Word (.docx)</option>
+                        <option value="pdf"  <?= $type === 'pdf'  ? 'selected' : '' ?>>PDF</option>
+                        <option value="xlsx" <?= $type === 'xlsx' ? 'selected' : '' ?>>Excel</option>
+                        <option value="txt"  <?= $type === 'txt'  ? 'selected' : '' ?>>Text</option>
+                        <option value="html" <?= $type === 'html' ? 'selected' : '' ?>>HTML</option>
+                    </select>
+                    <button type="submit" class="btn btn-sm">Filter</button>
+                    <?php if ($search || $type): ?>
+                        <a href="/drivespace<?= $currentFolder ? '?folder=' . (int)$currentFolder['id'] : '' ?>"
+                           class="btn btn-sm btn-link">Clear</a>
+                    <?php endif; ?>
+                </form>
 
-                <?php if (!empty($subfolders)): ?>
-                <p class="fm-section-title">Folders</p>
-                <table class="fm-items-table">
-                    <thead>
-                        <tr>
-                            <th class="fm-col-icon"></th>
-                            <th>Name</th>
-                            <th>Visibility</th>
-                            <th>Files</th>
-                            <th>Modified</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($subfolders as $sf): ?>
-                        <tr data-type="folder" data-id="<?= (int)$sf['id'] ?>"
-                            onclick="selectItem('folder', <?= (int)$sf['id'] ?>, this)"
-                            ondblclick="navigateFolder(<?= (int)$sf['id'] ?>)">
-                            <td class="fm-col-icon">📁</td>
-                            <td class="fm-col-name">
-                                <strong><?= e($sf['name']) ?></strong>
-                                <?php if ($sf['description'] ?? ''): ?><small><?= e($sf['description']) ?></small><?php endif; ?>
-                            </td>
-                            <td class="fm-col-vis"><span class="badge badge-xs badge-<?= e($sf['visibility']) ?>"><?= e(ucfirst($sf['visibility'])) ?></span></td>
-                            <td class="fm-col-meta"><?= (int)($sf['file_count'] ?? 0) ?></td>
-                            <td class="fm-col-meta"><?= format_date($sf['updated_at'] ?? '', 'j M Y') ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <?php endif; ?>
+                <!-- Contents -->
+                <div class="fm-contents-scroll" id="fm-contents">
+                    <?php if (empty($subfolders) && empty($files)): ?>
+                        <div class="fm-empty">
+                            <p>This folder is empty.</p>
+                            <a href="/drivespace/upload<?= $currentFolder ? '?folder=' . (int)$currentFolder['id'] : '' ?>"
+                               class="btn btn-primary">Upload a File</a>
+                        </div>
+                    <?php else: ?>
+                        <?php if (!empty($subfolders)): ?>
+                        <p class="fm-section-title">Folders</p>
+                        <table class="fm-items-table">
+                            <thead><tr>
+                                <th class="fm-col-icon"></th>
+                                <th>Name</th>
+                                <th>Visibility</th>
+                                <th>Files</th>
+                                <th>Modified</th>
+                            </tr></thead>
+                            <tbody>
+                                <?php foreach ($subfolders as $sf): ?>
+                                <tr data-type="folder" data-id="<?= (int)$sf['id'] ?>"
+                                    onclick="selectItem('folder', <?= (int)$sf['id'] ?>, this)"
+                                    ondblclick="navigateFolder(<?= (int)$sf['id'] ?>)">
+                                    <td class="fm-col-icon">📁</td>
+                                    <td class="fm-col-name">
+                                        <strong><?= e($sf['name']) ?></strong>
+                                        <?php if ($sf['description'] ?? ''): ?><small><?= e($sf['description']) ?></small><?php endif; ?>
+                                    </td>
+                                    <td class="fm-col-vis"><span class="badge badge-xs badge-<?= e($sf['visibility']) ?>"><?= e(ucfirst($sf['visibility'])) ?></span></td>
+                                    <td class="fm-col-meta"><?= (int)($sf['file_count'] ?? 0) ?></td>
+                                    <td class="fm-col-meta"><?= format_date($sf['updated_at'] ?? '', 'j M Y') ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php endif; ?>
+                        <?php if (!empty($files)): ?>
+                        <p class="fm-section-title" <?= !empty($subfolders) ? 'style="margin-top:1rem"' : '' ?>>
+                            Files <span style="font-weight:400;color:#bbb">(<?= count($files) ?>)</span>
+                        </p>
+                        <table class="fm-items-table">
+                            <thead><tr>
+                                <th class="fm-col-icon"></th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Size</th>
+                                <th>Status</th>
+                                <th>Modified</th>
+                            </tr></thead>
+                            <tbody>
+                                <?php foreach ($files as $file): ?>
+                                <tr data-type="file" data-id="<?= (int)$file['id'] ?>"
+                                    onclick="selectItem('file', <?= (int)$file['id'] ?>, this)"
+                                    ondblclick="openFile(<?= (int)$file['id'] ?>)">
+                                    <td class="fm-col-icon"><?= \Cruinn\Module\Drivespace\Services\DocumentService::fileIcon($file['file_ext'] ?? '') ?></td>
+                                    <td class="fm-col-name">
+                                        <strong><?= e($file['title']) ?></strong>
+                                        <?php if ($file['original_name'] && $file['original_name'] !== $file['title']): ?>
+                                            <small><?= e($file['original_name']) ?></small>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="fm-col-meta"><span class="badge badge-xs"><?= e(strtoupper($file['file_ext'] ?? '—')) ?></span></td>
+                                    <td class="fm-col-meta"><?= \Cruinn\Module\Drivespace\Services\DocumentService::formatSize((int)($file['file_size'] ?? 0)) ?></td>
+                                    <td class="fm-col-meta"><span class="badge badge-xs badge-status-<?= e($file['status']) ?>"><?= e(ucfirst(str_replace('_', ' ', $file['status']))) ?></span></td>
+                                    <td class="fm-col-meta"><time><?= format_date($file['updated_at'], 'j M Y') ?></time></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div><!-- /fm-contents -->
+            </div><!-- /fm-content-source-body local -->
+        </div><!-- /fm-content-source local -->
 
-                <?php if (!empty($files)): ?>
-                <p class="fm-section-title" style="<?= !empty($subfolders) ? 'margin-top:1rem' : '' ?>">
-                    Files <span style="font-weight:400;color:#bbb">(<?= count($files) ?>)</span>
-                </p>
-                <table class="fm-items-table">
-                    <thead>
-                        <tr>
-                            <th class="fm-col-icon"></th>
-                            <th>Title</th>
-                            <th>Type</th>
-                            <th>Size</th>
-                            <th>Status</th>
-                            <th>Modified</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($files as $file): ?>
-                        <tr data-type="file" data-id="<?= (int)$file['id'] ?>"
-                            onclick="selectItem('file', <?= (int)$file['id'] ?>, this)"
-                            ondblclick="openFile(<?= (int)$file['id'] ?>)">
-                            <td class="fm-col-icon"><?= \Cruinn\Module\Drivespace\Services\DocumentService::fileIcon($file['file_ext'] ?? '') ?></td>
-                            <td class="fm-col-name">
-                                <strong><?= e($file['title']) ?></strong>
-                                <?php if ($file['original_name'] && $file['original_name'] !== $file['title']): ?>
-                                    <small><?= e($file['original_name']) ?></small>
-                                <?php endif; ?>
-                            </td>
-                            <td class="fm-col-meta"><span class="badge badge-xs"><?= e(strtoupper($file['file_ext'] ?? '—')) ?></span></td>
-                            <td class="fm-col-meta"><?= \Cruinn\Module\Drivespace\Services\DocumentService::formatSize((int)($file['file_size'] ?? 0)) ?></td>
-                            <td class="fm-col-meta"><span class="badge badge-xs badge-status-<?= e($file['status']) ?>"><?= e(ucfirst(str_replace('_', ' ', $file['status']))) ?></span></td>
-                            <td class="fm-col-meta"><time><?= format_date($file['updated_at'], 'j M Y') ?></time></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <?php endif; ?>
+        <?php if (\Cruinn\Module\Drivespace\Services\GoogleDriveService::isConfiguredStatic()): ?>
+        <!-- Drag handle between content sections -->
+        <div class="fm-content-drag-handle" id="content-drag-handle"
+             title="Drag to resize"></div>
 
-            <?php endif; ?>
-        </div>
+        <!-- ── Google Drive contents section ─────────────────── -->
+        <div class="fm-content-source" id="content-source-drive">
+            <div class="fm-content-source-header" onclick="toggleSourcePane('drive')">
+                <span class="fm-source-pane-caret" id="content-caret-drive">▼</span>
+                <span style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#1d9e75">☁️ Google Drive</span>
+                <div class="fm-breadcrumb" id="gdrive-breadcrumb" style="flex:1;margin-left:0.6rem"></div>
+                <div style="margin-left:auto">
+                    <button type="button" id="gdrive-upload-toggle-btn"
+                            class="btn btn-sm btn-primary"
+                            style="display:none"
+                            onclick="event.stopPropagation(); toggleGdriveUpload()">⬆ Upload</button>
+                </div>
+            </div>
+            <div class="fm-content-source-body" id="content-body-drive">
+                <form id="gdrive-upload-form" method="POST" action="/drivespace/gdrive/upload"
+                      enctype="multipart/form-data"
+                      style="display:none;align-items:center;gap:0.5rem;padding:0.5rem 1rem;background:#f8f8f8;border-bottom:1px solid #e5e5e5;flex-shrink:0">
+                    <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
+                    <input type="hidden" name="folder_id" id="gdrive-upload-folder-id" value="">
+                    <input type="file" name="file" required style="flex:1;min-width:0;font-size:0.83rem">
+                    <button type="submit" class="btn btn-sm btn-primary">Upload</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleGdriveUpload()">Cancel</button>
+                </form>
+                <div class="fm-contents-scroll" id="gdrive-contents">
+                    <div class="fm-props-loading">Loading Google Drive…</div>
+                </div>
+            </div>
+        </div><!-- /fm-content-source drive -->
+        <?php endif; ?>
+
     </div>
 
     <!-- ── Right: Properties Panel ────────────────────────────── -->
@@ -371,8 +433,242 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
 <?php endif; ?>
 
 <script>
+var GDRIVE_CONFIGURED = <?= \Cruinn\Module\Drivespace\Services\GoogleDriveService::isConfiguredStatic() ? 'true' : 'false' ?>;
+var GDRIVE_CAN_WRITE  = <?= (\Cruinn\Auth::check() && \Cruinn\Auth::hasRole((new \Cruinn\Module\Drivespace\Services\GoogleDriveService())->getWriteRole())) ? 'true' : 'false' ?>;
+var CSRF_TOKEN        = <?= json_encode(\Cruinn\CSRF::getToken()) ?>;
 (function () {
     'use strict';
+
+    // ── Source pane collapse / expand ─────────────────────────
+    // Each source ('local', 'drive') has:
+    //   left pane:   #src-pane-{s}  body: #src-body-{s}  caret: #src-caret-{s}
+    //   center pane: #content-source-{s} body: #content-body-{s} caret: #content-caret-{s}
+
+    var STORAGE_KEY = 'ds_source_collapsed';
+
+    function getCollapsed() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (e) { return {}; }
+    }
+
+    function setCollapsed(state) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    window.toggleSourcePane = function (source) {
+        var state    = getCollapsed();
+        var nowClosed = !state[source];
+        state[source] = nowClosed;
+        setCollapsed(state);
+        applyCollapsed(source, nowClosed);
+    };
+
+    function applyCollapsed(source, collapsed) {
+        var srcPane    = document.getElementById('src-pane-' + source);
+        var srcBody    = document.getElementById('src-body-' + source);
+        var srcCaret   = document.getElementById('src-caret-' + source);
+        var cntPane    = document.getElementById('content-source-' + source);
+        var cntBody    = document.getElementById('content-body-' + source);
+        var cntCaret   = document.getElementById('content-caret-' + source);
+
+        if (srcPane)  srcPane.classList.toggle('collapsed', collapsed);
+        if (srcBody)  srcBody.style.display  = collapsed ? 'none' : '';
+        if (srcCaret) srcCaret.textContent   = collapsed ? '▶' : '▼';
+        if (cntPane)  cntPane.classList.toggle('collapsed', collapsed);
+        if (cntBody)  cntBody.style.display  = collapsed ? 'none' : '';
+        if (cntCaret) cntCaret.textContent   = collapsed ? '▶' : '▼';
+    }
+
+    // Apply stored state on load
+    (function () {
+        var state = getCollapsed();
+        ['local', 'drive'].forEach(function (s) {
+            if (state[s]) applyCollapsed(s, true);
+        });
+    }());
+
+    // ── Google Drive loading ──────────────────────────────────
+    var gdriveCurrentFolder = null;
+    var gdriveLoaded        = false;
+
+    window.loadGdrive = function loadGdrive(folderId) {
+        if (!GDRIVE_CONFIGURED) return;
+        var contentsEl = document.getElementById('gdrive-contents');
+        if (!contentsEl) return;
+        contentsEl.innerHTML = '<div class="fm-props-loading">Loading…</div>';
+
+        var url = '/drivespace/gdrive/fragment' + (folderId ? '?folder=' + encodeURIComponent(folderId) : '');
+        fetch(url, { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    contentsEl.innerHTML = '<div class="fm-empty"><p>Google Drive error: ' + esc(data.error) + '</p></div>';
+                    return;
+                }
+                gdriveCurrentFolder = data.folderId;
+                gdriveLoaded = true;
+
+                // Breadcrumb
+                var bc = document.getElementById('gdrive-breadcrumb');
+                if (bc) {
+                    if (!folderId || folderId === data.rootFolderId) {
+                        bc.innerHTML = '<span class="fm-breadcrumb-current">Google Drive</span>';
+                    } else {
+                        bc.innerHTML = '<a href="#" onclick="loadGdrive(null);return false">Google Drive</a>'
+                            + '<span class="fm-breadcrumb-sep">›</span>'
+                            + '<span class="fm-breadcrumb-current">Folder</span>';
+                    }
+                }
+
+                // Upload folder id
+                var ufi = document.getElementById('gdrive-upload-folder-id');
+                if (ufi) ufi.value = gdriveCurrentFolder || '';
+
+                // Upload button visibility
+                var ubtn = document.getElementById('gdrive-upload-toggle-btn');
+                if (ubtn) ubtn.style.display = data.canWrite ? '' : 'none';
+
+                contentsEl.innerHTML = data.html;
+
+                // Bind folder row double-clicks
+                contentsEl.querySelectorAll('.gdrive-folder-row').forEach(function (row) {
+                    row.ondblclick = function () { loadGdrive(row.dataset.folderId); };
+                    row.style.cursor = 'pointer';
+                });
+
+                // Bind import buttons
+                contentsEl.querySelectorAll('.gdrive-import-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        importFromDrive(btn.dataset.fileId, btn.dataset.fileName);
+                    });
+                });
+
+                // Also load the Drive folder tree in the left pane
+                loadDriveTree(data.folderId, data.rootFolderId);
+            })
+            .catch(function (e) {
+                contentsEl.innerHTML = '<div class="fm-empty"><p>Failed to load Google Drive.</p></div>';
+            });
+    }
+
+    function loadDriveTree(activeFolderId, rootFolderId) {
+        // Minimal tree: just show current folder as active root link
+        var treeEl = document.getElementById('gdrive-tree-scroll');
+        if (!treeEl) return;
+        var rootLabel = activeFolderId && activeFolderId !== rootFolderId
+            ? '<a class="fm-tree-root" href="#" style="color:#888;font-size:0.8rem" onclick="loadGdrive(null);return false">← Root</a>'
+            : '';
+        treeEl.innerHTML = rootLabel
+            + '<a class="fm-tree-root active" href="#" style="color:#1d9e75;border-left-color:#1d9e75" onclick="loadGdrive(null);return false">'
+            + '  <span>📂</span> Google Drive'
+            + '</a>';
+    }
+
+    // Import a Drive file into local Drivespace
+    function importFromDrive(fileId, fileName) {
+        if (!confirm('Import "' + fileName + '" into local Drivespace?')) return;
+        var fd = new FormData();
+        fd.append('csrf_token', CSRF_TOKEN);
+        fetch('/drivespace/gdrive/' + encodeURIComponent(fileId) + '/import', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: fd
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.success) {
+                alert('Imported as "' + d.title + '" (ID ' + d.file_id + ').');
+                // Reload local pane
+                window.location.reload();
+            } else {
+                alert('Import failed: ' + d.error);
+            }
+        })
+        .catch(function () { alert('Import request failed.'); });
+    }
+
+    // Upload toggle
+    window.toggleGdriveUpload = function () {
+        var form = document.getElementById('gdrive-upload-form');
+        if (!form) return;
+        form.style.display = form.style.display === 'flex' ? 'none' : 'flex';
+    };
+
+    // Auto-load Drive on page load if Drive pane is not collapsed
+    (function () {
+        if (!GDRIVE_CONFIGURED) return;
+        var state = getCollapsed();
+        if (!state['drive']) {
+            loadGdrive(null);
+        }
+    }());
+
+    // ── Drag handle: left panel source panes ─────────────────
+    (function () {
+        var handle = document.getElementById('src-drag-handle');
+        if (!handle) return;
+        var localPane = document.getElementById('src-pane-local');
+        var drivePane = document.getElementById('src-pane-drive');
+        if (!localPane || !drivePane) return;
+
+        var dragging = false, startY, startLocalH;
+
+        handle.addEventListener('mousedown', function (e) {
+            dragging   = true;
+            startY     = e.clientY;
+            startLocalH = localPane.getBoundingClientRect().height;
+            document.body.style.cursor   = 'row-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', function (e) {
+            if (!dragging) return;
+            var delta = e.clientY - startY;
+            var newH  = Math.max(60, startLocalH + delta);
+            localPane.style.flexBasis = newH + 'px';
+            localPane.style.flexGrow  = '0';
+        });
+        document.addEventListener('mouseup', function () {
+            if (dragging) {
+                dragging = false;
+                document.body.style.cursor    = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    }());
+
+    // ── Drag handle: center panel content sections ────────────
+    (function () {
+        var handle = document.getElementById('content-drag-handle');
+        if (!handle) return;
+        var localSec = document.getElementById('content-source-local');
+        var driveSec = document.getElementById('content-source-drive');
+        if (!localSec || !driveSec) return;
+
+        var dragging = false, startY, startLocalH;
+
+        handle.addEventListener('mousedown', function (e) {
+            dragging    = true;
+            startY      = e.clientY;
+            startLocalH = localSec.getBoundingClientRect().height;
+            document.body.style.cursor    = 'row-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', function (e) {
+            if (!dragging) return;
+            var delta = e.clientY - startY;
+            var newH  = Math.max(80, startLocalH + delta);
+            localSec.style.flexBasis = newH + 'px';
+            localSec.style.flexGrow  = '0';
+        });
+        document.addEventListener('mouseup', function () {
+            if (dragging) {
+                dragging = false;
+                document.body.style.cursor    = '';
+                document.body.style.userSelect = '';
+            }
+        });
+    }());
 
     var selectedRow = null;
     var clickTimer  = null;
@@ -558,6 +854,13 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
         }
 
         html += '<p style="margin-top:0.5rem"><a href="/drivespace/' + f.id + '" class="btn btn-sm btn-secondary" style="width:100%">\u2139 Full Details &amp; Sharing</a></p>';
+
+        if (GDRIVE_CONFIGURED && GDRIVE_CAN_WRITE) {
+            html += '<form method="POST" action="/drivespace/' + f.id + '/push-to-drive" style="margin-top:0.4rem">'
+                  + '<input type="hidden" name="csrf_token" value="' + esc(CSRF_TOKEN) + '">'
+                  + '<button type="submit" class="btn btn-sm btn-outline" style="width:100%">\u2b06 Push to Google Drive</button>'
+                  + '</form>';
+        }
 
         panel.innerHTML = html;
     }

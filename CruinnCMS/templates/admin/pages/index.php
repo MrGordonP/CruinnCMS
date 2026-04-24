@@ -89,14 +89,15 @@ foreach ($pages as $pg) {
                     data-title="<?= e(strtolower($pg['title'])) ?>"
                     data-slug="<?= e(strtolower($pg['slug'])) ?>"
                     data-page='<?= e(json_encode([
-                        'id'       => (int)$pg['id'],
-                        'title'    => $pg['title'],
-                        'slug'     => $pg['slug'],
-                        'mode'     => $mode,
-                        'status'   => $status,
-                        'template' => $pg['template'] ?? 'default',
-                        'author'   => $pg['author_name'] ?? '—',
-                        'updated'  => format_date($pg['updated_at'], 'j M Y'),
+                        'id'              => (int)$pg['id'],
+                        'title'           => $pg['title'],
+                        'slug'            => $pg['slug'],
+                        'mode'            => $mode,
+                        'status'          => $status,
+                        'template'        => $pg['template'] ?? 'default',
+                        'meta_description'=> $pg['meta_description'] ?? '',
+                        'author'          => $pg['author_name'] ?? '—',
+                        'updated'         => format_date($pg['updated_at'], 'j M Y'),
                     ])) ?>'>
                     <td>
                         <?= e($pg['title']) ?>
@@ -137,6 +138,9 @@ foreach ($pages as $pg) {
     const filterLabel = document.getElementById('pages-filter-label');
     const placeholder = document.getElementById('pages-detail-placeholder');
     const detailContent = document.getElementById('pages-detail-content');
+
+    const csrfToken = <?= json_encode(\Cruinn\CSRF::getToken()) ?>;
+    const templates = <?= json_encode(array_map(fn($t) => ['slug' => $t['slug'], 'name' => $t['name']], $templates ?? [])) ?>;
 
     let activeFilter = 'all';
     let activeRow    = null;
@@ -192,42 +196,92 @@ foreach ($pages as $pg) {
 
     function showDetail(p) {
         placeholder.style.display = 'none';
-        const modeColour = p.mode === 'file' ? '#d97706' : p.mode === 'html' ? '#7c3aed' : '#1d9e75';
-        const editUrl  = p.mode === 'html'
+
+        const editUrl = p.mode === 'html'
             ? `/admin/pages/${p.id}/html`
             : `/admin/editor/${p.id}/edit`;
 
-        let actionsHtml = `<a href="${editUrl}" class="btn btn-primary">Edit Content</a>
-            <a href="/admin/pages/${p.id}/edit" class="btn btn-outline">Settings</a>
-            <a href="/${escHtml(p.slug)}" target="_blank" class="btn btn-outline">View ↗</a>`;
+        // ── Action buttons ──
+        let actionsHtml = `
+            <div class="pl-detail-actions-stack">
+                <a href="${editUrl}" class="btn btn-primary" style="width:100%">Edit Content</a>
+                <a href="/${escHtml(p.slug)}" target="_blank" class="btn btn-outline" style="width:100%">View ↗</a>`;
+
         if (p.mode === 'block') {
             actionsHtml += `
-            <form method="POST" action="/admin/pages/${p.id}/export-html" style="flex:1">
-                <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
-                <button class="btn btn-outline" style="width:100%" title="Export to static HTML">↓ Export HTML</button>
-            </form>`;
+                <form method="POST" action="/admin/pages/${p.id}/export-html">
+                    <input type="hidden" name="csrf_token" value="${escHtml(csrfToken)}">
+                    <button class="btn btn-outline" style="width:100%">↓ Export HTML</button>
+                </form>`;
         }
         if (p.mode === 'html') {
             actionsHtml += `
-            <form method="POST" action="/admin/pages/${p.id}/convert-to-blocks" style="flex:1"
-                  onsubmit="return confirm('Convert this page to block editor? HTML will be parsed into blocks.')">
-                <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
-                <button class="btn btn-outline" style="width:100%">Convert to blocks</button>
-            </form>`;
+                <form method="POST" action="/admin/pages/${p.id}/convert-to-blocks"
+                      onsubmit="return confirm('Convert this page to block editor? HTML will be parsed into blocks.')">
+                    <input type="hidden" name="csrf_token" value="${escHtml(csrfToken)}">
+                    <button class="btn btn-outline" style="width:100%">Convert to blocks</button>
+                </form>`;
         }
+        actionsHtml += `</div>`;
+
+        // ── Template options ──
+        const templateOptions = templates.map(t =>
+            `<option value="${escHtml(t.slug)}"${p.template === t.slug ? ' selected' : ''}>${escHtml(t.name)}</option>`
+        ).join('');
+
+        // ── Settings form ──
+        const settingsHtml = `
+            <form method="POST" action="/admin/pages/${p.id}" class="pl-detail-settings">
+                <input type="hidden" name="csrf_token" value="${escHtml(csrfToken)}">
+                <div class="pl-detail-settings-section">Settings</div>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" value="${escHtml(p.title)}" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label>URL Slug</label>
+                    <div class="input-with-prefix">
+                        <span class="input-prefix">/</span>
+                        <input type="text" name="slug" value="${escHtml(p.slug)}" class="form-input" pattern="[a-z0-9\\/\\-]+" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" class="form-input">
+                        <option value="published"${p.status === 'published' ? ' selected' : ''}>Published</option>
+                        <option value="draft"${p.status === 'draft' ? ' selected' : ''}>Draft</option>
+                        <option value="archived"${p.status === 'archived' ? ' selected' : ''}>Archived</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Render Mode</label>
+                    <select name="render_mode" class="form-input">
+                        <option value="block"${p.mode === 'block' ? ' selected' : ''}>Cruinn (block editor)</option>
+                        <option value="html"${p.mode === 'html' ? ' selected' : ''}>HTML (code editor)</option>
+                        <option value="file"${p.mode === 'file' ? ' selected' : ''}>File</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Template</label>
+                    <select name="template" class="form-input">${templateOptions}</select>
+                </div>
+                <div class="form-group">
+                    <label>Meta Description</label>
+                    <input type="text" name="meta_description" value="${escHtml(p.meta_description ?? '')}" class="form-input">
+                </div>
+                <table class="pl-meta" style="margin-bottom:.75rem">
+                    <tr><th>Author</th><td>${escHtml(p.author)}</td></tr>
+                    <tr><th>Updated</th><td>${escHtml(p.updated)}</td></tr>
+                </table>
+                <button type="submit" class="btn btn-primary" style="width:100%">Save Settings</button>
+            </form>`;
 
         detailContent.innerHTML = `
             <div class="pl-detail-icon">📄</div>
             <div class="pl-detail-title">${escHtml(p.title)}</div>
             <div class="pl-detail-subtitle">/${escHtml(p.slug)}</div>
-            <div class="pl-detail-actions">${actionsHtml}</div>
-            <table class="pl-meta">
-                <tr><th>Status</th><td><span class="badge" style="background:${p.status==='published'?'#1d9e75':'#d97706'};color:#fff;font-size:.72rem">${escHtml(p.status)}</span></td></tr>
-                <tr><th>Mode</th><td><span class="badge" style="background:${modeColour};color:#fff;font-size:.72rem">${escHtml(p.mode)}</span></td></tr>
-                <tr><th>Template</th><td>${escHtml(p.template)}</td></tr>
-                <tr><th>Author</th><td>${escHtml(p.author)}</td></tr>
-                <tr><th>Updated</th><td>${escHtml(p.updated)}</td></tr>
-            </table>`;
+            ${actionsHtml}
+            ${settingsHtml}`;
         detailContent.style.display = '';
     }
 

@@ -25,9 +25,12 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
              ORDER BY p.updated_at DESC"
         );
 
+        $templates = $this->db->fetchAll('SELECT slug, name FROM page_templates ORDER BY sort_order');
+
         $this->renderAdmin('admin/pages/index', [
             'title'         => 'Pages',
             'pages'         => $pages,
+            'templates'     => $templates,
             'breadcrumbs'   => [['Admin', '/admin'], ['Pages']],
         ]);
     }
@@ -96,29 +99,8 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             $this->redirect("/admin/pages/{$id}/html");
         } else {
             Auth::flash('success', 'Page created. Now add some content blocks.');
-            $this->redirect("/admin/pages/{$id}/edit");
+            $this->redirect("/admin/editor/{$id}/edit");
         }
-    }
-
-    /**
-     * GET /admin/pages/{id}/edit — Show the page metadata edit form.
-     */
-    public function editPage(string $id): void
-    {
-        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
-        if (!$page) {
-            Auth::flash('error', 'Page not found.');
-            $this->redirect('/admin/pages');
-        }
-
-        $templates = $this->db->fetchAll('SELECT slug, name, description FROM page_templates ORDER BY sort_order');
-
-        $this->renderAdmin('admin/pages/edit', [
-            'title'       => 'Edit: ' . $page['title'],
-            'page'        => $page,
-            'templates'   => $templates,
-            'breadcrumbs' => [['Admin', '/admin'], ['Pages', '/admin/pages'], [$page['title']]],
-        ]);
     }
 
     /**
@@ -138,7 +120,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
         $existing = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ? AND id != ?', [$slug, $id]);
         if ($existing) {
             Auth::flash('error', 'A page with that URL slug already exists.');
-            $this->redirect("/admin/pages/{$id}/edit");
+            $this->redirect('/admin/pages');
         }
 
         $renderMode = $this->input('render_mode', $page['render_mode'] ?? 'block');
@@ -158,7 +140,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
 
         $this->logActivity('update', 'page', (int) $id, $this->input('title'));
         Auth::flash('success', 'Page updated.');
-        $this->redirect("/admin/pages/{$id}/edit");
+        $this->redirect('/admin/pages');
     }
 
     /**

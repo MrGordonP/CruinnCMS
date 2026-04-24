@@ -8,6 +8,11 @@
  */
 (function (Cruinn) {
 
+    // Called after every mutating action (add/save/delete/reorder).
+    // Overridden by the 3-panel index page to re-fetch the items fragment.
+    // Falls back to a full page reload on the standalone edit page.
+    Cruinn.menuPanelRefresh = function () { window.location.reload(); };
+
     Cruinn.initMenuEditor = function () {
         var menuEditor = document.querySelector('.menu-item-editor');
         if (!menuEditor) return;
@@ -51,7 +56,7 @@
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data.success) {
-                        window.location.reload();
+                        Cruinn.menuPanelRefresh();
                     } else {
                         alert('Error: ' + (data.error || 'Unknown'));
                     }
@@ -78,7 +83,7 @@
                 });
 
                 function sendNext(i) {
-                    if (i >= queue.length) { window.location.reload(); return; }
+                    if (i >= queue.length) { Cruinn.menuPanelRefresh(); return; }
                     var b = queue[i];
                     b._csrf_token = csrfToken;
                     fetch('/admin/menus/' + menuId + '/items', {
@@ -193,7 +198,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (data.success) {
-                            window.location.reload();
+                            Cruinn.menuPanelRefresh();
                         } else {
                             alert('Error: ' + (data.error || 'Unknown'));
                         }
@@ -218,7 +223,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (data.success) {
-                            window.location.reload();
+                            Cruinn.menuPanelRefresh();
                         } else {
                             alert('Error: ' + (data.error || 'Unknown'));
                         }
@@ -342,12 +347,12 @@
                     .then(function (data) {
                         if (!data.success) {
                             alert('Reorder failed: ' + (data.error || 'Unknown'));
-                            window.location.reload();
+                            Cruinn.menuPanelRefresh();
                         }
                     })
                     .catch(function (err) {
                         alert('Reorder error: ' + err.message);
-                        window.location.reload();
+                        Cruinn.menuPanelRefresh();
                     });
             }
         })();
