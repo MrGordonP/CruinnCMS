@@ -47,11 +47,15 @@ class BroadcastController extends BaseController
         );
 
         $memberStatusCounts = [];
-        foreach (['active', 'lapsed', 'honorary', 'deceased', 'removed'] as $s) {
-            $memberStatusCounts[$s] = (int) $this->db->fetchColumn(
-                "SELECT COUNT(*) FROM members WHERE status = ? AND email IS NOT NULL AND email != ''",
-                [$s]
-            );
+        try {
+            foreach (['active', 'lapsed', 'honorary', 'deceased', 'removed'] as $s) {
+                $memberStatusCounts[$s] = (int) $this->db->fetchColumn(
+                    "SELECT COUNT(*) FROM members WHERE status = ? AND email IS NOT NULL AND email != ''",
+                    [$s]
+                );
+            }
+        } catch (\Throwable $e) {
+            // members table not available (membership module not installed)
         }
         $portalUserCount = (int) $this->db->fetchColumn(
             "SELECT COUNT(*) FROM users WHERE active = 1 AND email IS NOT NULL AND email != ''"
@@ -134,11 +138,15 @@ class BroadcastController extends BaseController
         );
 
         $memberStatusCounts = [];
-        foreach (['active', 'lapsed', 'honorary', 'deceased', 'removed'] as $s) {
-            $memberStatusCounts[$s] = (int) $this->db->fetchColumn(
-                "SELECT COUNT(*) FROM members WHERE status = ? AND email IS NOT NULL AND email != ''",
-                [$s]
-            );
+        try {
+            foreach (['active', 'lapsed', 'honorary', 'deceased', 'removed'] as $s) {
+                $memberStatusCounts[$s] = (int) $this->db->fetchColumn(
+                    "SELECT COUNT(*) FROM members WHERE status = ? AND email IS NOT NULL AND email != ''",
+                    [$s]
+                );
+            }
+        } catch (\Throwable $e) {
+            // members table not available (membership module not installed)
         }
         $portalUserCount = (int) $this->db->fetchColumn(
             "SELECT COUNT(*) FROM users WHERE active = 1 AND email IS NOT NULL AND email != ''"
