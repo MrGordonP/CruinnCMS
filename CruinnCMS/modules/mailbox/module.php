@@ -21,6 +21,7 @@ return [
 
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/002_officers_imap_columns.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
