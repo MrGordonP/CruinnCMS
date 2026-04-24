@@ -115,7 +115,7 @@ class OAuthController extends BaseController
         $isPrivilegedRoute = $stored && (
             str_starts_with($stored, '/admin') || str_starts_with($stored, '/council')
         );
-        $redirect = (!$stored || $isPrivilegedRoute) ? $this->defaultRedirectForRole() : $stored;
+        $redirect = (!$stored || $isPrivilegedRoute) ? '/profile' : $stored;
         $this->redirect($redirect);
     }
 
@@ -203,21 +203,4 @@ class OAuthController extends BaseController
         );
     }
 
-    private function defaultRedirectForRole(): string
-    {
-        $roleId = Auth::roleId();
-        if ($roleId) {
-            $redirect = $this->db->fetchColumn('SELECT default_redirect FROM roles WHERE id = ?', [$roleId]);
-            if ($redirect) {
-                return $redirect;
-            }
-        }
-
-        return match (Auth::role()) {
-            'admin'   => '/admin',
-            'council' => '/profile',
-            'member'  => '/profile',
-            default   => '/',
-        };
-    }
 }

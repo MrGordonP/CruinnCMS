@@ -78,4 +78,8 @@ return [
     ],
 
     'provides' => ['forum'],
+
+    'public_routes' => [
+        ['route' => '/forum', 'label' => 'Forum'],
+    ],
 ];

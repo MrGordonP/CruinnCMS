@@ -182,19 +182,19 @@ class ModuleRegistry
     }
 
     /**
-     * Return all menu-linkable public routes from active modules.
-     * Each entry: ['route' => '/path', 'label' => 'Label']
+     * Return all menu-linkable public routes from all registered modules,
+     * regardless of activation status. Each entry includes 'module_status'
+     * so the menu editor can flag inactive modules to the admin.
+     * Each entry: ['route' => '/path', 'label' => 'Label', 'module_status' => 'active'|'discovered'|'offline']
      */
     public static function menuRoutes(): array
     {
         self::load();
         $routes = [];
         foreach (self::$modules as $slug => $def) {
-            if (self::$statuses[$slug] !== 'active') {
-                continue;
-            }
+            $status = self::$statuses[$slug] ?? 'discovered';
             foreach ($def['public_routes'] as $entry) {
-                $routes[] = $entry;
+                $routes[] = array_merge($entry, ['module_status' => $status]);
             }
         }
         return $routes;

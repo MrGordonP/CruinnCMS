@@ -101,11 +101,24 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     }
 
     /**
-     * GET /admin/pages/{id}/edit — Redirect to the Cruinn editor.
+     * GET /admin/pages/{id}/edit — Show the page metadata edit form.
      */
     public function editPage(string $id): void
     {
-        $this->redirect('/admin/editor/' . (int)$id . '/edit');
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
+        if (!$page) {
+            Auth::flash('error', 'Page not found.');
+            $this->redirect('/admin/pages');
+        }
+
+        $templates = $this->db->fetchAll('SELECT slug, name, description FROM page_templates ORDER BY sort_order');
+
+        $this->renderAdmin('admin/pages/edit', [
+            'title'       => 'Edit: ' . $page['title'],
+            'page'        => $page,
+            'templates'   => $templates,
+            'breadcrumbs' => [['Admin', '/admin'], ['Pages', '/admin/pages'], [$page['title']]],
+        ]);
     }
 
     /**
@@ -318,5 +331,63 @@ HTML;
         $this->logActivity('update', 'page', (int) $id, $page['title'] . ' [export-html]');
         Auth::flash('success', 'Page exported to ' . $webPath . ' and set to file mode.');
         $this->redirect('/admin/pages');
+    }
+
+    /**
+     * POST /admin/pages/{id}/reparent — Move a page (and cascade to children).
+     *
+     * Body: new_parent_slug (string, empty = top-level), csrf_token
+     * Response: JSON {success, new_slug} or {success, error}
+     */
+    public function reparentPage(string $id): void
+    {
+        if (!\Cruinn\CSRF::validate($this->input('csrf_token'))) {
+            $this->json(['success' => false, 'error' => 'Invalid CSRF token.'], 403);
+        }
+
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
+        if (!$page) {
+            $this->json(['success' => false, 'error' => 'Page not found.'], 404);
+        }
+
+        $oldSlug       = $page['slug'];
+        $newParentSlug = trim($this->input('new_parent_slug', ''), '/');
+
+        // Leaf = last segment of current slug
+        $leaf    = basename($oldSlug);
+        $newSlug = $newParentSlug !== '' ? $newParentSlug . '/' . $leaf : $leaf;
+
+        // No-op
+        if ($newSlug === $oldSlug) {
+            $this->json(['success' => true, 'new_slug' => $oldSlug]);
+        }
+
+        // Cannot reparent to self or own descendant
+        if ($newParentSlug === $oldSlug || str_starts_with($newParentSlug . '/', $oldSlug . '/')) {
+            $this->json(['success' => false, 'error' => 'Cannot make a page its own descendant.'], 400);
+        }
+
+        // Conflict check
+        $conflict = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ? AND id != ?', [$newSlug, $id]);
+        if ($conflict) {
+            $this->json(['success' => false, 'error' => "A page already exists at /{$newSlug}."], 409);
+        }
+
+        // Load children (longest slugs first to avoid prefix collisions during update)
+        $children = $this->db->fetchAll(
+            'SELECT id, slug FROM pages_index WHERE slug LIKE ? ORDER BY LENGTH(slug) DESC',
+            [$oldSlug . '/%']
+        );
+
+        $this->db->transaction(function () use ($id, $oldSlug, $newSlug, $children) {
+            foreach ($children as $child) {
+                $childNewSlug = $newSlug . substr($child['slug'], strlen($oldSlug));
+                $this->db->update('pages_index', ['slug' => $childNewSlug], 'id = ?', [$child['id']]);
+            }
+            $this->db->update('pages_index', ['slug' => $newSlug, 'updated_at' => date('Y-m-d H:i:s')], 'id = ?', [$id]);
+        });
+
+        $this->logActivity('reparent', 'page', (int) $id, "{$oldSlug} → {$newSlug}");
+        $this->json(['success' => true, 'old_slug' => $oldSlug, 'new_slug' => $newSlug]);
     }
 }

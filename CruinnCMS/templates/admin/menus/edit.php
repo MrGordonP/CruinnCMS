@@ -325,6 +325,8 @@
                                     <span class="menu-source-slug"><?= e($cr['route']) ?></span>
                                     <?php if (in_array($cr['route'], $usedRoutes)): ?>
                                         <span class="badge badge-muted menu-source-in-use">in menu</span>
+                                    <?php elseif (($cr['module_status'] ?? 'active') !== 'active'): ?>
+                                        <span class="badge badge-warning menu-source-in-use" title="Module not active — activate it in Settings → Modules">inactive</span>
                                     <?php endif; ?>
                                 </label>
                             </li>
@@ -338,9 +340,9 @@
 
                 <?php if (!empty($subjects)): ?>
                 <!-- Subjects -->
-                <div class="menu-source-panel" id="panel-subjects">
+                <div class="menu-source-panel collapsed" id="panel-subjects">
                     <button class="menu-source-toggle" data-panel="subjects">Subjects <span class="nav-caret">▾</span></button>
-                    <div class="menu-source-body" style="display:none">
+                    <div class="menu-source-body">
                         <ul class="menu-source-list">
                             <?php foreach ($subjects as $s): ?>
                             <li>
@@ -359,9 +361,9 @@
                 <?php endif; ?>
 
                 <!-- Custom Link -->
-                <div class="menu-source-panel" id="panel-custom">
+                <div class="menu-source-panel collapsed" id="panel-custom">
                     <button class="menu-source-toggle" data-panel="custom">Custom Link <span class="nav-caret">▾</span></button>
-                    <div class="menu-source-body" style="display:none">
+                    <div class="menu-source-body">
                         <div class="form-group">
                             <label>URL</label>
                             <input type="text" id="custom-url" class="form-input" placeholder="https://...">
@@ -377,9 +379,9 @@
                 </div>
 
                 <!-- Custom Route -->
-                <div class="menu-source-panel" id="panel-custom-route">
+                <div class="menu-source-panel collapsed" id="panel-custom-route">
                     <button class="menu-source-toggle" data-panel="custom-route">Custom Route <span class="nav-caret">▾</span></button>
-                    <div class="menu-source-body" style="display:none">
+                    <div class="menu-source-body">
                         <div class="form-group">
                             <label>Route Path</label>
                             <input type="text" id="custom-route" class="form-input" placeholder="/my-route">

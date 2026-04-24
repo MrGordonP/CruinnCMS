@@ -546,15 +546,25 @@ class SiteBuilderController extends BaseController
 
     public function builderStructure(): void
     {
-        $pages = $this->db->fetchAll(
+        // Content pages only (exclude internal zone pages whose slug starts with _)
+        $contentPages = $this->db->fetchAll(
             "SELECT p.*, u.display_name AS author_name
              FROM pages_index p
              LEFT JOIN users u ON p.created_by = u.id
-             ORDER BY FIELD(p.status, 'published', 'draft', 'archived'), p.title"
+             WHERE p.slug NOT LIKE '\_%'
+             ORDER BY p.slug"
         );
 
-        $menus = $this->db->fetchAll('SELECT * FROM menus ORDER BY location');
+        // Header and footer zone pages
+        $headerPages = $this->db->fetchAll(
+            "SELECT p.id, p.title, p.slug FROM pages_index p WHERE p.slug = '_header' LIMIT 5"
+        );
+        $footerPages = $this->db->fetchAll(
+            "SELECT p.id, p.title, p.slug FROM pages_index p WHERE p.slug = '_footer' LIMIT 5"
+        );
 
+        // Menus with item counts
+        $menus = $this->db->fetchAll('SELECT * FROM menus ORDER BY location');
         foreach ($menus as &$menu) {
             $count = $this->db->fetch(
                 'SELECT COUNT(*) AS cnt FROM menu_items WHERE menu_id = ?',
@@ -564,15 +574,31 @@ class SiteBuilderController extends BaseController
         }
         unset($menu);
 
-        $templates = $this->db->fetchAll('SELECT slug, name FROM page_templates ORDER BY sort_order');
+        // Menu items keyed by menu_id for right-panel display
+        $allMenuItems = $this->db->fetchAll(
+            "SELECT mi.*, p.title AS page_title
+             FROM menu_items mi
+             LEFT JOIN pages_index p ON mi.page_id = p.id
+             ORDER BY mi.menu_id, mi.sort_order"
+        );
+        $menuItemsByMenu = [];
+        foreach ($allMenuItems as $item) {
+            $menuItemsByMenu[(int)$item['menu_id']][] = $item;
+        }
+
+        // Templates with parsed settings (for header/footer/sidebar resolution)
+        $templates = $this->db->fetchAll('SELECT slug, name, zones, settings FROM page_templates ORDER BY sort_order');
 
         $data = [
-            'title'     => 'Site Structure',
-            'section'   => 'builder',
-            'tab'       => 'structure',
-            'pages'     => $pages,
-            'menus'     => $menus,
-            'templates' => $templates,
+            'title'          => 'Site Structure',
+            'section'        => 'builder',
+            'tab'            => 'structure',
+            'contentPages'   => $contentPages,
+            'headerPages'    => $headerPages,
+            'footerPages'    => $footerPages,
+            'menus'          => $menus,
+            'menuItemsByMenu'=> $menuItemsByMenu,
+            'templates'      => $templates,
         ];
         $this->renderAdmin('admin/site-builder/structure', $data);
     }

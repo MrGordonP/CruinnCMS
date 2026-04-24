@@ -52,4 +52,8 @@ return [
     ],
 
     'provides' => ['articles'],
+
+    'public_routes' => [
+        ['route' => '/blog', 'label' => 'Blog'],
+    ],
 ];

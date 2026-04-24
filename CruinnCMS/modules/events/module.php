@@ -51,6 +51,10 @@ return [
 
     'provides' => ['events'],
 
+    'public_routes' => [
+        ['route' => '/events', 'label' => 'Events'],
+    ],
+
     'widgets' => function (): array {
         try {
             $db = \Cruinn\Database::getInstance();

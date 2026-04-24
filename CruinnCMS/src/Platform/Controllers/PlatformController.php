@@ -1920,7 +1920,13 @@ class PlatformController
             if (!empty($groups[$label])) { ksort($groups[$label]); }
         }
 
-        // 5. CSS
+        // 5. Config
+        foreach (glob($rcRoot . '/config/*.php') ?: [] as $f) {
+            $base = basename($f);
+            $groups['Config']['config/' . $base] = $base;
+        }
+
+        // 6. CSS
         foreach (glob($rcRoot . '/public/css/*.css') ?: [] as $f) {
             $base = basename($f);
             $groups['CSS']['public/css/' . $base] = $base;

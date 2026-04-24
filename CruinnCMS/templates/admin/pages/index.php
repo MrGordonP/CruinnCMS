@@ -197,7 +197,8 @@ foreach ($pages as $pg) {
             ? `/admin/pages/${p.id}/html`
             : `/admin/editor/${p.id}/edit`;
 
-        let actionsHtml = `<a href="${editUrl}" class="btn btn-primary">Edit</a>
+        let actionsHtml = `<a href="${editUrl}" class="btn btn-primary">Edit Content</a>
+            <a href="/admin/pages/${p.id}/edit" class="btn btn-outline">Settings</a>
             <a href="/${escHtml(p.slug)}" target="_blank" class="btn btn-outline">View ↗</a>`;
         if (p.mode === 'block') {
             actionsHtml += `

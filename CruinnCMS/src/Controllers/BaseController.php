@@ -132,15 +132,20 @@ abstract class BaseController
         ?string $details = null,
         ?int $actorId = null
     ): void {
-        $this->db->insert('activity_log', [
-            'user_id'     => $actorId ?? Auth::userId(),
-            'action'      => $action,
-            'entity_type' => $entityType,
-            'entity_id'   => $entityId,
-            'details'     => $details,
-            'ip_address'  => App::clientIp() ?: null,
-            'created_at'  => date('Y-m-d H:i:s'),
-        ]);
+        try {
+            $this->db->insert('activity_log', [
+                'user_id'     => $actorId ?? Auth::userId(),
+                'action'      => $action,
+                'entity_type' => $entityType,
+                'entity_id'   => $entityId,
+                'details'     => $details,
+                'ip_address'  => App::clientIp() ?: null,
+                'created_at'  => date('Y-m-d H:i:s'),
+            ]);
+        } catch (\Throwable $e) {
+            // Non-fatal — activity_log table may not yet exist (migration pending).
+            error_log('logActivity failed: ' . $e->getMessage());
+        }
     }
 
     /**
