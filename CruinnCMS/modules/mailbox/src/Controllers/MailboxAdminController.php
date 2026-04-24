@@ -125,10 +125,10 @@ class MailboxAdminController extends BaseController
     // Manual sync
     // -------------------------------------------------------------------------
 
-    public function sync(array $params): void
+    public function sync(string $mailbox_id): void
     {
         CSRF::verify();
-        $mailboxId = (int) $params['mailbox_id'];
+        $mailboxId = (int) $mailbox_id;
 
         $mb = $this->db->fetch(
             'SELECT * FROM organisation_officers WHERE id = ? AND imap_enabled = 1',
@@ -162,9 +162,9 @@ class MailboxAdminController extends BaseController
      * Shows the IMAP/SMTP credential form for a single officer position.
      * Passwords are write-only — never echoed back to the page.
      */
-    public function credentials(array $params): void
+    public function credentials(string $id): void
     {
-        $id = (int) $params['id'];
+        $id = (int) $id;
 
         $officer = $this->db->fetch(
             'SELECT id, position, email, imap_host, imap_port, imap_encryption,
@@ -196,10 +196,10 @@ class MailboxAdminController extends BaseController
     /**
      * POST /admin/mailbox/officer/{id}/credentials
      */
-    public function saveCredentials(array $params): void
+    public function saveCredentials(string $id): void
     {
         CSRF::verify();
-        $id = (int) $params['id'];
+        $id = (int) $id;
 
         $officer = $this->db->fetch('SELECT id FROM organisation_officers WHERE id = ?', [$id]);
         if (!$officer) {
