@@ -58,6 +58,50 @@ INSERT IGNORE INTO `platform_settings` (`key`, `value`, `group`) VALUES
     ('platform.version', '1.0.0',     'general');
 
 -- ============================================================
+-- GITHUB PATH MAPS
+-- Maps local file-tree prefixes (as shown in /cms/source) to their
+-- corresponding paths inside the GitHub repository.  Used by the
+-- "Pull from GitHub" feature so that files can be fetched correctly
+-- regardless of the deployment layout (standard, cPanel subfolder, etc.).
+--
+-- local_prefix  — the relative path prefix used on this server (e.g. src/)
+-- repo_prefix   — the corresponding path prefix in the GitHub repo (e.g. CruinnCMS/src/)
+-- sort_order     — higher = checked first (longest-match wins)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `platform_github_path_maps` (
+    `id`           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `local_prefix` VARCHAR(255)  NOT NULL,
+    `repo_prefix`  VARCHAR(255)  NOT NULL,
+    `sort_order`   SMALLINT      NOT NULL DEFAULT 0,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_github_path_maps_local` (`local_prefix`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO `platform_github_path_maps` (`local_prefix`, `repo_prefix`, `sort_order`) VALUES
+    ('src/',        'src/',        80),
+    ('templates/',  'templates/',  70),
+    ('schema/',     'schema/',     60),
+    ('migrations/', 'migrations/', 50),
+    ('modules/',    'modules/',    40),
+    ('config/',     'config/',     30),
+    ('public/',     'public_html/', 20);
+
+-- ============================================================
+-- PLATFORM MIGRATION TRACKING
+-- Records which schema/migrate_*.sql files have been applied to
+-- this platform DB.  Mirrors module_migrations in instance DBs.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS `platform_migrations` (
+    `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `filename`   VARCHAR(255) NOT NULL,
+    `applied_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_platform_migrations_filename` (`filename`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- PLATFORM BLOCK EDITOR TABLES
 -- Mirrors the instance block-editor schema (pages_index / pages /
 -- pages_draft) so the platform itself can be edited with the same

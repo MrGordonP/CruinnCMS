@@ -2189,6 +2189,123 @@ class PlatformController
     }
 
     /**
+     * POST /cms/source/pull
+     *
+     * Fetch a file from the canonical GitHub repo (raw.githubusercontent.com) and
+     * overwrite the local copy.  Path is validated identically to platformSourceSave.
+     * Protected paths (config/, instance/, public/uploads/, public/storage/) are
+     * never overwritten.
+     *
+     * The local-to-repo path mapping is resolved from platform_github_path_maps
+     * (longest local_prefix match wins) so this works correctly regardless of
+     * deployment layout (standard, cPanel subfolder, etc.).
+     */
+    public function platformSourcePull(): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
+        $rcRoot     = dirname(__DIR__, 3);
+        $rcRootReal = realpath($rcRoot);
+        $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        // Block protected paths
+        $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
+        foreach ($protected as $guard) {
+            if (str_starts_with($reqFile, $guard)) {
+                $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'That path is protected and cannot be pulled from GitHub.'];
+                header('Location: /cms/source?file=' . rawurlencode($reqFile));
+                exit;
+            }
+        }
+
+        $absPath = realpath($rcRoot . '/' . $reqFile);
+
+        if (!$absPath || !$rcRootReal
+            || !str_starts_with($absPath, $rcRootReal . DIRECTORY_SEPARATOR)
+            || !is_file($absPath)
+            || !in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
+        ) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Invalid or disallowed file path.'];
+            header('Location: /cms/source' . ($reqFile ? '?file=' . rawurlencode($reqFile) : ''));
+            exit;
+        }
+
+        // ── Resolve repo path via platform_github_path_maps ─────────────
+        // Load all maps from the platform DB, sorted desc by sort_order so the
+        // most-specific (longest) prefix is tried first.
+        $repoPath = null;
+        try {
+            $pCfg = PlatformAuth::dbConfig();
+            $pdo  = new \PDO(
+                sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                    $pCfg['host']     ?? 'localhost',
+                    (int)($pCfg['port'] ?? 3306),
+                    $pCfg['name']     ?? ''
+                ),
+                $pCfg['user']     ?? '',
+                $pCfg['password'] ?? '',
+                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC]
+            );
+            $maps = $pdo->query(
+                'SELECT local_prefix, repo_prefix FROM platform_github_path_maps ORDER BY sort_order DESC'
+            )->fetchAll();
+            foreach ($maps as $map) {
+                $lp = $map['local_prefix'];
+                if (str_starts_with($reqFile, $lp)) {
+                    $repoPath = $map['repo_prefix'] . substr($reqFile, strlen($lp));
+                    break;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Table may not exist on older installs — fall back to identity mapping
+            $repoPath = null;
+        }
+
+        if ($repoPath === null) {
+            // No mapping found — use local path as-is (works if repo layout matches local layout)
+            $repoPath = $reqFile;
+        }
+
+        $rawUrl = 'https://raw.githubusercontent.com/MrGordonP/CruinnCMS/main/' . $repoPath;
+        $ctx    = stream_context_create(['http' => [
+            'method'          => 'GET',
+            'header'          => "User-Agent: CruinnCMS-Platform/1.0\r\n",
+            'timeout'         => 10,
+            'ignore_errors'   => true,
+        ]]);
+
+        $remote = @file_get_contents($rawUrl, false, $ctx);
+
+        if ($remote === false || !isset($http_response_header)) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Could not reach GitHub. Check server outbound connectivity.'];
+            header('Location: /cms/source?file=' . rawurlencode($reqFile));
+            exit;
+        }
+
+        // Check HTTP status from response headers
+        $status = 0;
+        foreach ($http_response_header as $h) {
+            if (preg_match('#^HTTP/\S+\s+(\d+)#', $h, $m)) { $status = (int) $m[1]; }
+        }
+
+        if ($status !== 200) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'GitHub returned HTTP ' . $status . ' for that path. (Repo path: ' . htmlspecialchars($repoPath, ENT_QUOTES, 'UTF-8') . ')'];
+            header('Location: /cms/source?file=' . rawurlencode($reqFile));
+            exit;
+        }
+
+        if (file_put_contents($absPath, $remote) === false) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Write failed — check file permissions.'];
+        } else {
+            $_SESSION['_source_flash'] = ['type' => 'success', 'message' => 'Pulled from GitHub: ' . htmlspecialchars(basename($reqFile), ENT_QUOTES, 'UTF-8')];
+        }
+
+        header('Location: /cms/source?file=' . rawurlencode($reqFile));
+        exit;
+    }
+
+    /**
      * GET /cms/source/preview
      *
      * Renders a source file with dummy variables and returns the HTML for display
@@ -2338,5 +2455,408 @@ class PlatformController
             }
         }
         return $out;
+    }
+
+    // ── Platform Migrations ────────────────────────────────────────────
+
+    /**
+     * GET /cms/migrations
+     *
+     * Show status of all schema/migrate_platform_*.sql files against the platform DB.
+     */
+    public function platformMigrations(): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        [$pdo, $applied] = $this->platformMigrationState();
+        $rows            = $this->platformMigrationRows($pdo, $applied);
+        $pending         = count(array_filter($rows, fn($r) => !$r['applied']));
+
+        echo $this->view->render('platform/migrations', [
+            'title'    => 'Platform Migrations',
+            'username' => PlatformAuth::username(),
+            'rows'     => $rows,
+            'pending'  => $pending,
+            'results'  => null,
+            'errors'   => 0,
+            'csrfToken' => \Cruinn\CSRF::getToken(),
+        ]);
+    }
+
+    /**
+     * POST /cms/migrations
+     *
+     * Apply pending platform migrations.  If $_POST['file'] is set, apply only
+     * that one file; otherwise apply all pending files.
+     */
+    public function platformRunMigrations(): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        [$pdo, $applied] = $this->platformMigrationState();
+        $rows            = $this->platformMigrationRows($pdo, $applied);
+
+        // Single-file mode: only process the requested file
+        $singleFile = isset($_POST['file']) ? basename((string) $_POST['file']) : null;
+        if ($singleFile !== null) {
+            $rows = array_filter($rows, fn($r) => $r['file'] === $singleFile);
+        }
+
+        $results = [];
+        $errors  = 0;
+
+        foreach ($rows as $row) {
+            if ($row['applied']) {
+                $results[] = ['file' => $row['file'], 'status' => 'skipped', 'error' => null];
+                continue;
+            }
+
+            if (!file_exists($row['path'])) {
+                $results[] = ['file' => $row['file'], 'status' => 'missing', 'error' => 'File not found'];
+                $errors++;
+                continue;
+            }
+
+            $sql = file_get_contents($row['path']);
+            if ($sql === false || trim($sql) === '') {
+                $results[] = ['file' => $row['file'], 'status' => 'skipped', 'error' => 'Empty file'];
+                continue;
+            }
+
+            try {
+                $this->platformExecSql($pdo, $sql);
+                $stmt = $pdo->prepare('INSERT IGNORE INTO platform_migrations (filename) VALUES (?)');
+                $stmt->execute([$row['file']]);
+                $results[] = ['file' => $row['file'], 'status' => 'ok', 'error' => null];
+            } catch (\Throwable $e) {
+                $results[] = ['file' => $row['file'], 'status' => 'failed', 'error' => $e->getMessage()];
+                $errors++;
+            }
+        }
+
+        // Re-collect updated state
+        [, $applied] = $this->platformMigrationState($pdo);
+        $rows        = $this->platformMigrationRows($pdo, $applied);
+        $pending     = count(array_filter($rows, fn($r) => !$r['applied']));
+
+        echo $this->view->render('platform/migrations', [
+            'title'    => 'Platform Migrations',
+            'username' => PlatformAuth::username(),
+            'rows'     => $rows,
+            'pending'  => $pending,
+            'results'  => $results,
+            'errors'   => $errors,
+            'csrfToken' => \Cruinn\CSRF::getToken(),
+        ]);
+    }
+
+    /**
+     * Connect to platform DB, ensure tracking table exists, return applied set.
+     * Accepts an optional already-open PDO to avoid duplicate connections.
+     *
+     * @return array{0: \PDO, 1: array<string,bool>}
+     */
+    private function platformMigrationState(?\PDO $pdo = null): array
+    {
+        if ($pdo === null) {
+            $pCfg = PlatformAuth::dbConfig();
+            $pdo  = new \PDO(
+                sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                    $pCfg['host']     ?? 'localhost',
+                    (int)($pCfg['port'] ?? 3306),
+                    $pCfg['name']     ?? ''
+                ),
+                $pCfg['user']     ?? '',
+                $pCfg['password'] ?? '',
+                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC]
+            );
+        }
+
+        // Ensure tracking table exists (bootstraps itself on first run)
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS `platform_migrations` (
+                `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `filename`   VARCHAR(255) NOT NULL,
+                `applied_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `uk_platform_migrations_filename` (`filename`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $rows    = $pdo->query('SELECT filename FROM platform_migrations')->fetchAll(\PDO::FETCH_COLUMN, 0);
+        $applied = array_fill_keys($rows, true);
+
+        return [$pdo, $applied];
+    }
+
+    /**
+     * Scan schema/ for migrate_platform_*.sql files and annotate each with applied status.
+     * Only files prefixed migrate_platform_ are treated as platform DB migrations;
+     * instance-level migrate_*.sql files (e.g. migrate_page_tables.sql) are excluded.
+     *
+     * @param  array<string,bool> $applied
+     * @return array<int, array{file: string, path: string, applied: bool}>
+     */
+    private function platformMigrationRows(\PDO $pdo, array $applied): array
+    {
+        $schemaDir = dirname(__DIR__, 3) . '/schema';
+        $files     = glob($schemaDir . '/migrate_platform_*.sql') ?: [];
+        natsort($files);
+
+        $rows = [];
+        foreach ($files as $path) {
+            $file   = basename($path);
+            $rows[] = ['file' => $file, 'path' => $path, 'applied' => isset($applied[$file])];
+        }
+        return $rows;
+    }
+
+    /**
+     * Execute a SQL script against a PDO connection, handling DELIMITER directives.
+     */
+    private function platformExecSql(\PDO $pdo, string $sql): void
+    {
+        $delimiter = ';';
+        $buffer    = '';
+
+        foreach (explode("\n", $sql) as $line) {
+            $trimmed = rtrim($line);
+            if (preg_match('/^\s*DELIMITER\s+(\S+)\s*$/i', $trimmed, $m)) {
+                $delimiter = $m[1];
+                continue;
+            }
+            $buffer .= $line . "\n";
+            if (str_ends_with(rtrim($buffer), $delimiter)) {
+                $stmt = trim(substr(rtrim($buffer), 0, -strlen($delimiter)));
+                if ($stmt !== '') { $pdo->exec($stmt); }
+                $buffer = '';
+            }
+        }
+        $stmt = trim($buffer);
+        if ($stmt !== '' && $stmt !== $delimiter) {
+            $pdo->exec($stmt);
+        }
+    }
+
+    /**
+     * POST /cms/source/pull-dir   (AJAX — returns JSON)
+     *
+     * Recursively enumerate all files under a local directory path via the
+     * GitHub Contents API, then fetch each via raw.githubusercontent.com and
+     * overwrite the local copies.
+     *
+     * Request body (application/x-www-form-urlencoded):
+     *   csrf_token  — standard CSRF token
+     *   dir         — local relative path of the folder, e.g. "src/Services"
+     *
+     * Response JSON:
+     *   { ok: bool, files: [ { path, status, error? }, ... ], error?: string }
+     *
+     * Statuses: "ok" | "failed" | "skipped" (protected) | "write_error"
+     */
+    public function platformSourcePullDir(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!PlatformAuth::check()) {
+            echo json_encode(['ok' => false, 'error' => 'Not authenticated.']);
+            exit;
+        }
+
+        $reqDir     = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['dir'] ?? '')), '/');
+        $rcRoot     = dirname(__DIR__, 3);
+        $rcRootReal = realpath($rcRoot);
+        $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        // Validate the directory exists within root
+        if ($reqDir === '') {
+            echo json_encode(['ok' => false, 'error' => 'No directory specified.']);
+            exit;
+        }
+
+        $absDir = realpath($rcRoot . '/' . $reqDir);
+        if (!$absDir || !$rcRootReal
+            || !str_starts_with($absDir, $rcRootReal . DIRECTORY_SEPARATOR)
+            || !is_dir($absDir)
+        ) {
+            echo json_encode(['ok' => false, 'error' => 'Directory not found or outside root.']);
+            exit;
+        }
+
+        // Block protected paths
+        $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
+        foreach ($protected as $guard) {
+            if (str_starts_with($reqDir . '/', $guard)) {
+                echo json_encode(['ok' => false, 'error' => 'That path is protected and cannot be pulled from GitHub.']);
+                exit;
+            }
+        }
+
+        // ── Load path maps from platform DB ─────────────────────────────
+        $maps = [];
+        try {
+            $pCfg = PlatformAuth::dbConfig();
+            $pdo  = new \PDO(
+                sprintf('mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                    $pCfg['host']     ?? 'localhost',
+                    (int)($pCfg['port'] ?? 3306),
+                    $pCfg['name']     ?? ''
+                ),
+                $pCfg['user']     ?? '',
+                $pCfg['password'] ?? '',
+                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION, \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC]
+            );
+            $maps = $pdo->query(
+                'SELECT local_prefix, repo_prefix FROM platform_github_path_maps ORDER BY sort_order DESC'
+            )->fetchAll();
+        } catch (\Throwable $e) {
+            // Fall back to identity mapping
+        }
+
+        // Resolve dir local→repo prefix using longest-match
+        $repoDir  = $reqDir;
+        $localPfx = '';
+        $repoPfx  = '';
+        foreach ($maps as $map) {
+            $lp = rtrim($map['local_prefix'], '/');
+            if ($reqDir === $lp || str_starts_with($reqDir . '/', $lp . '/')) {
+                $localPfx = $lp;
+                $repoPfx  = rtrim($map['repo_prefix'], '/');
+                $repoDir  = $repoPfx . substr($reqDir, strlen($lp));
+                break;
+            }
+        }
+
+        // ── Recursively enumerate files via GitHub Contents API ──────────
+        $apiBase = 'https://api.github.com/repos/MrGordonP/CruinnCMS/contents/';
+        $branch  = 'main';
+
+        $allFiles = []; // [ ['local' => ..., 'repo' => ...], ... ]
+        $apiError = null;
+
+        $enumerate = function (string $repoPath) use (&$enumerate, &$allFiles, &$apiError, $apiBase, $branch, $reqDir, $repoDir, $localPfx, $repoPfx, $allowedExt): void {
+            if ($apiError) return;
+
+            // Encode each path segment individually, preserving slashes for the API URL
+            $encodedPath = implode('/', array_map('rawurlencode', explode('/', $repoPath)));
+            $url = $apiBase . $encodedPath . '?ref=' . $branch;
+            // GitHub API requires a User-Agent header
+            $ctx = stream_context_create(['http' => [
+                'method'        => 'GET',
+                'header'        => "User-Agent: CruinnCMS-Platform/1.0\r\nAccept: application/vnd.github.v3+json\r\n",
+                'timeout'       => 15,
+                'ignore_errors' => true,
+            ]]);
+
+            $body = @file_get_contents($url, false, $ctx);
+            if ($body === false) {
+                $apiError = 'Could not reach GitHub API for: ' . $repoPath;
+                return;
+            }
+
+            // Check HTTP status
+            $status = 0;
+            foreach ($http_response_header ?? [] as $h) {
+                if (preg_match('#^HTTP/\S+\s+(\d+)#', $h, $m)) { $status = (int) $m[1]; }
+            }
+            if ($status === 403) {
+                $apiError = 'GitHub API rate limit hit (60 req/hr unauthenticated). Try again in a few minutes.';
+                return;
+            }
+            if ($status !== 200) {
+                $apiError = 'GitHub API returned HTTP ' . $status . ' for: ' . $repoPath;
+                return;
+            }
+
+            $items = json_decode($body, true);
+            if (!is_array($items)) {
+                $apiError = 'Unexpected GitHub API response for: ' . $repoPath;
+                return;
+            }
+
+            foreach ($items as $item) {
+                if ($item['type'] === 'dir') {
+                    $enumerate($item['path']);
+                } elseif ($item['type'] === 'file') {
+                    $ext = strtolower(pathinfo($item['name'], PATHINFO_EXTENSION));
+                    if (!in_array($ext, $allowedExt, true)) continue;
+
+                    // Map repo path back to local path
+                    $repoItemPath  = $item['path'];
+                    $localItemPath = $repoPfx !== ''
+                        ? $localPfx . substr($repoItemPath, strlen($repoPfx))
+                        : $repoItemPath;
+                    $localItemPath = ltrim($localItemPath, '/');
+
+                    $allFiles[] = ['local' => $localItemPath, 'repo' => $repoItemPath];
+                }
+            }
+        };
+
+        $enumerate($repoDir);
+
+        if ($apiError) {
+            echo json_encode(['ok' => false, 'error' => $apiError]);
+            exit;
+        }
+
+        if (empty($allFiles)) {
+            echo json_encode(['ok' => true, 'files' => [], 'error' => 'No eligible files found under that path in the repo.']);
+            exit;
+        }
+
+        // ── Fetch and write each file ────────────────────────────────────
+        $results = [];
+        $rawBase = 'https://raw.githubusercontent.com/MrGordonP/CruinnCMS/main/';
+
+        foreach ($allFiles as $f) {
+            $localPath = $f['local'];
+            $repoPath  = $f['repo'];
+
+            // Secondary protected-path check on each resolved local path
+            $skip = false;
+            foreach ($protected as $guard) {
+                if (str_starts_with($localPath, $guard)) { $skip = true; break; }
+            }
+            if ($skip) {
+                $results[] = ['path' => $localPath, 'status' => 'skipped'];
+                continue;
+            }
+
+            $absFile = realpath($rcRoot . '/' . $localPath);
+            if (!$absFile || !str_starts_with($absFile, $rcRootReal . DIRECTORY_SEPARATOR) || !is_file($absFile)) {
+                // File doesn't exist locally — skip rather than create new files unexpectedly
+                $results[] = ['path' => $localPath, 'status' => 'skipped', 'error' => 'Not in local tree'];
+                continue;
+            }
+
+            $rawUrl = $rawBase . $repoPath;
+            $ctx    = stream_context_create(['http' => [
+                'method'        => 'GET',
+                'header'        => "User-Agent: CruinnCMS-Platform/1.0\r\n",
+                'timeout'       => 10,
+                'ignore_errors' => true,
+            ]]);
+
+            $remote = @file_get_contents($rawUrl, false, $ctx);
+            $httpStatus = 0;
+            foreach ($http_response_header ?? [] as $h) {
+                if (preg_match('#^HTTP/\S+\s+(\d+)#', $h, $m)) { $httpStatus = (int) $m[1]; }
+            }
+
+            if ($remote === false || $httpStatus !== 200) {
+                $results[] = ['path' => $localPath, 'status' => 'failed', 'error' => 'HTTP ' . $httpStatus];
+                continue;
+            }
+
+            if (file_put_contents($absFile, $remote) === false) {
+                $results[] = ['path' => $localPath, 'status' => 'write_error', 'error' => 'Write failed'];
+            } else {
+                $results[] = ['path' => $localPath, 'status' => 'ok'];
+            }
+        }
+
+        echo json_encode(['ok' => true, 'files' => $results]);
+        exit;
     }
 }

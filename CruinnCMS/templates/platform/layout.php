@@ -48,6 +48,7 @@
 </a>
 <a href="/cms/settings"><span>Settings</span></a>
 <a href="/cms/source"<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/source') ? ' class="active"' : '' ?>><span>Source Files</span></a>
+<a href="/cms/migrations"<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/migrations') ? ' class="active"' : '' ?>><span>Migrations</span></a>
 <span class="platform-nav-section-label">Editor</span>
 <?php
                 // Current URL is navigating to a specific instance if the query string contains instance=<folder>

@@ -45,6 +45,8 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/instances/new',                 [PlatformController::class, 'provisionInstance']);
     $router->get('/cms/source',                         [PlatformController::class, 'platformSource']);
     $router->post('/cms/source/save',                   [PlatformController::class, 'platformSourceSave']);
+    $router->post('/cms/source/pull',                   [PlatformController::class, 'platformSourcePull']);
+    $router->post('/cms/source/pull-dir',               [PlatformController::class, 'platformSourcePullDir']);
     $router->get('/cms/source/preview',                 [PlatformController::class, 'platformSourcePreview']);
     $router->get('/cms/editor',                         [PlatformController::class, 'editorPicker']);
     $router->get('/cms/editor/files',                   [PlatformController::class, 'editorFiles']);
@@ -56,6 +58,8 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/editor/{pageId}/discard',        [CruinnController::class, 'discardDraft']);
     $router->post('/cms/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/cms/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
+    $router->get('/cms/migrations',                      [PlatformController::class, 'platformMigrations']);
+    $router->post('/cms/migrations',                     [PlatformController::class, 'platformRunMigrations']);
     $router->get('/cms/database',                       [PlatformController::class, 'dbBrowse']);
     $router->get('/cms/database/browse/{table}',             [PlatformController::class, 'dbBrowseTable']);
     $router->get('/cms/database/browse/{table}/edit',        [PlatformController::class, 'dbEditRow']);

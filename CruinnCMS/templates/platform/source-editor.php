@@ -12,9 +12,10 @@
  */
 
 // Build file stat info for the properties panel
+// NB: __DIR__ here is CruinnCMS/templates/platform — 2 levels up reaches CruinnCMS root.
 $_fileStat = null;
 if ($activeFile !== null && $fileContent !== null) {
-    $rcRoot  = dirname(__DIR__, 3);
+    $rcRoot  = dirname(__DIR__, 2);
     $absPath = realpath(str_starts_with($activeFile, 'public/')
         ? CRUINN_PUBLIC . '/' . substr($activeFile, 7)
         : $rcRoot . '/' . $activeFile);
@@ -46,15 +47,17 @@ if ($activeFile !== null && $fileContent !== null) {
             foreach ($entries as $_e) {
                 if ($_e['type'] === 'dir') {
                     $_open = $_stActive !== '' && str_starts_with($_stActive, $_e['rel'] . '/');
+                    $_drel = htmlspecialchars($_e['rel'], ENT_QUOTES, 'UTF-8');
                     echo '<details' . ($_open ? ' open' : '') . '>';
-                    echo '<summary>' . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8') . '</summary>';
+                    echo '<summary data-dir="' . $_drel . '">' . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8') . '</summary>';
                     $_stRender($_e['children']);
                     echo '</details>';
                 } else {
                     $_act = $_stActive === $_e['rel'];
+                    $_rel = htmlspecialchars($_e['rel'], ENT_QUOTES, 'UTF-8');
                     echo '<a href="/cms/source?file=' . rawurlencode($_e['rel']) . '"'
                        . ' class="source-tree-file' . ($_act ? ' active' : '') . '"'
-                       . ' title="' . htmlspecialchars($_e['rel'], ENT_QUOTES, 'UTF-8') . '">'
+                       . ' title="' . $_rel . '">'
                        . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8')
                        . '</a>';
                 }
@@ -180,6 +183,9 @@ if ($activeFile !== null && $fileContent !== null) {
             <span class="source-panel-title">Properties</span>
         </div>
         <div class="source-panel-body source-props">
+
+            <!-- File properties (PHP-rendered, shown when a file is active) -->
+            <div id="props-file" <?= $_fileStat === null ? 'style="display:none"' : '' ?>>
             <?php if ($_fileStat !== null): ?>
             <dl class="source-props-list">
                 <dt>Path</dt>
@@ -203,9 +209,48 @@ if ($activeFile !== null && $fileContent !== null) {
                     <?php endif; ?>
                 </dd>
             </dl>
+            <?php $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
+                  $_isProtected = false;
+                  foreach ($protected as $_pg) { if (str_starts_with($activeFile, $_pg)) { $_isProtected = true; break; } }
+            ?>
+            <?php if (!$_isProtected): ?>
+            <div style="margin-top:1rem;">
+                <form id="props-pull-form" method="post" action="/cms/source/pull">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="file" value="<?= htmlspecialchars($activeFile, ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit"
+                            style="width:100%;padding:.45rem .75rem;background:var(--plat-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:.8rem;"
+                            onclick="return confirm('Pull &quot;<?= htmlspecialchars(basename($activeFile), ENT_QUOTES, 'UTF-8') ?>&quot; from GitHub and overwrite the local copy?')">
+                        ↓ Pull from Repo
+                    </button>
+                </form>
+            </div>
             <?php else: ?>
-            <p class="source-props-empty">No file selected.</p>
+            <p style="font-size:.75rem;color:var(--plat-text-muted);margin-top:.75rem;">Protected path — cannot pull from repo.</p>
             <?php endif; ?>
+            <?php endif; ?>
+            </div>
+
+            <!-- Folder info (JS-populated, shown when a tree folder is clicked) -->
+            <div id="props-dir" style="display:none">
+                <dl class="source-props-list">
+                    <dt>Folder</dt>
+                    <dd id="props-dir-name" class="source-props-path"></dd>
+                </dl>
+                <div style="margin-top:1rem;">
+                    <button id="props-dir-pull-btn" type="button"
+                            style="width:100%;padding:.45rem .75rem;background:var(--plat-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:.8rem;">
+                        ↓ Pull Folder from Repo
+                    </button>
+                </div>
+                <div id="props-dir-results" style="margin-top:.75rem;font-size:.75rem;display:none;max-height:260px;overflow-y:auto;"></div>
+            </div>
+
+            <!-- Fallback -->
+            <div id="props-empty" <?= $_fileStat !== null ? 'style="display:none"' : '' ?>>
+                <p class="source-props-empty">Select a file or folder.</p>
+            </div>
+
         </div>
     </div>
 
@@ -243,7 +288,74 @@ if ($activeFile !== null && $fileContent !== null) {
         applyState('left',  false);
         applyState('right', false);
     } catch(e) {}
+
+    // ── Folder click → show in properties panel ─────────────────
+    var _currentDir = null;
+    document.querySelector('.source-tree').addEventListener('click', function(e) {
+        var summary = e.target.closest('summary[data-dir]');
+        if (!summary) return;
+        _currentDir = summary.dataset.dir;
+        document.getElementById('props-file').style.display  = 'none';
+        document.getElementById('props-empty').style.display = 'none';
+        var pd = document.getElementById('props-dir');
+        document.getElementById('props-dir-name').textContent = _currentDir + '/';
+        document.getElementById('props-dir-results').style.display = 'none';
+        document.getElementById('props-dir-results').innerHTML = '';
+        document.getElementById('props-dir-pull-btn').disabled = false;
+        document.getElementById('props-dir-pull-btn').textContent = '\u2193 Pull Folder from Repo';
+        pd.style.display = '';
+        var rp = document.getElementById('source-panel-right');
+        if (rp && rp.classList.contains('collapsed')) { window.sourceTogglePanel('right'); }
+    });
+
+    // ── Folder pull ───────────────────────────────────────────────
+    document.getElementById('props-dir-pull-btn').addEventListener('click', function() {
+        if (!_currentDir) return;
+        if (!confirm('Pull all files under "' + _currentDir + '/" from GitHub and overwrite local copies?')) return;
+
+        var btn     = this;
+        var results = document.getElementById('props-dir-results');
+        btn.disabled    = true;
+        btn.textContent = 'Pulling\u2026';
+        results.style.display = '';
+        results.innerHTML = '<span style="color:var(--plat-text-muted)">Contacting GitHub\u2026</span>';
+
+        var fd = new FormData();
+        fd.append('csrf_token', <?= json_encode($csrfToken) ?>);
+        fd.append('dir', _currentDir);
+
+        fetch('/cms/source/pull-dir', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled    = false;
+                btn.textContent = '\u2193 Pull Folder from Repo';
+                if (!data.ok && !data.files) {
+                    results.innerHTML = '<span style="color:#dc2626">\u274c ' + (data.error || 'Unknown error') + '</span>';
+                    return;
+                }
+                if (data.error && (!data.files || data.files.length === 0)) {
+                    results.innerHTML = '<span style="color:#d97706">\u26a0 ' + data.error + '</span>';
+                    return;
+                }
+                var html = '';
+                var ok = 0, failed = 0, skipped = 0;
+                (data.files || []).forEach(function(f) {
+                    if (f.status === 'ok')          { ok++;      html += '<div style="color:#16a34a">\u2713 ' + f.path + '</div>'; }
+                    else if (f.status === 'skipped') { skipped++; html += '<div style="color:var(--plat-text-muted)">\u2014 ' + f.path + (f.error ? ' (' + f.error + ')' : '') + '</div>'; }
+                    else                             { failed++;   html += '<div style="color:#dc2626">\u274c ' + f.path + (f.error ? ': ' + f.error : '') + '</div>'; }
+                });
+                var summary = '<div style="font-weight:600;margin-bottom:.4rem;border-bottom:1px solid var(--plat-border);padding-bottom:.3rem;">'
+                    + ok + ' updated, ' + failed + ' failed, ' + skipped + ' skipped</div>';
+                results.innerHTML = summary + html;
+            })
+            .catch(function(err) {
+                btn.disabled    = false;
+                btn.textContent = '\u2193 Pull Folder from Repo';
+                results.innerHTML = '<span style="color:#dc2626">\u274c Network error: ' + err.message + '</span>';
+            });
+    });
 }());
 </script>
+
 <?php $content = ob_get_clean(); ?>
 <?php require __DIR__ . '/layout.php'; ?>
