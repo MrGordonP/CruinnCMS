@@ -16,7 +16,7 @@ class NativeForumProvider implements ForumProviderInterface
 
     public function listCategories(?string $viewerRole = null): array
     {
-        $role = $viewerRole ?? Auth::role();
+        $role = $viewerRole ?? Auth::role() ?? 'public';
         $allowed = $this->allowedRolesForViewer($role);
         $placeholders = implode(',', array_fill(0, count($allowed), '?'));
 

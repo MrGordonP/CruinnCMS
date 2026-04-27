@@ -121,7 +121,7 @@ class Router
                 // Instantiate controller and call action
                 [$controllerClass, $actionMethod] = $route['handler'];
                 $controller = new $controllerClass();
-                return call_user_func_array([$controller, $actionMethod], $params);
+                return call_user_func_array([$controller, $actionMethod], array_values($params));
             }
         }
 

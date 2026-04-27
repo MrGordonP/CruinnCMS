@@ -2,37 +2,71 @@
 /**
  * Platform Source Editor — /cms/source
  *
- * Two-pane layout: file tree (left) + code editor textarea (right).
+ * Three-pane layout: file tree (left, collapsible) + code editor (centre) + properties (right, collapsible).
  * Reads and writes actual CruinnCMS source files directly on disk.
  * No instance database involved.
  *
- * Variables: $groups (array), $activeFile (?string), $activeGroup (?string),
+ * Variables: $sourceFileTree (array), $groups (array), $activeFile (?string), $activeGroup (?string),
  *            $fileContent (?string), $fileError (?string),
  *            $savedFlash (?array), $csrfToken (string)
  */
+
+// Build file stat info for the properties panel
+$_fileStat = null;
+if ($activeFile !== null && $fileContent !== null) {
+    $rcRoot  = dirname(__DIR__, 3);
+    $absPath = realpath(str_starts_with($activeFile, 'public/')
+        ? CRUINN_PUBLIC . '/' . substr($activeFile, 7)
+        : $rcRoot . '/' . $activeFile);
+    if ($absPath && is_file($absPath)) {
+        $st = stat($absPath);
+        $_fileStat = [
+            'size'     => $st['size'],
+            'mtime'    => $st['mtime'],
+            'writable' => is_writable($absPath),
+            'ext'      => strtolower(pathinfo($activeFile, PATHINFO_EXTENSION)),
+        ];
+    }
+}
 ?>
 <?php ob_start(); ?>
 <div id="source-wrap">
 
-    <!-- ── File tree ──────────────────────────────────────────── -->
-    <div class="source-tree">
-        <?php foreach ($groups as $groupName => $files): ?>
-        <details<?= $groupName === ($activeGroup ?? null) ? ' open' : '' ?>>
-            <summary><?= htmlspecialchars($groupName, ENT_QUOTES, 'UTF-8') ?></summary>
-            <?php foreach ($files as $relPath => $displayName): ?>
-            <a href="/cms/source?file=<?= rawurlencode($relPath) ?>"
-               class="source-tree-file<?= $relPath === ($activeFile ?? null) ? ' active' : '' ?>"
-               title="<?= htmlspecialchars($relPath, ENT_QUOTES, 'UTF-8') ?>">
-                <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
-            </a>
-            <?php endforeach; ?>
-        </details>
-        <?php endforeach; ?>
+    <!-- ── Left: File tree ────────────────────────────────────── -->
+    <div class="source-panel source-panel-left" id="source-panel-left">
+        <div class="source-panel-header">
+            <span class="source-panel-title">Files</span>
+            <button type="button" class="source-panel-toggle" title="Collapse tree"
+                    onclick="sourceTogglePanel('left')">◀</button>
+        </div>
+        <div class="source-panel-body source-tree">
+        <?php
+        $_stActive = $activeFile ?? '';
+        $_stRender = function(array $entries) use (&$_stRender, $_stActive): void {
+            foreach ($entries as $_e) {
+                if ($_e['type'] === 'dir') {
+                    $_open = $_stActive !== '' && str_starts_with($_stActive, $_e['rel'] . '/');
+                    echo '<details' . ($_open ? ' open' : '') . '>';
+                    echo '<summary>' . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8') . '</summary>';
+                    $_stRender($_e['children']);
+                    echo '</details>';
+                } else {
+                    $_act = $_stActive === $_e['rel'];
+                    echo '<a href="/cms/source?file=' . rawurlencode($_e['rel']) . '"'
+                       . ' class="source-tree-file' . ($_act ? ' active' : '') . '"'
+                       . ' title="' . htmlspecialchars($_e['rel'], ENT_QUOTES, 'UTF-8') . '">'
+                       . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8')
+                       . '</a>';
+                }
+            }
+        };
+        $_stRender($sourceFileTree);
+        ?>
+        </div>
     </div>
 
-    <!-- ── Code pane ──────────────────────────────────────────── -->
+    <!-- ── Centre: Code pane ──────────────────────────────────── -->
     <div class="source-code-pane">
-
         <?php if (!empty($savedFlash)): ?>
         <div class="source-flash source-flash-<?= htmlspecialchars($savedFlash['type'], ENT_QUOTES, 'UTF-8') ?>">
             <?= htmlspecialchars($savedFlash['message'], ENT_QUOTES, 'UTF-8') ?>
@@ -136,7 +170,80 @@
 
         <?php endif; ?>
 
+    </div><!-- /.source-code-pane -->
+
+    <!-- ── Right: Properties panel ───────────────────────────── -->
+    <div class="source-panel source-panel-right" id="source-panel-right">
+        <div class="source-panel-header">
+            <button type="button" class="source-panel-toggle" title="Collapse properties"
+                    onclick="sourceTogglePanel('right')">▶</button>
+            <span class="source-panel-title">Properties</span>
+        </div>
+        <div class="source-panel-body source-props">
+            <?php if ($_fileStat !== null): ?>
+            <dl class="source-props-list">
+                <dt>Path</dt>
+                <dd class="source-props-path"><?= htmlspecialchars($activeFile, ENT_QUOTES, 'UTF-8') ?></dd>
+
+                <dt>Type</dt>
+                <dd><?= htmlspecialchars(strtoupper($_fileStat['ext']), ENT_QUOTES, 'UTF-8') ?></dd>
+
+                <dt>Size</dt>
+                <dd><?= number_format($_fileStat['size']) ?> bytes</dd>
+
+                <dt>Modified</dt>
+                <dd><?= date('Y-m-d H:i', $_fileStat['mtime']) ?></dd>
+
+                <dt>Writable</dt>
+                <dd>
+                    <?php if ($_fileStat['writable']): ?>
+                    <span class="source-props-badge source-props-ok">Yes</span>
+                    <?php else: ?>
+                    <span class="source-props-badge source-props-warn">Read-only</span>
+                    <?php endif; ?>
+                </dd>
+            </dl>
+            <?php else: ?>
+            <p class="source-props-empty">No file selected.</p>
+            <?php endif; ?>
+        </div>
     </div>
-</div>
+
+</div><!-- /#source-wrap -->
+
+<script>
+(function () {
+    var STORE_KEY_LEFT  = 'cms_source_panel_left';
+    var STORE_KEY_RIGHT = 'cms_source_panel_right';
+
+    function applyState(side, collapsed) {
+        var panel = document.getElementById('source-panel-' + side);
+        if (!panel) { return; }
+        var btn = panel.querySelector('.source-panel-toggle');
+        if (collapsed) {
+            panel.classList.add('collapsed');
+            btn.textContent = side === 'left' ? '▶' : '◀';
+            btn.title = 'Expand ' + (side === 'left' ? 'tree' : 'properties');
+        } else {
+            panel.classList.remove('collapsed');
+            btn.textContent = side === 'left' ? '◀' : '▶';
+            btn.title = 'Collapse ' + (side === 'left' ? 'tree' : 'properties');
+        }
+    }
+
+    window.sourceTogglePanel = function (side) {
+        var panel     = document.getElementById('source-panel-' + side);
+        var collapsed = !panel.classList.contains('collapsed');
+        applyState(side, collapsed);
+        try { localStorage.setItem(side === 'left' ? STORE_KEY_LEFT : STORE_KEY_RIGHT, collapsed ? '1' : '0'); } catch(e) {}
+    };
+
+    // Restore saved state
+    try {
+        applyState('left',  false);
+        applyState('right', false);
+    } catch(e) {}
+}());
+</script>
 <?php $content = ob_get_clean(); ?>
 <?php require __DIR__ . '/layout.php'; ?>

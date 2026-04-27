@@ -261,6 +261,60 @@
     color: #1d9e75;
 }
 
+/* ── Source file tree (platform editor) ───────────────────────────── */
+.editor-tree-list {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.editor-tree-dir {
+    margin: 0;
+}
+
+.editor-tree-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 3px;
+}
+
+.editor-tree-summary::-webkit-details-marker {
+    display: none;
+}
+
+.editor-tree-summary::before {
+    content: '▸';
+    font-size: 0.6rem;
+    color: #9ca3af;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 0.8em;
+    flex-shrink: 0;
+}
+
+.editor-tree-dir[open]>.editor-tree-summary::before {
+    transform: rotate(90deg);
+}
+
+.editor-tree-summary:hover {
+    background: #f3f4f6;
+}
+
+.editor-tree-children {
+    padding-left: 0.7rem;
+}
+
+.editor-tree-file {
+    padding-left: 1.1rem !important;
+}
+
 .editor-site-nav-subheading {
     display: block;
     font-size: 0.65rem;

@@ -49,9 +49,9 @@ class MailboxController extends BaseController
     // Folders
     // -------------------------------------------------------------------------
 
-    public function folders(array $params): void
+    public function folders(string $mailbox_id): void
     {
-        $mb = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb = $this->resolveMailbox((int) $mailbox_id);
 
         $folders = $this->mailbox->getFolders($mb);
 
@@ -66,10 +66,10 @@ class MailboxController extends BaseController
     // Message list
     // -------------------------------------------------------------------------
 
-    public function messages(array $params): void
+    public function messages(string $mailbox_id, string $folder): void
     {
-        $mb     = $this->resolveMailbox((int) $params['mailbox_id']);
-        $folder = urldecode($params['folder']);
+        $mb     = $this->resolveMailbox((int) $mailbox_id);
+        $folder = urldecode($folder);
         $page   = max(1, (int) ($this->query('page', 1)));
 
         $messages = $this->mailbox->getMessages($mb, $folder, Auth::userId(), Auth::role(), $page);
@@ -92,11 +92,11 @@ class MailboxController extends BaseController
     // Single message
     // -------------------------------------------------------------------------
 
-    public function message(array $params): void
+    public function message(string $mailbox_id, string $folder, string $uid): void
     {
-        $mb     = $this->resolveMailbox((int) $params['mailbox_id']);
-        $folder = urldecode($params['folder']);
-        $uid    = (int) $params['uid'];
+        $mb     = $this->resolveMailbox((int) $mailbox_id);
+        $folder = urldecode($folder);
+        $uid    = (int) $uid;
 
         $body    = $this->mailbox->fetchBody($mb, $folder, $uid);
         $tags    = $this->mailbox->getTagsForMessage($mb['id'], $folder, $uid);
@@ -123,21 +123,19 @@ class MailboxController extends BaseController
     // Mark read / unread (JSON)
     // -------------------------------------------------------------------------
 
-    public function markRead(array $params): void
+    public function markRead(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb  = $this->resolveMailbox((int) $params['mailbox_id']);
-        $uid = (int) $params['uid'];
-        $this->mailbox->markRead($mb['id'], urldecode($params['folder']), $uid, Auth::userId());
+        $mb  = $this->resolveMailbox((int) $mailbox_id);
+        $this->mailbox->markRead($mb['id'], urldecode($folder), (int) $uid, Auth::userId());
         $this->json(['ok' => true]);
     }
 
-    public function markUnread(array $params): void
+    public function markUnread(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb  = $this->resolveMailbox((int) $params['mailbox_id']);
-        $uid = (int) $params['uid'];
-        $this->mailbox->markUnread($mb['id'], urldecode($params['folder']), $uid, Auth::userId());
+        $mb  = $this->resolveMailbox((int) $mailbox_id);
+        $this->mailbox->markUnread($mb['id'], urldecode($folder), (int) $uid, Auth::userId());
         $this->json(['ok' => true]);
     }
 
@@ -145,39 +143,38 @@ class MailboxController extends BaseController
     // Move / Delete
     // -------------------------------------------------------------------------
 
-    public function move(array $params): void
+    public function move(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb       = $this->resolveMailbox((int) $params['mailbox_id']);
-        $folder   = urldecode($params['folder']);
-        $uid      = (int) $params['uid'];
+        $mb       = $this->resolveMailbox((int) $mailbox_id);
+        $folder   = urldecode($folder);
         $toFolder = $this->input('folder');
 
         if (!$toFolder) {
             $this->json(['error' => 'No target folder specified.'], 400);
         }
 
-        $this->mailbox->moveMessage($mb, $folder, $uid, $toFolder);
+        $this->mailbox->moveMessage($mb, $folder, (int) $uid, $toFolder);
         $this->json(['ok' => true]);
     }
 
-    public function delete(array $params): void
+    public function delete(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb   = $this->resolveMailbox((int) $params['mailbox_id']);
-        $this->mailbox->deleteMessage($mb, urldecode($params['folder']), (int) $params['uid']);
+        $mb = $this->resolveMailbox((int) $mailbox_id);
+        $this->mailbox->deleteMessage($mb, urldecode($folder), (int) $uid);
 
         Auth::flash('success', 'Message moved to Trash.');
-        $this->redirect('/mail/' . $mb['id'] . '/' . urlencode($params['folder']));
+        $this->redirect('/mail/' . $mb['id'] . '/' . urlencode($folder));
     }
 
     // -------------------------------------------------------------------------
     // Compose / Send
     // -------------------------------------------------------------------------
 
-    public function compose(array $params): void
+    public function compose(string $mailbox_id): void
     {
-        $mb = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb = $this->resolveMailbox((int) $mailbox_id);
 
         $this->render('mailbox/compose', [
             'mailbox'    => $mb,
@@ -187,10 +184,10 @@ class MailboxController extends BaseController
         ]);
     }
 
-    public function send(array $params): void
+    public function send(string $mailbox_id): void
     {
         CSRF::verify();
-        $mb = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb = $this->resolveMailbox((int) $mailbox_id);
 
         $data = [
             'to'        => $this->input('to'),
@@ -220,11 +217,11 @@ class MailboxController extends BaseController
     // Reply / Forward
     // -------------------------------------------------------------------------
 
-    public function reply(array $params): void
+    public function reply(string $mailbox_id, string $folder, string $uid): void
     {
-        $mb   = $this->resolveMailbox((int) $params['mailbox_id']);
-        $uid  = (int) $params['uid'];
-        $body = $this->mailbox->fetchBody($mb, urldecode($params['folder']), $uid);
+        $mb   = $this->resolveMailbox((int) $mailbox_id);
+        $uid  = (int) $uid;
+        $body = $this->mailbox->fetchBody($mb, urldecode($folder), $uid);
         $orig = $body['headers'];
 
         $this->render('mailbox/compose', [
@@ -240,10 +237,10 @@ class MailboxController extends BaseController
         ]);
     }
 
-    public function sendReply(array $params): void
+    public function sendReply(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb   = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb   = $this->resolveMailbox((int) $mailbox_id);
 
         $data = [
             'to'          => $this->input('to'),
@@ -266,14 +263,14 @@ class MailboxController extends BaseController
 
         $this->mailbox->send($mb, $data);
         Auth::flash('success', 'Reply sent.');
-        $this->redirect('/mail/' . $mb['id'] . '/' . urlencode($params['folder']));
+        $this->redirect('/mail/' . $mb['id'] . '/' . urlencode($folder));
     }
 
-    public function forward(array $params): void
+    public function forward(string $mailbox_id, string $folder, string $uid): void
     {
-        $mb   = $this->resolveMailbox((int) $params['mailbox_id']);
-        $uid  = (int) $params['uid'];
-        $body = $this->mailbox->fetchBody($mb, urldecode($params['folder']), $uid);
+        $mb   = $this->resolveMailbox((int) $mailbox_id);
+        $uid  = (int) $uid;
+        $body = $this->mailbox->fetchBody($mb, urldecode($folder), $uid);
         $orig = $body['headers'];
 
         $this->render('mailbox/compose', [
@@ -288,30 +285,30 @@ class MailboxController extends BaseController
         ]);
     }
 
-    public function sendForward(array $params): void
+    public function sendForward(string $mailbox_id, string $folder, string $uid): void
     {
-        $this->sendReply($params); // same logic, no In-Reply-To
+        $this->sendReply($mailbox_id, $folder, $uid); // same logic, no In-Reply-To
     }
 
     // -------------------------------------------------------------------------
     // Tags (JSON)
     // -------------------------------------------------------------------------
 
-    public function addTag(array $params): void
+    public function addTag(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb    = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb    = $this->resolveMailbox((int) $mailbox_id);
         $tagId = (int) $this->input('tag_id');
-        $this->mailbox->addTag($tagId, $mb['id'], urldecode($params['folder']), (int) $params['uid'], Auth::userId());
+        $this->mailbox->addTag($tagId, $mb['id'], urldecode($folder), (int) $uid, Auth::userId());
         $this->json(['ok' => true]);
     }
 
-    public function removeTag(array $params): void
+    public function removeTag(string $mailbox_id, string $folder, string $uid): void
     {
         CSRF::verify();
-        $mb    = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb    = $this->resolveMailbox((int) $mailbox_id);
         $tagId = (int) $this->input('tag_id');
-        $this->mailbox->removeTag($tagId, $mb['id'], urldecode($params['folder']), (int) $params['uid']);
+        $this->mailbox->removeTag($tagId, $mb['id'], urldecode($folder), (int) $uid);
         $this->json(['ok' => true]);
     }
 
@@ -319,9 +316,9 @@ class MailboxController extends BaseController
     // Search
     // -------------------------------------------------------------------------
 
-    public function search(array $params): void
+    public function search(string $mailbox_id): void
     {
-        $mb     = $this->resolveMailbox((int) $params['mailbox_id']);
+        $mb     = $this->resolveMailbox((int) $mailbox_id);
         $query  = trim($this->query('q', ''));
         $folder = $this->query('folder', 'INBOX');
 

@@ -1108,29 +1108,162 @@ code {
     overflow: hidden;
 }
 
-.source-tree {
-    width: 220px;
+/* ── Collapsible panels (left tree + right properties) ─────────── */
+.source-panel {
+    display: flex;
+    flex-direction: column;
     flex-shrink: 0;
-    overflow-y: auto;
+    min-height: 0;
     border-right: 1px solid var(--plat-border);
     background: var(--plat-bg-card);
+    transition: width 0.18s ease;
+    overflow: hidden;
 }
 
+.source-panel-right {
+    border-right: none;
+    border-left: 1px solid var(--plat-border);
+}
+
+.source-panel-left {
+    width: 220px;
+    min-width: 160px;
+}
+
+.source-panel-right {
+    width: 220px;
+    min-width: 160px;
+}
+
+.source-panel.collapsed {
+    width: 32px !important;
+    min-width: 32px;
+}
+
+.source-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    border-bottom: 2px solid var(--plat-accent);
+    background: var(--plat-dark);
+    flex-shrink: 0;
+}
+
+.source-panel-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #5dcaa5;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.source-panel-right .source-panel-title {
+    flex: 1;
+}
+
+.source-panel-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #5dcaa5;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.source-panel-right .source-panel-toggle {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.source-panel-toggle:hover {
+    color: var(--plat-accent);
+}
+
+.source-panel.collapsed .source-panel-body,
+.source-panel.collapsed .source-panel-title {
+    display: none;
+}
+
+.source-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ── File tree (inside left panel) ─────────────────────────────── */
 .source-tree details {
     border-bottom: 1px solid var(--plat-border);
 }
 
-.source-tree details summary {
-    padding: 0.42rem 0.85rem;
-    font-size: 0.69rem;
-    font-weight: 700;
+/* Top-level dirs: section header — subordinate to panel header */
+.source-tree>details>summary {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.67rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.07em;
     color: var(--plat-text-light);
     cursor: pointer;
     list-style: none;
     background: var(--plat-bg);
     user-select: none;
+    border-left: 3px solid transparent;
+}
+
+.source-tree>details[open]>summary {
+    border-left-color: var(--plat-accent);
+}
+
+/* Nested dirs: compact row */
+.source-tree details details {
+    border-bottom: none;
+}
+
+.source-tree details details>summary {
+    padding: 0.25rem 0.5rem 0.25rem 1.1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--plat-text);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    background: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.source-tree details details>summary::before {
+    content: '▸';
+    font-size: 0.6rem;
+    color: var(--plat-text-light);
+    transition: transform 0.15s;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.source-tree details details[open]>summary::before {
+    transform: rotate(90deg);
+}
+
+.source-tree details details>summary:hover {
+    color: var(--plat-accent);
+}
+
+.source-tree details details details>summary {
+    padding-left: 1.7rem;
+}
+
+.source-tree details details details details>summary {
+    padding-left: 2.3rem;
 }
 
 .source-tree details summary::-webkit-details-marker {
@@ -1154,6 +1287,22 @@ code {
     transition: background .1s, border-color .1s;
 }
 
+.source-tree>details>.source-tree-file {
+    padding-left: 1.25rem;
+}
+
+.source-tree>details>details>.source-tree-file {
+    padding-left: 1.7rem;
+}
+
+.source-tree>details>details>details>.source-tree-file {
+    padding-left: 2.3rem;
+}
+
+.source-tree>details>details>details>details>.source-tree-file {
+    padding-left: 2.9rem;
+}
+
 .source-tree-file:hover {
     background: var(--plat-bg);
     border-left-color: var(--plat-accent-lt);
@@ -1164,6 +1313,62 @@ code {
     border-left-color: var(--plat-accent);
     color: var(--plat-accent);
     font-weight: 600;
+}
+
+/* ── Properties panel (right) ──────────────────────────────────── */
+.source-props {
+    padding: 0.75rem;
+}
+
+.source-props-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.source-props-list dt {
+    font-weight: 600;
+    color: var(--plat-text-light);
+    white-space: nowrap;
+    padding-top: 0.05rem;
+}
+
+.source-props-list dd {
+    margin: 0;
+    color: var(--plat-text);
+    word-break: break-all;
+}
+
+.source-props-path {
+    font-family: 'Consolas', monospace;
+    font-size: 0.72rem;
+    color: var(--plat-text-light);
+}
+
+.source-props-badge {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.source-props-ok {
+    background: rgba(22, 163, 74, .1);
+    color: var(--plat-ok);
+}
+
+.source-props-warn {
+    background: rgba(220, 38, 38, .08);
+    color: var(--plat-err);
+}
+
+.source-props-empty {
+    font-size: 0.82rem;
+    color: var(--plat-text-light);
+    margin: 0;
 }
 
 .source-code-pane {

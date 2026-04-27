@@ -241,7 +241,11 @@ class PlatformController
 
         $db   = Database::getInstance();
         $user = $db->fetch(
-            "SELECT id FROM users WHERE role = 'admin' AND active = 1 ORDER BY id ASC LIMIT 1"
+            "SELECT u.id FROM users u
+             JOIN user_roles ur ON ur.user_id = u.id
+             JOIN roles r ON r.id = ur.role_id
+             WHERE r.slug = 'admin' AND u.active = 1
+             ORDER BY u.id ASC LIMIT 1"
         );
 
         if (!$user) {
@@ -546,6 +550,7 @@ class PlatformController
                  ORDER BY title ASC"
             );
             $navSourceGroups = $this->buildSourceFileGroups();
+            $sourceFileTree  = $this->buildSourceFileTree();
 
             // CSS files for nav
             $cssDir   = CRUINN_PUBLIC . '/css';
@@ -581,6 +586,7 @@ class PlatformController
                 'footerPages'          => [],
                 'sitePages'            => $sitePages,
                 'navSourceGroups'      => $navSourceGroups,
+                'sourceFileTree'       => $sourceFileTree,
                 'navTemplates'         => [],
                 'navMenus'             => [],
                 'navCssFiles'          => $cssFiles,
@@ -599,6 +605,7 @@ class PlatformController
                 'docHtmlBlock'         => $docHtmlBlock,
                 'docHeadBlock'         => $docHeadBlock,
                 'docBodyBlock'         => $docBodyBlock,
+                'contentSets'          => [],
             ]);
             return;
         }
@@ -624,14 +631,19 @@ class PlatformController
 
             // Silently log in as the first active admin user so editor AJAX routes pass Auth::requireRole
             $adminUser = $db->fetch(
-                "SELECT id FROM users WHERE role = 'admin' AND active = 1 ORDER BY id ASC LIMIT 1"
+                "SELECT u.id FROM users u
+                 JOIN user_roles ur ON ur.user_id = u.id
+                 JOIN roles r ON r.id = ur.role_id
+                 WHERE r.slug = 'admin' AND u.active = 1
+                 ORDER BY u.id ASC LIMIT 1"
             );
             if (!$adminUser) {
                 echo $this->view->render('platform/editor-picker', [
-                    'title'       => 'Editor',
-                    'username'    => PlatformAuth::username(),
-                    'editorReady' => false,
-                    'editorError' => 'No active admin user found in this instance.',
+                    'title'        => 'Editor',
+                    'username'     => PlatformAuth::username(),
+                    'editorReady'  => false,
+                    'editorError'  => 'No active admin user found in this instance.',
+                    'contentSets'  => [],
                 ]);
                 return;
             }
@@ -776,6 +788,12 @@ class PlatformController
         $templateCanvasCss     = '';
         $startInCodeView       = false;
         $htmlContent           = null;
+
+        try {
+            $contentSets = $db->fetchAll('SELECT id, name, slug, fields FROM content_sets ORDER BY name ASC');
+        } catch (\Throwable $e) {
+            $contentSets = [];
+        }
 
         // ── Load specific page if requested ─────────────────────────────
         if ($pageId !== null) {
@@ -968,6 +986,7 @@ class PlatformController
             'templateCanvasCss'    => $templateCanvasCss,
             'startInCodeView'      => $startInCodeView,
             'htmlContent'          => $htmlContent,
+            'contentSets'          => $contentSets,
             'isFileMode'           => isset($renderMode) && $renderMode === 'file',
             'docHtmlBlock'         => $docHtmlBlock ?? null,
             'docHeadBlock'         => $docHeadBlock ?? null,
@@ -1990,6 +2009,66 @@ class PlatformController
     }
 
     /**
+     * Build a nested filesystem tree for the platform source editor.
+     *
+     * Walks a fixed set of root directories under CRUINN_ROOT, filtering to
+     * editable file extensions and skipping non-source directories. Returns a
+     * nested array of entries shaped as:
+     *   ['name' => 'src', 'rel' => 'src', 'type' => 'dir', 'children' => [...]]
+     *   ['name' => 'App.php', 'rel' => 'src/App.php', 'type' => 'file']
+     *
+     * Within each level, directories sort before files; both groups are sorted
+     * case-insensitively by name.
+     */
+    private function buildSourceFileTree(): array
+    {
+        $root       = dirname(__DIR__, 3);
+        $rootDirs   = ['src', 'templates', 'config', 'schema', 'migrations', 'public', 'modules'];
+        $allowedExt = ['php', 'html', 'css', 'js', 'sql', 'md', 'json', 'txt'];
+        $skipDirs   = ['vendor', 'instance', 'storage', 'uploads', '.git', 'node_modules', '_template'];
+
+        $walk = function (string $absDir, string $relDir) use (&$walk, $allowedExt, $skipDirs): array {
+            $entries = [];
+            $items   = @scandir($absDir);
+            if (!$items) { return $entries; }
+
+            foreach ($items as $name) {
+                if ($name === '.' || $name === '..') { continue; }
+                $abs = $absDir . DIRECTORY_SEPARATOR . $name;
+                $rel = $relDir . '/' . $name;
+
+                if (is_dir($abs)) {
+                    if (in_array($name, $skipDirs, true)) { continue; }
+                    $children = $walk($abs, $rel);
+                    if ($children !== []) {
+                        $entries[] = ['name' => $name, 'rel' => $rel, 'type' => 'dir', 'children' => $children];
+                    }
+                } elseif (is_file($abs)) {
+                    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                    if (!in_array($ext, $allowedExt, true)) { continue; }
+                    $entries[] = ['name' => $name, 'rel' => $rel, 'type' => 'file'];
+                }
+            }
+
+            usort($entries, fn($a, $b) => $a['type'] === $b['type']
+                ? strnatcasecmp($a['name'], $b['name'])
+                : ($a['type'] === 'dir' ? -1 : 1));
+
+            return $entries;
+        };
+
+        $tree = [];
+        foreach ($rootDirs as $dir) {
+            $abs = $root . DIRECTORY_SEPARATOR . $dir;
+            if (!is_dir($abs)) { continue; }
+            $children = $walk($abs, $dir);
+            $tree[]   = ['name' => $dir, 'rel' => $dir, 'type' => 'dir', 'children' => $children];
+        }
+
+        return $tree;
+    }
+
+    /**
      * Resolve a render_file path to an absolute filesystem path.
      *
      * Two conventions are supported:
@@ -2057,15 +2136,16 @@ class PlatformController
         unset($_SESSION['_source_flash']);
 
         echo $this->view->render('platform/source-editor', [
-            'title'       => $activeFile ? 'Source — ' . basename($activeFile) : 'Source Editor',
-            'username'    => PlatformAuth::username(),
-            'groups'      => $groups,
-            'activeFile'  => $activeFile,
-            'activeGroup' => $activeGroup,
-            'fileContent' => $fileContent,
-            'fileError'   => $fileError,
-            'savedFlash'  => $savedFlash,
-            'csrfToken'   => \Cruinn\CSRF::getToken(),
+            'title'          => $activeFile ? 'Source — ' . basename($activeFile) : 'Source Editor',
+            'username'       => PlatformAuth::username(),
+            'groups'         => $groups,
+            'sourceFileTree' => $this->buildSourceFileTree(),
+            'activeFile'     => $activeFile,
+            'activeGroup'    => $activeGroup,
+            'fileContent'    => $fileContent,
+            'fileError'      => $fileError,
+            'savedFlash'     => $savedFlash,
+            'csrfToken'      => \Cruinn\CSRF::getToken(),
         ]);
     }
 

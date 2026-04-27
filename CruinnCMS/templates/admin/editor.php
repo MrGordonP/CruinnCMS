@@ -232,24 +232,38 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                             <?php endif; ?>
                         </div>
                     </div>
-                    <?php if (!empty($isPlatformMode) && !empty($navSourceGroups)): ?>
+                    <?php if (!empty($isPlatformMode) && !empty($sourceFileTree)): ?>
                     <?php
-                        // Determine the active render_file for highlighting
-                        $_activeRenderFile = $page['render_file'] ?? '';
+                        $_activeRel = '';
+                        if (!empty($page['render_file']) && str_starts_with($page['render_file'], '@cms/')) {
+                            $_activeRel = substr($page['render_file'], 5);
+                        }
+                        $_renderTree = function(array $entries) use (&$_renderTree, $_activeRel): void {
+                            foreach ($entries as $_e) {
+                                if ($_e['type'] === 'dir') {
+                                    $_open = $_activeRel !== '' && str_starts_with($_activeRel, $_e['rel'] . '/');
+                                    echo '<details class="editor-tree-dir"' . ($_open ? ' open' : '') . '>';
+                                    echo '<summary class="editor-tree-summary">' . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8') . '</summary>';
+                                    echo '<div class="editor-tree-children">';
+                                    $_renderTree($_e['children']);
+                                    echo '</div></details>';
+                                } else {
+                                    $_active = ($_activeRel === $_e['rel']);
+                                    echo '<a href="' . htmlspecialchars('/cms/editor?instance=__platform__&file=' . rawurlencode($_e['rel']), ENT_QUOTES, 'UTF-8') . '"'
+                                       . ' class="editor-site-nav-link editor-tree-file' . ($_active ? ' active' : '') . '"'
+                                       . ' title="' . htmlspecialchars($_e['rel'], ENT_QUOTES, 'UTF-8') . '">'
+                                       . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8')
+                                       . '</a>';
+                                }
+                            }
+                        };
                     ?>
-                    <?php foreach ($navSourceGroups as $_sgName => $_sgFiles): ?>
-                    <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')"><?= e($_sgName) ?> <span class="editor-group-chevron">▾</span></span>
-                        <div class="editor-site-nav-list">
-                            <?php foreach ($_sgFiles as $_sgRel => $_sgLabel): ?>
-                            <a href="<?= e('/cms/editor?instance=__platform__&file=' . rawurlencode($_sgRel)) ?>"
-                               class="editor-site-nav-link<?= $_activeRenderFile === '@cms/' . $_sgRel ? ' active' : '' ?>">
-                                <?= e($_sgLabel) ?>
-                            </a>
-                            <?php endforeach; ?>
+                    <div class="editor-site-nav-group editor-tree-root">
+                        <span class="editor-site-nav-label">Source Files</span>
+                        <div class="editor-site-nav-list editor-tree-list">
+                            <?php $_renderTree($sourceFileTree); ?>
                         </div>
                     </div>
-                    <?php endforeach; ?>
                     <?php endif; ?>
                     <?php if (!empty($headerPages)): ?>
                     <div class="editor-site-nav-group collapsed">

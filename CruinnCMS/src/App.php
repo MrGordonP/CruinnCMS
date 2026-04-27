@@ -81,9 +81,11 @@ class App
         ] : null);
         Template::addGlobal('flashes', Auth::getFlashes());
 
-        // Load dynamic navigation for the user's role
+        // Load dynamic navigation for the user's role.
+        // Skip when in platform editor mode — the platform DB has no user/role tables.
         $roleNavItems = [];
-        if (Auth::check() && Auth::roleLevel() > 0) {
+        $isPlatformSession = (($_SESSION['_platform_editor_instance'] ?? null) === '__platform__');
+        if (!$isPlatformSession && Auth::check() && Auth::roleLevel() > 0) {
             $navService = new Services\NavService();
             $primaryRoleId = Database::getInstance()->fetchColumn(
                 'SELECT role_id FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ? ORDER BY r.level DESC LIMIT 1',

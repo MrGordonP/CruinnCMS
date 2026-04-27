@@ -32,8 +32,8 @@ BlockRegistry::register([
         // Filter by visibility and min_role (mirrors get_menu() logic)
         if (!BlockRegistry::isEditMode()) {
             $loggedIn   = \Cruinn\Auth::check();
-            $userRole   = $loggedIn ? (\Cruinn\Auth::user()['role'] ?? 'editor') : null;
-            $roleLevels = ['public' => 0, 'editor' => 20, 'council' => 50, 'admin' => 100];
+            $userRole   = \Cruinn\Auth::role() ?? 'public';
+            $roleLevels = ['public' => 0, 'member' => 10, 'editor' => 20, 'council' => 50, 'admin' => 100];
             $userLevel  = $roleLevels[$userRole] ?? 0;
 
             $all = array_filter($all, function ($row) use ($loggedIn, $userLevel, $roleLevels) {

@@ -59,64 +59,66 @@ INSERT IGNORE INTO `platform_settings` (`key`, `value`, `group`) VALUES
 
 -- ============================================================
 -- PLATFORM BLOCK EDITOR TABLES
--- Mirrors the instance block-editor tables so the platform
--- itself can be edited with the same editor as any instance.
+-- Mirrors the instance block-editor schema (pages_index / pages /
+-- pages_draft) so the platform itself can be edited with the same
+-- editor as any instance.
+--
+-- Differences from instance_core.sql:
+--   - pages_index.created_by has no FK (no users table in platform DB)
+--   - render_mode includes 'block' (canonical value used by the editor)
 -- ============================================================
 
+CREATE TABLE IF NOT EXISTS `pages_index` (
+    `id`               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `title`            VARCHAR(255)  NOT NULL,
+    `slug`             VARCHAR(255)  NOT NULL,
+    `status`           ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
+    `template`         VARCHAR(50)   NOT NULL DEFAULT 'default',
+    `editor_mode`      ENUM('structured','freeform') NOT NULL DEFAULT 'structured',
+    `meta_description` VARCHAR(320)  NULL DEFAULT '',
+    `render_mode`      ENUM('block','html','file') NOT NULL DEFAULT 'block',
+    `body_html`        MEDIUMTEXT    NULL DEFAULT NULL,
+    `render_file`      VARCHAR(500)  NULL DEFAULT NULL,
+    `created_by`       INT UNSIGNED  NULL,
+    `created_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_platform_pages_index_slug` (`slug`),
+    KEY `idx_platform_pages_index_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Published page blocks — canonical published state
 CREATE TABLE IF NOT EXISTS `pages` (
-    `id`          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `title`       VARCHAR(255)  NOT NULL,
-    `slug`        VARCHAR(255)  NOT NULL,
-    `render_mode` ENUM('cruinn','html','file') NOT NULL DEFAULT 'cruinn',
-    `render_file` VARCHAR(500)  NULL DEFAULT NULL,
-    `body_html`   MEDIUMTEXT    NULL,
-    `status`      ENUM('published','draft','archived') NOT NULL DEFAULT 'draft',
-    `template`    VARCHAR(100)  NOT NULL DEFAULT 'none',
-    `created_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_platform_pages_slug` (`slug`)
+    `block_id`        VARCHAR(20)       NOT NULL,
+    `page_id`         INT UNSIGNED      NOT NULL,
+    `block_type`      VARCHAR(40)       NOT NULL,
+    `inner_html`      MEDIUMTEXT        NULL,
+    `css_props`       JSON              NULL,
+    `block_config`    JSON              NULL,
+    `sort_order`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `parent_block_id` VARCHAR(20)       NULL,
+    `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`      DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`block_id`),
+    KEY `idx_platform_pages_page` (`page_id`, `parent_block_id`, `sort_order`),
+    CONSTRAINT `fk_platform_pages_page_id` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `cruinn_page_state` (
-    `page_id`         INT UNSIGNED NOT NULL,
-    `current_edit_seq` INT UNSIGNED NOT NULL DEFAULT 1,
-    `max_edit_seq`    INT UNSIGNED NOT NULL DEFAULT 1,
-    `last_edited_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`page_id`),
-    CONSTRAINT `fk_platform_page_state_page` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `cruinn_blocks` (
-    `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `page_id`        INT UNSIGNED  NOT NULL,
-    `block_id`       VARCHAR(36)   NOT NULL,
-    `block_type`     VARCHAR(50)   NOT NULL,
-    `inner_html`     MEDIUMTEXT    NULL,
-    `css_props`      TEXT          NULL,
-    `block_config`   TEXT          NULL,
-    `sort_order`     INT           NOT NULL DEFAULT 0,
-    `parent_block_id` VARCHAR(36)  NULL DEFAULT NULL,
+-- Editor draft history — MAX(edit_seq) per page_id = current working state
+CREATE TABLE IF NOT EXISTS `pages_draft` (
+    `id`              INT UNSIGNED      NOT NULL AUTO_INCREMENT,
+    `page_id`         INT UNSIGNED      NOT NULL,
+    `edit_seq`        INT UNSIGNED      NOT NULL,
+    `block_id`        VARCHAR(20)       NOT NULL,
+    `block_type`      VARCHAR(40)       NOT NULL,
+    `inner_html`      MEDIUMTEXT        NULL,
+    `css_props`       JSON              NULL,
+    `block_config`    JSON              NULL,
+    `sort_order`      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+    `parent_block_id` VARCHAR(20)       NULL,
+    `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_platform_blocks_block_id` (`block_id`),
-    KEY `idx_platform_blocks_page` (`page_id`),
-    CONSTRAINT `fk_platform_blocks_page` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `cruinn_draft_blocks` (
-    `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `page_id`        INT UNSIGNED  NOT NULL,
-    `edit_seq`       INT UNSIGNED  NOT NULL DEFAULT 1,
-    `block_id`       VARCHAR(36)   NOT NULL,
-    `block_type`     VARCHAR(50)   NOT NULL,
-    `inner_html`     MEDIUMTEXT    NULL,
-    `css_props`      TEXT          NULL,
-    `block_config`   TEXT          NULL,
-    `sort_order`     INT           NOT NULL DEFAULT 0,
-    `parent_block_id` VARCHAR(36)  NULL DEFAULT NULL,
-    `is_active`      TINYINT(1)    NOT NULL DEFAULT 1,
-    `is_deletion`    TINYINT(1)    NOT NULL DEFAULT 0,
-    PRIMARY KEY (`id`),
-    KEY `idx_platform_draft_blocks_page_seq` (`page_id`, `edit_seq`, `is_active`),
-    CONSTRAINT `fk_platform_draft_blocks_page` FOREIGN KEY (`page_id`) REFERENCES `pages` (`id`) ON DELETE CASCADE
+    KEY `idx_platform_pages_draft_page_seq` (`page_id`, `edit_seq`),
+    KEY `idx_platform_pages_draft_block`    (`page_id`, `block_id`),
+    CONSTRAINT `fk_platform_pages_draft_page` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

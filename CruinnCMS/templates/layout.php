@@ -48,26 +48,6 @@ $_pageContent = $content ?? '';
 <a href="#main-content" class="skip-link">Skip to content</a>
 
 <?php
-$admin_user = \Cruinn\Auth::user();
-$is_admin = $admin_user && ($admin_user['role'] ?? '') === 'admin';
-?>
-<?php if ($is_admin): ?>
-<div class="admin-bar">
-    <div class="admin-bar-inner">
-        <a href="<?= url('/admin/dashboard') ?>" class="admin-bar-logo">Admin</a>
-        <nav class="admin-bar-nav">
-            <a href="<?= url('/admin/dashboard') ?>">Dashboard</a>
-            <a href="<?= url('/admin/settings/site') ?>">ACP</a>
-        </nav>
-        <div class="admin-bar-right">
-            <a href="<?= url('/admin/pages') ?>">Site Builder</a>
-            <a href="<?= url('/logout') ?>">Logout</a>
-        </div>
-    </div>
-</div>
-<?php endif; ?>
-
-<?php
 // Per-template layout settings (set by PageController for page routes)
 $_tplSettings = ($page_tpl ?? [])['settings'] ?? [];
 $_showHeader = $_tplSettings['show_header'] ?? true;
