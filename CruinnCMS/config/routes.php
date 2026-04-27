@@ -93,6 +93,7 @@ return function (Cruinn\Router $router) {
 
     // Admin � Users
     $router->get('/admin/users',              [UserAdminController::class, 'userList']);
+    $router->get('/admin/users/search',       [UserAdminController::class, 'userSearch']);
     $router->get('/admin/users/new',          [UserAdminController::class, 'userNew']);
     $router->post('/admin/users',             [UserAdminController::class, 'userCreate']);
     $router->get('/admin/users/{id}',         [UserAdminController::class, 'userShow']);
@@ -104,6 +105,8 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/users/{id}/roles/remove',  [UserAdminController::class, 'userRemoveRole']);
     $router->post('/admin/users/{id}/groups/add',    [UserAdminController::class, 'userAddGroup']);
     $router->post('/admin/users/{id}/groups/remove', [UserAdminController::class, 'userRemoveGroup']);
+    $router->post('/admin/users/{id}/link-member',   [UserAdminController::class, 'linkMember']);
+    $router->post('/admin/users/{id}/unlink-member', [UserAdminController::class, 'unlinkMember']);
 
     // Admin � Roles & Permissions
     $router->get('/admin/roles',                [RoleAdminController::class, 'index']);

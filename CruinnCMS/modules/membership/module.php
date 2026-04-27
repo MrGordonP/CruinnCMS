@@ -31,6 +31,11 @@ return [
         $router->get('/admin/membership/plans/{id}/edit',             [MembershipAdminController::class, 'editPlan']);
         $router->post('/admin/membership/plans/{id}',                 [MembershipAdminController::class, 'updatePlan']);
 
+        // User linking
+        $router->post('/admin/membership/members/{id}/link-user',   [MembershipAdminController::class, 'linkUser']);
+        $router->post('/admin/membership/members/{id}/unlink-user', [MembershipAdminController::class, 'unlinkUser']);
+        $router->get('/admin/membership/members/search',            [MembershipAdminController::class, 'searchMembers']);
+
         // Import
         $router->get('/admin/membership/import',                      [MembershipAdminController::class, 'importForm']);
         $router->post('/admin/membership/import',                     [MembershipAdminController::class, 'processImport']);

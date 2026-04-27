@@ -32,6 +32,14 @@ class MembershipAdminController extends BaseController
         $subscriptions = $member ? $this->membership->subscriptionsForMember($memberId) : [];
         $payments      = $member ? $this->membership->paymentsForMember($memberId) : [];
 
+        $linkedUser = null;
+        if ($member && !empty($member['user_id'])) {
+            $linkedUser = $this->db->fetch(
+                'SELECT id, display_name, email FROM users WHERE id = ?',
+                [(int) $member['user_id']]
+            );
+        }
+
         $this->renderAdmin('admin/membership/members/index', [
             'title'         => 'Membership',
             'members'       => $members,
@@ -42,6 +50,7 @@ class MembershipAdminController extends BaseController
             'memberId'      => $memberId,
             'subscriptions' => $subscriptions,
             'payments'      => $payments,
+            'linkedUser'    => $linkedUser,
             'errors'        => [],
             'breadcrumbs'   => [['Admin', '/admin'], ['Membership']],
         ]);
@@ -271,7 +280,7 @@ class MembershipAdminController extends BaseController
             $this->redirect('/admin/membership/import');
         }
 
-        $rawHeaders = fgetcsv($handle);
+        $rawHeaders = fgetcsv($handle, 0, ',', '"', '');
         if (!$rawHeaders) {
             fclose($handle);
             unlink($tmpDest);
@@ -283,14 +292,14 @@ class MembershipAdminController extends BaseController
 
         // Read up to 3 preview rows
         $preview = [];
-        while (count($preview) < 3 && ($row = fgetcsv($handle)) !== false) {
+        while (count($preview) < 3 && ($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
             if (count($row) === count($csvHeaders)) {
                 $preview[] = array_combine($csvHeaders, $row);
             }
         }
         // Count total data rows
         $totalRows = count($preview);
-        while (fgetcsv($handle) !== false) {
+        while (fgetcsv($handle, 0, ',', '"', '') !== false) {
             $totalRows++;
         }
         fclose($handle);
@@ -422,11 +431,11 @@ class MembershipAdminController extends BaseController
             $this->redirect('/admin/membership/import');
         }
 
-        $rawHeaders = fgetcsv($handle);
+        $rawHeaders = fgetcsv($handle, 0, ',', '"', '');
         $csvHeaders = $rawHeaders ? array_map(fn($h) => trim((string) $h), $rawHeaders) : [];
 
         $rows = [];
-        while (($row = fgetcsv($handle)) !== false) {
+        while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
             if (count($row) !== count($csvHeaders)) {
                 continue;
             }
@@ -555,10 +564,95 @@ class MembershipAdminController extends BaseController
         $this->redirect('/admin/membership/plans');
     }
 
+    public function searchMembers(): void
+    {
+        Auth::requireRole('admin');
+        $q = trim((string) $this->query('q', ''));
+        if (strlen($q) < 2) {
+            $this->json([]);
+        }
+        $like = '%' . $q . '%';
+        $rows = $this->db->fetchAll(
+            'SELECT id, forenames, surnames, email, membership_number, status
+             FROM members
+             WHERE forenames LIKE ? OR surnames LIKE ? OR email LIKE ? OR membership_number LIKE ?
+             ORDER BY surnames ASC, forenames ASC LIMIT 10',
+            [$like, $like, $like, $like]
+        );
+        $this->json(array_values(array_map(fn($r) => [
+            'id'                => (int) $r['id'],
+            'display_name'      => trim($r['forenames'] . ' ' . $r['surnames']),
+            'email'             => $r['email'],
+            'membership_number' => $r['membership_number'] ?? '',
+            'status'            => $r['status'],
+        ], $rows)));
+    }
+
+    public function linkUser(int $id): void
+    {
+        Auth::requireRole('admin');
+
+        $member = $this->membership->findById($id);
+        if (!$member) {
+            Auth::flash('error', 'Member not found.');
+            $this->redirect('/admin/membership');
+            return;
+        }
+
+        $q = trim((string) $this->input('user_search', ''));
+        if ($q === '') {
+            Auth::flash('error', 'Enter a user email or display name.');
+            $this->redirect('/admin/membership?member=' . $id);
+            return;
+        }
+
+        $user = $this->db->fetch(
+            'SELECT id, display_name, email FROM users WHERE email = ? OR display_name = ? LIMIT 1',
+            [strtolower($q), $q]
+        );
+        if (!$user) {
+            Auth::flash('error', 'No user found matching "' . htmlspecialchars($q, ENT_QUOTES) . '".');
+            $this->redirect('/admin/membership?member=' . $id);
+            return;
+        }
+
+        $conflict = $this->db->fetch(
+            'SELECT id FROM members WHERE user_id = ? AND id != ?',
+            [(int) $user['id'], $id]
+        );
+        if ($conflict) {
+            Auth::flash('error', 'That user is already linked to a different member record.');
+            $this->redirect('/admin/membership?member=' . $id);
+            return;
+        }
+
+        $this->membership->linkUser($id, (int) $user['id']);
+        $this->logActivity('update', 'member', $id, 'Linked to user #' . $user['id'] . ' (' . $user['email'] . ').');
+        Auth::flash('success', 'User account linked to member.');
+        $this->redirect('/admin/membership?member=' . $id);
+    }
+
+    public function unlinkUser(int $id): void
+    {
+        Auth::requireRole('admin');
+
+        $member = $this->membership->findById($id);
+        if (!$member) {
+            Auth::flash('error', 'Member not found.');
+            $this->redirect('/admin/membership');
+            return;
+        }
+
+        $this->membership->unlinkUser($id);
+        $this->logActivity('update', 'member', $id, 'User account unlinked.');
+        Auth::flash('success', 'User account unlinked.');
+        $this->redirect('/admin/membership?member=' . $id);
+    }
+
     private function memberPayload(): array
     {
         return [
-            'user_id'           => $this->input('user_id', ''),
+            'user_id'           => isset($_POST['user_id']) && $_POST['user_id'] !== '' ? (string)$_POST['user_id'] : '',
             'membership_number' => $this->input('membership_number', ''),
             'forenames'         => $this->input('forenames', ''),
             'surnames'          => $this->input('surnames', ''),

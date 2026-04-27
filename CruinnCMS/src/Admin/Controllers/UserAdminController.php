@@ -129,32 +129,28 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
             return;
         }
 
-        // Check if user has a linked member record (membership module optional)
         $member = null;
         try {
-            $member = $this->db->fetch(
-                'SELECT * FROM members WHERE user_id = ?',
-                [$id]
-            );
-        } catch (\PDOException $e) {
-            // members table doesn't exist (membership module not installed)
-        }
+            $member = $this->db->fetch('SELECT * FROM members WHERE user_id = ?', [$id]);
+        } catch (\PDOException $e) {}
 
-        // Recent activity
         $activity = $this->db->fetchAll(
             'SELECT * FROM activity_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 25',
             [$id]
         );
 
         $roleService = new RoleService();
-        $this->renderAdmin('admin/users/show', [
-            'title'       => $user['display_name'],
-            'user'        => $user,
-            'member'      => $member,
-            'activity'    => $activity,
-            'userRoles'   => $roleService->getUserRoles($id),
-            'userGroups'  => $roleService->getUserGroups($id),
-            'breadcrumbs' => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
+        $this->renderAdmin('admin/users/edit', [
+            'title'             => $user['display_name'],
+            'user'              => $user,
+            'member'            => $member,
+            'activity'          => $activity,
+            'userRoles'         => $roleService->getUserRoles($id),
+            'rolesNotAssigned'  => $roleService->getRolesNotAssignedToUser($id),
+            'userGroups'        => $roleService->getUserGroups($id),
+            'groupsNotAssigned' => $roleService->getGroupsNotAssignedToUser($id),
+            'errors'            => [],
+            'breadcrumbs'       => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
         ]);
     }
 
@@ -243,28 +239,11 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
     }
 
     /**
-     * GET /admin/users/{id}/edit — Edit user form.
+     * GET /admin/users/{id}/edit — Redirects to profile page.
      */
     public function userEdit(int $id): void
     {
-        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [$id]);
-        if (!$user) {
-            http_response_code(404);
-            $this->render('errors/404');
-            return;
-        }
-
-        $roleService = new RoleService();
-        $this->renderAdmin('admin/users/edit', [
-            'title'             => 'Edit User — ' . $user['display_name'],
-            'user'              => $user,
-            'userRoles'         => $roleService->getUserRoles($id),
-            'rolesNotAssigned'  => $roleService->getRolesNotAssignedToUser($id),
-            'userGroups'        => $roleService->getUserGroups($id),
-            'groupsNotAssigned' => $roleService->getGroupsNotAssignedToUser($id),
-            'errors'            => [],
-            'breadcrumbs'       => [['Admin', '/admin'], ['Users', '/admin/users'], [$user['display_name']]],
-        ]);
+        $this->redirect("/admin/users/{$id}");
     }
 
     /**
@@ -321,9 +300,14 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
 
         if ($errors) {
             $data['id'] = $id;
+            $member = null;
+            try { $member = $this->db->fetch('SELECT * FROM members WHERE user_id = ?', [$id]); } catch (\PDOException $e) {}
+            $activity = $this->db->fetchAll('SELECT * FROM activity_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 25', [$id]);
             $this->renderAdmin('admin/users/edit', [
                 'title'             => 'Edit User — ' . $user['display_name'],
                 'user'              => $data,
+                'member'            => $member,
+                'activity'          => $activity,
                 'userRoles'         => $roleService->getUserRoles($id),
                 'rolesNotAssigned'  => $roleService->getRolesNotAssignedToUser($id),
                 'userGroups'        => $roleService->getUserGroups($id),
@@ -464,5 +448,92 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
         $roleService = new RoleService();
         $roleService->removeGroup($id, $groupId);
         echo json_encode(['ok' => true, 'groups' => $roleService->getUserGroups($id)]);
+    }
+
+    /**
+     * GET /admin/users/search?q= — AJAX user typeahead.
+     */
+    public function userSearch(): void
+    {
+        Auth::requireRole('admin');
+        $q = trim((string) $this->query('q', ''));
+        if (strlen($q) < 2) {
+            $this->json([]);
+        }
+        $like = '%' . $q . '%';
+        $rows = $this->db->fetchAll(
+            'SELECT id, display_name, email FROM users
+             WHERE display_name LIKE ? OR email LIKE ?
+             ORDER BY display_name ASC LIMIT 10',
+            [$like, $like]
+        );
+        $this->json(array_values(array_map(fn($r) => [
+            'id'           => (int) $r['id'],
+            'display_name' => $r['display_name'],
+            'email'        => $r['email'],
+        ], $rows)));
+    }
+
+    /** POST /admin/users/{id}/link-member */
+    public function linkMember(int $id): void
+    {
+        Auth::requireRole('admin');
+
+        $q = trim((string) $this->input('member_search', ''));
+        if ($q === '') {
+            Auth::flash('error', 'Enter a membership number or email.');
+            $this->redirect("/admin/users/{$id}");
+            return;
+        }
+
+        try {
+            $member = $this->db->fetch(
+                'SELECT * FROM members WHERE membership_number = ? OR email = ? LIMIT 1',
+                [$q, strtolower($q)]
+            );
+        } catch (\PDOException $e) {
+            Auth::flash('error', 'Membership module is not installed.');
+            $this->redirect("/admin/users/{$id}");
+            return;
+        }
+
+        if (!$member) {
+            Auth::flash('error', 'No member found with that membership number or email.');
+            $this->redirect("/admin/users/{$id}");
+            return;
+        }
+
+        if (!empty($member['user_id']) && (int)$member['user_id'] !== $id) {
+            Auth::flash('error', 'That member is already linked to a different user account.');
+            $this->redirect("/admin/users/{$id}");
+            return;
+        }
+
+        $this->db->update('members', ['user_id' => $id], 'id = ?', [$member['id']]);
+        $this->logActivity('update', 'member', $member['id'], "Linked to user #{$id}.");
+        Auth::flash('success', 'Member record linked to this user.');
+        $this->redirect("/admin/users/{$id}");
+    }
+
+    /** POST /admin/users/{id}/unlink-member */
+    public function unlinkMember(int $id): void
+    {
+        Auth::requireRole('admin');
+
+        try {
+            $member = $this->db->fetch('SELECT id FROM members WHERE user_id = ?', [$id]);
+        } catch (\PDOException $e) {
+            Auth::flash('error', 'Membership module is not installed.');
+            $this->redirect("/admin/users/{$id}");
+            return;
+        }
+
+        if ($member) {
+            $this->db->update('members', ['user_id' => null], 'id = ?', [$member['id']]);
+            $this->logActivity('update', 'member', $member['id'], "Unlinked from user #{$id}.");
+        }
+
+        Auth::flash('success', 'Member link removed.');
+        $this->redirect("/admin/users/{$id}");
     }
 }

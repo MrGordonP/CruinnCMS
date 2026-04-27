@@ -328,6 +328,16 @@ class MembershipService
         return $paymentId;
     }
 
+    public function linkUser(int $memberId, int $userId): void
+    {
+        $this->db->update('members', ['user_id' => $userId], 'id = ?', [$memberId]);
+    }
+
+    public function unlinkUser(int $memberId): void
+    {
+        $this->db->update('members', ['user_id' => null], 'id = ?', [$memberId]);
+    }
+
     public function markPaid(int $subscriptionId, ?string $reference = null): void
     {
         $this->db->update('membership_subscriptions', [
