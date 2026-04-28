@@ -1631,50 +1631,41 @@ html.platform-sidebar-collapsed .platform-sidebar {
 /* ── Source editor: centre pane collapse (PanelCollapse.js) ─── */
 .source-code-pane {
     transition: flex 0.18s ease, width 0.18s ease;
+    position: relative;
+}
+
+/* Centre toggle button — always visible, sits at top-left of the pane */
+#source-panel-centre-toggle {
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    transform: translateY(-50%);
+    z-index: 2;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--plat-text-muted, #888);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.25rem;
+    line-height: 1;
+    border-radius: 3px;
+    transition: color .12s, background .12s;
+}
+
+#source-panel-centre-toggle:hover {
+    color: var(--plat-accent, #1d9e75);
+    background: rgba(29, 158, 117, .08);
 }
 
 .source-code-pane.collapsed {
     flex: 0 0 32px !important;
     width: 32px;
     min-width: 32px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .source-code-pane.collapsed .source-code-form,
 .source-code-pane.collapsed .source-flash,
 .source-code-pane.collapsed .source-empty {
     display: none;
-}
-
-.source-code-pane.collapsed .source-code-toolbar {
-    flex-direction: row;
-    padding: 0;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 32px;
-    border-bottom: none;
-    border-right: 1px solid var(--plat-border);
-}
-
-/* Hide everything in the toolbar except the toggle button when collapsed */
-.source-code-pane.collapsed .source-code-path,
-.source-code-pane.collapsed .source-toolbar-actions {
-    display: none;
-}
-
-/* Centre toggle button in the source toolbar */
-#source-panel-centre-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #5dcaa5;
-    font-size: 0.65rem;
-    padding: 0.1rem 0.2rem;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-#source-panel-centre-toggle:hover {
-    color: var(--plat-accent);
 }

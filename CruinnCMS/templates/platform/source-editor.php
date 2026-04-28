@@ -71,6 +71,7 @@ if ($activeFile !== null && $fileContent !== null) {
 
     <!-- ── Centre: Code pane ──────────────────────────────────── -->
     <div class="source-code-pane" id="source-code-pane">
+        <button type="button" id="source-panel-centre-toggle" class="source-panel-toggle" title="Collapse editor">&#x25C0;</button>
         <?php if (!empty($savedFlash)): ?>
         <div class="source-flash source-flash-<?= htmlspecialchars($savedFlash['type'], ENT_QUOTES, 'UTF-8') ?>">
             <?= htmlspecialchars($savedFlash['message'], ENT_QUOTES, 'UTF-8') ?>
@@ -86,7 +87,6 @@ if ($activeFile !== null && $fileContent !== null) {
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
             <input type="hidden" name="file" value="<?= htmlspecialchars($activeFile, ENT_QUOTES, 'UTF-8') ?>">
             <div class="source-code-toolbar">
-                <button type="button" id="source-panel-centre-toggle" class="source-panel-toggle" title="Collapse editor">&#x25BC;</button>
                 <span class="source-code-path"><?= htmlspecialchars($activeFile, ENT_QUOTES, 'UTF-8') ?></span>
                 <div class="source-toolbar-actions">
                     <?php if ($canPreview): ?>
