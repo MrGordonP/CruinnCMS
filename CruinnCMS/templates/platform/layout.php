@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="/css/platform.css">
 </head>
 <body class="platform-body<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/editor') ? ' platform-editor-page' : '' ?>">
-<script>document.documentElement.classList.add('platform-layout-wide');</script>
-<div class="platform-wrap"><aside class="platform-sidebar"><div class="platform-sidebar-hero"><a href="/cms/dashboard"><img src="/brand/cruinn-favicon.svg" alt="Cruinn CMS">
+<script>document.documentElement.classList.add('platform-layout-wide');if(window.innerWidth>=1024&&localStorage.getItem('platform-sidebar-collapsed')==='1')document.documentElement.classList.add('platform-sidebar-collapsed');</script>
+<div class="platform-wrap"><div class="platform-sidebar-backdrop" id="platform-sidebar-backdrop"></div><aside class="platform-sidebar" id="platform-sidebar"><div class="platform-sidebar-hero"><a href="/cms/dashboard"><img src="/brand/cruinn-favicon.svg" alt="Cruinn CMS">
 </a>
 <div class="platform-sidebar-wordmark">
     <span class="platform-sidebar-wm-name"><span>CRUINN</span><span class="platform-sidebar-wm-cms">CMS</span>
@@ -87,7 +87,7 @@
 <?php endif; ?>
 </aside>
 <div class="platform-right"><div class="platform-bar"><div class="platform-bar-inner"><?php if (!empty($username)): ?>
-<div class="platform-bar-right"><span class="platform-bar-user"><span>👤</span>
+<div class="platform-bar-right"><button class="platform-sidebar-toggle" id="platform-sidebar-btn" aria-label="Toggle navigation" aria-expanded="true" title="Toggle sidebar">&#9776;</button><span class="platform-bar-user"><span>👤</span>
 
 <?= e($username) ?></span>
 <button class="platform-width-toggle" id="platform-width-btn" title="Toggle layout width"
@@ -121,5 +121,72 @@
 <footer class="platform-footer"><span>Built with</span>
 <a href="https://cruinncms.com" target="_blank" rel="noopener"><span>Cruinn CMS</span></a>
 </footer>
+<script>
+(function () {
+    var sidebar = document.getElementById('platform-sidebar');
+    var backdrop = document.getElementById('platform-sidebar-backdrop');
+    var btn = document.getElementById('platform-sidebar-btn');
+    var DESKTOP_BP = 1024;
+
+    function isDesktop() {
+        return window.innerWidth >= DESKTOP_BP;
+    }
+
+    function syncButtonState() {
+        if (!btn) return;
+        if (isDesktop()) {
+            var collapsed = document.documentElement.classList.contains('platform-sidebar-collapsed');
+            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        } else {
+            btn.setAttribute('aria-expanded', sidebar && sidebar.classList.contains('open') ? 'true' : 'false');
+        }
+    }
+
+    function closeMobileSidebar() {
+        if (sidebar) sidebar.classList.remove('open');
+        if (backdrop) backdrop.classList.remove('active');
+        syncButtonState();
+    }
+
+    if (btn) {
+        btn.addEventListener('click', function () {
+            if (isDesktop()) {
+                var collapsed = document.documentElement.classList.toggle('platform-sidebar-collapsed');
+                localStorage.setItem('platform-sidebar-collapsed', collapsed ? '1' : '0');
+                syncButtonState();
+                return;
+            }
+
+            if (sidebar) {
+                var open = sidebar.classList.toggle('open');
+                if (backdrop) backdrop.classList.toggle('active', open);
+            }
+            syncButtonState();
+        });
+    }
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    if (sidebar) {
+        sidebar.querySelectorAll('a').forEach(function (a) {
+            a.addEventListener('click', function () {
+                if (!isDesktop()) closeMobileSidebar();
+            });
+        });
+    }
+
+    window.addEventListener('resize', function () {
+        if (isDesktop()) {
+            if (sidebar) sidebar.classList.remove('open');
+            if (backdrop) backdrop.classList.remove('active');
+        }
+        syncButtonState();
+    });
+
+    syncButtonState();
+}());
+</script>
 </body>
 </html>

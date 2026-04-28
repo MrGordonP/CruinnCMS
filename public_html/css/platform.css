@@ -117,7 +117,8 @@
 .platform-bar-right {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
+    gap: .75rem;
     width: 100%;
     font-size: 0.875rem;
 }
@@ -125,6 +126,7 @@
 .platform-bar-user {
     color: var(--plat-cream);
     opacity: .7;
+    margin-right: auto;
 }
 
 /* ── Layout width toggle ─────────────────────────────────────── */
@@ -1524,4 +1526,104 @@ code {
     border: none;
     background: #fff;
     min-width: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Responsive Sidebar — collapseable (desktop) + off-canvas (mobile/tablet)
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Sidebar toggle button (in topbar) ─────────────────────── */
+.platform-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--plat-cream);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 0.3rem 0.55rem;
+    border-radius: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    opacity: .7;
+    transition: background .15s, opacity .15s;
+}
+
+.platform-sidebar-toggle:hover {
+    background: rgba(255, 255, 255, .12);
+    opacity: 1;
+}
+
+/* ── Sidebar: transition for smooth collapse ────────────────── */
+.platform-sidebar {
+    overflow: hidden;
+    transition: width .25s ease;
+}
+
+/* ── Desktop collapse: toggled via html.platform-sidebar-collapsed ── */
+html.platform-sidebar-collapsed .platform-sidebar {
+    width: 0;
+    border-right: none;
+}
+
+/* ── Backdrop — only visible on mobile/tablet ───────────────── */
+.platform-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 199;
+}
+
+.platform-sidebar-backdrop.active {
+    display: block;
+}
+
+@media (min-width: 1024px) {
+    .platform-sidebar-backdrop {
+        display: none !important;
+    }
+}
+
+/* ── Mobile / Tablet: off-canvas drawer ─────────────────────── */
+@media (max-width: 1023px) {
+    /* Sidebar leaves flex flow — becomes a fixed overlay drawer */
+    .platform-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 200;
+        width: 260px !important;
+        overflow: hidden;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        border-right: 1px solid rgba(29, 158, 117, .2) !important;
+    }
+
+    .platform-sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Desktop collapse class has no effect on mobile */
+    html.platform-sidebar-collapsed .platform-sidebar {
+        width: 260px !important;
+    }
+
+    .platform-content {
+        padding: 1.25rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .platform-content {
+        padding: 1rem 0.75rem;
+    }
+
+    .platform-page-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
 }
