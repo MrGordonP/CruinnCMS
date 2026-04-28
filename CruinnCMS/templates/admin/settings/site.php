@@ -44,7 +44,7 @@
                 <input type="text" id="site_logo" name="site_logo" class="form-input"
                        value="<?= e($settings['site.logo'] ?? '') ?>"
                        placeholder="/storage/…/logo.png">
-                <button type="button" class="btn btn-small" onclick="Cruinn.openMediaBrowser(function(url){ document.getElementById('site_logo').value=url; var p=document.getElementById('site_logo_preview'); p.src=url; p.style.display='block'; })">Browse…</button>
+                <button type="button" class="btn btn-small" data-media-input="site_logo" data-media-preview="site_logo_preview">Browse…</button>
             </div>
             <?php if (!empty($settings['site.logo'])): ?>
             <img src="<?= e($settings['site.logo']) ?>" alt="Logo preview" id="site_logo_preview" style="max-height:60px;margin-top:6px;display:block;">
@@ -58,7 +58,7 @@
                 <input type="text" id="site_banner" name="site_banner" class="form-input"
                        value="<?= e($settings['site.banner'] ?? '') ?>"
                        placeholder="/storage/…/banner.jpg">
-                <button type="button" class="btn btn-small" onclick="Cruinn.openMediaBrowser(function(url){ document.getElementById('site_banner').value=url; var p=document.getElementById('site_banner_preview'); p.src=url; p.style.display='block'; })">Browse…</button>
+                <button type="button" class="btn btn-small" data-media-input="site_banner" data-media-preview="site_banner_preview">Browse…</button>
             </div>
             <?php if (!empty($settings['site.banner'])): ?>
             <img src="<?= e($settings['site.banner']) ?>" alt="Banner preview" id="site_banner_preview" style="max-height:60px;margin-top:6px;display:block;">

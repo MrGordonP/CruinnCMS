@@ -6,7 +6,7 @@
 <div class="acp-db-actions" style="margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
     <form method="post" action="<?= url('/admin/settings/database/optimize') ?>" style="display:inline;">
         <?= csrf_field() ?>
-        <button type="submit" class="btn btn-secondary" onclick="return confirm('Optimize all tables?')">🔧 Optimize Tables</button>
+        <button type="submit" class="btn btn-secondary" data-confirm="Optimize all tables?">🔧 Optimize Tables</button>
     </form>
     <a href="<?= url('/admin/settings/database/export') ?>" class="btn btn-secondary">📥 Export Database (SQL)</a>
     <form method="post" action="<?= url('/admin/settings/database/export-instance') ?>" style="display:inline;">
@@ -19,7 +19,7 @@
     <form method="post" action="<?= url('/admin/settings/database/run-queue') ?>" style="display:inline;">
         <?= csrf_field() ?>
         <button type="submit" class="btn btn-success"
-                onclick="return confirm('Run the email queue processor now? This will send up to 200 queued emails.')"
+                data-confirm="Run the email queue processor now? This will send up to 200 queued emails."
                 title="Manually drain the email queue — use this when cron is not yet configured">
             ✉️ Run Email Queue Now
         </button>

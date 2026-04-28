@@ -46,7 +46,7 @@ $formAction  = $selectedId ? '/admin/roles/' . $selectedId : '/admin/roles';
                     <button type="submit" class="btn btn-outline btn-small">Clone</button>
                 </form>
                 <form method="post" action="/admin/roles/<?= $selectedId ?>/delete" style="display:inline"
-                      onsubmit="return confirm('Delete role \'<?= e($role['name']) ?>\'?')"><?= csrf_field() ?>
+                      data-confirm="Delete role '<?= e($role['name']) ?>'?"><?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger btn-small">Delete</button>
                 </form>
                 <?php endif; ?>

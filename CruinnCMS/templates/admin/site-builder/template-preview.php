@@ -26,7 +26,7 @@ $bodyBlocks = $bodyBlocks ?? [];
 <div style="background:#1a1a2e;color:#fff;padding:8px 20px;text-align:center;font-size:14px;">
     Template Preview: <strong><?= e($tpl['name']) ?></strong>
     &nbsp;&mdash;&nbsp;
-    <a href="#" onclick="window.close(); return false;" style="color:#60a5fa;">&larr; Close Preview</a>
+    <a href="#" data-action="window-close" style="color:#60a5fa;">&larr; Close Preview</a>
 </div>
 
 <div class="page-content <?= e($tplClass) ?><?= $widthClass ?>">

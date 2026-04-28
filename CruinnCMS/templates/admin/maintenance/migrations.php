@@ -6,6 +6,7 @@
 $tab = 'maintenance';
 include dirname(__DIR__) . '/settings/_tabs.php';
 \Cruinn\Template::requireCss('admin-acp.css');
+\Cruinn\Template::requireJs('maintenance-migrations.js');
 ?>
 
 <nav class="sub-tabs" style="display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid #e5e7eb;padding-bottom:.75rem;">
@@ -54,7 +55,7 @@ include dirname(__DIR__) . '/settings/_tabs.php';
 <?php if ($pending > 0): ?>
 <form method="POST" action="/admin/maintenance/migrations" style="margin-bottom:2rem;">
     <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
-    <button type="submit" class="btn btn-primary" onclick="this.disabled=true;this.textContent='Applying…';this.form.submit();">
+    <button type="submit" class="btn btn-primary" id="admin-migrations-apply">
         Apply <?= (int)$pending ?> pending migration<?= $pending !== 1 ? 's' : '' ?>
     </button>
 </form>

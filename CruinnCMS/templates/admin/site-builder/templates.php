@@ -52,7 +52,7 @@
                           style="display:inline">
                         <?= csrf_field() ?>
                         <button type="submit" class="btn btn-small btn-danger"
-                                onclick="return confirm('Delete template \'<?= e($tpl['name']) ?>\'?')">Delete</button>
+                                data-confirm="Delete template '<?= e($tpl['name']) ?>'?">Delete</button>
                     </form>
                 <?php endif; ?>
             </td>
@@ -115,16 +115,6 @@
     </form>
 </div>
 
-<script>
-(function () {
-    var radios = document.querySelectorAll('input[name="template_type"]');
-    var pageFields = document.getElementById('tpl_page_fields');
-    function toggle() {
-        var isContent = document.querySelector('input[name="template_type"]:checked').value === 'content';
-        pageFields.style.display = isContent ? 'none' : '';
-    }
-    radios.forEach(function (r) { r.addEventListener('change', toggle); });
-}());
-</script>
+<?php \Cruinn\Template::requireJs('templates.js'); ?>
 
 <?php include __DIR__ . '/_tabs_close.php'; ?>

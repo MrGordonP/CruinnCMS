@@ -38,7 +38,7 @@ $formAction = $selectedId ? '/admin/groups/' . $selectedId : '/admin/groups';
             <span class="pl-main-title"><?= e($group['name']) ?></span>
             <div class="pl-main-toolbar-actions">
                 <form method="post" action="/admin/groups/<?= $selectedId ?>/delete" style="display:inline"
-                      onsubmit="return confirm('Delete group \'<?= e($group['name']) ?>\'? Members will be unlinked.')"><?= csrf_field() ?>
+                      data-confirm="Delete group '<?= e($group['name']) ?>'? Members will be unlinked."><?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger btn-small">Delete</button>
                 </form>
             </div>

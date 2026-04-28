@@ -64,7 +64,7 @@ if (!$isNew) { $GLOBALS['admin_flush_layout'] = true; }
                     <button type="submit" class="btn btn-outline btn-small">Clone</button>
                 </form>
                 <form method="post" action="/admin/roles/<?= $roleId ?>/delete" style="display:inline"
-                      onsubmit="return confirm('Delete role \'<?= e($role['name']) ?>\'?')"><?= csrf_field() ?>
+                      data-confirm="Delete role '<?= e($role['name']) ?>'?"><?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger btn-small">Delete</button>
                 </form>
                 <?php endif; ?>

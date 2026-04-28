@@ -27,7 +27,7 @@
             <tr class="import-row" id="row-<?= $i ?>">
               <td>
                 <input type="checkbox" name="pages[<?= $i ?>][import]" value="1" checked
-                       onchange="document.getElementById('row-<?= $i ?>').classList.toggle('import-row-skip', !this.checked)">
+                       data-toggle-target="row-<?= $i ?>" data-toggle-class="import-row-skip">
                 <input type="hidden" name="pages[<?= $i ?>][skip]" value="0" id="skip-<?= $i ?>">
               </td>
               <td>
@@ -59,12 +59,4 @@
   </form>
 </div>
 
-<script>
-// Sync the hidden skip field with the checkbox
-document.querySelectorAll('.import-row input[type=checkbox]').forEach(function (cb) {
-  cb.addEventListener('change', function () {
-    var idx = this.name.match(/\[(\d+)\]/)[1];
-    document.getElementById('skip-' + idx).value = this.checked ? '0' : '1';
-  });
-});
-</script>
+<?php \Cruinn\Template::requireJs('import-review.js'); ?>

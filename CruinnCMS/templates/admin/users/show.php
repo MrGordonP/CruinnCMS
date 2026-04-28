@@ -86,7 +86,7 @@
                 <?= csrf_field() ?>
                 <?php if ($user['active']): ?>
                     <button type="submit" class="btn btn-secondary btn-small"
-                            onclick="return confirm('Deactivate this user? They will not be able to log in.')">
+                            data-confirm="Deactivate this user? They will not be able to log in.">
                         Deactivate Account
                     </button>
                 <?php else: ?>
@@ -125,7 +125,7 @@
         <form method="post" action="/admin/users/<?= (int)$user['id'] ?>/unlink-member">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn-secondary btn-small"
-                    onclick="return confirm('Remove the link between this user and their member record?')">Unlink Member</button>
+                    data-confirm="Remove the link between this user and their member record?">Unlink Member</button>
         </form>
         <?php else: ?>
         <p class="text-muted" style="font-size:0.85rem;margin:0 0 0.75rem">No member record linked.</p>
@@ -244,7 +244,7 @@
         <h3>Danger Zone</h3>
         <p>Permanently delete this user account. Their activity log entries will be preserved but unlinked. This cannot be undone.</p>
         <form method="post" action="/admin/users/<?= (int)$user['id'] ?>/delete"
-              onsubmit="return confirm('Permanently delete user <?= e($user['email']) ?>? This cannot be undone.')">
+              data-confirm="Permanently delete user <?= e($user['email']) ?>? This cannot be undone.">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn-danger">Delete User</button>
         </form>

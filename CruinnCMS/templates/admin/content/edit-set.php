@@ -7,6 +7,7 @@
  * Right:  field type reference / query help
  */
 \Cruinn\Template::requireCss('admin-content.css');
+\Cruinn\Template::requireJs('content-set-editor.js');
 $GLOBALS['admin_flush_layout'] = true;
 
 $isNew       = empty($set['id']);
@@ -19,7 +20,11 @@ $dbTables    = $dbTables            ?? [];
 $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'IS NULL', 'IS NOT NULL'];
 ?>
 
-<div class="content-set-editor" id="set-editor">
+<div class="content-set-editor" id="set-editor"
+     data-set-type="<?= e($setType) ?>"
+     data-tables="<?= e(json_encode($dbTables, JSON_HEX_TAG | JSON_HEX_AMP)) ?>"
+     data-filter-ops="<?= e(json_encode($DL_FILTER_OPS)) ?>"
+     <?= (!$isNew && $setType === 'query') ? 'data-preview-url="/admin/content/' . (int)$set['id'] . '/preview"' : '' ?>>
 
     <!-- ── Left: Set metadata ─────────────────────────────────── -->
     <div class="cse-meta-panel">
@@ -34,7 +39,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
                     <label for="name">Name <span class="required">*</span></label>
                     <input type="text" name="name" id="name" class="form-input"
                            value="<?= e($set['name'] ?? '') ?>" required
-                           <?= $isNew ? 'oninput="autoSlug(this)"' : '' ?>>
+                           <?= $isNew ? '' : 'data-edited="1"' ?>>
                 </div>
 
                 <div class="form-group">
@@ -48,7 +53,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
                 <?php if ($isNew): ?>
                 <div class="form-group">
                     <label for="set-type">Type <span class="required">*</span></label>
-                    <select name="type" id="set-type" class="form-select" onchange="toggleSetType(this.value)">
+                    <select name="type" id="set-type" class="form-select">
                         <option value="manual">Manual — editors enter rows</option>
                         <option value="query">Query — pulls live data from a table</option>
                     </select>
@@ -78,7 +83,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
             <?php if (!$isNew): ?>
             <hr class="form-divider">
             <form method="post" action="/admin/content/<?= (int)$set['id'] ?>/delete"
-                  onsubmit="return confirm('Delete this content set and all its rows? This cannot be undone.')">
+                  data-confirm="Delete this content set and all its rows? This cannot be undone.">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-danger btn-small">Delete Set</button>
             </form>
@@ -93,7 +98,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
         <div id="cse-manual-panel" style="display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden<?= ($setType === 'query') ? ';display:none' : '' ?>">
             <div class="cse-panel-header">
                 <h3>Fields</h3>
-                <button type="button" class="btn btn-sm btn-primary" onclick="addField()">+ Add Field</button>
+                <button type="button" class="btn btn-sm btn-primary" id="cse-add-field-btn">+ Add Field</button>
             </div>
             <div class="cse-panel-scroll">
                 <p class="form-help" style="padding:0.6rem 1rem 0">
@@ -117,7 +122,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <button type="button" class="cse-field-remove" onclick="removeField(this)" title="Remove field">✕</button>
+                        <button type="button" class="cse-field-remove" title="Remove field">✕</button>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -150,7 +155,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
                 <div class="form-group">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
                         <label style="margin:0">Joins</label>
-                        <button type="button" class="btn btn-small btn-outline" onclick="cseAddJoin()">+ Join</button>
+                        <button type="button" class="btn btn-small btn-outline" id="cse-add-join-btn">+ Join</button>
                     </div>
                     <div id="cse-joins"></div>
                 </div>
@@ -159,7 +164,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
                 <div class="form-group">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
                         <label style="margin:0">Filters</label>
-                        <button type="button" class="btn btn-small btn-outline" onclick="cseAddFilter()">+ Filter</button>
+                        <button type="button" class="btn btn-small btn-outline" id="cse-add-filter-btn">+ Filter</button>
                     </div>
                     <div id="cse-filters"></div>
                 </div>
@@ -200,7 +205,7 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
         <div class="cse-panel-header" style="justify-content:space-between">
             <h3 id="cse-ref-title"><?= $setType === 'query' ? 'Results' : 'Rows' ?></h3>
             <?php if (!$isNew && $setType === 'query'): ?>
-            <button type="button" class="btn btn-small btn-outline" id="cse-preview-btn" onclick="cseRunPreview()">&#9654; Run</button>
+            <button type="button" class="btn btn-small btn-outline" id="cse-preview-btn">&#9654; Run</button>
             <?php endif; ?>
         </div>
 
@@ -263,354 +268,6 @@ $DL_FILTER_OPS = ['=', '!=', '<', '<=', '>', '>=', 'LIKE', 'NOT LIKE', 'IN', 'NO
                 <option value="date">Date</option>
             </select>
         </div>
-        <button type="button" class="cse-field-remove" onclick="removeField(this)" title="Remove field">✕</button>
+        <button type="button" class="cse-field-remove" title="Remove field">✕</button>
     </div>
 </template>
-
-<script>
-// ── Type toggle ──────────────────────────────────────────────────
-function toggleSetType(type) {
-    var manualPanel = document.getElementById('cse-manual-panel');
-    var queryPanel  = document.getElementById('cse-query-panel');
-    manualPanel.style.display = type === 'manual' ? 'flex' : 'none';
-    queryPanel.style.display  = type === 'query'  ? 'flex' : 'none';
-    document.getElementById('cse-ref-manual').style.display   = type === 'manual' ? '' : 'none';
-    document.getElementById('cse-ref-query').style.display    = type === 'query'  ? '' : 'none';
-    document.getElementById('cse-ref-title').textContent      = type === 'query' ? 'Results' : 'Rows';
-    var previewBtn = document.getElementById('cse-preview-btn');
-    if (previewBtn) { previewBtn.style.display = type === 'query' ? '' : 'none'; }
-    if (type === 'query') { cseInitQuery(); }
-}
-
-// ── Manual fields ────────────────────────────────────────────────
-function addField() {
-    const tmpl = document.getElementById('field-row-template').content.cloneNode(true);
-    document.getElementById('field-list').appendChild(tmpl);
-    document.getElementById('field-empty').style.display = 'none';
-    document.getElementById('field-list').lastElementChild.querySelector('input').focus();
-}
-function removeField(btn) {
-    btn.closest('.cse-field-row').remove();
-    if (!document.querySelector('.cse-field-row')) {
-        document.getElementById('field-empty').style.display = '';
-    }
-}
-
-// Auto-generate slug from name (new sets only)
-function autoSlug(input) {
-    const slugEl = document.getElementById('slug');
-    if (!slugEl || slugEl.dataset.edited) { return; }
-    slugEl.value = input.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-document.getElementById('slug')?.addEventListener('input', function () { this.dataset.edited = '1'; });
-
-// Drag-to-reorder field rows
-(function () {
-    const list = document.getElementById('field-list');
-    let dragging = null;
-    if (!list) { return; }
-    list.addEventListener('dragstart', e => { dragging = e.target.closest('.cse-field-row'); dragging?.classList.add('dragging'); });
-    list.addEventListener('dragend',   () => { dragging?.classList.remove('dragging'); dragging = null; });
-    list.addEventListener('dragover',  e => {
-        e.preventDefault();
-        const over = e.target.closest('.cse-field-row');
-        if (over && over !== dragging) {
-            const after = e.clientY > over.getBoundingClientRect().top + over.getBoundingClientRect().height / 2;
-            list.insertBefore(dragging, after ? over.nextSibling : over);
-        }
-    });
-}());
-
-// ── Query builder ────────────────────────────────────────────────
-var CSE_TABLES   = <?= json_encode($dbTables, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-var CSE_COLS     = {};
-var CSE_QC       = <?= json_encode($queryConfig, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-var CSE_FILTER_OPS = <?= json_encode($DL_FILTER_OPS) ?>;
-
-function cseInitQuery() {
-    var tblSel = document.getElementById('cse-table');
-    if (tblSel && tblSel.value) {
-        cseFetchCols(cseActiveTables(), function () { cseRefreshFields(); cseHydrate(); });
-    } else {
-        cseHydrate();
-    }
-}
-
-function cseActiveTables() {
-    var t = document.getElementById('cse-table')?.value;
-    var tables = t ? [t] : [];
-    document.querySelectorAll('.cse-join-table').forEach(function (s) { if (s.value) tables.push(s.value); });
-    return tables.filter(function (v, i, a) { return a.indexOf(v) === i; });
-}
-
-function cseFetchCols(tables, cb) {
-    var needed = tables.filter(function (t) { return t && !CSE_COLS[t]; });
-    if (!needed.length) { if (cb) cb(); return; }
-    var qs = needed.map(function (t) { return 'tables[]=' + encodeURIComponent(t); }).join('&');
-    fetch('/admin/editor/db-columns?' + qs, { headers: { Accept: 'application/json' } })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-            var cols = d.columns || {};
-            Object.keys(cols).forEach(function (t) { CSE_COLS[t] = cols[t]; });
-            if (cb) cb();
-        })
-        .catch(function () { if (cb) cb(); });
-}
-
-function cseAllColOpts() {
-    var opts = [];
-    cseActiveTables().forEach(function (t) {
-        (CSE_COLS[t] || []).forEach(function (c) { opts.push(t + '.' + c); });
-    });
-    return opts;
-}
-
-function csePopulateSelect(sel, opts, cur, emptyLabel) {
-    var prev = cur !== undefined ? cur : sel.value;
-    sel.innerHTML = '';
-    if (emptyLabel !== undefined) {
-        var e = document.createElement('option'); e.value = ''; e.textContent = emptyLabel; sel.appendChild(e);
-    }
-    opts.forEach(function (o) {
-        var opt = document.createElement('option'); opt.value = o; opt.textContent = o; sel.appendChild(opt);
-    });
-    sel.value = prev;
-}
-
-function cseRefreshFields() {
-    var opts  = cseAllColOpts();
-    var qc    = cseReadConfig();
-    var box   = document.getElementById('cse-fields');
-    var ob    = document.getElementById('cse-orderby');
-    box.innerHTML = '';
-    if (!opts.length) { box.textContent = 'Select a table to see fields.'; }
-    opts.forEach(function (o) {
-        var wrap = document.createElement('div');
-        wrap.style.cssText = 'display:flex;align-items:center;gap:0.3rem;margin:0.15rem 0';
-        var lbl = document.createElement('label');
-        lbl.style.cssText = 'display:flex;align-items:center;gap:0.3rem;flex:1;cursor:pointer;font-size:0.82rem';
-        var cb = document.createElement('input');
-        cb.type = 'checkbox'; cb.value = o;
-        cb.checked = (qc.fields || []).indexOf(o) !== -1;
-        cb.addEventListener('change', cseSerialise);
-        lbl.appendChild(cb); lbl.appendChild(document.createTextNode(o));
-        // Preview button
-        var previewBtn = document.createElement('button');
-        previewBtn.type = 'button'; previewBtn.textContent = '👁';
-        previewBtn.title = 'Preview values';
-        previewBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:0.85rem;opacity:0.5;padding:0';
-        var hint = document.createElement('span');
-        hint.style.cssText = 'font-size:0.72rem;color:#6b7280;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px';
-        previewBtn.addEventListener('click', function () {
-            if (hint.dataset.loaded) { hint.textContent = ''; hint.dataset.loaded = ''; previewBtn.style.opacity = '0.5'; return; }
-            previewBtn.textContent = '⏳';
-            var parts = o.split('.'); var tbl = parts[0]; var col = parts[1];
-            fetch('/admin/editor/db-preview?table=' + encodeURIComponent(tbl) + '&column=' + encodeURIComponent(col), { headers: { Accept: 'application/json' } })
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    previewBtn.textContent = '👁'; previewBtn.style.opacity = '1';
-                    hint.textContent = (d.values || []).join(', ') || '(no values)';
-                    hint.dataset.loaded = '1';
-                })
-                .catch(function () { previewBtn.textContent = '👁'; hint.textContent = '(error)'; });
-        });
-        wrap.appendChild(lbl); wrap.appendChild(previewBtn); wrap.appendChild(hint);
-        box.appendChild(wrap);
-    });
-    csePopulateSelect(ob, opts, qc.order_by || '', '— none —');
-    // Refresh filter field dropdowns
-    document.querySelectorAll('.cse-filter-field').forEach(function (s) { csePopulateSelect(s, opts, s.value, '— field —'); });
-    // Refresh join col dropdowns
-    document.querySelectorAll('.cse-join-row').forEach(function (row) { cseRefreshJoinCols(row); });
-}
-
-function cseAddJoin(def) {
-    def = def || {};
-    var container = document.getElementById('cse-joins');
-    var row = document.createElement('div');
-    row.className = 'cse-join-row';
-    row.style.cssText = 'border:1px solid #e5e7eb;border-radius:4px;padding:0.5rem;margin-bottom:0.4rem;font-size:0.8rem';
-
-    // Type
-    var r1 = document.createElement('div'); r1.style.cssText = 'display:flex;gap:0.3rem;align-items:center;margin-bottom:0.25rem';
-    var typeSel = document.createElement('select'); typeSel.className = 'cse-join-type form-select';
-    ['LEFT','INNER','RIGHT'].forEach(function (t) { var o = document.createElement('option'); o.value = t; o.textContent = t + ' JOIN'; typeSel.appendChild(o); });
-    typeSel.value = def.type || 'LEFT';
-    r1.appendChild(Object.assign(document.createElement('span'), { textContent: 'Type', style: 'width:40px' }));
-    r1.appendChild(typeSel); row.appendChild(r1);
-
-    // Table
-    var r2 = document.createElement('div'); r2.style.cssText = 'display:flex;gap:0.3rem;align-items:center;margin-bottom:0.25rem';
-    var tblSel = document.createElement('select'); tblSel.className = 'cse-join-table form-select';
-    csePopulateSelect(tblSel, CSE_TABLES, def.table || '', '— table —');
-    tblSel.addEventListener('change', function () { cseFetchCols([tblSel.value], function () { cseRefreshJoinCols(row); cseRefreshFields(); cseSerialise(); }); });
-    r2.appendChild(Object.assign(document.createElement('span'), { textContent: 'Table', style: 'width:40px' }));
-    r2.appendChild(tblSel); row.appendChild(r2);
-
-    // ON
-    var r3 = document.createElement('div'); r3.style.cssText = 'display:flex;gap:0.3rem;align-items:center';
-    var leftSel  = document.createElement('select'); leftSel.className  = 'cse-join-left form-select';
-    var rightSel = document.createElement('select'); rightSel.className = 'cse-join-right form-select';
-    // Build opts including the join table even before this row is in the DOM
-    var activeTabs = cseActiveTables();
-    var joinTab = def.table || tblSel.value || '';
-    if (joinTab && activeTabs.indexOf(joinTab) === -1) { activeTabs.push(joinTab); }
-    var opts = [];
-    activeTabs.forEach(function (t) { (CSE_COLS[t] || []).forEach(function (c) { opts.push(t + '.' + c); }); });
-    csePopulateSelect(leftSel,  opts, def.on_left  || '', '— left col —');
-    csePopulateSelect(rightSel, opts, def.on_right || '', '— right col —');
-    r3.appendChild(leftSel);
-    r3.appendChild(Object.assign(document.createElement('span'), { textContent: '=' }));
-    r3.appendChild(rightSel); row.appendChild(r3);
-
-    var removeBtn = document.createElement('button');
-    removeBtn.type = 'button'; removeBtn.textContent = '✕ Remove'; removeBtn.style.cssText = 'margin-top:0.35rem;font-size:0.72rem;color:#dc2626;background:none;border:none;cursor:pointer;padding:0';
-    removeBtn.addEventListener('click', function () { row.remove(); cseRefreshFields(); cseSerialise(); });
-    row.appendChild(removeBtn);
-    [typeSel, leftSel, rightSel].forEach(function (s) { s.addEventListener('change', cseSerialise); });
-    container.appendChild(row);
-}
-
-function cseRefreshJoinCols(row) {
-    var opts = cseAllColOpts();
-    var l = row.querySelector('.cse-join-left'); var r = row.querySelector('.cse-join-right');
-    if (l) csePopulateSelect(l, opts, l.value, '— left col —');
-    if (r) csePopulateSelect(r, opts, r.value, '— right col —');
-}
-
-function cseAddFilter(def) {
-    def = def || {};
-    var container = document.getElementById('cse-filters');
-    var row = document.createElement('div');
-    row.className = 'cse-filter-row';
-    row.style.cssText = 'display:flex;gap:0.25rem;align-items:center;margin-bottom:0.3rem;flex-wrap:wrap';
-    var opts = cseAllColOpts();
-    var fieldSel = document.createElement('select'); fieldSel.className = 'cse-filter-field form-select'; fieldSel.style.flex = '2';
-    csePopulateSelect(fieldSel, opts, def.field || '', '— field —');
-    var opSel = document.createElement('select'); opSel.className = 'cse-filter-op form-select'; opSel.style.flex = '1';
-    CSE_FILTER_OPS.forEach(function (op) { var o = document.createElement('option'); o.value = op; o.textContent = op; opSel.appendChild(o); });
-    opSel.value = def.op || '=';
-    var valInput = document.createElement('input'); valInput.type = 'text'; valInput.className = 'cse-filter-val form-input'; valInput.placeholder = 'value'; valInput.value = def.value || ''; valInput.style.flex = '2';
-    function toggleVal() { valInput.style.display = (opSel.value === 'IS NULL' || opSel.value === 'IS NOT NULL') ? 'none' : ''; }
-    toggleVal(); opSel.addEventListener('change', toggleVal);
-    var rmBtn = document.createElement('button'); rmBtn.type = 'button'; rmBtn.textContent = '✕'; rmBtn.style.cssText = 'background:none;border:none;cursor:pointer;color:#dc2626';
-    rmBtn.addEventListener('click', function () { row.remove(); cseSerialise(); });
-    [fieldSel, opSel].forEach(function (s) { s.addEventListener('change', cseSerialise); });
-    valInput.addEventListener('input', cseSerialise);
-    row.appendChild(fieldSel); row.appendChild(opSel); row.appendChild(valInput); row.appendChild(rmBtn);
-    container.appendChild(row);
-}
-
-function cseReadConfig() {
-    try { return JSON.parse(document.getElementById('cse-query-config-input')?.value || '{}'); } catch (e) { return {}; }
-}
-
-function cseSerialise() {
-    var config = {};
-    var tbl = document.getElementById('cse-table')?.value;
-    if (tbl) config.table = tbl;
-    config.joins = [];
-    document.querySelectorAll('.cse-join-row').forEach(function (row) {
-        var t = row.querySelector('.cse-join-table')?.value;
-        if (t) config.joins.push({ type: row.querySelector('.cse-join-type')?.value || 'LEFT', table: t, on_left: row.querySelector('.cse-join-left')?.value || '', on_right: row.querySelector('.cse-join-right')?.value || '' });
-    });
-    config.filters = [];
-    document.querySelectorAll('.cse-filter-row').forEach(function (row) {
-        var f = row.querySelector('.cse-filter-field')?.value;
-        if (f) config.filters.push({ field: f, op: row.querySelector('.cse-filter-op')?.value || '=', value: row.querySelector('.cse-filter-val')?.value || '' });
-    });
-    config.fields = [];
-    document.querySelectorAll('#cse-fields input[type=checkbox]:checked').forEach(function (cb) {
-        if (/^[a-z0-9_]+\.[a-z0-9_]+$/i.test(cb.value)) { config.fields.push(cb.value); }
-    });
-    var ob = document.getElementById('cse-orderby'); var od = document.getElementById('cse-orderdir'); var lm = document.getElementById('cse-limit');
-    if (ob) config.order_by  = ob.value;
-    if (od) config.order_dir = od.value;
-    if (lm) config.limit     = parseInt(lm.value) || 100;
-    document.getElementById('cse-query-config-input').value = JSON.stringify(config);
-}
-
-function cseHydrate() {
-    var qc = cseReadConfig();
-    var tblSel = document.getElementById('cse-table');
-    if (tblSel && qc.table) { tblSel.value = qc.table; }
-    // Joins
-    var joinsEl = document.getElementById('cse-joins'); if (joinsEl) joinsEl.innerHTML = '';
-    (qc.joins || []).forEach(function (j) { cseAddJoin(j); });
-    // Filters
-    var filtsEl = document.getElementById('cse-filters'); if (filtsEl) filtsEl.innerHTML = '';
-    (qc.filters || []).forEach(function (f) { cseAddFilter(f); });
-    cseRefreshFields();
-    var od = document.getElementById('cse-orderdir'); var lm = document.getElementById('cse-limit'); var ob = document.getElementById('cse-orderby');
-    if (od) od.value = qc.order_dir || 'ASC';
-    if (lm) lm.value = qc.limit    || 100;
-    if (ob) ob.value = qc.order_by || '';
-}
-
-// Wire events
-document.getElementById('cse-table')?.addEventListener('change', function () {
-    var t = this.value;
-    if (t) cseFetchCols([t], function () { cseRefreshFields(); cseSerialise(); });
-    else { cseRefreshFields(); cseSerialise(); }
-});
-document.getElementById('cse-orderby')?.addEventListener('change', cseSerialise);
-document.getElementById('cse-orderdir')?.addEventListener('change', cseSerialise);
-document.getElementById('cse-limit')?.addEventListener('input', cseSerialise);
-
-// ── Query preview ────────────────────────────────────────────────
-<?php if (!$isNew && $setType === 'query'): ?>
-var CSE_PREVIEW_URL = '/admin/content/<?= (int)$set['id'] ?>/preview';
-function cseRunPreview() {
-    var btn = document.getElementById('cse-preview-btn');
-    var area = document.getElementById('cse-preview-area');
-    if (!area) { return; }
-    if (btn) { btn.disabled = true; btn.textContent = '…'; }
-    area.innerHTML = '<p style="color:#6b7280;font-size:0.8rem;padding:0.5rem">Running…</p>';
-    fetch(CSE_PREVIEW_URL, { headers: { Accept: 'application/json' } })
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-            if (btn) { btn.disabled = false; btn.innerHTML = '&#9654; Run'; }
-            if (!d.ok) { area.innerHTML = '<p style="color:#dc2626;font-size:0.8rem;padding:0.5rem">Error: ' + (d.error || 'unknown') + '</p>'; return; }
-            if (!d.rows.length) { area.innerHTML = '<p style="color:#6b7280;font-size:0.8rem;padding:0.5rem">Query returned 0 rows.</p>'; return; }
-            var cols = d.columns;
-            var html = '<div style="padding:4px 8px;font-size:0.72rem;color:#6b7280">' + d.count + ' row' + (d.count !== 1 ? 's' : '') + '</div>';
-            html += '<div style="overflow-x:auto"><table style="font-size:0.72rem;border-collapse:collapse;width:100%">';
-            html += '<thead><tr>';
-            cols.forEach(function (c) { html += '<th style="text-align:left;padding:2px 6px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#6b7280">' + c + '</th>'; });
-            html += '</tr></thead><tbody>';
-            d.rows.forEach(function (row) {
-                html += '<tr>';
-                cols.forEach(function (c) {
-                    var v = row[c] !== null && row[c] !== undefined ? String(row[c]) : '';
-                    var display = v.length > 40 ? v.slice(0, 40) + '…' : v;
-                    html += '<td style="padding:2px 6px;border-bottom:1px solid #f1f5f9;white-space:nowrap" title="' + v.replace(/"/g, '&quot;') + '">' + display + '</td>';
-                });
-                html += '</tr>';
-            });
-            html += '</tbody></table></div>';
-            area.innerHTML = html;
-        })
-        .catch(function (err) {
-            if (btn) { btn.disabled = false; btn.innerHTML = '&#9654; Run'; }
-            area.innerHTML = '<p style="color:#dc2626;font-size:0.8rem;padding:0.5rem">Request failed.</p>';
-        });
-}
-<?php endif ?>
-
-// Init on load for query sets
-(function () {
-    var typeSel = document.getElementById('set-type');
-    var initType = typeSel ? typeSel.value : <?= json_encode($setType) ?>;
-    if (initType === 'query') {
-        var allTables = [<?= json_encode($queryConfig['table'] ?? '') ?>].concat(<?= json_encode(array_column($queryConfig['joins'] ?? [], 'table')) ?>).filter(Boolean);
-        if (allTables.length) {
-            cseFetchCols(allTables, function () { cseRefreshFields(); cseHydrate(); });
-        }
-        // Show correct panels (already handled by PHP, but ensure ref panel is right)
-        document.getElementById('cse-ref-manual').style.display = 'none';
-        document.getElementById('cse-ref-query').style.display  = '';
-        document.getElementById('cse-ref-title').textContent    = 'Results';
-    }
-}());
-</script>
-

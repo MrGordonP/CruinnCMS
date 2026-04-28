@@ -206,7 +206,7 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
             <form method="post" action="/admin/users/<?= (int)$user['id'] ?>/unlink-member">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-secondary btn-small"
-                        onclick="return confirm('Remove the link between this user and their member record?')">Unlink</button>
+                        data-confirm="Remove the link between this user and their member record?">Unlink</button>
             </form>
             <?php else: ?>
             <p class="text-muted" style="font-size:0.85rem;margin:0 0 0.5rem">No member record linked.</p>
@@ -273,13 +273,13 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
                     <?= csrf_field() ?>
                     <?php if ($user['active']): ?>
                     <button type="submit" class="btn btn-secondary btn-small" style="width:100%"
-                            onclick="return confirm('Deactivate this user?')">Deactivate Account</button>
+                            data-confirm="Deactivate this user?">Deactivate Account</button>
                     <?php else: ?>
                     <button type="submit" class="btn btn-primary btn-small" style="width:100%">Activate Account</button>
                     <?php endif; ?>
                 </form>
                 <form method="post" action="/admin/users/<?= (int)$user['id'] ?>/delete"
-                      onsubmit="return confirm('Permanently delete <?= e($user['email']) ?>? This cannot be undone.')">
+                      data-confirm="Permanently delete <?= e($user['email']) ?>? This cannot be undone.">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger btn-small" style="width:100%">Delete User</button>
                 </form>

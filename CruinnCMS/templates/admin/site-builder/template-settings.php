@@ -7,6 +7,7 @@
  */
 \Cruinn\Template::requireCss('admin-acp.css');
 \Cruinn\Template::requireCss('admin-site-builder.css');
+\Cruinn\Template::requireJs('template-settings.js');
 
 $s          = $tpl['settings'] ?? [];
 $zones      = json_decode($tpl['zones'] ?? '["main"]', true) ?: ['main'];
@@ -180,15 +181,7 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
                 <div class="form-group">
                     <label class="checkbox-label">
                         <input type="checkbox" id="tpl_sidebar_toggle"
-                               <?= $hasSidebar ? 'checked' : '' ?>
-                               onchange="(function(cb){
-                                   document.getElementById('tpl_sidebar_pos').disabled = !cb.checked;
-                                   var inp = document.getElementById('tplZones');
-                                   var z = JSON.parse(inp.value || '[&quot;main&quot;]');
-                                   if(cb.checked){ if(z.indexOf('sidebar')<0) z.push('sidebar'); }
-                                   else { z = z.filter(function(v){return v!=='sidebar';}); }
-                                   inp.value = JSON.stringify(z);
-                               })(this)">
+                               <?= $hasSidebar ? 'checked' : '' ?>>
                         Sidebar
                     </label>
                 </div>
@@ -258,10 +251,13 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
             <div class="sb-info-box" style="border-color:#fca5a5;background:#fff5f5;margin-top:1rem">
                 <h3 style="color:#dc2626">Danger Zone</h3>
                 <p style="font-size:0.85rem;color:#6b7280;margin-bottom:0.75rem">Permanently delete this template.</p>
-                <button type="button" class="btn btn-danger btn-small"
-                        onclick="if(confirm('Permanently delete template \'<?= e(addslashes($tpl['name'])) ?>\'?')){var f=document.createElement('form');f.method='post';f.action='<?= url('/admin/templates/' . (int)$tpl['id'] . '/delete') ?>';var t=document.createElement('input');t.type='hidden';t.name='csrf_token';t.value='<?= e(\Cruinn\CSRF::getToken()) ?>';f.appendChild(t);document.body.appendChild(f);f.submit();}">
-                    Delete Template
-                </button>
+                <form method="post" action="<?= url('/admin/templates/' . (int)$tpl['id'] . '/delete') ?>">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-danger btn-small"
+                            data-confirm="Permanently delete template '<?= e($tpl['name']) ?>'?">
+                        Delete Template
+                    </button>
+                </form>
             </div>
             <?php endif; ?>
 

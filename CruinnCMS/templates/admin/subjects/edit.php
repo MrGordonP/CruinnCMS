@@ -111,7 +111,7 @@
     <section class="danger-zone">
         <h3>Danger Zone</h3>
         <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/delete"
-              onsubmit="return confirm('Are you sure you want to delete this subject? This cannot be undone.')">
+              data-confirm="Are you sure you want to delete this subject? This cannot be undone?">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn-danger">Delete this subject</button>
         </form>

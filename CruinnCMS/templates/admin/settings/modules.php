@@ -36,7 +36,7 @@ $allAvailable = array_merge($available ?? [], []);
                 <form method="post" action="<?= url('/admin/settings/modules/' . $slug . '/migrate') ?>" style="display:inline">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-warning btn-small"
-                            onclick="return confirm('Apply <?= (int)$mig['pending'] ?> pending migration(s) for <?= e($def['name']) ?>?')">
+                            data-confirm="Apply <?= (int)$mig['pending'] ?> pending migration(s) for <?= e($def['name']) ?>?">
                         ⬆ Migrations (<?= (int)$mig['pending'] ?> pending)
                     </button>
                 </form>
@@ -45,7 +45,7 @@ $allAvailable = array_merge($available ?? [], []);
                 <form method="post" action="<?= url('/admin/settings/modules/' . $slug . '/remigrate') ?>" style="display:inline">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-secondary btn-small"
-                            onclick="return confirm('Re-run ALL <?= (int)$mig['total'] ?> migration(s) for <?= e($def['name']) ?>? Migration records will be cleared and all SQL re-applied. Safe for IF NOT EXISTS migrations.')">
+                            data-confirm="Re-run ALL <?= (int)$mig['total'] ?> migration(s) for <?= e($def['name']) ?>? Migration records will be cleared and all SQL re-applied. Safe for IF NOT EXISTS migrations.">
                         ↺ Re-run Migrations
                     </button>
                 </form>
@@ -54,7 +54,7 @@ $allAvailable = array_merge($available ?? [], []);
                     <?= csrf_field() ?>
                     <?php if ($isActive): ?>
                         <button type="submit" class="btn btn-secondary btn-small"
-                                onclick="return confirm('Take <?= e($def['name']) ?> offline? Its routes will be disabled.')">
+                                data-confirm="Take <?= e($def['name']) ?> offline? Its routes will be disabled.">
                             ⏸ Take Offline
                         </button>
                     <?php else: ?>
@@ -62,7 +62,7 @@ $allAvailable = array_merge($available ?? [], []);
                     <?php endif; ?>
                 </form>
                 <button type="button" class="btn btn-danger btn-small"
-                        onclick="document.getElementById('uninstall-<?= e($slug) ?>').style.display='block'">
+                        data-show-id="uninstall-<?= e($slug) ?>">
                     🗑 Uninstall
                 </button>
             </div>
@@ -103,7 +103,7 @@ $allAvailable = array_merge($available ?? [], []);
                 <div class="uninstall-actions">
                     <button type="submit" class="btn btn-danger btn-small">Confirm Uninstall</button>
                     <button type="button" class="btn btn-secondary btn-small"
-                            onclick="document.getElementById('uninstall-<?= e($slug) ?>').style.display='none'">Cancel</button>
+                            data-hide-id="uninstall-<?= e($slug) ?>">Cancel</button>
                 </div>
             </form>
         </div>
@@ -172,7 +172,7 @@ $allAvailable = array_merge($available ?? [], []);
             </div>
             <div class="module-card-actions">
                 <button type="button" class="btn btn-primary btn-small"
-                        onclick="document.getElementById('install-<?= e($slug) ?>').style.display='block';this.style.display='none'">
+                        data-show-id="install-<?= e($slug) ?>" data-hide-self>
                     ⬇ Install
                 </button>
             </div>
@@ -217,7 +217,7 @@ $allAvailable = array_merge($available ?? [], []);
                 <div class="install-actions">
                     <button type="submit" class="btn btn-primary btn-small">Confirm Install</button>
                     <button type="button" class="btn btn-secondary btn-small"
-                            onclick="this.closest('.install-panel').style.display='none';this.closest('.module-card').querySelector('.btn-primary').style.display=''">
+                            data-close-panel="install-panel">
                         Cancel
                     </button>
                 </div>

@@ -13,7 +13,7 @@
         <span class="sb-hub-label">Content Pages</span>
         <span class="sb-hub-count"><?= count($contentPages) ?></span>
         <span class="sb-hub-action">
-            <a href="<?= url('/admin/pages/new') ?>" class="btn btn-primary btn-small" onclick="event.stopPropagation()">+ New</a>
+            <a href="<?= url('/admin/pages/new') ?>" class="btn btn-primary btn-small" data-stop-propagation>+ New</a>
         </span>
     </a>
 

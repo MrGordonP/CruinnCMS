@@ -7,6 +7,7 @@
  * Right:  add/edit row form (slides in on row click)
  */
 \Cruinn\Template::requireCss('admin-content.css');
+\Cruinn\Template::requireJs('content-rows.js');
 
 $fields     = $set['fields'] ?? [];
 $editRowId  = (int)($_GET['edit'] ?? 0);
@@ -18,7 +19,9 @@ if ($editRowId) {
 }
 ?>
 
-<div class="content-set-rows" id="rows-app">
+<div class="content-set-rows" id="rows-app"
+     data-set-id="<?= (int)$set['id'] ?>"
+     data-edit-row-id="<?= $editRowId ? (int)$editRowId : '' ?>">
 
     <!-- ── Left: Set info ────────────────────────────────────── -->
     <div class="cse-meta-panel">
@@ -51,7 +54,7 @@ if ($editRowId) {
     <div class="cse-fields-panel">
         <div class="cse-panel-header">
             <h3>Rows</h3>
-            <button type="button" class="btn btn-sm btn-primary" onclick="openAddRow()">+ Add Row</button>
+            <button type="button" class="btn btn-sm btn-primary" id="rows-add-btn">+ Add Row</button>
         </div>
         <div class="cse-panel-scroll">
             <?php if (empty($rows)): ?>
@@ -83,11 +86,11 @@ if ($editRowId) {
                         <?php endforeach; ?>
                         <td class="table-actions">
                             <button type="button" class="btn btn-outline btn-small"
-                                    onclick="openEditRow(<?= (int)$row['id'] ?>)">Edit</button>
+                                    data-edit-row="<?= (int)$row['id'] ?>">Edit</button>
                             <form method="post"
                                   action="/admin/content/<?= (int)$set['id'] ?>/rows/<?= (int)$row['id'] ?>/delete"
                                   class="inline-form"
-                                  onsubmit="return confirm('Delete this row?')">
+                                  data-confirm="Delete this row?">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn-danger btn-small">Delete</button>
                             </form>
@@ -157,7 +160,7 @@ if ($editRowId) {
                 <?php endforeach; ?>
                 <div class="cse-form-actions">
                     <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn btn-outline" onclick="openAddRow()">Cancel</button>
+                    <button type="button" class="btn btn-outline rows-cancel-btn">Cancel</button>
                 </div>
             </form>
             <?php endforeach; ?>
@@ -165,79 +168,3 @@ if ($editRowId) {
     </div>
 
 </div>
-
-<script>
-var _activeEditId = <?= $editRowId ?: 'null' ?>;
-
-function openAddRow() {
-    _activeEditId = null;
-    document.getElementById('row-form-title').textContent = 'Add Row';
-    document.getElementById('add-row-form').style.display = '';
-    document.querySelectorAll('[id^="edit-row-form-"]').forEach(f => f.style.display = 'none');
-    document.querySelectorAll('.cse-data-row').forEach(r => r.classList.remove('selected'));
-}
-
-function openEditRow(id) {
-    _activeEditId = id;
-    document.getElementById('row-form-title').textContent = 'Edit Row';
-    document.getElementById('add-row-form').style.display = 'none';
-    document.querySelectorAll('[id^="edit-row-form-"]').forEach(f => f.style.display = 'none');
-    const form = document.getElementById('edit-row-form-' + id);
-    if (form) { form.style.display = ''; }
-    document.querySelectorAll('.cse-data-row').forEach(r => {
-        r.classList.toggle('selected', parseInt(r.dataset.rowId) === id);
-    });
-}
-
-// If arriving with ?edit= pre-selected
-<?php if ($editRowId): ?>
-openEditRow(<?= $editRowId ?>);
-<?php endif; ?>
-
-// Row click to open edit
-document.querySelectorAll('.cse-data-row').forEach(row => {
-    row.addEventListener('click', function (e) {
-        if (e.target.closest('form') || e.target.closest('button') || e.target.closest('a')) { return; }
-        openEditRow(parseInt(this.dataset.rowId));
-    });
-});
-
-// Drag-to-reorder rows (AJAX)
-(function () {
-    const tbody = document.getElementById('row-tbody');
-    if (!tbody) { return; }
-    let dragging = null;
-
-    tbody.addEventListener('dragstart', e => {
-        dragging = e.target.closest('tr');
-        dragging?.classList.add('dragging');
-    });
-    tbody.addEventListener('dragend', () => {
-        dragging?.classList.remove('dragging');
-        dragging = null;
-        saveRowOrder();
-    });
-    tbody.addEventListener('dragover', e => {
-        e.preventDefault();
-        const over = e.target.closest('tr');
-        if (over && over !== dragging) {
-            const rect = over.getBoundingClientRect();
-            const after = e.clientY > rect.top + rect.height / 2;
-            tbody.insertBefore(dragging, after ? over.nextSibling : over);
-        }
-    });
-
-    function saveRowOrder() {
-        const order = [...tbody.querySelectorAll('tr[data-row-id]')]
-            .map(r => parseInt(r.dataset.rowId));
-        fetch('/admin/content/<?= (int)$set['id'] ?>/rows/reorder', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content ?? ''
-            },
-            body: JSON.stringify({ order })
-        });
-    }
-}());
-</script>

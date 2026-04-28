@@ -50,7 +50,7 @@ $GLOBALS['admin_flush_layout'] = true;
                 <?php endif; ?>
                 <a href="/admin/content/<?= (int)$set['id'] ?>/edit" class="btn btn-outline btn-small"><?= $isQuery ? 'Edit Query' : 'Edit Schema' ?></a>
                 <form method="post" action="/admin/content/<?= (int)$set['id'] ?>/delete" class="inline-form"
-                      onsubmit="return confirm('Delete this content set and all its rows?')">
+                      data-confirm="Delete this content set and all its rows?">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-danger btn-small">Delete</button>
                 </form>
