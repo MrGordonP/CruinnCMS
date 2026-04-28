@@ -77,9 +77,8 @@
                                         <input type="hidden" name="_pk" value="<?= e((string)$rowPk) ?>">
                                         <input type="hidden" name="_page" value="<?= $page ?>">
                                         <input type="hidden" name="_instance" value="<?= e($instanceFolder) ?>">
-                                        <button type="submit" class="platform-btn platform-btn-danger"
-                                                style="padding:0.15rem 0.5rem; font-size:0.78rem;"
-                                                onclick="return confirm('Delete this row?')">Delete</button>
+                                        <button type="submit" class="platform-btn platform-btn-danger db-delete-btn"
+                                                style="padding:0.15rem 0.5rem; font-size:0.78rem;">Delete</button>
                                     </form>
                                     <?php endif; ?>
                                 </td>
@@ -109,5 +108,6 @@
     <?php endif; ?>
 </div>
 
+<script src="/js/platform/database-table.js"></script>
 <?php $content = ob_get_clean(); ?>
 <?php include __DIR__ . '/layout.php'; ?>

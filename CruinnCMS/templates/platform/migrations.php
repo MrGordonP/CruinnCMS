@@ -44,8 +44,7 @@
 <?php if ($pending > 0): ?>
 <form method="post" action="/cms/migrations" style="margin-bottom:2rem;">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <button type="submit" class="plat-btn plat-btn-primary"
-            onclick="this.disabled=true;this.textContent='Applying…';this.form.submit();">
+    <button type="submit" id="migrations-apply-all" class="plat-btn plat-btn-primary">
         Apply <?= (int)$pending ?> pending migration<?= $pending !== 1 ? 's' : '' ?>
     </button>
 </form>
@@ -91,8 +90,7 @@
                 <form method="post" action="/cms/migrations" style="margin:0;">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="file" value="<?= htmlspecialchars($row['file'], ENT_QUOTES, 'UTF-8') ?>">
-                    <button type="submit" style="font-size:.75rem;padding:.25rem .6rem;background:var(--plat-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;"
-                            onclick="this.disabled=true;this.textContent='…';this.form.submit();">Apply</button>
+                    <button type="submit" class="migrations-apply-row" style="font-size:.75rem;padding:.25rem .6rem;background:var(--plat-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">Apply</button>
                 </form>
                 <?php endif ?>
             </td>
@@ -103,5 +101,6 @@
 <?php else: ?>
 <p style="color:var(--plat-text-muted);">No migration files found in <code>schema/</code>.</p>
 <?php endif ?>
+<script src="/js/platform/migrations.js"></script>
 <?php $content = ob_get_clean(); ?>
 <?php require __DIR__ . '/layout.php'; ?>
