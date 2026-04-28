@@ -33,6 +33,9 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
      data-has-draft="<?= $hasDraft ? '1' : '0' ?>"
      data-template-zones="<?= htmlspecialchars(json_encode($templateZones ?? []), ENT_QUOTES, 'UTF-8') ?>"
      data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
+    data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
+        return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
+    }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
      data-start-in-code-view="<?= !empty($startInCodeView) ? '1' : '0' ?>"
      data-html-content="<?= htmlspecialchars($htmlContent ?? '', ENT_QUOTES, 'UTF-8') ?>">
 
@@ -81,7 +84,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         <?php if (empty($isZonePage)): ?>
             <?php if (!empty($headerPages) && count($headerPages) > 1): ?>
             <div style="position:relative;display:inline-block" class="zone-picker">
-                <button type="button" class="btn btn-small editor-zone-link" onclick="this.nextElementSibling.classList.toggle('open')">Edit Header ▾</button>
+                <button type="button" class="btn btn-small editor-zone-link">Edit Header ▾</button>
                 <div class="zone-picker-menu">
                     <?php foreach ($headerPages as $_hp): ?>
                     <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?></a>
@@ -93,7 +96,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <?php endif; ?>
             <?php if (!empty($footerPages) && count($footerPages) > 1): ?>
             <div style="position:relative;display:inline-block" class="zone-picker">
-                <button type="button" class="btn btn-small editor-zone-link" onclick="this.nextElementSibling.classList.toggle('open')">Edit Footer ▾</button>
+                <button type="button" class="btn btn-small editor-zone-link">Edit Footer ▾</button>
                 <div class="zone-picker-menu">
                     <?php foreach ($footerPages as $_fp): ?>
                     <a href="<?= e($_editorPageHref((int)$_fp['id'])) ?>"><?= e($_fp['template_name'] ?? $_fp['title']) ?></a>
@@ -198,13 +201,13 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 
             <!-- Site Builder navigation -->
             <div class="editor-panel-section editor-site-nav">
-                <h3 class="editor-panel-heading editor-site-nav-toggle" onclick="this.parentElement.classList.toggle('collapsed')">
+                <h3 class="editor-panel-heading editor-site-nav-toggle">
                     Site Builder <span class="editor-site-nav-chevron">▾</span>
                 </h3>
                 <div class="editor-site-nav-body">
                     <?php if (!empty($isPlatformMode) && !empty($platformPages)): ?>
                     <div class="editor-site-nav-group">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Platform Pages <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">Platform Pages <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($platformPages as $_pt): ?>
                             <?php $_ptFileRel = 'templates/platform/' . $_pt['slug'] . '.php'; ?>
@@ -217,7 +220,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <?php endif; ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Pages <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">Pages <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($sitePages as $_sp): ?>
                             <a href="<?= e($_editorPageHref((int)$_sp['id'])) ?>"
@@ -267,7 +270,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <?php endif; ?>
                     <?php if (!empty($headerPages)): ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Headers <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">Headers <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($headerPages as $_hp): ?>
                             <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"
@@ -280,7 +283,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <?php endif; ?>
                     <?php if (!empty($footerPages)): ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Footers <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">Footers <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($footerPages as $_fp): ?>
                             <a href="<?= e($_editorPageHref((int)$_fp['id'])) ?>"
@@ -293,7 +296,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <?php endif; ?>
                     <?php if (!empty($navTemplates)): ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Templates <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">Templates <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($navTemplates as $_tpl): ?>
                             <?php $_tplPageId = $_tpl['editor_page_id'] ?? null; ?>
@@ -314,7 +317,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <?php endif; ?>
                     <?php if (!empty($navMenus)): ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">Menus <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">Menus <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($navMenus as $_nm): ?>
                             <a href="<?= url('/admin/menus/' . (int)$_nm['id'] . '/block-editor') ?>"
@@ -334,7 +337,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <?php endif; ?>
                     <?php if (!empty($navCssFiles)): ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">🎨 CSS Files <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">🎨 CSS Files <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($navCssFiles as $_css): ?>
                             <?php $_cssFileRel = 'public/css/' . $_css; ?>
@@ -349,7 +352,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <?php if (!empty($navPhpGroups)): ?>
                     <?php $_grpLabels = ['root' => 'Root', 'public' => 'Public', 'components' => 'Components', 'council' => 'Council', 'errors' => 'Errors']; ?>
                     <div class="editor-site-nav-group collapsed">
-                        <span class="editor-site-nav-label" onclick="this.parentElement.classList.toggle('collapsed')">🧩 PHP Templates <span class="editor-group-chevron">▾</span></span>
+                        <span class="editor-site-nav-label">🧩 PHP Templates <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($navPhpGroups as $_grpKey => $_grpFiles): ?>
                             <span class="editor-site-nav-subheading"><?= e($_grpLabels[$_grpKey] ?? ucfirst($_grpKey)) ?></span>
@@ -364,7 +367,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
 
             <div class="editor-panel-section">
-                <h3 class="editor-panel-heading editor-panel-toggle" onclick="this.parentElement.classList.toggle('collapsed')">Add Block <span class="editor-panel-chevron">▾</span></h3>
+                <h3 class="editor-panel-heading editor-panel-toggle">Add Block <span class="editor-panel-chevron">▾</span></h3>
                 <div class="editor-palette">
                     <button class="palette-btn" data-add-block="text">Text</button>
                     <button class="palette-btn" data-add-block="heading">Heading</button>
@@ -384,7 +387,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 </div>
             </div>
             <div class="editor-panel-section" id="editor-tree-section">
-                <h3 class="editor-panel-heading editor-panel-toggle" onclick="this.parentElement.classList.toggle('collapsed')">Block Tree <span class="editor-panel-chevron">▾</span></h3>
+                <h3 class="editor-panel-heading editor-panel-toggle">Block Tree <span class="editor-panel-chevron">▾</span></h3>
                 <div id="editor-block-tree" class="editor-block-tree"></div>
             </div>
         </div>
@@ -400,7 +403,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty">Header zone — not yet published.</div>
                 <?php endif; ?>
-                <button type="button" class="editor-zone-edit-link" onclick="this.nextElementSibling.classList.toggle('open')">Choose header to edit ▾</button>
+                <button type="button" class="editor-zone-edit-link">Choose header to edit ▾</button>
                 <div class="zone-picker-menu">
                     <?php foreach ($headerPages as $_hp): ?>
                     <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?></a>
@@ -1184,14 +1187,6 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 </div><!-- /#editor-wrap -->
 
 <style id="editor-live-styles"><?= $cruinnCss ?></style>
-<script>
-var CONTENT_SETS = <?= json_encode(array_map(function($cs) {
-    return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: []];
-}, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-</script>
-
-
-
 <?php
 // Load block type registry + all registered type definitions
 $btDir = CRUINN_PUBLIC . '/js/admin/block-types/';
@@ -1202,4 +1197,5 @@ foreach ($btFiles as $btFile):
 ?>
 <script src="<?= url('/js/admin/block-types/' . $btName) ?>?v=<?= $btMtime ?>"></script>
 <?php endforeach; ?>
+<script src="/js/admin/editor-shell.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/editor-shell.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/editor-shell.js') : 0 ?>"></script>
 <script src="/js/editor.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/editor.js') ? filemtime(CRUINN_PUBLIC . '/js/editor.js') : 0 ?>"></script>

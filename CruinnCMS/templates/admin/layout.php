@@ -10,7 +10,7 @@
     <?php foreach (\Cruinn\Template::flushCss() as $_cssFile): ?>
     <link rel="stylesheet" href="<?= url('/css/' . e($_cssFile)) ?>?v=<?= file_exists(CRUINN_PUBLIC . '/css/' . $_cssFile) ? filemtime(CRUINN_PUBLIC . '/css/' . $_cssFile) : 0 ?>">
     <?php endforeach; ?>
-    <script>if(localStorage.getItem('admin-layout-wide')==='1')document.documentElement.classList.add('admin-layout-wide');</script>
+    <script src="<?= url('/js/admin/boot.js') ?>?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/boot.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/boot.js') : 0 ?>"></script>
 </head>
 <body class="admin-body">
 
@@ -128,7 +128,7 @@
                     <?php if (\Cruinn\Platform\PlatformAuth::check()): ?>
                     <a href="/cms/dashboard" class="admin-topbar-cms-link" title="Back to Cruinn CMS platform">← CMS</a>
                     <?php endif; ?>
-                    <button class="admin-width-toggle" id="admin-width-btn" title="Toggle layout width" onclick="var w=document.documentElement.classList.toggle('admin-layout-wide');localStorage.setItem('admin-layout-wide',w?'1':'0');this.textContent=w?'\u22A1':'\u229E';">&#x229E;</button><script>document.getElementById('admin-width-btn').textContent=document.documentElement.classList.contains('admin-layout-wide')?'\u22A1':'\u229E';</script>
+                    <button class="admin-width-toggle" id="admin-width-btn" type="button" title="Toggle layout width">&#x229E;</button>
                     <a href="<?= url('/profile') ?>" class="admin-topbar-user" title="My Profile">&#x1F464; <?= e($current_user['display_name'] ?? $current_user['email'] ?? 'Admin') ?></a>
                     <a href="<?= url('/logout') ?>">Logout</a>
                 </div>
@@ -192,6 +192,7 @@ $adminModules = [
     'template-editor.js',
     'dashboard-config.js',
     'nav-config.js',
+    'shell.js',
     'index.js',
 ];
 foreach ($adminModules as $module):
@@ -202,22 +203,5 @@ foreach ($adminModules as $module):
 <?php foreach (\Cruinn\Template::flushJs() as $_jsModule): ?>
 <script src="<?= url('/js/admin/' . e($_jsModule)) ?>?v=<?= file_exists($adminJsBase . $_jsModule) ? filemtime($adminJsBase . $_jsModule) : 0 ?>"></script>
 <?php endforeach; ?>
-<script>
-(function () {
-    var currentPath = location.pathname;
-    document.querySelectorAll('.admin-sidebar-group').forEach(function (group) {
-        var flyout = group.querySelector('.admin-sidebar-flyout');
-        if (!flyout) { return; }
-        // Auto-open if current page is within this group
-        if (flyout.querySelector('a[href="' + currentPath + '"]')) {
-            group.classList.add('open');
-        }
-        group.querySelector('.admin-sidebar-parent').addEventListener('click', function (e) {
-            e.preventDefault();
-            group.classList.toggle('open');
-        });
-    });
-}());
-</script>
 </body>
 </html>
