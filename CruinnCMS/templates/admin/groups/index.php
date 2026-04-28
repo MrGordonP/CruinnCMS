@@ -10,9 +10,10 @@ $formAction = $selectedId ? '/admin/groups/' . $selectedId : '/admin/groups';
 <div class="panel-layout" id="groups-layout" data-group-id="<?= $selectedId ?>">
 
     <!-- Left: group list -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>Groups</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
             <a href="/admin/groups/new" class="btn btn-primary btn-small">+ New</a>
         </div>
         <div class="pl-sidebar-scroll">
@@ -124,8 +125,8 @@ $formAction = $selectedId ? '/admin/groups/' . $selectedId : '/admin/groups';
     </div>
 
     <!-- Right: members panel -->
-    <div class="pl-detail">
-        <div class="pl-detail-header"><h3>Members</h3></div>
+    <div class="pl-detail" id="pl-detail">
+        <div class="pl-detail-header"><h3>Members</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll" style="padding:0.75rem">
         <?php if (!$group): ?>
             <p class="text-muted" style="font-size:0.85rem">Select a group to manage members.</p>

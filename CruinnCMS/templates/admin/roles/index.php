@@ -12,9 +12,10 @@ $formAction  = $selectedId ? '/admin/roles/' . $selectedId : '/admin/roles';
 <div class="panel-layout" id="roles-layout" data-role-id="<?= $selectedId ?>">
 
     <!-- Left: role list -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>Roles</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
             <a href="/admin/roles/new" class="btn btn-primary btn-small">+ New</a>
         </div>
         <div class="pl-sidebar-scroll">
@@ -71,8 +72,8 @@ $formAction  = $selectedId ? '/admin/roles/' . $selectedId : '/admin/roles';
     </div>
 
     <!-- Right: members panel -->
-    <div class="pl-detail">
-        <div class="pl-detail-header"><h3>Role Members</h3></div>
+    <div class="pl-detail" id="pl-detail">
+        <div class="pl-detail-header"><h3>Role Members</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll" style="padding:0.75rem">
         <?php if (!$role): ?>
             <p class="text-muted" style="font-size:0.85rem">Select a role to manage its members.</p>

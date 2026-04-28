@@ -500,3 +500,93 @@
 #menus-items-panel .menu-editor-sidebar {
     position: static;
 }
+
+/* ── Panel collapse (PanelCollapse.js) ─────────────────────────── */
+
+/* Toggle button — appears in pl-sidebar-header / pl-detail-header */
+.pl-panel-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.65rem;
+    color: var(--color-text-light, #6c757d);
+    padding: 0.1rem 0.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+    border-radius: 3px;
+    transition: color .12s, background .12s;
+}
+
+.pl-panel-toggle:hover {
+    color: var(--color-primary, #1d9e75);
+    background: rgba(29, 158, 117, .08);
+}
+
+/* Collapsed sidebar — shrinks to 32px strip, hides scrollable body */
+.pl-sidebar.collapsed {
+    width: 32px;
+    min-width: 32px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.pl-sidebar.collapsed .pl-sidebar-scroll,
+.pl-sidebar.collapsed .pl-sidebar-footer,
+.pl-sidebar.collapsed h3 {
+    display: none;
+}
+
+.pl-sidebar.collapsed .pl-sidebar-header {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.4rem 0;
+    gap: 0;
+    border-right: 1px solid var(--color-border, #e2e8f0);
+}
+
+.pl-sidebar.collapsed .pl-panel-toggle {
+    margin-left: 0;
+}
+
+/* Override grid to collapse the sidebar column */
+.panel-layout:has(.pl-sidebar.collapsed) {
+    grid-template-columns: 32px 1fr 280px;
+}
+
+.panel-layout.no-detail:has(.pl-sidebar.collapsed) {
+    grid-template-columns: 32px 1fr;
+}
+
+/* Collapsed detail — shrinks to 32px strip */
+.pl-detail.collapsed {
+    width: 32px;
+    min-width: 32px;
+    overflow: hidden;
+}
+
+.pl-detail.collapsed .pl-detail-scroll,
+.pl-detail.collapsed h3 {
+    display: none;
+}
+
+.pl-detail.collapsed .pl-detail-header {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.4rem 0;
+    gap: 0;
+    border-left: 1px solid var(--color-border, #e2e8f0);
+}
+
+.pl-detail.collapsed .pl-panel-toggle {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.panel-layout:has(.pl-detail.collapsed) {
+    grid-template-columns: 240px 1fr 32px;
+}
+
+.panel-layout:has(.pl-sidebar.collapsed):has(.pl-detail.collapsed) {
+    grid-template-columns: 32px 1fr 32px;
+}

@@ -57,9 +57,10 @@ $GLOBALS['admin_flush_layout'] = true;
 <div class="panel-layout" id="media-layout">
 
     <!-- ── Left: Folder tree ──────────────────────────────────── -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>Folders</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
             <button class="btn btn-sm btn-secondary" id="new-folder-btn">+ Folder</button>
         </div>
         <div class="pl-sidebar-scroll" id="media-folder-tree">
@@ -97,8 +98,8 @@ $GLOBALS['admin_flush_layout'] = true;
     </div>
 
     <!-- ── Right: File detail ─────────────────────────────────── -->
-    <div class="pl-detail">
-        <div class="pl-detail-header"><h3>File Details</h3></div>
+    <div class="pl-detail" id="pl-detail">
+        <div class="pl-detail-header"><h3>File Details</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll">
             <div class="pl-detail-placeholder" id="media-detail-placeholder">
                 <div class="pl-detail-placeholder-icon">🖼</div>

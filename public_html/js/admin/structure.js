@@ -359,3 +359,8 @@
     }
 
 })();
+
+PanelCollapse.init([
+    { panelId: 'pl-sidebar',      toggleId: 'pl-sidebar-toggle', storeKey: 'admin_structure_sidebar', side: 'left' },
+    { panelId: 'structure-detail', toggleId: 'pl-detail-toggle',  storeKey: 'admin_structure_detail',  side: 'right' }
+]);

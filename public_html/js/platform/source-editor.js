@@ -2,8 +2,6 @@
     var wrap = document.getElementById('source-wrap');
     if (!wrap) return;
 
-    var STORE_KEY_LEFT = 'cms_source_panel_left';
-    var STORE_KEY_RIGHT = 'cms_source_panel_right';
     var csrfToken = wrap.dataset.csrfToken || '';
     var previewUrl = wrap.dataset.previewUrl || '';
     var currentDir = null;
@@ -11,8 +9,6 @@
 
     var leftPanel = document.getElementById('source-panel-left');
     var rightPanel = document.getElementById('source-panel-right');
-    var leftToggleBtn = document.getElementById('source-panel-left-toggle');
-    var rightToggleBtn = document.getElementById('source-panel-right-toggle');
     var sourceTree = document.querySelector('.source-tree');
     var dirPullBtn = document.getElementById('props-dir-pull-btn');
     var dirResults = document.getElementById('props-dir-results');
@@ -23,35 +19,6 @@
     var viewButtons = document.querySelectorAll('[data-source-view]');
     var filePullForm = document.getElementById('props-pull-form');
     var filePullBtn = document.getElementById('props-file-pull-btn');
-
-    function applyPanelState(side, collapsed) {
-        var panel = side === 'left' ? leftPanel : rightPanel;
-        var button = side === 'left' ? leftToggleBtn : rightToggleBtn;
-        if (!panel || !button) return;
-
-        if (collapsed) {
-            panel.classList.add('collapsed');
-            button.textContent = side === 'left' ? '\u25B6' : '\u25C0';
-            button.title = 'Expand ' + (side === 'left' ? 'tree' : 'properties');
-        } else {
-            panel.classList.remove('collapsed');
-            button.textContent = side === 'left' ? '\u25C0' : '\u25B6';
-            button.title = 'Collapse ' + (side === 'left' ? 'tree' : 'properties');
-        }
-    }
-
-    function togglePanel(side) {
-        var panel = side === 'left' ? leftPanel : rightPanel;
-        if (!panel) return;
-
-        var collapsed = !panel.classList.contains('collapsed');
-        applyPanelState(side, collapsed);
-        try {
-            localStorage.setItem(side === 'left' ? STORE_KEY_LEFT : STORE_KEY_RIGHT, collapsed ? '1' : '0');
-        } catch (e) {
-            // Ignore storage errors.
-        }
-    }
 
     function loadPreview() {
         if (!sourcePreviewFrame || !previewUrl || loaded) return;
@@ -70,18 +37,6 @@
         if (view === 'split' || view === 'preview') {
             loadPreview();
         }
-    }
-
-    if (leftToggleBtn) {
-        leftToggleBtn.addEventListener('click', function () {
-            togglePanel('left');
-        });
-    }
-
-    if (rightToggleBtn) {
-        rightToggleBtn.addEventListener('click', function () {
-            togglePanel('right');
-        });
     }
 
     if (sourceTextarea) {
@@ -136,7 +91,7 @@
 
             if (propsDir) propsDir.style.display = '';
             if (rightPanel && rightPanel.classList.contains('collapsed')) {
-                togglePanel('right');
+                PanelCollapse.expand('source-panel-right');
             }
         });
     }
@@ -217,6 +172,10 @@
         });
     }
 
-    applyPanelState('left', false);
-    applyPanelState('right', false);
 }());
+
+PanelCollapse.init([
+    { panelId: 'source-panel-left',   toggleId: 'source-panel-left-toggle',   storeKey: 'cms_src_left',   side: 'left' },
+    { panelId: 'source-code-pane',    toggleId: 'source-panel-centre-toggle', storeKey: 'cms_src_centre', side: 'centre' },
+    { panelId: 'source-panel-right',  toggleId: 'source-panel-right-toggle',  storeKey: 'cms_src_right',  side: 'right' }
+]);

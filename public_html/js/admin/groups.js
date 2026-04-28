@@ -198,3 +198,8 @@
         });
     });
 }());
+
+PanelCollapse.init([
+    { panelId: 'pl-sidebar', toggleId: 'pl-sidebar-toggle', storeKey: 'admin_groups_sidebar', side: 'left' },
+    { panelId: 'pl-detail',  toggleId: 'pl-detail-toggle',  storeKey: 'admin_groups_detail',  side: 'right' }
+]);

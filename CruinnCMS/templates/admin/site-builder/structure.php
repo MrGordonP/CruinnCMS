@@ -280,9 +280,10 @@ include __DIR__ . '/_tabs.php';
 <div class="panel-layout" id="structure-layout" data-menus='<?= e(json_encode($menusForJs, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
 
     <!-- ══ LEFT: Page Inventory ══════════════════════════════════ -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>Pages</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
         </div>
         <div class="pl-sidebar-scroll" style="padding: 0">
 
@@ -400,7 +401,7 @@ include __DIR__ . '/_tabs.php';
 
     <!-- ══ RIGHT: Detail ══════════════════════════════════════════ -->
     <div class="pl-detail" id="structure-detail">
-        <div class="pl-detail-header"><h3>Details</h3></div>
+        <div class="pl-detail-header"><h3>Details</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll">
             <div class="pl-detail-placeholder" id="st-placeholder">
                 <div class="pl-detail-placeholder-icon">🗺️</div>

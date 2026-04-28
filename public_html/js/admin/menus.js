@@ -92,3 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }());
 });
+
+PanelCollapse.init([
+    { panelId: 'pl-sidebar',   toggleId: 'pl-sidebar-toggle', storeKey: 'admin_menus_sidebar', side: 'left' },
+    { panelId: 'menus-detail', toggleId: 'pl-detail-toggle',  storeKey: 'admin_menus_detail',  side: 'right' }
+]);

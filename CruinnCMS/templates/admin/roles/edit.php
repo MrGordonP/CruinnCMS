@@ -34,9 +34,10 @@ if (!$isNew) { $GLOBALS['admin_flush_layout'] = true; }
 <div class="panel-layout" id="role-edit-layout" data-role-id="<?= $roleId ?>">
 
     <!-- Left: role navigation -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>All Roles</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
             <a href="/admin/roles/new" class="btn btn-primary btn-small">+ New</a>
         </div>
         <div class="pl-sidebar-scroll">
@@ -88,8 +89,8 @@ if (!$isNew) { $GLOBALS['admin_flush_layout'] = true; }
     </div>
 
     <!-- Right: members panel -->
-    <div class="pl-detail">
-        <div class="pl-detail-header"><h3>Role Members</h3></div>
+    <div class="pl-detail" id="pl-detail">
+        <div class="pl-detail-header"><h3>Role Members</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll" style="padding:0.75rem">
 
             <!-- Add user -->

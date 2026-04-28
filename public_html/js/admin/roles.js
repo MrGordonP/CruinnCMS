@@ -87,3 +87,8 @@
         });
     });
 }());
+
+PanelCollapse.init([
+    { panelId: 'pl-sidebar', toggleId: 'pl-sidebar-toggle', storeKey: 'admin_roles_sidebar', side: 'left' },
+    { panelId: 'pl-detail',  toggleId: 'pl-detail-toggle',  storeKey: 'admin_roles_detail',  side: 'right' }
+]);

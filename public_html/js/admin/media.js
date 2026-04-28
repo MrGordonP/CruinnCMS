@@ -435,3 +435,8 @@
     // Init
     loadMedia('', '');
 })();
+
+PanelCollapse.init([
+    { panelId: 'pl-sidebar', toggleId: 'pl-sidebar-toggle', storeKey: 'admin_media_sidebar', side: 'left' },
+    { panelId: 'pl-detail',  toggleId: 'pl-detail-toggle',  storeKey: 'admin_media_detail',  side: 'right' }
+]);

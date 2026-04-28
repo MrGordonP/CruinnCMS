@@ -18,9 +18,10 @@ foreach ($pages as $pg) {
      data-templates="<?= e(json_encode(array_map(fn($t) => ['slug' => $t['slug'], 'name' => $t['name']], $templates ?? []))) ?>">
 
     <!-- ── Left: Filters ──────────────────────────────────────── -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>Pages</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
             <a href="/admin/pages/new" class="btn btn-sm btn-primary">+ New</a>
         </div>
         <div class="pl-sidebar-scroll">
@@ -120,7 +121,7 @@ foreach ($pages as $pg) {
 
     <!-- ── Right: Page detail ─────────────────────────────────── -->
     <div class="pl-detail" id="pages-detail">
-        <div class="pl-detail-header"><h3>Details</h3></div>
+        <div class="pl-detail-header"><h3>Details</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll">
             <div class="pl-detail-placeholder" id="pages-detail-placeholder">
                 <div class="pl-detail-placeholder-icon">📄</div>

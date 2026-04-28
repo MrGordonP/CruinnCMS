@@ -10,9 +10,10 @@ $GLOBALS['admin_flush_layout'] = true;
      data-locations="<?= e(json_encode(array_map(fn($slug, $loc) => ['slug' => $slug, 'label' => $loc['label']], array_keys($locations ?? []), array_values($locations ?? [])), JSON_THROW_ON_ERROR)) ?>">
 
     <!-- ── Left: Menu list ───────────────────────────────────── -->
-    <div class="pl-sidebar">
+    <div class="pl-sidebar" id="pl-sidebar">
         <div class="pl-sidebar-header">
             <h3>Menus</h3>
+            <button type="button" class="pl-panel-toggle" id="pl-sidebar-toggle" title="Collapse">&#x25C0;</button>
             <a href="/admin/menus/new" class="btn btn-sm btn-primary">+ New</a>
         </div>
         <div class="pl-sidebar-scroll">
@@ -56,7 +57,7 @@ $GLOBALS['admin_flush_layout'] = true;
 
     <!-- ── Right: Settings ───────────────────────────────────── -->
     <div class="pl-detail" id="menus-detail">
-        <div class="pl-detail-header"><h3>Details</h3></div>
+        <div class="pl-detail-header"><h3>Details</h3><button type="button" class="pl-panel-toggle" id="pl-detail-toggle" title="Collapse">&#x25B6;</button></div>
         <div class="pl-detail-scroll">
             <div class="pl-detail-placeholder" id="menus-detail-placeholder">
                 <div class="pl-detail-placeholder-icon">☰</div>

@@ -185,6 +185,7 @@ $adminJsBase = CRUINN_PUBLIC . '/js/admin/';
 $adminModules = [
     'utils.js',
     'api.js',
+    'panel-collapse.js',
     'media-browser.js',
     'rte.js',
     'gallery.js',

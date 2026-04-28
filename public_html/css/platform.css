@@ -1627,3 +1627,53 @@ html.platform-sidebar-collapsed .platform-sidebar {
         gap: 0.5rem;
     }
 }
+
+/* ── Source editor: centre pane collapse (PanelCollapse.js) ─── */
+.source-code-pane {
+    transition: flex 0.18s ease, width 0.18s ease;
+}
+
+.source-code-pane.collapsed {
+    flex: 0 0 32px !important;
+    width: 32px;
+    min-width: 32px;
+    overflow: hidden;
+}
+
+.source-code-pane.collapsed .source-code-form,
+.source-code-pane.collapsed .source-flash,
+.source-code-pane.collapsed .source-empty {
+    display: none;
+}
+
+.source-code-pane.collapsed .source-code-toolbar {
+    flex-direction: column;
+    padding: 0.3rem 0;
+    align-items: center;
+    gap: 0.25rem;
+    height: auto;
+    border-bottom: none;
+    border-right: 1px solid var(--plat-border);
+}
+
+/* Hide everything in the toolbar except the toggle button when collapsed */
+.source-code-pane.collapsed .source-code-path,
+.source-code-pane.collapsed .source-toolbar-actions {
+    display: none;
+}
+
+/* Centre toggle button in the source toolbar */
+#source-panel-centre-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #5dcaa5;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+#source-panel-centre-toggle:hover {
+    color: var(--plat-accent);
+}

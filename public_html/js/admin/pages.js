@@ -137,3 +137,8 @@
         return d.innerHTML;
     }
 }());
+
+PanelCollapse.init([
+    { panelId: 'pl-sidebar',   toggleId: 'pl-sidebar-toggle', storeKey: 'admin_pages_sidebar', side: 'left' },
+    { panelId: 'pages-detail', toggleId: 'pl-detail-toggle',  storeKey: 'admin_pages_detail',  side: 'right' }
+]);
