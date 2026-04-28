@@ -1,0 +1,167 @@
+/**
+ * CruinnCMS — Content Sets admin UI
+ * 3-panel layout matching the Drivespace file manager pattern.
+ */
+
+/* ── 3-panel wrapper ────────────────────────────────────────── */
+
+.content-set-editor,
+.content-set-rows {
+    display: grid;
+    grid-template-columns: 260px 1fr 300px;
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg-light, #f2f5f3);
+}
+
+/* ── Shared panel chrome ─────────────────────────────────────── */
+
+.cse-meta-panel,
+.cse-fields-panel,
+.cse-ref-panel {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.cse-meta-panel   { border-right: 1px solid var(--color-border, #ccd9d3); }
+.cse-fields-panel { border-right: 1px solid var(--color-border, #ccd9d3); }
+
+.cse-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem 0.65rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.cse-panel-header h3 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.6;
+}
+
+.cse-panel-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.cse-ref-body {
+    padding: 0.75rem 0;
+}
+
+/* ── Field row (schema editor) ───────────────────────────────── */
+
+.cse-field-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    background: #fff;
+    transition: background 0.1s;
+}
+
+.cse-field-row:hover { background: var(--color-bg-light, #f2f5f3); }
+.cse-field-row.dragging { opacity: 0.4; }
+
+.cse-drag-handle {
+    cursor: grab;
+    color: #aaa;
+    font-size: 1rem;
+    flex-shrink: 0;
+    user-select: none;
+    padding: 0 0.2rem;
+}
+
+.cse-field-inputs {
+    display: flex;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.cse-field-inputs .form-input-sm,
+.cse-field-inputs .form-select.form-input-sm {
+    flex: 1;
+    min-width: 80px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
+}
+
+.cse-field-remove {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0 0.2rem;
+    flex-shrink: 0;
+    transition: color 0.1s;
+}
+.cse-field-remove:hover { color: #c0392b; }
+
+.cse-field-add-hint {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #888;
+    font-size: 0.88rem;
+}
+
+/* ── Form actions inside panel ───────────────────────────────── */
+
+.cse-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+/* ── Field type reference ────────────────────────────────────── */
+
+.cse-type-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.83rem;
+    margin: 0;
+    padding: 0.5rem 1rem;
+}
+
+.cse-type-list dt {
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--color-primary, #1d9e75);
+}
+
+.cse-type-list dd {
+    margin: 0;
+    color: #555;
+}
+
+/* ── Row table ───────────────────────────────────────────────── */
+
+.cse-row-table .cse-drag-col { width: 28px; }
+.cse-row-table .cse-drag-handle { cursor: grab; color: #aaa; text-align: center; }
+.cse-row-table .cse-data-row { cursor: pointer; transition: background 0.1s; }
+.cse-row-table .cse-data-row:hover { background: var(--color-bg-light, #f2f5f3); }
+.cse-row-table .cse-data-row.selected { background: #eaf6f1; }
+.cse-row-table .cse-data-row.dragging { opacity: 0.4; }
+
+.cse-thumb {
+    max-width: 48px;
+    max-height: 36px;
+    object-fit: cover;
+    border-radius: 3px;
+    vertical-align: middle;
+}

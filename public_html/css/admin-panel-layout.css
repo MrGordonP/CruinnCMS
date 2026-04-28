@@ -1,0 +1,592 @@
+/**
+ * CruinnCMS — Shared 3-panel layout
+ *
+ * Reusable across: pages, media, organisation, mailing lists, and anywhere
+ * else that benefits from the left-sidebar / main-content / right-detail pattern.
+ *
+ * Usage:
+ *   <div class="panel-layout">          ← outer grid
+ *     <div class="pl-sidebar">          ← left sidebar (240px)
+ *     <div class="pl-main">             ← scrollable main content (1fr)
+ *     <div class="pl-detail">           ← right detail panel (280px)
+ *   </div>
+ *
+ * The layout fills the viewport below the admin header (52px).
+ * Each column scrolls independently.
+ */
+
+/* ── Outer grid ────────────────────────────────────────────────── */
+
+/* When panel-layout lives inside the ACP tab wrapper, pass height through */
+.sb-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+}
+
+.sb-wrapper .acp-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+
+.sb-wrapper .acp-panel>.panel-layout {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+}
+
+.panel-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr 280px;
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
+    overflow: hidden;
+    background: var(--color-bg-light, #f2f5f3);
+}
+
+/* Variant: no right panel */
+.panel-layout.no-detail {
+    grid-template-columns: 240px 1fr;
+}
+
+/* ── Sidebar (left) ────────────────────────────────────────────── */
+
+.pl-sidebar {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid var(--color-border, #ccd9d3);
+    overflow: hidden;
+    min-height: 0;
+}
+
+.pl-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0.9rem 0.6rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.pl-sidebar-header h3 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.6;
+}
+
+.pl-sidebar-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.4rem 0;
+}
+
+/* Nav items */
+.pl-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.84rem;
+    color: var(--color-text, #0c1614);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    transition: background 0.1s, border-color 0.1s;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pl-nav-item:hover {
+    background: var(--color-bg-light, #f2f5f3);
+    text-decoration: none;
+}
+
+.pl-nav-item.active {
+    border-left-color: var(--color-primary, #1d9e75);
+    background: #eaf6f1;
+    font-weight: 600;
+    color: var(--color-text, #0c1614);
+}
+
+.pl-nav-item .pl-nav-count {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: #aaa;
+    flex-shrink: 0;
+}
+
+.pl-nav-section {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #aaa;
+    padding: 0.6rem 0.9rem 0.2rem;
+}
+
+.pl-sidebar-footer {
+    border-top: 1px solid var(--color-border, #ccd9d3);
+    padding: 0.6rem 0.75rem;
+    flex-shrink: 0;
+}
+
+/* ── Main panel (middle) ────────────────────────────────────────── */
+
+.pl-main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-right: 1px solid var(--color-border, #ccd9d3);
+    min-height: 0;
+}
+
+.pl-main-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.pl-main-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pl-main-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.pl-main-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 1rem;
+    background: #fff;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.pl-search-input {
+    flex: 1;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.83rem;
+    border: 1px solid var(--color-border, #ccd9d3);
+    border-radius: 4px;
+    background: var(--color-bg-light, #f2f5f3);
+}
+
+.pl-search-input:focus {
+    outline: none;
+    border-color: var(--color-primary, #1d9e75);
+    background: #fff;
+}
+
+.pl-main-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 0.75rem 1rem;
+}
+
+/* Table inside main panel */
+.pl-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.pl-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    padding: 0.3rem 0.6rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    white-space: nowrap;
+}
+
+.pl-table td {
+    padding: 0.42rem 0.6rem;
+    border-bottom: 1px solid #eef1ef;
+    vertical-align: middle;
+}
+
+.pl-table tr {
+    cursor: pointer;
+    transition: background 0.08s;
+}
+
+.pl-table tr:hover td {
+    background: #f4faf7;
+}
+
+.pl-table tr.selected td {
+    background: #d6f0e5;
+}
+
+.pl-table tr:last-child td {
+    border-bottom: none;
+}
+
+.pl-empty {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #999;
+    font-size: 0.9rem;
+}
+
+/* ── Detail panel (right) ───────────────────────────────────────── */
+
+.pl-detail {
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.pl-detail-header {
+    padding: 0.75rem 1rem 0.6rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    flex-shrink: 0;
+}
+
+.pl-detail-header h3 {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.6;
+}
+
+.pl-detail-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+/* Placeholder (nothing selected yet) */
+.pl-detail-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #ccc;
+    font-size: 0.85rem;
+    text-align: center;
+    gap: 0.5rem;
+    padding: 2rem;
+}
+
+.pl-detail-placeholder-icon {
+    font-size: 2.5rem;
+    opacity: 0.4;
+}
+
+/* Detail content */
+.pl-detail-icon {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 0.75rem;
+}
+
+.pl-detail-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text, #0c1614);
+    word-break: break-word;
+    margin-bottom: 0.2rem;
+    line-height: 1.3;
+}
+
+.pl-detail-subtitle {
+    font-size: 0.78rem;
+    color: #888;
+    margin-bottom: 1rem;
+}
+
+.pl-detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.pl-detail-actions .btn {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+}
+
+.pl-detail-actions-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.pl-detail-actions-stack .btn,
+.pl-detail-actions-stack form {
+    width: 100%;
+}
+
+.pl-detail-actions-stack form .btn {
+    width: 100%;
+}
+
+.pl-detail-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.pl-detail-settings .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.pl-detail-settings .form-group label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pl-detail-settings .form-input {
+    font-size: 0.83rem;
+    padding: 0.3rem 0.5rem;
+}
+
+.pl-detail-settings-section {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #aaa;
+    padding: 0.5rem 0 0.25rem;
+    border-top: 1px solid var(--color-border, #ddd);
+    margin-top: 0.25rem;
+}
+
+/* Meta table */
+.pl-meta {
+    width: 100%;
+    font-size: 0.82rem;
+    border-collapse: collapse;
+    margin-bottom: 1.25rem;
+}
+
+.pl-meta th {
+    text-align: left;
+    color: #888;
+    font-weight: 600;
+    padding: 0.28rem 0.5rem 0.28rem 0;
+    width: 42%;
+    vertical-align: top;
+}
+
+.pl-meta td {
+    color: var(--color-text, #0c1614);
+    padding: 0.28rem 0;
+    word-break: break-word;
+}
+
+.pl-detail-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #aaa;
+    margin: 0.75rem 0 0.4rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--color-border, #ccd9d3);
+}
+
+/* ── Sidebar nav items ──────────────────────────────────────────── */
+
+.pl-sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.9rem;
+    text-decoration: none;
+    color: var(--color-text, #0c1614);
+    font-size: 0.875rem;
+    border-left: 3px solid transparent;
+    transition: background 0.1s, border-color 0.1s;
+}
+
+.pl-sidebar-item:hover {
+    background: var(--color-bg-light, #f2f5f3);
+}
+
+.pl-sidebar-item.active {
+    background: #e8f5ef;
+    border-left-color: var(--color-primary, #1d9e75);
+    font-weight: 600;
+}
+
+/* ── Main panel body (scrollable form area) ─────────────────────── */
+
+.pl-main-body {
+    padding: var(--space-xl, 1.5rem) var(--space-md, 1rem);
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ── Role member rows ───────────────────────────────────────────── */
+
+.role-member-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    font-size: 0.85rem;
+}
+
+.role-member-row:last-child {
+    border-bottom: none;
+}
+
+.role-member-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Menu editor inside the middle panel: stack tree + sources vertically ── */
+#menus-items-panel .menu-editor-columns {
+    grid-template-columns: 1fr;
+}
+
+#menus-items-panel .menu-editor-sidebar {
+    position: static;
+}
+
+/* ── Panel collapse (PanelCollapse.js) ─────────────────────────── */
+
+/* Toggle button — appears in pl-sidebar-header / pl-detail-header */
+.pl-panel-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.65rem;
+    color: var(--color-text-light, #6c757d);
+    padding: 0.1rem 0.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+    border-radius: 3px;
+    transition: color .12s, background .12s;
+}
+
+.pl-panel-toggle:hover {
+    color: var(--color-primary, #1d9e75);
+    background: rgba(29, 158, 117, .08);
+}
+
+/* Collapsed sidebar — shrinks to 32px strip, hides scrollable body */
+.pl-sidebar.collapsed {
+    width: 32px;
+    min-width: 32px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.pl-sidebar.collapsed .pl-sidebar-scroll,
+.pl-sidebar.collapsed .pl-sidebar-footer,
+.pl-sidebar.collapsed h3 {
+    display: none;
+}
+
+.pl-sidebar.collapsed .pl-sidebar-header {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.4rem 0;
+    gap: 0;
+    border-right: 1px solid var(--color-border, #e2e8f0);
+}
+
+.pl-sidebar.collapsed .pl-panel-toggle {
+    margin-left: 0;
+}
+
+/* Override grid to collapse the sidebar column */
+.panel-layout:has(.pl-sidebar.collapsed) {
+    grid-template-columns: 32px 1fr 280px;
+}
+
+.panel-layout.no-detail:has(.pl-sidebar.collapsed) {
+    grid-template-columns: 32px 1fr;
+}
+
+/* Collapsed detail — shrinks to 32px strip */
+.pl-detail.collapsed {
+    width: 32px;
+    min-width: 32px;
+    overflow: hidden;
+}
+
+.pl-detail.collapsed .pl-detail-scroll,
+.pl-detail.collapsed h3 {
+    display: none;
+}
+
+.pl-detail.collapsed .pl-detail-header {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.4rem 0;
+    gap: 0;
+    border-left: 1px solid var(--color-border, #e2e8f0);
+}
+
+.pl-detail.collapsed .pl-panel-toggle {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.panel-layout:has(.pl-detail.collapsed) {
+    grid-template-columns: 240px 1fr 32px;
+}
+
+.panel-layout:has(.pl-sidebar.collapsed):has(.pl-detail.collapsed) {
+    grid-template-columns: 32px 1fr 32px;
+}

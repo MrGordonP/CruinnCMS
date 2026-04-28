@@ -1,0 +1,759 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Cruinn\Module\Mailbox\Services;
+
+use Cruinn\Database;
+
+/**
+ * MailboxService — IMAP access, header sync, send, thread resolution.
+ *
+ * All IMAP interaction goes through this service. Controllers never touch
+ * imap_* functions directly.
+ *
+ * Encryption: IMAP/SMTP passwords are stored AES-256-CBC encrypted.
+ * The key is derived from the instance secret (config 'secret_key').
+ * Use encryptPassword() / decryptPassword() for storage/retrieval.
+ */
+class MailboxService
+{
+    private Database $db;
+    private string   $encryptionKey;
+
+    /** IMAP connection pool — reuse within a request. */
+    private array $connections = [];
+
+    public function __construct(Database $db, string $instanceSecret)
+    {
+        $this->db            = $db;
+        // Derive a 32-byte key from the instance secret
+        $this->encryptionKey = hash('sha256', $instanceSecret, true);
+    }
+
+    // -------------------------------------------------------------------------
+    // Mailbox access control
+    // -------------------------------------------------------------------------
+
+    /**
+     * Return all imap-enabled officer rows the given user has access to.
+     * Admin users see all enabled mailboxes.
+     */
+    public function getAccessibleMailboxes(int $userId, string $role): array
+    {
+        if ($role === 'admin') {
+            return $this->db->fetchAll(
+                'SELECT id, position, email, imap_host, imap_port, imap_encryption,
+                        imap_user, imap_pass_enc, smtp_host, smtp_port, smtp_encryption,
+                        smtp_user, smtp_pass_enc
+                   FROM organisation_officers
+                  WHERE imap_enabled = 1
+                  ORDER BY sort_order, position'
+            );
+        }
+
+        return $this->db->fetchAll(
+            'SELECT id, position, email, imap_host, imap_port, imap_encryption,
+                    imap_user, imap_pass_enc, smtp_host, smtp_port, smtp_encryption,
+                    smtp_user, smtp_pass_enc
+               FROM organisation_officers
+              WHERE imap_enabled = 1
+                AND user_id = ?
+              ORDER BY sort_order, position',
+            [$userId]
+        );
+    }
+
+    /**
+     * Return a single officer/mailbox row, asserting access for the given user.
+     * Returns null if not found or access denied.
+     */
+    public function getMailbox(int $mailboxId, int $userId, string $role): ?array
+    {
+        if ($role === 'admin') {
+            return $this->db->fetch(
+                'SELECT * FROM organisation_officers WHERE id = ? AND imap_enabled = 1',
+                [$mailboxId]
+            ) ?: null;
+        }
+
+        return $this->db->fetch(
+            'SELECT * FROM organisation_officers WHERE id = ? AND user_id = ? AND imap_enabled = 1',
+            [$mailboxId, $userId]
+        ) ?: null;
+    }
+
+    // -------------------------------------------------------------------------
+    // IMAP connection
+    // -------------------------------------------------------------------------
+
+    /**
+     * Open (or reuse) an IMAP connection for the given mailbox row.
+     * Returns the IMAP stream resource or throws on failure.
+     *
+     * @throws \RuntimeException
+     */
+    public function connect(array $mailbox, string $folder = 'INBOX'): mixed
+    {
+        $cacheKey = $mailbox['id'] . ':' . $folder;
+
+        if (isset($this->connections[$cacheKey])) {
+            return $this->connections[$cacheKey];
+        }
+
+        $enc      = strtolower($mailbox['imap_encryption'] ?? 'ssl');
+        $port     = (int) ($mailbox['imap_port'] ?? 993);
+        $flags    = match ($enc) {
+            'ssl'   => '/imap/ssl',
+            'tls'   => '/imap/tls',
+            default => '/imap/notls',
+        };
+
+        $password = $this->decryptPassword((string) $mailbox['imap_pass_enc']);
+        $mailstr  = '{' . $mailbox['imap_host'] . ':' . $port . $flags . '}' . $folder;
+
+        $stream = @imap_open($mailstr, $mailbox['imap_user'], $password);
+
+        if ($stream === false) {
+            throw new \RuntimeException(
+                'IMAP connection failed for mailbox ' . $mailbox['id'] . ': ' . imap_last_error()
+            );
+        }
+
+        $this->connections[$cacheKey] = $stream;
+        return $stream;
+    }
+
+    /**
+     * Close all open IMAP connections. Call at end of request if needed.
+     */
+    public function closeAll(): void
+    {
+        foreach ($this->connections as $stream) {
+            @imap_close($stream);
+        }
+        $this->connections = [];
+    }
+
+    // -------------------------------------------------------------------------
+    // Folder list
+    // -------------------------------------------------------------------------
+
+    /**
+     * Return a list of folders for a mailbox as plain strings.
+     *
+     * @return string[]
+     */
+    public function getFolders(array $mailbox): array
+    {
+        $stream  = $this->connect($mailbox);
+        $enc     = strtolower($mailbox['imap_encryption'] ?? 'ssl');
+        $port    = (int) ($mailbox['imap_port'] ?? 993);
+        $flags   = match ($enc) {
+            'ssl'   => '/imap/ssl',
+            'tls'   => '/imap/tls',
+            default => '/imap/notls',
+        };
+        $ref     = '{' . $mailbox['imap_host'] . ':' . $port . $flags . '}';
+        $raw     = imap_list($stream, $ref, '*');
+
+        if ($raw === false) {
+            return [];
+        }
+
+        return array_map(
+            static fn(string $f): string => str_replace($ref, '', $f),
+            $raw
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Message list (with sync)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Return paginated messages for a folder.
+     *
+     * Syncs new headers from IMAP first (incremental from last known UID).
+     * Returns DB rows (already indexed) enriched with read-state for $userId.
+     */
+    public function getMessages(
+        array $mailbox,
+        string $folder,
+        int $userId,
+        string $role,
+        int $page = 1,
+        int $perPage = 50
+    ): array {
+        $this->syncFolder($mailbox, $folder);
+
+        $offset = ($page - 1) * $perPage;
+
+        $messages = $this->db->fetchAll(
+            'SELECT m.*,
+                    (SELECT COUNT(*) FROM mailbox_reads r
+                      WHERE r.mailbox_id = m.mailbox_id
+                        AND r.folder = m.folder
+                        AND r.imap_uid = m.imap_uid) AS read_count,
+                    (SELECT COUNT(*) FROM organisation_officers o
+                      WHERE o.id = m.mailbox_id AND o.imap_enabled = 1) AS holder_count,
+                    (SELECT 1 FROM mailbox_reads r2
+                      WHERE r2.mailbox_id = m.mailbox_id
+                        AND r2.folder = m.folder
+                        AND r2.imap_uid = m.imap_uid
+                        AND r2.user_id = ?) AS read_by_me
+               FROM mailbox_messages m
+              WHERE m.mailbox_id = ?
+                AND m.folder = ?
+              ORDER BY m.sent_at DESC
+              LIMIT ? OFFSET ?',
+            [$userId, $mailbox['id'], $folder, $perPage, $offset]
+        );
+
+        // Derive three-state read indicator on each row
+        foreach ($messages as &$msg) {
+            $msg['read_state'] = $this->deriveReadState(
+                (int) $msg['read_count'],
+                (int) $msg['holder_count']
+            );
+        }
+        unset($msg);
+
+        return $messages;
+    }
+
+    /**
+     * Return total message count for a folder (for pagination).
+     */
+    public function getMessageCount(int $mailboxId, string $folder): int
+    {
+        return (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM mailbox_messages WHERE mailbox_id = ? AND folder = ?',
+            [$mailboxId, $folder]
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Single message fetch
+    // -------------------------------------------------------------------------
+
+    /**
+     * Fetch the full message body from IMAP for the given UID.
+     * Returns an array with keys: headers, text_body, html_body, attachments[].
+     *
+     * @throws \RuntimeException if message not found
+     */
+    public function fetchBody(array $mailbox, string $folder, int $uid): array
+    {
+        $stream  = $this->connect($mailbox, $folder);
+        $msgNo   = imap_msgno($stream, $uid);
+
+        if ($msgNo === 0) {
+            throw new \RuntimeException('Message UID ' . $uid . ' not found in ' . $folder);
+        }
+
+        $structure = imap_fetchstructure($stream, $msgNo);
+        $headers   = imap_headerinfo($stream, $msgNo);
+
+        $textBody  = '';
+        $htmlBody  = '';
+        $attachments = [];
+
+        $this->parseStructure($stream, $msgNo, $structure, $textBody, $htmlBody, $attachments);
+
+        return [
+            'headers'     => $headers,
+            'text_body'   => $textBody,
+            'html_body'   => $htmlBody,
+            'attachments' => $attachments,
+        ];
+    }
+
+    // -------------------------------------------------------------------------
+    // Send
+    // -------------------------------------------------------------------------
+
+    /**
+     * Send a message via the mailbox's SMTP config using PHPMailer.
+     * $data keys: to, cc (optional), subject, text_body, html_body (optional),
+     *             reply_to_uid (optional, for In-Reply-To threading),
+     *             reply_to_folder (optional)
+     *
+     * @throws \RuntimeException on send failure
+     */
+    public function send(array $mailbox, array $data): void
+    {
+        if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+            throw new \RuntimeException('PHPMailer is required for sending mail.');
+        }
+
+        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+        $mail->isSMTP();
+        $mail->Host       = $mailbox['smtp_host'];
+        $mail->Port       = (int) ($mailbox['smtp_port'] ?? 587);
+        $mail->SMTPAuth   = true;
+        $mail->Username   = $mailbox['smtp_user'];
+        $mail->Password   = $this->decryptPassword((string) $mailbox['smtp_pass_enc']);
+
+        $enc = strtolower($mailbox['smtp_encryption'] ?? 'tls');
+        $mail->SMTPSecure = match ($enc) {
+            'ssl'   => \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS,
+            default => \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS,
+        };
+
+        $mail->setFrom($mailbox['email'], $mailbox['position'] ?? '');
+        $mail->addAddress($data['to']);
+
+        if (!empty($data['cc'])) {
+            $mail->addCC($data['cc']);
+        }
+
+        $mail->Subject = $data['subject'];
+        $mail->Body    = $data['html_body'] ?? nl2br(htmlspecialchars($data['text_body'], ENT_QUOTES));
+        $mail->AltBody = $data['text_body'];
+
+        // Thread headers
+        if (!empty($data['in_reply_to'])) {
+            $mail->addCustomHeader('In-Reply-To', $data['in_reply_to']);
+            $mail->addCustomHeader('References',  $data['in_reply_to']);
+        }
+
+        $mail->send();
+    }
+
+    // -------------------------------------------------------------------------
+    // Move / Delete
+    // -------------------------------------------------------------------------
+
+    public function moveMessage(array $mailbox, string $fromFolder, int $uid, string $toFolder): void
+    {
+        $stream = $this->connect($mailbox, $fromFolder);
+        $msgNo  = imap_msgno($stream, $uid);
+        imap_mail_move($stream, (string) $msgNo, $toFolder);
+        imap_expunge($stream);
+
+        // Remove from index — will be re-synced in destination folder
+        $this->db->execute(
+            'DELETE FROM mailbox_messages WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
+            [$mailbox['id'], $fromFolder, $uid]
+        );
+        $this->pruneReads($mailbox['id'], $fromFolder, $uid);
+        $this->pruneTagMap($mailbox['id'], $fromFolder, $uid);
+    }
+
+    public function deleteMessage(array $mailbox, string $folder, int $uid): void
+    {
+        // Determine Trash folder name (try common variants)
+        $folders = $this->getFolders($mailbox);
+        $trash   = $this->findSpecialFolder($folders, ['Trash', 'INBOX.Trash', 'Deleted Messages', 'Deleted Items']);
+
+        if ($trash && $folder !== $trash) {
+            $this->moveMessage($mailbox, $folder, $uid, $trash);
+        } else {
+            // Already in trash — permanently delete
+            $stream = $this->connect($mailbox, $folder);
+            $msgNo  = imap_msgno($stream, $uid);
+            imap_delete($stream, (string) $msgNo);
+            imap_expunge($stream);
+
+            $this->db->execute(
+                'DELETE FROM mailbox_messages WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
+                [$mailbox['id'], $folder, $uid]
+            );
+            $this->pruneReads($mailbox['id'], $folder, $uid);
+            $this->pruneTagMap($mailbox['id'], $folder, $uid);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Read state
+    // -------------------------------------------------------------------------
+
+    public function markRead(int $mailboxId, string $folder, int $uid, int $userId): void
+    {
+        $this->db->execute(
+            'INSERT IGNORE INTO mailbox_reads (mailbox_id, folder, imap_uid, user_id) VALUES (?, ?, ?, ?)',
+            [$mailboxId, $folder, $uid, $userId]
+        );
+    }
+
+    public function markUnread(int $mailboxId, string $folder, int $uid, int $userId): void
+    {
+        $this->db->execute(
+            'DELETE FROM mailbox_reads WHERE mailbox_id = ? AND folder = ? AND imap_uid = ? AND user_id = ?',
+            [$mailboxId, $folder, $uid, $userId]
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Tags
+    // -------------------------------------------------------------------------
+
+    public function getTags(): array
+    {
+        return $this->db->fetchAll('SELECT * FROM mailbox_tags ORDER BY sort_order, label');
+    }
+
+    public function getTagsForMessage(int $mailboxId, string $folder, int $uid): array
+    {
+        return $this->db->fetchAll(
+            'SELECT t.* FROM mailbox_tags t
+               JOIN mailbox_tag_map m ON m.tag_id = t.id
+              WHERE m.mailbox_id = ? AND m.folder = ? AND m.imap_uid = ?
+              ORDER BY t.sort_order, t.label',
+            [$mailboxId, $folder, $uid]
+        );
+    }
+
+    public function addTag(int $tagId, int $mailboxId, string $folder, int $uid, int $userId): void
+    {
+        $this->db->execute(
+            'INSERT IGNORE INTO mailbox_tag_map (tag_id, mailbox_id, folder, imap_uid, tagged_by)
+             VALUES (?, ?, ?, ?, ?)',
+            [$tagId, $mailboxId, $folder, $uid, $userId]
+        );
+    }
+
+    public function removeTag(int $tagId, int $mailboxId, string $folder, int $uid): void
+    {
+        $this->db->execute(
+            'DELETE FROM mailbox_tag_map WHERE tag_id = ? AND mailbox_id = ? AND folder = ? AND imap_uid = ?',
+            [$tagId, $mailboxId, $folder, $uid]
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Search
+    // -------------------------------------------------------------------------
+
+    /**
+     * Search messages in a folder using IMAP server-side search.
+     * Returns matching UIDs synced to the DB index.
+     */
+    public function search(array $mailbox, string $folder, string $query): array
+    {
+        $stream = $this->connect($mailbox, $folder);
+        // IMAP SEARCH criteria — search subject and body text
+        $criteria = 'OR SUBJECT "' . addslashes($query) . '" BODY "' . addslashes($query) . '"';
+        $uids     = imap_search($stream, $criteria, SE_UID);
+
+        if ($uids === false) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($uids), '?'));
+        return $this->db->fetchAll(
+            'SELECT * FROM mailbox_messages
+              WHERE mailbox_id = ? AND folder = ? AND imap_uid IN (' . $placeholders . ')
+              ORDER BY sent_at DESC',
+            array_merge([$mailbox['id'], $folder], $uids)
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Sync
+    // -------------------------------------------------------------------------
+
+    /**
+     * Incremental sync: fetch headers for UIDs above the last known UID
+     * and insert into mailbox_messages. Updates imap_last_uid on the officer row.
+     */
+    public function syncFolder(array $mailbox, string $folder): void
+    {
+        $lastUidMap = json_decode($mailbox['imap_last_uid'] ?? '{}', true) ?: [];
+        $lastUid    = (int) ($lastUidMap[$folder] ?? 0);
+
+        try {
+            $stream = $this->connect($mailbox, $folder);
+        } catch (\RuntimeException) {
+            return; // Connection failure — skip silently, don't break page load
+        }
+
+        // Fetch UIDs newer than lastUid
+        $uids = imap_search($stream, 'UID ' . ($lastUid + 1) . ':*', SE_UID);
+
+        if ($uids === false || empty($uids)) {
+            return;
+        }
+
+        foreach ($uids as $uid) {
+            if ($uid <= $lastUid) {
+                continue;
+            }
+            $this->syncMessage($stream, $mailbox['id'], $folder, $uid);
+        }
+
+        // Update last UID marker
+        $lastUidMap[$folder] = max($uids);
+        $this->db->execute(
+            'UPDATE organisation_officers SET imap_last_uid = ? WHERE id = ?',
+            [json_encode($lastUidMap), $mailbox['id']]
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Private helpers
+    // -------------------------------------------------------------------------
+
+    private function syncMessage(mixed $stream, int $mailboxId, string $folder, int $uid): void
+    {
+        $msgNo   = imap_msgno($stream, $uid);
+        if ($msgNo === 0) {
+            return;
+        }
+
+        $headers = imap_headerinfo($stream, $msgNo);
+        $flags   = $this->parseFlags($headers);
+
+        $messageId  = trim($headers->message_id ?? '');
+        $inReplyTo  = trim($headers->in_reply_to ?? '');
+        $subject    = $this->decodeHeader($headers->subject ?? '');
+        $fromName   = $this->decodeHeader($headers->fromaddress ?? '');
+        $fromEmail  = $headers->from[0]->mailbox . '@' . ($headers->from[0]->host ?? '') ?? '';
+        $toAddress  = $headers->toaddress ?? '';
+        $ccAddress  = $headers->ccaddress ?? '';
+        $sentAt     = date('Y-m-d H:i:s', $headers->udate ?? time());
+
+        $hasAttachments = $this->checkAttachments($stream, $msgNo);
+        $threadId       = $this->resolveThread($mailboxId, $messageId, $inReplyTo, $subject, $sentAt);
+
+        $this->db->execute(
+            'INSERT IGNORE INTO mailbox_messages
+             (mailbox_id, folder, imap_uid, message_id, in_reply_to, thread_id,
+              subject, from_address, from_name, to_address, cc_address,
+              sent_at, has_attachments, imap_flags)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $mailboxId, $folder, $uid,
+                $messageId ?: null,
+                $inReplyTo  ?: null,
+                $threadId,
+                $subject,
+                $fromEmail,
+                $fromName,
+                $toAddress,
+                $ccAddress,
+                $sentAt,
+                $hasAttachments ? 1 : 0,
+                $flags,
+            ]
+        );
+
+        // Update thread last_message_at
+        if ($threadId) {
+            $this->db->execute(
+                'UPDATE mailbox_threads SET last_message_at = ?, message_count = message_count + 1
+                  WHERE id = ?',
+                [$sentAt, $threadId]
+            );
+        }
+    }
+
+    /**
+     * Resolve or create a thread ID for a message.
+     * Uses In-Reply-To first, then Message-ID lookup. Never subject matching.
+     */
+    private function resolveThread(
+        int $mailboxId,
+        string $messageId,
+        string $inReplyTo,
+        string $subject,
+        string $sentAt
+    ): ?int {
+        // 1. Check if this message's In-Reply-To matches a known message
+        if ($inReplyTo) {
+            $threadId = $this->db->fetchColumn(
+                'SELECT thread_id FROM mailbox_messages
+                  WHERE mailbox_id = ? AND message_id = ? AND thread_id IS NOT NULL
+                  LIMIT 1',
+                [$mailboxId, $inReplyTo]
+            );
+            if ($threadId) {
+                return (int) $threadId;
+            }
+        }
+
+        // 2. Check if a thread already tracks this message_id as root
+        if ($messageId) {
+            $threadId = $this->db->fetchColumn(
+                'SELECT id FROM mailbox_threads WHERE mailbox_id = ? AND root_message_id = ? LIMIT 1',
+                [$mailboxId, $messageId]
+            );
+            if ($threadId) {
+                return (int) $threadId;
+            }
+        }
+
+        // 3. Create new thread
+        return (int) $this->db->insert('mailbox_threads', [
+            'mailbox_id'      => $mailboxId,
+            'root_message_id' => $messageId ?: null,
+            'subject'         => $subject,
+            'last_message_at' => $sentAt,
+            'message_count'   => 1,
+        ]);
+    }
+
+    /**
+     * Parse a multipart IMAP structure recursively, extracting text/html bodies
+     * and recording attachment metadata (name, encoding, part number).
+     */
+    private function parseStructure(
+        mixed  $stream,
+        int    $msgNo,
+        object $structure,
+        string &$textBody,
+        string &$htmlBody,
+        array  &$attachments,
+        string $partNum = ''
+    ): void {
+        if ($structure->type === TYPEMULTIPART) {
+            foreach ($structure->parts as $i => $part) {
+                $num = $partNum ? $partNum . '.' . ($i + 1) : (string) ($i + 1);
+                $this->parseStructure($stream, $msgNo, $part, $textBody, $htmlBody, $attachments, $num);
+            }
+            return;
+        }
+
+        $partNum = $partNum ?: '1';
+
+        // Check disposition — attachment vs inline
+        $disposition = strtolower($structure->disposition ?? '');
+        $filename    = $this->getFilename($structure);
+
+        if ($disposition === 'attachment' || $filename) {
+            $attachments[] = [
+                'part'     => $partNum,
+                'filename' => $filename,
+                'size'     => $structure->bytes ?? 0,
+                'subtype'  => $structure->subtype ?? '',
+            ];
+            return;
+        }
+
+        $body = imap_fetchbody($stream, $msgNo, $partNum);
+        $body = $this->decodeBody($body, $structure->encoding ?? ENC7BIT);
+
+        if ($structure->type === TYPETEXT) {
+            if (strtolower($structure->subtype) === 'plain') {
+                $textBody .= $body;
+            } elseif (strtolower($structure->subtype) === 'html') {
+                $htmlBody .= $body;
+            }
+        }
+    }
+
+    private function decodeBody(string $body, int $encoding): string
+    {
+        return match ($encoding) {
+            ENCBASE64          => base64_decode($body),
+            ENCQUOTEDPRINTABLE => quoted_printable_decode($body),
+            default            => $body,
+        };
+    }
+
+    private function getFilename(object $structure): string
+    {
+        foreach ($structure->parameters ?? [] as $p) {
+            if (strtolower($p->attribute) === 'name') {
+                return imap_utf8($p->value);
+            }
+        }
+        foreach ($structure->dparameters ?? [] as $p) {
+            if (strtolower($p->attribute) === 'filename') {
+                return imap_utf8($p->value);
+            }
+        }
+        return '';
+    }
+
+    private function checkAttachments(mixed $stream, int $msgNo): bool
+    {
+        $structure = imap_fetchstructure($stream, $msgNo);
+        if ($structure->type !== TYPEMULTIPART) {
+            return false;
+        }
+        foreach ($structure->parts ?? [] as $part) {
+            if (strtolower($part->disposition ?? '') === 'attachment' || $this->getFilename($part)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function parseFlags(object $headers): string
+    {
+        $flags = [];
+        if ($headers->Unseen  ?? false) { $flags[] = ''; } else { $flags[] = '\\Seen'; }
+        if ($headers->Answered ?? false) { $flags[] = '\\Answered'; }
+        if ($headers->Flagged  ?? false) { $flags[] = '\\Flagged'; }
+        return implode(' ', array_filter($flags));
+    }
+
+    private function decodeHeader(string $value): string
+    {
+        return imap_utf8($value);
+    }
+
+    /**
+     * Derive three-state read status:
+     *   'unread'   — nobody has read it
+     *   'partial'  — some but not all holders have read it
+     *   'read'     — all current holders have read it
+     */
+    private function deriveReadState(int $readCount, int $holderCount): string
+    {
+        if ($readCount === 0)              return 'unread';
+        if ($readCount >= $holderCount)    return 'read';
+        return 'partial';
+    }
+
+    private function findSpecialFolder(array $folders, array $candidates): ?string
+    {
+        foreach ($candidates as $name) {
+            if (in_array($name, $folders, true)) {
+                return $name;
+            }
+        }
+        return null;
+    }
+
+    private function pruneReads(int $mailboxId, string $folder, int $uid): void
+    {
+        $this->db->execute(
+            'DELETE FROM mailbox_reads WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
+            [$mailboxId, $folder, $uid]
+        );
+    }
+
+    private function pruneTagMap(int $mailboxId, string $folder, int $uid): void
+    {
+        $this->db->execute(
+            'DELETE FROM mailbox_tag_map WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
+            [$mailboxId, $folder, $uid]
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Encryption helpers
+    // -------------------------------------------------------------------------
+
+    public function encryptPassword(string $plaintext): string
+    {
+        $iv         = random_bytes(16);
+        $ciphertext = openssl_encrypt($plaintext, 'AES-256-CBC', $this->encryptionKey, OPENSSL_RAW_DATA, $iv);
+        return base64_encode($iv . $ciphertext);
+    }
+
+    public function decryptPassword(string $stored): string
+    {
+        $raw = base64_decode($stored, true);
+        if ($raw === false || strlen($raw) < 17) {
+            return '';
+        }
+        $iv         = substr($raw, 0, 16);
+        $ciphertext = substr($raw, 16);
+        $plain      = openssl_decrypt($ciphertext, 'AES-256-CBC', $this->encryptionKey, OPENSSL_RAW_DATA, $iv);
+        return $plain !== false ? $plain : '';
+    }
+}

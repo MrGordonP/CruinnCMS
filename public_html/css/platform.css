@@ -1,0 +1,1671 @@
+/**
+ * CMS Platform Dashboard
+ * Styles for the /cms/ platform area — completely separate from instance admin styles.
+ */
+
+/* ── Variables — Cruinn brand ─────────────────────────────────── */
+:root {
+    --plat-dark: #0c1614;
+    /* Cruinn dark (topbar, logo bg) */
+    --plat-primary: #0c1614;
+    /* headings, key text */
+    --plat-accent: #1d9e75;
+    /* Cruinn green — primary interactive */
+    --plat-accent-lt: #5dcaa5;
+    /* lighter teal — secondary accents */
+    --plat-cream: #e8e4da;
+    /* warm off-white — text on dark */
+    --plat-text: #1a202c;
+    --plat-text-light: #64748b;
+    --plat-bg: #f2f5f3;
+    /* warm green-tinted content bg */
+    --plat-bg-card: #ffffff;
+    --plat-border: #ccd9d3;
+    /* green-tinted border */
+    --plat-ok: #16a34a;
+    --plat-err: #dc2626;
+    --plat-radius: 8px;
+    --plat-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+
+/* ── Base ─────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.platform-body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: var(--plat-bg);
+    color: var(--plat-text);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ── Top Bar ──────────────────────────────────────────────────── */
+.platform-bar {
+    background: var(--plat-dark);
+    color: var(--plat-cream);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
+    border-bottom: 1px solid rgba(29, 158, 117, .25);
+}
+
+.platform-bar-inner {
+    padding: 0 1.5rem;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.platform-bar-brand {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    white-space: nowrap;
+}
+
+.platform-bar-logo-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 400;
+    font-size: 1.1rem;
+    letter-spacing: .12em;
+    color: var(--plat-cream);
+    line-height: 1;
+}
+
+.platform-bar-logo-ruinn {
+    /* inherits from platform-bar-logo-text */
+}
+
+.platform-bar-logo-cms {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: .12em;
+    color: var(--plat-accent);
+    line-height: 1;
+}
+
+.platform-bar-logo-fa {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: .2em;
+    color: var(--plat-accent-lt);
+    opacity: .8;
+    text-transform: uppercase;
+    margin-left: .4rem;
+}
+
+.platform-bar-right a {
+    color: rgba(232, 228, 218, .75);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: color .15s;
+}
+
+.platform-bar-right a:hover {
+    color: var(--plat-accent-lt);
+}
+
+.platform-bar-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .75rem;
+    width: 100%;
+    font-size: 0.875rem;
+}
+
+.platform-bar-user {
+    color: var(--plat-cream);
+    opacity: .7;
+    margin-right: auto;
+}
+
+/* ── Layout width toggle ─────────────────────────────────────── */
+.platform-width-toggle {
+    background: none;
+    border: 1px solid rgba(255, 255, 255, .2);
+    color: rgba(232, 228, 218, .55);
+    font-size: 0.75rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 3px;
+    cursor: pointer;
+    line-height: 1;
+    transition: color .15s, border-color .15s;
+    font-family: inherit;
+}
+
+.platform-width-toggle:hover {
+    color: #fff;
+    border-color: rgba(255, 255, 255, .45);
+}
+
+/* ── Wrap (max-width container) ─────────────────────────────── */
+.platform-wrap {
+    max-width: none;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    width: 100%;
+}
+
+/* Wide mode: remove outer constraint */
+html.platform-layout-wide .platform-wrap {
+    max-width: none;
+    box-shadow: none;
+}
+
+
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.platform-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--plat-dark);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(29, 158, 117, .2);
+}
+
+.platform-sidebar-hero {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(29, 158, 117, .15);
+}
+
+.platform-sidebar-hero a {
+    display: block;
+}
+
+.platform-sidebar-hero img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.platform-sidebar-wordmark {
+    margin-top: .75rem;
+    text-align: center;
+}
+
+.platform-sidebar-wm-name {
+    display: block;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 1rem;
+    font-weight: 400;
+    letter-spacing: .12em;
+    color: var(--plat-cream);
+    line-height: 1.2;
+}
+
+.platform-sidebar-wm-cms {
+    color: var(--plat-accent);
+}
+
+.platform-sidebar-wm-fa {
+    display: block;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.5rem;
+    letter-spacing: .2em;
+    color: var(--plat-accent-lt);
+    opacity: .75;
+    text-transform: uppercase;
+    margin-top: .2rem;
+}
+
+.platform-sidebar-nav {
+    padding: 0.75rem 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Top-level nav links (Dashboard, Settings) */
+.platform-sidebar-nav>a {
+    display: block;
+    padding: .5rem 1.25rem;
+    font-size: 0.875rem;
+    color: rgba(232, 228, 218, .7);
+    text-decoration: none;
+    letter-spacing: .03em;
+    text-align: right;
+    border-right: 3px solid transparent;
+    transition: color .15s, border-color .15s;
+}
+
+.platform-sidebar-nav>a:hover {
+    color: var(--plat-cream);
+    border-right-color: var(--plat-accent);
+}
+
+.platform-sidebar-nav>a.active {
+    color: var(--plat-cream);
+    border-right-color: var(--plat-accent);
+}
+
+/* Section label ("Files") */
+.platform-nav-section-label {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(232, 228, 218, .3);
+    padding: 1rem 1.25rem 0.35rem;
+    text-align: right;
+}
+
+/* Collapseable group */
+.platform-nav-group {
+    border-top: 1px solid rgba(255, 255, 255, .04);
+}
+
+.platform-nav-group-btn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem 0.5rem 0.75rem;
+    background: none;
+    border: none;
+    border-right: 3px solid transparent;
+    color: rgba(232, 228, 218, .65);
+    font-size: 0.82rem;
+    font-family: inherit;
+    text-align: right;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+}
+
+.platform-nav-group-btn:hover {
+    color: var(--plat-cream);
+    background: rgba(255, 255, 255, .04);
+}
+
+.platform-nav-group-btn[aria-expanded="true"] {
+    color: var(--plat-cream);
+    border-right-color: var(--plat-accent);
+    background: rgba(29, 158, 117, .07);
+}
+
+.pnav-group-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.pnav-active-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--plat-accent);
+    flex-shrink: 0;
+}
+
+.pnav-caret {
+    font-size: 0.6rem;
+    flex-shrink: 0;
+    transition: transform .15s;
+    color: rgba(232, 228, 218, .35);
+}
+
+.platform-nav-group-btn[aria-expanded="true"] .pnav-caret {
+    transform: rotate(90deg);
+    color: var(--plat-accent-lt);
+}
+
+/* File list inside a group */
+.platform-nav-group-body {
+    background: rgba(0, 0, 0, .15);
+    padding: 0.25rem 0;
+}
+
+.platform-nav-file,
+.platform-nav-instance {
+    display: block;
+    padding: 0.35rem 1.25rem 0.35rem 1rem;
+    color: rgba(232, 228, 218, .65);
+    text-decoration: none;
+    border-right: 2px solid transparent;
+    transition: background .12s, border-color .12s, color .12s;
+}
+
+.platform-nav-file:hover,
+.platform-nav-instance:hover,
+.platform-nav-instance.active {
+    background: rgba(255, 255, 255, .05);
+    border-right-color: var(--plat-accent-lt, #5dcaa5);
+    color: var(--plat-cream);
+    text-decoration: none;
+}
+
+.platform-nav-file.pnav-file-inactive {
+    opacity: 0.4;
+}
+
+.pnav-file-title {
+    display: block;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: right;
+}
+
+.pnav-file-slug {
+    display: block;
+    font-size: 0.66rem;
+    color: rgba(232, 228, 218, .3);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pnav-empty,
+.pnav-loading,
+.pnav-error {
+    display: block;
+    padding: 0.35rem 1.25rem;
+    font-size: 0.72rem;
+    text-align: right;
+}
+
+.pnav-empty {
+    color: rgba(232, 228, 218, .3);
+}
+
+.pnav-loading {
+    color: rgba(232, 228, 218, .4);
+}
+
+.pnav-error {
+    color: #f87171;
+}
+
+.platform-sidebar-footer {
+    margin-top: auto;
+    padding: 1rem;
+    border-top: 1px solid rgba(29, 158, 117, .15);
+}
+
+.platform-sidebar-instance {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--plat-cream);
+    opacity: .75;
+    margin-bottom: .2rem;
+}
+
+.platform-sidebar-url {
+    font-size: 0.7rem;
+    color: var(--plat-accent-lt);
+    text-decoration: none;
+    opacity: .6;
+    word-break: break-all;
+}
+
+.platform-sidebar-url:hover {
+    opacity: 1;
+}
+
+/* ── Right column ────────────────────────────────────────────── */
+.platform-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.platform-main {
+    flex: 1;
+}
+
+/* ── Content ──────────────────────────────────────────────────── */
+.platform-content {
+    width: 100%;
+    padding: 2rem 1.5rem;
+    box-sizing: border-box;
+}
+
+/* ── Page Header ──────────────────────────────────────────────── */
+.platform-page-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.platform-page-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--plat-primary);
+}
+
+/* ── Badges ───────────────────────────────────────────────────── */
+.platform-badge {
+    display: inline-block;
+    background: var(--plat-border);
+    color: var(--plat-text-light);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: .25rem .75rem;
+    border-radius: 99px;
+}
+
+.platform-badge-single {
+    background: #d0f0e6;
+    color: #0c5c3e;
+}
+
+.platform-badge-multi {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.platform-badge-active {
+    background: var(--plat-accent);
+    color: #fff;
+    font-size: 0.7rem;
+    padding: .15rem .55rem;
+    border-radius: 99px;
+    margin-left: .4rem;
+    vertical-align: middle;
+}
+
+.platform-instance-folder {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--plat-text-light);
+    margin-top: 0.2rem;
+}
+
+/* ── Sections ─────────────────────────────────────────────────── */
+.platform-section {
+    background: var(--plat-bg-card);
+    border: 1px solid var(--plat-border);
+    border-radius: var(--plat-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--plat-shadow);
+}
+
+.platform-section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--plat-border);
+}
+
+.platform-section-header h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--plat-text-light);
+}
+
+/* ── Instance Card ────────────────────────────────────────────── */
+.platform-instance-card {
+    background: var(--plat-bg-card);
+    border: 1px solid var(--plat-border);
+    border-radius: var(--plat-radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.platform-instance-card.instance-active {
+    border-left: 4px solid var(--plat-ok);
+}
+
+.platform-instance-card.instance-inactive {
+    border-left: 4px solid var(--plat-text-light);
+    opacity: 0.85;
+}
+
+.platform-instance-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.platform-instance-name {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--plat-primary);
+}
+
+.platform-instance-url {
+    font-size: 0.875rem;
+    color: var(--plat-accent);
+    text-decoration: none;
+}
+
+.platform-instance-url:hover {
+    text-decoration: underline;
+}
+
+.platform-instance-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.platform-instance-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.5rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.875rem;
+}
+
+.platform-meta-item {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.meta-ok {
+    color: var(--plat-ok);
+}
+
+.meta-err {
+    color: var(--plat-err);
+}
+
+/* ── Stat Row ─────────────────────────────────────────────────── */
+.platform-stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border: 1px solid var(--plat-border);
+    border-radius: var(--plat-radius);
+    overflow: hidden;
+}
+
+.platform-stat {
+    flex: 1 1 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: .75rem 1rem;
+    border-right: 1px solid var(--plat-border);
+    text-align: center;
+}
+
+.platform-stat:last-child {
+    border-right: none;
+}
+
+.platform-stat-num {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--plat-primary);
+    line-height: 1.2;
+}
+
+.platform-stat-lbl {
+    font-size: 0.75rem;
+    color: var(--plat-text-light);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* ── Health Grid ──────────────────────────────────────────────── */
+.platform-health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.platform-health-card {
+    background: var(--plat-bg);
+    border: 1px solid var(--plat-border);
+    border-radius: var(--plat-radius);
+    padding: 1rem 1.25rem;
+}
+
+.platform-health-card h3 {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--plat-text-light);
+    margin-bottom: .75rem;
+}
+
+.platform-health-stat {
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    margin-bottom: .75rem;
+}
+
+.platform-health-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--plat-text);
+    margin-bottom: .5rem;
+}
+
+.platform-check {
+    font-size: 0.875rem;
+    margin-bottom: .35rem;
+}
+
+.check-ok {
+    color: var(--plat-ok);
+}
+
+.check-fail {
+    color: var(--plat-err);
+    font-weight: 600;
+}
+
+/* ── Module List ──────────────────────────────────────────────── */
+.platform-module-list {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem;
+    margin: .5rem 0 .75rem;
+}
+
+.platform-module-badge {
+    background: #d0f0e6;
+    color: #0c5c3e;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: .2rem .6rem;
+    border-radius: 99px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.platform-btn {
+    display: inline-block;
+    padding: .5rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: opacity .15s;
+}
+
+.platform-btn:hover {
+    opacity: .88;
+}
+
+.platform-btn-primary {
+    background: var(--plat-accent);
+    color: #fff;
+}
+
+.platform-btn-secondary {
+    background: var(--plat-border);
+    color: var(--plat-text);
+}
+
+/* ── Links ────────────────────────────────────────────────────── */
+.platform-link {
+    font-size: 0.85rem;
+    color: var(--plat-accent);
+    text-decoration: none;
+}
+
+.platform-link:hover {
+    text-decoration: underline;
+}
+
+/* ── Alerts ───────────────────────────────────────────────────── */
+.platform-alert {
+    padding: .75rem 1rem;
+    border-radius: var(--plat-radius);
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.platform-alert-error {
+    background: #fef2f2;
+    color: var(--plat-err);
+    border: 1px solid #fca5a5;
+}
+
+.platform-alert-success {
+    background: #f0fdf4;
+    color: var(--plat-ok);
+    border: 1px solid #86efac;
+}
+
+/* ── Notice ───────────────────────────────────────────────────── */
+.platform-notice {
+    background: #fefce8;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    padding: .75rem 1rem;
+    border-radius: var(--plat-radius);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+/* ── Login Page ───────────────────────────────────────────────── */
+.platform-login-body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.platform-login-wrap {
+    width: 100%;
+    max-width: 460px;
+    padding: 1.5rem;
+}
+
+.platform-login-card {
+    background: #132420;
+    border: 1px solid rgba(29, 158, 117, .2);
+    border-radius: var(--plat-radius);
+    padding: 2.5rem 2.5rem;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, .55);
+    text-align: center;
+}
+
+.platform-login-logo {
+    margin-bottom: 1.5rem;
+}
+
+.platform-login-logo-img {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 320px;
+    border-radius: 4px;
+}
+
+.platform-login-card h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--plat-cream);
+    margin-bottom: .35rem;
+}
+
+.platform-login-sub {
+    font-size: 0.875rem;
+    color: var(--plat-accent-lt);
+    opacity: .75;
+    margin-bottom: 1.75rem;
+}
+
+.platform-login-form {
+    text-align: left;
+}
+
+.platform-btn-primary {
+    /* also used standalone */
+    width: 100%;
+    text-align: center;
+    padding: .65rem 1rem;
+    font-size: 1rem;
+}
+
+/* Dark overrides */
+.platform-dark-login {
+    background: var(--plat-dark);
+}
+
+.platform-dark-login .platform-field label {
+    color: var(--plat-cream);
+}
+
+.platform-dark-login .platform-field input[type="text"],
+.platform-dark-login .platform-field input[type="password"] {
+    background: #0c1614;
+    border-color: rgba(29, 158, 117, .3);
+    color: var(--plat-cream);
+}
+
+.platform-dark-login .platform-field input::placeholder {
+    color: rgba(232, 228, 218, .35);
+}
+
+.platform-dark-login .platform-alert-error {
+    background: rgba(220, 38, 38, .15);
+    border-color: rgba(220, 38, 38, .4);
+}
+
+/* ── Fields ───────────────────────────────────────────────────── */
+.platform-field {
+    margin-bottom: 1.1rem;
+}
+
+.platform-field label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: .35rem;
+    color: var(--plat-text);
+}
+
+.platform-field input[type="text"],
+.platform-field input[type="password"] {
+    width: 100%;
+    padding: .55rem .85rem;
+    border: 1px solid var(--plat-border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color .15s;
+}
+
+.platform-field input:focus {
+    border-color: var(--plat-accent);
+    box-shadow: 0 0 0 3px rgba(29, 158, 117, .18);
+}
+
+/* ── Settings Card ────────────────────────────────────────────── */
+.platform-settings-card {
+    max-width: 480px;
+}
+
+/* ── Platform editor embed ────────────────────────────────────── */
+.platform-editor-msg {
+    color: rgba(12, 22, 20, .35);
+    font-size: 1rem;
+    text-align: center;
+    padding: 2rem;
+}
+
+.platform-editor-msg--error {
+    color: var(--plat-err);
+}
+
+.platform-editor-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Strip padding and make content area fill height when editor is present */
+html:has(#editor-wrap),
+body:has(#editor-wrap) {
+    height: 100%;
+    overflow: hidden;
+}
+
+/* All /cms/editor pages — force full width regardless of wide toggle */
+html:has(.platform-editor-page),
+.platform-editor-page {
+    height: 100%;
+    overflow: hidden;
+}
+
+.platform-editor-page .platform-wrap {
+    max-width: none;
+    box-shadow: none;
+}
+
+.platform-body:has(#editor-wrap) {
+    height: 100%;
+    min-height: unset;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.platform-body:has(#editor-wrap) .platform-bar {
+    flex-shrink: 0;
+}
+
+.platform-body:has(#editor-wrap) .platform-wrap {
+    flex: 1;
+    min-height: unset;
+    overflow: hidden;
+    display: flex;
+    max-width: none;
+    box-shadow: none;
+}
+
+.platform-main:has(#editor-wrap) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.platform-content:has(#editor-wrap) {
+    padding: 0;
+    max-width: none;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* editor-wrap fills the platform content area */
+.platform-content #editor-wrap {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.platform-change-password {
+    margin-top: 1.5rem;
+}
+
+/* ── Utilities ────────────────────────────────────────────────── */
+.text-muted {
+    color: var(--plat-text-light);
+    font-size: 0.875rem;
+}
+
+.text-danger {
+    color: var(--plat-err);
+}
+
+code {
+    background: var(--plat-bg);
+    border: 1px solid var(--plat-border);
+    border-radius: 3px;
+    padding: .1em .4em;
+    font-size: 0.875em;
+    font-family: 'Consolas', monospace;
+}
+
+@media (max-width: 640px) {
+    .platform-instance-header {
+        flex-direction: column;
+    }
+
+    .platform-stat-row {
+        flex-direction: column;
+    }
+
+    .platform-stat {
+        border-right: none;
+        border-bottom: 1px solid var(--plat-border);
+    }
+
+    .platform-stat:last-child {
+        border-bottom: none;
+    }
+}
+
+/* ── Dashboard Hero ───────────────────────────────────────────── */
+.platform-page-hero {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    background: var(--plat-dark);
+    border-radius: var(--plat-radius);
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .2);
+}
+
+.platform-hero-brand {
+    flex-shrink: 0;
+}
+
+.platform-hero-logo {
+    display: block;
+    width: 220px;
+    height: 220px;
+}
+
+.platform-hero-info h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--plat-cream);
+    margin-bottom: .3rem;
+}
+
+.platform-hero-sub {
+    font-size: 0.95rem;
+    color: var(--plat-accent-lt);
+    margin-bottom: .6rem;
+}
+
+.platform-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: 0.8rem;
+    color: rgba(232, 228, 218, .5);
+}
+
+@media (max-width: 640px) {
+    .platform-page-hero {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .platform-hero-logo {
+        width: 120px;
+    }
+
+    .platform-hero-meta {
+        justify-content: center;
+    }
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.platform-footer {
+    text-align: center;
+    padding: 1.25rem;
+    font-size: 0.8rem;
+    color: rgba(100, 116, 139, .6);
+    border-top: 1px solid var(--plat-border);
+    margin-top: 2rem;
+}
+
+.platform-footer a {
+    color: var(--plat-accent);
+    text-decoration: none;
+}
+
+.platform-footer a:hover {
+    text-decoration: underline;
+}
+
+/* ── Source Editor (/cms/source) ──────────────────────────────── */
+.platform-main:has(#source-wrap),
+.platform-content:has(#source-wrap) {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    max-width: none;
+    flex: 1;
+    min-height: 0;
+}
+
+#source-wrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+}
+
+/* ── Collapsible panels (left tree + right properties) ─────────── */
+.source-panel {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    min-height: 0;
+    border-right: 1px solid var(--plat-border);
+    background: var(--plat-bg-card);
+    transition: width 0.18s ease;
+    overflow: hidden;
+}
+
+.source-panel-right {
+    border-right: none;
+    border-left: 1px solid var(--plat-border);
+}
+
+.source-panel-left {
+    width: 220px;
+    min-width: 160px;
+}
+
+.source-panel-right {
+    width: 220px;
+    min-width: 160px;
+}
+
+.source-panel.collapsed {
+    width: 32px !important;
+    min-width: 32px;
+}
+
+.source-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.75rem;
+    border-bottom: 2px solid var(--plat-accent);
+    background: var(--plat-dark);
+    flex-shrink: 0;
+}
+
+.source-panel-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #5dcaa5;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.source-panel-right .source-panel-title {
+    flex: 1;
+}
+
+.source-panel-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #5dcaa5;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.source-panel-right .source-panel-toggle {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.source-panel-toggle:hover {
+    color: var(--plat-accent);
+}
+
+.source-panel.collapsed .source-panel-body,
+.source-panel.collapsed .source-panel-title {
+    display: none;
+}
+
+.source-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ── File tree (inside left panel) ─────────────────────────────── */
+.source-tree details {
+    border-bottom: 1px solid var(--plat-border);
+}
+
+/* Top-level dirs: section header — subordinate to panel header */
+.source-tree>details>summary {
+    padding: 0.3rem 0.75rem;
+    font-size: 0.67rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--plat-text-light);
+    cursor: pointer;
+    list-style: none;
+    background: var(--plat-bg);
+    user-select: none;
+    border-left: 3px solid transparent;
+}
+
+.source-tree>details[open]>summary {
+    border-left-color: var(--plat-accent);
+}
+
+/* Nested dirs: compact row */
+.source-tree details details {
+    border-bottom: none;
+}
+
+.source-tree details details>summary {
+    padding: 0.25rem 0.5rem 0.25rem 1.1rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--plat-text);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    background: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.source-tree details details>summary::before {
+    content: '▸';
+    font-size: 0.6rem;
+    color: var(--plat-text-light);
+    transition: transform 0.15s;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.source-tree details details[open]>summary::before {
+    transform: rotate(90deg);
+}
+
+.source-tree details details>summary:hover {
+    color: var(--plat-accent);
+}
+
+.source-tree details details details>summary {
+    padding-left: 1.7rem;
+}
+
+.source-tree details details details details>summary {
+    padding-left: 2.3rem;
+}
+
+.source-tree details summary::-webkit-details-marker {
+    display: none;
+}
+
+.source-tree details[open]>summary {
+    color: var(--plat-accent);
+}
+
+.source-tree-file {
+    display: block;
+    padding: 0.28rem 0.85rem 0.28rem 1.25rem;
+    font-size: 0.78rem;
+    color: var(--plat-text);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-left: 3px solid transparent;
+    transition: background .1s, border-color .1s;
+}
+
+.source-tree>details>.source-tree-file {
+    padding-left: 1.25rem;
+}
+
+.source-tree>details>details>.source-tree-file {
+    padding-left: 1.7rem;
+}
+
+.source-tree>details>details>details>.source-tree-file {
+    padding-left: 2.3rem;
+}
+
+.source-tree>details>details>details>details>.source-tree-file {
+    padding-left: 2.9rem;
+}
+
+.source-tree-file:hover {
+    background: var(--plat-bg);
+    border-left-color: var(--plat-accent-lt);
+}
+
+.source-tree-file.active {
+    background: rgba(29, 158, 117, .09);
+    border-left-color: var(--plat-accent);
+    color: var(--plat-accent);
+    font-weight: 600;
+}
+
+/* ── Properties panel (right) ──────────────────────────────────── */
+.source-props {
+    padding: 0.75rem;
+}
+
+.source-props-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.6rem;
+    font-size: 0.78rem;
+    margin: 0;
+}
+
+.source-props-list dt {
+    font-weight: 600;
+    color: var(--plat-text-light);
+    white-space: nowrap;
+    padding-top: 0.05rem;
+}
+
+.source-props-list dd {
+    margin: 0;
+    color: var(--plat-text);
+    word-break: break-all;
+}
+
+.source-props-path {
+    font-family: 'Consolas', monospace;
+    font-size: 0.72rem;
+    color: var(--plat-text-light);
+}
+
+.source-props-badge {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.source-props-ok {
+    background: rgba(22, 163, 74, .1);
+    color: var(--plat-ok);
+}
+
+.source-props-warn {
+    background: rgba(220, 38, 38, .08);
+    color: var(--plat-err);
+}
+
+.source-props-empty {
+    font-size: 0.82rem;
+    color: var(--plat-text-light);
+    margin: 0;
+}
+
+.source-code-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.source-code-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.45rem 1rem;
+    border-bottom: 1px solid var(--plat-border);
+    background: var(--plat-bg-card);
+    flex-shrink: 0;
+}
+
+.source-code-path {
+    flex: 1;
+    font-size: 0.79rem;
+    font-family: 'Consolas', monospace;
+    color: var(--plat-text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.source-code-form {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.source-code-textarea {
+    flex: 1;
+    resize: none;
+    border: none;
+    outline: none;
+    padding: 1rem 1.25rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    background: #fff;
+    color: var(--plat-text);
+    tab-size: 4;
+    white-space: pre;
+    overflow-wrap: normal;
+    overflow-x: auto;
+}
+
+.source-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--plat-text-light);
+    font-size: 0.95rem;
+}
+
+.source-flash {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--plat-border);
+    flex-shrink: 0;
+}
+
+.source-flash-success {
+    background: rgba(22, 163, 74, .1);
+    color: var(--plat-ok);
+}
+
+.source-flash-error {
+    background: rgba(220, 38, 38, .08);
+    color: var(--plat-err);
+}
+
+/* ── Source editor: view-mode toolbar group & split/preview panes ── */
+
+.source-toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.source-view-toggle {
+    display: flex;
+    border: 1px solid var(--plat-border);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.source-view-toggle .btn {
+    border-radius: 0;
+    border: none;
+    border-right: 1px solid var(--plat-border);
+    padding: 0.28rem 0.7rem;
+    font-size: 0.78rem;
+}
+
+.source-view-toggle .btn:last-child {
+    border-right: none;
+}
+
+.source-view-toggle .btn.active {
+    background: var(--plat-accent);
+    color: #fff;
+}
+
+/* Editor body — hosts textarea and/or preview iframe side by side */
+.source-editor-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Code-only: textarea fills entire width, frame hidden */
+.source-view-code .source-code-textarea {
+    flex: 1;
+}
+
+.source-view-code .source-preview-frame {
+    display: none;
+}
+
+/* Split: 50 / 50 */
+.source-view-split .source-code-textarea {
+    flex: 1;
+    border-right: 2px solid var(--plat-border);
+}
+
+.source-view-split .source-preview-frame {
+    flex: 1;
+}
+
+/* Preview-only: hide textarea, frame fills */
+.source-view-preview .source-code-textarea {
+    display: none;
+}
+
+.source-view-preview .source-preview-frame {
+    flex: 1;
+}
+
+.source-preview-frame {
+    border: none;
+    background: #fff;
+    min-width: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Responsive Sidebar — collapseable (desktop) + off-canvas (mobile/tablet)
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Sidebar toggle button (in topbar) ─────────────────────── */
+.platform-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--plat-cream);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 0.3rem 0.55rem;
+    border-radius: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    opacity: .7;
+    transition: background .15s, opacity .15s;
+}
+
+.platform-sidebar-toggle:hover {
+    background: rgba(255, 255, 255, .12);
+    opacity: 1;
+}
+
+/* ── Sidebar: transition for smooth collapse ────────────────── */
+.platform-sidebar {
+    overflow: hidden;
+    transition: width .25s ease;
+}
+
+/* ── Desktop collapse: toggled via html.platform-sidebar-collapsed ── */
+html.platform-sidebar-collapsed .platform-sidebar {
+    width: 0;
+    border-right: none;
+}
+
+/* ── Backdrop — only visible on mobile/tablet ───────────────── */
+.platform-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 199;
+}
+
+.platform-sidebar-backdrop.active {
+    display: block;
+}
+
+@media (min-width: 1024px) {
+    .platform-sidebar-backdrop {
+        display: none !important;
+    }
+}
+
+/* ── Mobile / Tablet: off-canvas drawer ─────────────────────── */
+@media (max-width: 1023px) {
+    /* Sidebar leaves flex flow — becomes a fixed overlay drawer */
+    .platform-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 200;
+        width: 260px !important;
+        overflow: hidden;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        border-right: 1px solid rgba(29, 158, 117, .2) !important;
+    }
+
+    .platform-sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Desktop collapse class has no effect on mobile */
+    html.platform-sidebar-collapsed .platform-sidebar {
+        width: 260px !important;
+    }
+
+    .platform-content {
+        padding: 1.25rem 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .platform-content {
+        padding: 1rem 0.75rem;
+    }
+
+    .platform-page-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+/* ── Source editor: centre pane collapse (PanelCollapse.js) ─── */
+.source-code-pane {
+    transition: flex 0.18s ease, width 0.18s ease;
+    position: relative;
+}
+
+/* Centre toggle button — always visible, sits at top-left of the pane */
+#source-panel-centre-toggle {
+    position: absolute;
+    top: 50%;
+    left: 4px;
+    transform: translateY(-50%);
+    z-index: 2;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--plat-text-muted, #888);
+    font-size: 0.65rem;
+    padding: 0.2rem 0.25rem;
+    line-height: 1;
+    border-radius: 3px;
+    transition: color .12s, background .12s;
+}
+
+#source-panel-centre-toggle:hover {
+    color: var(--plat-accent, #1d9e75);
+    background: rgba(29, 158, 117, .08);
+}
+
+.source-code-pane.collapsed {
+    flex: 0 0 32px !important;
+    width: 32px;
+    min-width: 32px;
+    overflow: visible;
+}
+
+.source-code-pane.collapsed .source-code-form,
+.source-code-pane.collapsed .source-flash,
+.source-code-pane.collapsed .source-empty {
+    display: none;
+}

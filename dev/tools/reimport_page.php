@@ -24,7 +24,7 @@ $pageId = (int)($argv[1] ?? 15);
 $apply  = in_array('--apply', $argv ?? [], true);
 
 // Get page info
-$page = $pdo->query("SELECT * FROM pages WHERE id = {$pageId}")->fetch(PDO::FETCH_ASSOC);
+$page = $pdo->query("SELECT * FROM pages_index WHERE id = {$pageId}")->fetch(PDO::FETCH_ASSOC);
 if (!$page) { echo "Page {$pageId} not found\n"; exit(1); }
 echo "Page: {$page['title']} (render_mode={$page['render_mode']})\n";
 
@@ -69,16 +69,16 @@ foreach ($blocks as $b) {
 }
 
 if ($apply) {
-    $pdo->exec("DELETE FROM cruinn_draft_blocks WHERE page_id = {$pageId}");
-    $pdo->exec("DELETE FROM cruinn_page_state WHERE page_id = {$pageId}");
+    $pdo->exec("DELETE FROM pages_draft WHERE page_id = {$pageId}");
+    $pdo->exec("DELETE FROM ##PAGE_STATE## WHERE page_id = {$pageId}");
     echo "\nDeleted old blocks. Inserting new...\n";
 
     // Need Database wrapper for persistImportedBlocks
     // Simple insert loop instead
-    $stmt = $pdo->prepare('INSERT INTO cruinn_page_state (page_id, current_edit_seq, max_edit_seq, last_edited_at) VALUES (?, 1, 1, NOW())');
+    $stmt = $pdo->prepare('INSERT INTO ##PAGE_STATE## (page_id, current_edit_seq, max_edit_seq, last_edited_at) VALUES (?, 1, 1, NOW())');
     $stmt->execute([$pageId]);
 
-    $stmt = $pdo->prepare('INSERT INTO cruinn_draft_blocks (page_id, edit_seq, block_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id, is_active, is_deletion) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1, 0)');
+    $stmt = $pdo->prepare('INSERT INTO pages_draft (page_id, edit_seq, block_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id, is_active, is_deletion) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1, 0)');
     foreach ($blocks as $b) {
         $stmt->execute([$pageId, $b['block_id'], $b['block_type'], $b['inner_html'], $b['css_props'], $b['block_config'], $b['sort_order'], $b['parent_block_id']]);
     }

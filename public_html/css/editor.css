@@ -1,0 +1,1645 @@
+/**
+ * Cruinn CMS — Editor Affordance Styles
+ *
+ * All rules are scoped to .editor-mode or #editor-wrap.
+ * Nothing here is output on the live public page.
+ */
+
+/* ── Layout: fills the admin content container ────────────────── */
+
+#editor-wrap {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f4f5f7;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────── */
+
+#editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 1rem;
+    height: 48px;
+    flex-shrink: 0;
+    background: #1a1f2e;
+    color: #e2e8f0;
+    border-bottom: 1px solid #2d3549;
+}
+
+.editor-back-btn {
+    color: #9daabb;
+    text-decoration: none;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.editor-back-btn:hover {
+    color: #e2e8f0;
+}
+
+.editor-page-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editor-draft-badge {
+    font-size: 0.75rem;
+    background: #7c4a00;
+    color: #ffdc9b;
+    padding: 2px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+
+#editor-draft-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
+    background: #7c2d00;
+    color: #ffd7b5;
+    font-size: 0.82rem;
+    border-bottom: 1px solid #a33a00;
+}
+
+#editor-draft-banner span {
+    flex: 1;
+}
+
+.editor-toolbar-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Toolbar button overrides for dark background */
+#editor-toolbar .btn {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+}
+
+#editor-toolbar .btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+#editor-code-toggle-btn.active {
+    background: var(--color-primary, #1d9e75);
+    color: #fff;
+    border-color: transparent;
+}
+
+/* ── Editor body (3-column split) ─────────────────────────────── */
+
+#editor-body {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    grid-template-rows: 1fr;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* ── Left panel ───────────────────────────────────────────────── */
+
+#editor-left {
+    background: #ffffff;
+    border-right: 1px solid #e2e6ea;
+    overflow: hidden;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.editor-panel-section {
+    border-bottom: 1px solid #e2e6ea;
+    padding-bottom: 0.5rem;
+    flex-shrink: 0;
+}
+
+.editor-panel-heading {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    padding: 0.75rem 1rem 0.4rem;
+    margin: 0;
+}
+
+/* ── Collapsible panel sections (Add Block, Block Tree) ───────── */
+.editor-panel-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.editor-panel-chevron {
+    font-size: 0.6rem;
+    transition: transform 0.15s;
+}
+
+.editor-panel-section.collapsed .editor-panel-chevron {
+    transform: rotate(-90deg);
+}
+
+.editor-panel-section.collapsed .editor-palette,
+.editor-panel-section.collapsed .editor-block-tree {
+    display: none;
+}
+
+/* ── Site Builder nav in left panel ───────────────────────────── */
+.editor-site-nav {
+    padding-bottom: 0;
+}
+
+.editor-site-nav-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.editor-site-nav-chevron {
+    font-size: 0.6rem;
+    transition: transform 0.15s;
+}
+
+.editor-site-nav.collapsed .editor-site-nav-chevron {
+    transform: rotate(-90deg);
+}
+
+.editor-site-nav.collapsed .editor-site-nav-body {
+    display: none;
+}
+
+.editor-site-nav-body {
+    padding: 0 0.75rem 0.6rem;
+}
+
+.editor-site-nav-group {
+    margin-bottom: 0.35rem;
+}
+
+.editor-site-nav-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+    padding: 0.35rem 0 0.2rem;
+    cursor: pointer;
+    user-select: none;
+    line-height: 1.4;
+}
+
+.editor-site-nav-label .editor-group-chevron {
+    font-size: 0.55rem;
+    transition: transform 0.15s;
+}
+
+.editor-site-nav-group.collapsed .editor-group-chevron {
+    transform: rotate(-90deg);
+}
+
+.editor-site-nav-group.collapsed .editor-site-nav-list {
+    display: none;
+}
+
+.editor-site-nav-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.editor-site-nav-link {
+    display: block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    min-height: 1.6em;
+    color: #374151;
+    text-decoration: none;
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.editor-site-nav-link:hover {
+    background: #e0f2eb;
+    color: #0d7a5b;
+}
+
+.editor-site-nav-link.active {
+    background: #1d9e75;
+    color: #fff;
+    font-weight: 600;
+}
+
+.editor-site-nav-manage {
+    font-size: 0.72rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.editor-site-nav-manage:hover {
+    color: #1d9e75;
+}
+
+/* ── Source file tree (platform editor) ───────────────────────────── */
+.editor-tree-list {
+    max-height: none;
+    overflow-y: visible;
+}
+
+.editor-tree-dir {
+    margin: 0;
+}
+
+.editor-tree-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 3px;
+}
+
+.editor-tree-summary::-webkit-details-marker {
+    display: none;
+}
+
+.editor-tree-summary::before {
+    content: '▸';
+    font-size: 0.6rem;
+    color: #9ca3af;
+    transition: transform 0.15s;
+    display: inline-block;
+    width: 0.8em;
+    flex-shrink: 0;
+}
+
+.editor-tree-dir[open]>.editor-tree-summary::before {
+    transform: rotate(90deg);
+}
+
+.editor-tree-summary:hover {
+    background: #f3f4f6;
+}
+
+.editor-tree-children {
+    padding-left: 0.7rem;
+}
+
+.editor-tree-file {
+    padding-left: 1.1rem !important;
+}
+
+.editor-site-nav-subheading {
+    display: block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    padding: 4px 4px 1px;
+    margin-top: 4px;
+}
+
+.editor-site-nav-shortcuts {
+    display: flex;
+    flex-direction: row;
+    gap: 0.2rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid #e2e6ea;
+}
+
+.editor-site-nav-shortcuts .editor-site-nav-link {
+    font-size: 0.73rem;
+}
+
+/* Block palette buttons */
+.editor-palette {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 0 0.75rem 0.75rem;
+}
+
+.palette-btn {
+    background: #f0f2f5;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 6px 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.1s;
+}
+
+.palette-btn:hover {
+    background: #e0f2eb;
+    border-color: #1d9e75;
+    color: #0d7a5b;
+}
+
+/* Site-specific blocks (site-header, nav-menu, site-logo, site-title) */
+.palette-btn--site {
+    background: #eef2fb;
+    border-color: #b5c6f0;
+    color: #2c4a9e;
+}
+
+.palette-btn--site:hover {
+    background: #dce7ff;
+    border-color: #2c4a9e;
+    color: #1a308c;
+}
+
+/* Block tree — fills remaining left-panel space and scrolls independently */
+#editor-tree-section {
+    flex: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.editor-block-tree {
+    padding: 0.25rem 0.75rem 0.75rem;
+    font-size: 0.78rem;
+    color: #374151;
+}
+
+.editor-tree-item {
+    padding: 3px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.editor-tree-item:hover {
+    background: #f0f2f5;
+}
+
+.editor-tree-item.active {
+    background: #e0f2eb;
+    color: #0d7a5b;
+    font-weight: 600;
+}
+
+.editor-tree-children {
+    padding-left: 1rem;
+}
+
+/* ── Canvas wrap ──────────────────────────────────────────────── */
+
+#editor-canvas-wrap {
+    overflow-y: auto;
+    background: #e8eaed;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transform: translateZ(0);
+    min-width: 0;
+    /* prevent grid blowout from wide content */
+    /* contain position:fixed children to this scroll box */
+}
+
+#editor-canvas {
+    background: #ffffff;
+    min-height: 400px;
+    max-width: 1200px;
+    margin: 0 auto;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    /* Prevent whitespace gaps between inline-block blocks */
+    font-size: 0;
+    line-height: 0;
+}
+
+/* Code view: remove canvas constraints so textarea fills the column */
+#editor-canvas-wrap:has(#editor-code-area) {
+    padding: 0;
+}
+
+#editor-canvas:has(#editor-code-area) {
+    max-width: none;
+    width: 100%;
+    height: 100%;
+    box-shadow: none;
+    margin: 0;
+}
+
+/* Zone pages: canvas height follows content by default */
+#cruinn-canvas.zone-canvas {
+    min-height: auto;
+}
+
+/* ── Canvas resize handle ─────────────────────────────────────── */
+
+#cruinn-canvas-resize-handle {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    height: 10px;
+    background: #d1d5db;
+    border-radius: 0 0 4px 4px;
+    cursor: ns-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+    position: relative;
+    user-select: none;
+}
+
+#cruinn-canvas-resize-handle::after {
+    content: '';
+    width: 32px;
+    height: 3px;
+    border-radius: 2px;
+    background: #9ca3af;
+    pointer-events: none;
+}
+
+#cruinn-canvas-resize-handle:hover,
+#cruinn-canvas-resize-handle.dragging {
+    background: #1d9e75;
+}
+
+#cruinn-canvas-resize-handle:hover::after,
+#cruinn-canvas-resize-handle.dragging::after {
+    background: #fff;
+}
+
+/* ── Canvas size control (toolbar) ───────────────────────────── */
+
+#cruinn-canvas-size-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    color: #9daabb;
+    white-space: nowrap;
+}
+
+#cruinn-canvas-size-control label {
+    font-size: 0.72rem;
+    color: #9daabb;
+}
+
+#cruinn-canvas-height-input {
+    width: 56px;
+    padding: 3px 5px;
+    border: 1px solid #3d4a65;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    background: #252c3e;
+    color: #e2e8f0;
+    text-align: right;
+}
+
+#cruinn-canvas-height-input:focus {
+    outline: none;
+    border-color: #1d9e75;
+}
+
+#cruinn-canvas-height-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 0.9rem;
+    padding: 0 2px;
+    line-height: 1;
+}
+
+#cruinn-canvas-height-clear:hover {
+    color: #e2e8f0;
+}
+
+/* ── Viewport toggle ──────────────────────────────────────────── */
+#editor-viewport-toggle {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #1a2236;
+    border: 1px solid #3d4a65;
+    border-radius: 5px;
+    padding: 2px;
+}
+
+.editor-vp-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #6b7280;
+    font-size: 0.85rem;
+    padding: 3px 8px;
+    border-radius: 3px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+}
+
+.editor-vp-btn:hover {
+    color: #e2e8f0;
+    background: #252c3e;
+}
+
+.editor-vp-btn.active {
+    color: #1d9e75;
+    background: #1e3a2f;
+}
+
+/* ── Canvas viewport simulation ───────────────────────────────── */
+/* Tablet: constrain canvas to 600px */
+#editor-canvas-wrap.vp-tablet #editor-canvas {
+    max-width: 600px;
+}
+
+/* Mobile: constrain canvas to 360px */
+#editor-canvas-wrap.vp-mobile #editor-canvas {
+    max-width: 360px;
+}
+
+/* Restore normal text sizing inside blocks */
+#editor-canvas [data-block] {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+/* Nav-menu links inherit the block's colour so Typography > Colour is visible in the canvas */
+#cruinn-canvas [data-block-type="nav-menu"] a {
+    color: inherit;
+}
+
+/* Empty canvas placeholder */
+.editor-empty-canvas {
+    padding: 4rem 2rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+/* ── Editor mode block affordances ────────────────────────────── */
+
+.editor-mode [data-block] {
+    position: relative;
+    transition: outline 0.08s, box-shadow 0.08s;
+    /* Subtle visible outline for ALL blocks so they're always visible in editor */
+    outline: 1px dashed rgba(29, 158, 117, 0.35);
+    outline-offset: 1px;
+}
+
+.editor-mode [data-block]:hover {
+    outline: 1px solid #1d9e75;
+    outline-offset: 2px;
+    cursor: grab;
+}
+
+/* ── Layout container blocks — ensure visible minimum size ─────── */
+
+.editor-mode [data-block-type="columns"],
+.editor-mode [data-block-type="section"],
+.editor-mode [data-block-type="form"],
+.editor-mode [data-block-type="list"],
+.editor-mode [data-block-type="table"] {
+    min-height: 60px;
+    min-width: 100px;
+}
+
+/* Columns block: default 2-column grid layout */
+.editor-mode [data-block-type="columns"] {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+/* Section block: default block layout */
+.editor-mode [data-block-type="section"] {
+    display: block;
+    padding: 0.5rem;
+}
+
+/* Empty layout containers show placeholder text */
+.editor-mode [data-block-type="columns"]:empty::after,
+.editor-mode [data-block-type="section"]:empty::after,
+.editor-mode [data-block-type="form"]:empty::after,
+.editor-mode [data-block-type="list"]:empty::after,
+.editor-mode [data-block-type="table"]:empty::after {
+    content: 'Drop blocks here';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    grid-column: 1 / -1;
+    min-height: 60px;
+    color: rgba(29, 158, 117, 0.5);
+    font-size: 0.8rem;
+    font-style: italic;
+    pointer-events: none;
+}
+
+/* Links are not navigable in the editor — show default cursor, no underline decoration.
+   Ctrl+click still works (handled in JS). */
+.editor-mode a {
+    cursor: default;
+    pointer-events: none;
+}
+
+.editor-mode [data-block].active a {
+    pointer-events: auto;
+    /* allow text selection/editing within active block */
+    cursor: text;
+}
+
+.editor-mode [data-block].active {
+    outline: 2px solid #1d9e75;
+    outline-offset: 2px;
+    cursor: default;
+    resize: both;
+    overflow: auto;
+}
+
+.editor-mode [data-block].drag-over {
+    outline: 2px dashed #1d9e75;
+    outline-offset: 4px;
+}
+
+.editor-mode [data-block].drag-over-inside {
+    outline: 3px solid #1d9e75;
+    outline-offset: -3px;
+    background: rgba(29, 158, 117, 0.08) !important;
+}
+
+.editor-mode [data-block].dragging {
+    opacity: 0.4;
+}
+
+/* ── Zone blocks — visually distinct layout anchors ────────────── */
+
+.editor-mode [data-block-type="zone"] {
+    position: relative !important;
+    border: 2px dashed #1d9e75 !important;
+    background: rgba(29, 158, 117, 0.04) !important;
+    outline: none !important;
+    min-height: 80px;
+}
+
+.editor-mode [data-block-type="zone"]:hover {
+    border-color: #0d7a5b !important;
+    background: rgba(29, 158, 117, 0.08) !important;
+    outline: none !important;
+}
+
+.editor-mode [data-block-type="zone"].active {
+    border-color: #0d7a5b !important;
+    box-shadow: 0 0 0 2px rgba(29, 158, 117, 0.25) !important;
+    outline: none !important;
+}
+
+.editor-mode [data-block-type="zone"].drag-over {
+    border-color: #0d7a5b !important;
+    background: rgba(29, 158, 117, 0.14) !important;
+    outline: none !important;
+}
+
+/* Zone name badge via ::before using data-zone-name attribute */
+.editor-mode [data-block-type="zone"]::before {
+    content: 'ZONE: ' attr(data-zone-name);
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #1d9e75;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 10px 3px;
+    border-radius: 0 0 4px 0;
+    pointer-events: none;
+    z-index: 10;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.4;
+}
+
+/* Zone palette button */
+.palette-btn--zone {
+    background: #e8f5f1;
+    border-color: #7ecdb8;
+    color: #0d6e54;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    letter-spacing: 0.07em;
+}
+
+.palette-btn--zone:hover {
+    background: #c5ebe0;
+    border-color: #1d9e75;
+    color: #0d4f3c;
+}
+
+/* Zone assignment badge on regular content blocks (when template has zones) */
+.editor-mode [data-zone-assigned]::after {
+    content: attr(data-zone-assigned);
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #6366f1;
+    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 2px 8px 3px;
+    border-radius: 0 0 0 4px;
+    pointer-events: none;
+    z-index: 10;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.4;
+}
+
+/* Template canvas context preview (shows below the page canvas) */
+.editor-template-canvas-preview {
+    border-top: 2px solid #e2e6ea;
+    margin-top: 0;
+    opacity: 0.55;
+    pointer-events: auto;
+    position: relative;
+}
+
+.editor-template-canvas-preview .editor-zone-inner {
+    padding: 0;
+}
+
+.editor-template-canvas-preview .editor-zone-edit-link {
+    font-size: 0.72rem;
+    background: #6366f1;
+    color: #fff;
+    border-color: #4f46e5;
+}
+
+.editor-template-canvas-preview:hover {
+    opacity: 0.85;
+}
+
+/* Zone badges rendered inside template preview */
+.editor-template-canvas-preview [data-block-type="zone"]::before {
+    content: 'ZONE: ' attr(data-zone-name);
+    background: #6366f1;
+}
+
+#editor-props {
+    background: #ffffff;
+    border-left: 1px solid #e2e6ea;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.editor-props-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.85rem;
+}
+
+/* Accordion */
+.editor-accordion {
+    border-bottom: 1px solid #e2e6ea;
+}
+
+.editor-accordion-toggle {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0.65rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.editor-accordion-toggle::after {
+    content: '▾';
+    font-size: 0.7rem;
+    transition: transform 0.15s;
+}
+
+.editor-accordion.collapsed .editor-accordion-toggle::after {
+    transform: rotate(-90deg);
+}
+
+.editor-accordion-body {
+    padding: 0 0.75rem 0.75rem;
+}
+
+.editor-accordion.collapsed .editor-accordion-body {
+    display: none;
+}
+
+/* Property rows */
+.editor-prop-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 0.55rem;
+}
+
+.editor-prop-row label {
+    font-size: 0.7rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.editor-prop-input {
+    width: 100%;
+    padding: 4px 6px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    font-size: 0.82rem;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+.editor-prop-input:focus {
+    outline: none;
+    border-color: #1d9e75;
+    background: #fff;
+}
+
+.editor-prop-input[readonly] {
+    color: #9ca3af;
+    background: #f3f4f6;
+}
+
+.editor-prop-code {
+    font-family: Consolas, 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    resize: vertical;
+    tab-size: 4;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+/* Number + unit combos */
+.editor-prop-with-unit {
+    display: flex;
+    gap: 3px;
+}
+
+.editor-prop-with-unit .editor-prop-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.editor-unit-select {
+    width: 52px;
+    padding: 4px 2px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    background: #f3f4f6;
+}
+
+/* Top-right-bottom-left grid */
+.editor-trbl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+}
+
+/* Shadow sub-field grid: X / Y / Blur / Colour */
+.editor-shadow-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 2rem;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.editor-shadow-grid .editor-color-sm {
+    padding: 1px;
+    height: 100%;
+    min-width: 2rem;
+}
+
+.editor-shadow-spread-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.editor-shadow-spread-row .editor-prop-input {
+    flex: 1;
+}
+
+.editor-inline-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+/* Range input (opacity) */
+.editor-range {
+    width: 100%;
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+.editor-label-hint {
+    font-size: 0.7rem;
+    color: #6b7280;
+    font-weight: 400;
+    margin-left: 4px;
+    display: block;
+    margin-top: 1px;
+}
+
+/* Browse row */
+.editor-prop-browse-row {
+    display: flex;
+    gap: 4px;
+}
+
+.editor-prop-browse-row .editor-prop-input {
+    flex: 1;
+}
+
+/* Colour swatch + hex-text pair */
+.cruinn-color-pair {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cruinn-color-swatch {
+    width: 32px;
+    height: 28px;
+    padding: 1px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    background: none;
+}
+
+.cruinn-color-pair .cruinn-color-text {
+    flex: 1;
+    font-family: monospace;
+    font-size: 0.8rem;
+    min-width: 0;
+}
+
+.cruinn-color-clear {
+    flex-shrink: 0;
+    padding: 0 5px;
+    height: 28px;
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1;
+}
+
+.cruinn-color-clear:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* Danger row */
+.editor-prop-danger {
+    padding-top: 0.5rem;
+    border-top: 1px solid #fce8e8;
+}
+
+#prop-delete-btn {
+    width: 100%;
+}
+
+/* ── Mini-toolbar (floating) ──────────────────────────────────── */
+
+#editor-mini-toolbar {
+    position: fixed;
+    z-index: 9999;
+    background: #1a1f2e;
+    border: 1px solid #2d3549;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    display: flex;
+    gap: 1px;
+    padding: 3px;
+}
+
+#editor-mini-toolbar button {
+    background: transparent;
+    border: none;
+    color: #e2e8f0;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+#editor-mini-toolbar button:hover {
+    background: #2d3549;
+}
+
+/* ── Media panel ──────────────────────────────────────────────── */
+
+#editor-media-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.editor-media-inner {
+    background: #fff;
+    border-radius: 6px;
+    width: 780px;
+    max-width: 95vw;
+    height: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.editor-media-header {
+    height: 48px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    border-bottom: 1px solid #e2e6ea;
+}
+
+.editor-media-header h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.editor-media-path {
+    flex: 1;
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#editor-media-close {
+    background: none;
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 0 4px;
+}
+
+.editor-media-toolbar {
+    height: 44px;
+    min-height: 44px;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    border-bottom: 1px solid #e2e6ea;
+    align-items: center;
+}
+
+.editor-media-search-input {
+    width: 220px;
+    padding: 5px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.editor-media-grid {
+    height: 440px;
+    min-height: 200px;
+    overflow-y: auto;
+    padding: 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    align-content: start;
+}
+
+.editor-media-loading {
+    grid-column: 1/-1;
+    text-align: center;
+    color: #9ca3af;
+    padding: 2rem;
+}
+
+.editor-media-item {
+    width: 120px;
+    height: 110px;
+    border: 2px solid transparent;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.1s;
+}
+
+.editor-media-item:hover {
+    border-color: #1d9e75;
+}
+
+.editor-media-item.selected {
+    border-color: #1d9e75;
+    background: #e0f2eb;
+}
+
+.editor-media-folder {
+    background: #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.editor-media-folder:hover {
+    background: #e0f2eb;
+}
+
+.editor-media-folder-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.editor-media-item img {
+    width: 120px;
+    height: 80px;
+    object-fit: cover;
+    display: block;
+}
+
+.editor-media-item-name {
+    height: 20px;
+    line-height: 20px;
+    font-size: 0.68rem;
+    padding: 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #374151;
+}
+
+.editor-media-footer {
+    height: 52px;
+    min-height: 52px;
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    border-top: 1px solid #e2e6ea;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* ── Zone badge & links in toolbar ──────────────────────────────── */
+.editor-zone-badge {
+    background: #6366f1;
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.editor-zone-link {
+    background: transparent;
+    border: 1px solid #818cf8;
+    color: #818cf8;
+    white-space: nowrap;
+}
+
+.editor-zone-link:hover {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+}
+
+/* ── Zone context previews (header/footer shown greyed when editing body) ── */
+.editor-zone-preview {
+    position: relative;
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 0.15s;
+    background: #f1f5f9;
+    border: 1px dashed #94a3b8;
+    border-left: none;
+    border-right: none;
+    text-decoration: none;
+    display: block;
+    color: inherit;
+}
+
+a.editor-zone-preview {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.editor-zone-preview:hover {
+    opacity: 0.85;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.editor-zone--header {
+    border-top: 2px solid #6366f1;
+}
+
+.editor-zone--header .editor-zone-inner {
+    min-height: 120px;
+}
+
+.editor-zone--footer {
+    border-bottom: 2px solid #6366f1;
+}
+
+.editor-zone-inner {
+    min-height: 60px;
+    pointer-events: none;
+    transform: translateZ(0);
+    /* contain position:fixed children within the preview box */
+}
+
+.editor-zone-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 72px;
+    color: #64748b;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.editor-zone-edit-link {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 0.35rem 1rem;
+    background: #6366f1;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+    z-index: 5;
+}
+
+.editor-zone-preview:hover .editor-zone-edit-link {
+    opacity: 1;
+}
+
+/* ── PHP Code Chips ─────────────────────────────────────────── */
+.cruinn-php-chip {
+    background: #1e1e2e;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #b0b0c0;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    margin: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    user-select: none;
+}
+
+.cruinn-php-chip-label {
+    color: #7c3aed;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.cruinn-php-chip-code {
+    color: #9ca0b0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── PHP Echo Expression Labels ─────────────────────────────── */
+.cruinn-php-expr {
+    display: inline;
+    font-family: 'Consolas', 'Fira Code', monospace;
+    font-size: 0.85em;
+    font-style: italic;
+    color: #5dcaa5;
+    background: rgba(29, 158, 117, 0.08);
+    border: 1px dashed rgba(93, 202, 165, 0.4);
+    border-radius: 3px;
+    padding: 0 4px;
+    cursor: default;
+    user-select: none;
+}
+
+/* ── Zone picker dropdown ─────────────────────────────────── */
+.zone-picker {
+    position: relative;
+    display: inline-block;
+}
+
+.zone-picker-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background: #1e1e2e;
+    border: 1px solid #444;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .4);
+    z-index: 100;
+    padding: 0.25rem 0;
+}
+
+.zone-picker-menu.open {
+    display: block;
+}
+
+.zone-picker-menu a {
+    display: block;
+    padding: 0.45rem 0.75rem;
+    color: #e0e0e0;
+    text-decoration: none;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.zone-picker-menu a:hover {
+    background: #333;
+    color: #fff;
+}
+
+.editor-zone-preview .zone-picker {
+    position: static;
+}
+
+.editor-zone-preview .zone-picker .editor-zone-edit-link {
+    position: absolute;
+    cursor: pointer;
+    border: none;
+    background: #6366f1;
+}
+
+.editor-zone-preview .zone-picker .zone-picker-menu {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* ── Platform chrome isolation inside canvas ──────────────────────
+   When platform template pages are opened in the editor, their HTML
+   contains platform layout classes (.platform-wrap, .platform-sidebar
+   etc.). Because platform.css is loaded globally on the /cms/ page,
+   those class rules fire inside the canvas and produce the full chrome
+   layout (dark sidebar, flex row) nested inside the editor.
+   These rules neutralise the structural properties for any platform
+   chrome elements that land inside #editor-canvas as imported blocks. */
+
+#editor-canvas .platform-wrap {
+    display: block !important;
+    min-height: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+#editor-canvas .platform-sidebar {
+    width: auto !important;
+    flex-shrink: unset !important;
+    background: transparent !important;
+    border: none !important;
+    display: block !important;
+}
+
+#editor-canvas .platform-right,
+#editor-canvas .platform-main,
+#editor-canvas .platform-content {
+    display: block !important;
+    flex: none !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+}
+
+#editor-canvas .platform-bar {
+    position: static !important;
+    background: #e2e6ea !important;
+    color: #1a202c !important;
+    box-shadow: none !important;
+    border-bottom: 1px solid #d0d7de !important;
+}
+
+/* Constrain unbound images in the canvas (no page CSS loaded) */
+#editor-canvas img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Inert script/style/noscript blocks — shown as a labelled chip, never executed */
+#editor-canvas [data-editor-tag] {
+    display: block;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    background: #1a1f2e;
+    border: 1px solid #2d3452;
+    border-radius: 3px;
+    padding: 2px 6px;
+    margin: 2px 0;
+    pointer-events: none;
+    user-select: none;
+}
+
+#editor-canvas [data-editor-tag]::before {
+    content: '<' attr(data-editor-tag) '>';
+    color: #5dcaa5;
+    margin-right: 4px;
+}
+
+#editor-canvas [data-editor-tag] * {
+    display: none;
+}
+
+/* -- Document panel ----------------------------------------------- */
+
+#editor-doc-panel {
+    background: #1a1f2e;
+    border-bottom: 1px solid #2d3452;
+    padding: 0.5rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: flex-start;
+}
+
+.editor-doc-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+}
+
+.editor-doc-toggle {
+    background: none;
+    border: 1px solid #2d3452;
+    border-radius: 4px;
+    color: #9ca3af;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+    text-align: left;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.editor-doc-toggle:hover,
+.editor-doc-toggle[aria-expanded="true"] {
+    border-color: #7c3aed;
+    color: #c4b5fd;
+}
+
+.editor-doc-body {
+    background: #111827;
+    border: 1px solid #2d3452;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.editor-doc-body[hidden] {
+    display: none;
+}
+
+.editor-doc-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.editor-doc-row label {
+    color: #6b7280;
+    font-size: 0.7rem;
+    min-width: 40px;
+}
+
+.editor-doc-row input,
+.editor-doc-body textarea {
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 3px;
+    color: #e5e7eb;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+    width: 100%;
+}
+
+.editor-doc-body textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* ── Draft resume banner ──────────────────────────────────────── */
+
+#editor-draft-banner {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 8000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.editor-draft-banner-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 2rem;
+    max-width: 440px;
+    width: 90vw;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.editor-draft-banner-card h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.1rem;
+    color: #0c1614;
+}
+
+.editor-draft-banner-card p {
+    margin: 0 0 1.5rem;
+    color: #4b5563;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.editor-draft-banner-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}

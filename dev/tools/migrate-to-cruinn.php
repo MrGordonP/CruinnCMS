@@ -1,21 +1,21 @@
 <?php
 /**
- * CMS Portal — Migrate legacy content_blocks → cruinn_blocks
+ * CMS Portal — Migrate legacy content_blocks → pages
  *
  * Reads legacy content_blocks rows (parent_type='page'), strips WordPress
- * Gutenberg markup, and inserts clean published rows into cruinn_blocks.
+ * Gutenberg markup, and inserts clean published rows into pages.
  *
- * Once blocks are in cruinn_blocks the page is automatically served by
+ * Once blocks are in pages the page is automatically served by
  * CruinnRenderService (no other changes needed).
  *
  * What is migrated:
- *   - All non-system pages that have content_blocks but NO cruinn_blocks yet.
+ *   - All non-system pages that have content_blocks but NO pages yet.
  *   - Home page (slug=home): typed blocks are mapped 1-to-1 (heading, text, event-list).
  *   - All other pages: content is cleaned and placed in a single text block each.
  *
  * What is skipped:
  *   - _header, _footer (system zone pages — managed separately in block editor).
- *   - Pages that already have published cruinn_blocks (idempotent).
+ *   - Pages that already have published pages (idempotent).
  *   - Pages with no content_blocks at all.
  *
  * Usage:
@@ -225,7 +225,7 @@ function insertBlock(
 ): void {
     if ($commit) {
         $stmt = $pdo->prepare(
-            'INSERT INTO cruinn_blocks
+            'INSERT INTO pages
                (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
@@ -247,7 +247,7 @@ $siteUrl = rtrim($cfg['site']['url'] ?? '', '/');
 
 // Load all pages (skip template pages _tpl*)
 $pages = $pdo->query(
-    "SELECT id, title, slug FROM pages WHERE slug NOT LIKE '_tpl%' ORDER BY id"
+    "SELECT id, title, slug FROM pages_index WHERE slug NOT LIKE '_tpl%' ORDER BY id"
 )->fetchAll();
 
 // Load all legacy content_blocks for pages, indexed by page ID
@@ -265,7 +265,7 @@ foreach ($legacyRows as $row) {
 
 // Which pages already have published Cruinn blocks?
 $publishedPageIds = array_flip(array_column(
-    $pdo->query('SELECT DISTINCT page_id FROM cruinn_blocks')->fetchAll(),
+    $pdo->query('SELECT DISTINCT page_id FROM pages_index')->fetchAll(),
     'page_id'
 ));
 
@@ -287,7 +287,7 @@ foreach ($pages as $page) {
 
     // Already has published blocks — idempotent
     if (isset($publishedPageIds[$pageId])) {
-        echo "SKIP  [$pageId] $title (already has cruinn_blocks)\n";
+        echo "SKIP  [$pageId] $title (already has pages)\n";
         $stats['skipped']++;
         continue;
     }
