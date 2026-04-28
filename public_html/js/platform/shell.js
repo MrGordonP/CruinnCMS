@@ -4,7 +4,10 @@
     var backdrop = document.getElementById('platform-sidebar-backdrop');
     var sidebarBtn = document.getElementById('platform-sidebar-btn');
     var widthBtn = document.getElementById('platform-width-btn');
+    var instanceMenuBtn = document.getElementById('platform-instance-menu-toggle');
+    var instanceMenuBody = document.getElementById('platform-instance-menu-body');
     var DESKTOP_BP = 1024;
+    var INSTANCE_MENU_KEY = 'platform-instance-menu-open-mobile';
 
     function isDesktop() {
         return window.innerWidth >= DESKTOP_BP;
@@ -27,6 +30,44 @@
         syncSidebarButtonState();
     }
 
+    function setInstanceMenuState(open, persist) {
+        if (!instanceMenuBtn || !instanceMenuBody) return;
+        instanceMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        instanceMenuBody.hidden = !open;
+
+        if (persist && !isDesktop()) {
+            try {
+                localStorage.setItem(INSTANCE_MENU_KEY, open ? '1' : '0');
+            } catch (e) {
+                // Ignore storage access failures.
+            }
+        }
+    }
+
+    function getPreferredMobileInstanceMenuState() {
+        try {
+            var stored = localStorage.getItem(INSTANCE_MENU_KEY);
+            if (stored !== null) return stored === '1';
+        } catch (e) {
+            // Ignore storage access failures.
+        }
+
+        return !!(instanceMenuBody && instanceMenuBody.querySelector('.platform-nav-instance.active'));
+    }
+
+    function syncInstanceMenuForViewport(force) {
+        if (!instanceMenuBtn || !instanceMenuBody) return;
+
+        if (isDesktop()) {
+            setInstanceMenuState(true, false);
+            return;
+        }
+
+        if (force) {
+            setInstanceMenuState(getPreferredMobileInstanceMenuState(), false);
+        }
+    }
+
     function syncWidthButtonState() {
         if (!widthBtn) return;
         widthBtn.textContent = root.classList.contains('platform-layout-wide') ? '\u22A1' : '\u229E';
@@ -38,6 +79,14 @@
             localStorage.setItem('platform-layout-wide', wide ? '1' : '0');
             syncWidthButtonState();
         });
+    }
+
+    if (instanceMenuBtn && instanceMenuBody) {
+        instanceMenuBtn.addEventListener('click', function () {
+            var open = instanceMenuBtn.getAttribute('aria-expanded') === 'true';
+            setInstanceMenuState(!open, true);
+        });
+        syncInstanceMenuForViewport(true);
     }
 
     if (sidebarBtn) {
@@ -69,11 +118,21 @@
         });
     }
 
+    var lastDesktopState = isDesktop();
+
     window.addEventListener('resize', function () {
+        var desktopNow = isDesktop();
+
         if (isDesktop()) {
             if (sidebar) sidebar.classList.remove('open');
             if (backdrop) backdrop.classList.remove('active');
         }
+
+        if (desktopNow !== lastDesktopState) {
+            syncInstanceMenuForViewport(true);
+            lastDesktopState = desktopNow;
+        }
+
         syncSidebarButtonState();
     });
 

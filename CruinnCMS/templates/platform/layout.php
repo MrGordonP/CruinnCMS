@@ -59,13 +59,28 @@
                     $_snCurrentInstance = $_snQs['instance'] ?? null;
                 }
             ?>
-<a href="/cms/editor?instance=__platform__"
-               class="platform-nav-instance<?= ($_snCurrentInstance === '__platform__') ? ' active' : '' ?>"><span>CruinnCMS Platform</span></a>
+<div class="platform-nav-group" id="platform-instance-menu-group">
+    <button type="button"
+            class="platform-nav-group-btn"
+            id="platform-instance-menu-toggle"
+            aria-expanded="true"
+            aria-controls="platform-instance-menu-body">
+        <span class="pnav-caret">▸</span>
+        <span class="pnav-group-label">
+            <?php if ($_snCurrentInstance !== null): ?><span class="pnav-active-dot" aria-hidden="true"></span><?php endif; ?>
+            <span>Instances</span>
+        </span>
+    </button>
+    <div class="platform-nav-group-body" id="platform-instance-menu-body">
+        <a href="/cms/editor?instance=__platform__"
+           class="platform-nav-instance<?= ($_snCurrentInstance === '__platform__') ? ' active' : '' ?>"><span>CruinnCMS Platform</span></a>
 <?php foreach ($_snInstances as $_snInst): ?>
-<a href="/cms/editor?instance=<?= urlencode($_snInst['folder_name']) ?>"
-               class="platform-nav-instance<?= ($_snCurrentInstance === $_snInst['folder_name']) ? ' active' : '' ?>"><?= e($_snInst['name']) ?>
-</a>
+        <a href="/cms/editor?instance=<?= urlencode($_snInst['folder_name']) ?>"
+           class="platform-nav-instance<?= ($_snCurrentInstance === $_snInst['folder_name']) ? ' active' : '' ?>"><?= e($_snInst['name']) ?>
+        </a>
 <?php endforeach; ?>
+    </div>
+</div>
 </nav>
 <?php endif; ?>
 <?php

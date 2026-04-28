@@ -6,6 +6,11 @@
  */
 
 document.addEventListener('DOMContentLoaded', function () {
+    var TABLET_BP = 1023;
+
+    function isTabletOrMobile() {
+        return window.innerWidth <= TABLET_BP;
+    }
 
     // ── Mobile Navigation Toggle ──────────────────────────────
     const navToggle = document.querySelector('.nav-toggle');
@@ -26,6 +31,105 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // ── Header/Menu accordion submenus (tablet/mobile) ───────
+
+    function closeSubtree(li) {
+        li.classList.remove('submenu-open');
+        var btn = li.querySelector(':scope > .nav-submenu-toggle');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        li.querySelectorAll('li.submenu-open').forEach(function (child) {
+            child.classList.remove('submenu-open');
+            var childBtn = child.querySelector(':scope > .nav-submenu-toggle');
+            if (childBtn) childBtn.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function closeSiblingSubmenus(li) {
+        var parent = li.parentElement;
+        if (!parent) return;
+        Array.prototype.forEach.call(parent.children, function (sib) {
+            if (sib !== li && sib.classList && sib.classList.contains('submenu-open')) {
+                closeSubtree(sib);
+            }
+        });
+    }
+
+    function setSubmenuState(li, open) {
+        var btn = li.querySelector(':scope > .nav-submenu-toggle');
+        li.classList.toggle('submenu-open', open);
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function hasNavigableHref(link) {
+        if (!link) return false;
+        var href = (link.getAttribute('href') || '').trim();
+        return href !== '' && href !== '#' && !href.toLowerCase().startsWith('javascript:');
+    }
+
+    function enhanceSubmenuList(listEl) {
+        listEl.querySelectorAll('li').forEach(function (li) {
+            var submenu = li.querySelector(':scope > .nav-dropdown');
+            var link = li.querySelector(':scope > a');
+            if (!submenu || !link) return;
+
+            li.classList.add('nav-has-children');
+            if (li.querySelector(':scope > .nav-submenu-toggle')) return;
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'nav-submenu-toggle';
+            btn.setAttribute('aria-expanded', 'false');
+            btn.setAttribute('aria-label', 'Toggle submenu');
+            btn.innerHTML = '<span class="nav-submenu-caret" aria-hidden="true">▸</span>';
+            li.insertBefore(btn, submenu);
+
+            btn.addEventListener('click', function (event) {
+                if (!isTabletOrMobile()) return;
+                event.preventDefault();
+                event.stopPropagation();
+                var open = li.classList.contains('submenu-open');
+                if (!open) closeSiblingSubmenus(li);
+                setSubmenuState(li, !open);
+            });
+
+            link.addEventListener('click', function (event) {
+                if (!isTabletOrMobile()) return;
+                var open = li.classList.contains('submenu-open');
+
+                if (!open) {
+                    event.preventDefault();
+                    closeSiblingSubmenus(li);
+                    setSubmenuState(li, true);
+                    return;
+                }
+
+                if (!hasNavigableHref(link)) {
+                    event.preventDefault();
+                    setSubmenuState(li, false);
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('.main-nav .nav-list, .utility-nav, .site-header-custom .block-nav-menu > ul').forEach(function (listEl) {
+        enhanceSubmenuList(listEl);
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!isTabletOrMobile()) return;
+        if (event.target.closest('.site-header, .site-header-custom')) return;
+        document.querySelectorAll('li.submenu-open').forEach(function (li) {
+            closeSubtree(li);
+        });
+    });
+
+    window.addEventListener('resize', function () {
+        if (isTabletOrMobile()) return;
+        document.querySelectorAll('li.submenu-open').forEach(function (li) {
+            closeSubtree(li);
+        });
+    });
 
     // ── Flash Message Dismissal ───────────────────────────────
     document.querySelectorAll('.flash-close').forEach(function (btn) {
