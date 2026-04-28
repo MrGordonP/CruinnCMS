@@ -25,7 +25,7 @@ var PanelCollapse = (function () {
 
     var ICONS = {
         left:   { collapsed: '\u25B6', expanded: '\u25C0' },  // ▶ ◀
-        centre: { collapsed: '\u25B6', expanded: '\u25BC' },  // ▶ ▼  (down = open upward)
+        centre: { collapsed: '\u25B6', expanded: '\u25C0' },  // ▶ ◀  (collapse left)
         right:  { collapsed: '\u25C0', expanded: '\u25B6' },  // ◀ ▶
     };
 

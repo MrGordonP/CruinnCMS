@@ -1647,11 +1647,12 @@ html.platform-sidebar-collapsed .platform-sidebar {
 }
 
 .source-code-pane.collapsed .source-code-toolbar {
-    flex-direction: column;
-    padding: 0.3rem 0;
+    flex-direction: row;
+    padding: 0;
     align-items: center;
-    gap: 0.25rem;
-    height: auto;
+    justify-content: center;
+    height: 100%;
+    width: 32px;
     border-bottom: none;
     border-right: 1px solid var(--plat-border);
 }
