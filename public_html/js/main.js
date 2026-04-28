@@ -131,6 +131,74 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // ── Generic responsive UI collapse (data-ui-collapse) ────
+    function collapseBreakpoint(mode) {
+        return mode === 'mobile' ? 767 : 1023;
+    }
+
+    function buildCollapseLabel(el) {
+        if (el.dataset.blockType === 'nav-menu') {
+            return 'Menu';
+        }
+        return 'Section';
+    }
+
+    document.querySelectorAll('[data-ui-collapse]').forEach(function (el) {
+        var mode = (el.getAttribute('data-ui-collapse') || '').trim();
+        if (mode !== 'tablet' && mode !== 'mobile') {
+            return;
+        }
+
+        var bp = collapseBreakpoint(mode);
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ui-collapse-toggle';
+        btn.setAttribute('data-ui-collapse-mode', mode);
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Toggle ' + buildCollapseLabel(el));
+        if (el.id) {
+            btn.setAttribute('aria-controls', el.id);
+        }
+        btn.innerHTML = '<span class="ui-collapse-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>' +
+            '<span class="ui-collapse-toggle-label">' + buildCollapseLabel(el) + '</span>';
+
+        el.parentNode.insertBefore(btn, el);
+
+        function closeTarget() {
+            el.classList.remove('ui-collapse-open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+
+        function syncCollapseMode() {
+            var shouldCollapse = window.innerWidth <= bp;
+            if (!shouldCollapse) {
+                closeTarget();
+            }
+        }
+
+        btn.addEventListener('click', function () {
+            if (window.innerWidth > bp) {
+                return;
+            }
+            var open = !el.classList.contains('ui-collapse-open');
+            el.classList.toggle('ui-collapse-open', open);
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', function (event) {
+            if (window.innerWidth > bp) {
+                return;
+            }
+            if (btn.contains(event.target) || el.contains(event.target)) {
+                return;
+            }
+            closeTarget();
+        });
+
+        window.addEventListener('resize', syncCollapseMode);
+        syncCollapseMode();
+    });
+
     // ── Flash Message Dismissal ───────────────────────────────
     document.querySelectorAll('.flash-close').forEach(function (btn) {
         btn.addEventListener('click', function () {

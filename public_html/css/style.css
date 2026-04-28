@@ -529,6 +529,91 @@ p {
     display: none;
 }
 
+/* Generic UI collapse toggle (driven by data-ui-collapse) */
+.ui-collapse-toggle {
+    display: none;
+    align-items: center;
+    gap: var(--space-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-light);
+    color: var(--color-text);
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.45rem 0.7rem;
+    margin: 0.4rem 0;
+    cursor: pointer;
+}
+
+.ui-collapse-toggle:hover,
+.ui-collapse-toggle:focus {
+    background: var(--color-bg-dark);
+    outline: none;
+}
+
+.ui-collapse-toggle-icon {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 14px;
+}
+
+.ui-collapse-toggle-icon span {
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    border-radius: 99px;
+}
+
+@media (max-width: 1023px) {
+    .ui-collapse-toggle[data-ui-collapse-mode="tablet"] {
+        display: inline-flex;
+    }
+
+    [data-ui-collapse="tablet"] {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        visibility: hidden;
+        transform: translateY(-0.35rem);
+        transition: max-height 0.3s ease, opacity 0.22s ease, transform 0.22s ease;
+        pointer-events: none;
+    }
+
+    [data-ui-collapse="tablet"].ui-collapse-open {
+        max-height: 120vh;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+}
+
+@media (max-width: 767px) {
+    .ui-collapse-toggle[data-ui-collapse-mode="mobile"] {
+        display: inline-flex;
+    }
+
+    [data-ui-collapse="mobile"] {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        visibility: hidden;
+        transform: translateY(-0.35rem);
+        transition: max-height 0.3s ease, opacity 0.22s ease, transform 0.22s ease;
+        pointer-events: none;
+    }
+
+    [data-ui-collapse="mobile"].ui-collapse-open {
+        max-height: 120vh;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+}
+
 @media (max-width: 1023px) {
     .nav-toggle {
         display: block;

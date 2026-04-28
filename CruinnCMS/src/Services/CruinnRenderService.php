@@ -243,6 +243,10 @@ class CruinnRenderService
             if ($row['block_type'] === 'nav-menu' && isset($cfg['menu_id'])) {
                 $extraAttrs .= ' data-menu-id="' . (int) $cfg['menu_id'] . '"';
             }
+            $uiCollapse = (string) ($cfg['ui_collapse'] ?? '');
+            if ($uiCollapse === 'tablet' || $uiCollapse === 'mobile') {
+                $extraAttrs .= ' data-ui-collapse="' . $uiCollapse . '"';
+            }
 
             $isDynamic    = $this->isDynamicType($row['block_type']);
             $innerContent = $isDynamic
@@ -354,11 +358,16 @@ class CruinnRenderService
                     $pbTag    = $pbCfg['_tag'] ?? $this->tagForType($pb['block_type']);
                     $pbType   = htmlspecialchars($pb['block_type'], ENT_QUOTES, 'UTF-8');
                     $pbId     = htmlspecialchars($pb['block_id'], ENT_QUOTES, 'UTF-8');
+                    $pbAttrs  = '';
+                    $pbCollapse = (string) ($pbCfg['ui_collapse'] ?? '');
+                    if ($pbCollapse === 'tablet' || $pbCollapse === 'mobile') {
+                        $pbAttrs .= ' data-ui-collapse="' . $pbCollapse . '"';
+                    }
                     $pbInner  = $this->isDynamicType($pb['block_type'])
                         ? $this->renderDynamicBlock($pb)
                         : ($pb['inner_html'] ?? '');
                     $pbInner .= $this->renderTree($pb['block_id'], $pageById, $pageChildrenOf);
-                    $inner   .= "<{$pbTag} id=\"{$pbId}\" data-block data-block-type=\"{$pbType}\">{$pbInner}</{$pbTag}>\n";
+                    $inner   .= "<{$pbTag} id=\"{$pbId}\" data-block data-block-type=\"{$pbType}\"{$pbAttrs}>{$pbInner}</{$pbTag}>\n";
                 }
                 $html .= "<{$tag} id=\"{$id}\" data-block data-block-type=\"{$type}\" data-zone-name=\"{$zoneName}\">";
                 $html .= $inner;
@@ -373,6 +382,10 @@ class CruinnRenderService
                 }
                 if ($row['block_type'] === 'nav-menu' && isset($tCfg['menu_id'])) {
                     $extraAttrs .= ' data-menu-id="' . (int) $tCfg['menu_id'] . '"';
+                }
+                $uiCollapse = (string) ($tCfg['ui_collapse'] ?? '');
+                if ($uiCollapse === 'tablet' || $uiCollapse === 'mobile') {
+                    $extraAttrs .= ' data-ui-collapse="' . $uiCollapse . '"';
                 }
                 $isDynamic = $this->isDynamicType($row['block_type']);
                 $inner     = $isDynamic

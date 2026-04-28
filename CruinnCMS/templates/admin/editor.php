@@ -520,6 +520,27 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 </div>
             </div>
 
+            <!-- Responsive UI group -->
+            <div class="editor-accordion collapsed" data-group="responsive-ui">
+                <button class="editor-accordion-toggle">Responsive UI</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row">
+                        <label>
+                            <input type="checkbox" id="prop-ui-collapse-enabled">
+                            Enable responsive collapse
+                        </label>
+                        <span class="editor-label-hint">Add a toggle button and collapse this block on smaller screens.</span>
+                    </div>
+                    <div class="editor-prop-row" id="prop-ui-collapse-row" style="display:none">
+                        <label>Collapse at</label>
+                        <select class="editor-prop-input" id="prop-ui-collapse">
+                            <option value="tablet">Tablet and mobile (<= 1023px)</option>
+                            <option value="mobile">Mobile only (<= 767px)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- PHP Code group (php-code blocks only) -->
             <div class="editor-accordion collapsed" data-group="php-code" style="display:none">
                 <button class="editor-accordion-toggle">PHP Source</button>
