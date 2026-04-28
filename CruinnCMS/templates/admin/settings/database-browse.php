@@ -1,5 +1,6 @@
 <?php include __DIR__ . '/_tabs.php'; ?>
 <?php \Cruinn\Template::requireCss('admin-acp.css'); ?>
+<?php \Cruinn\Template::requireJs('database-browse.js'); ?>
 
 <h2>Browse: <code><?= e($table) ?></code></h2>
 
@@ -51,8 +52,7 @@
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="_pk" value="<?= e((string)$rowPk) ?>">
                                 <input type="hidden" name="_page" value="<?= $page ?>">
-                                <button type="submit" class="btn btn-danger" style="padding:0.15rem 0.5rem; font-size:0.78rem;"
-                                        onclick="return confirm('Delete this row?')">Delete</button>
+                                <button type="submit" class="btn btn-danger admin-db-delete-btn" style="padding:0.15rem 0.5rem; font-size:0.78rem;">Delete</button>
                             </form>
                             <?php endif; ?>
                         </td>
