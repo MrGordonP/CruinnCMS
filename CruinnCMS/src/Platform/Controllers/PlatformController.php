@@ -1890,6 +1890,7 @@ class PlatformController
     private function buildSourceFileGroups(): array
     {
         $rcRoot = dirname(__DIR__, 3);
+        $publicRoot = realpath(CRUINN_PUBLIC) ?: CRUINN_PUBLIC;
         $groups = [];
 
         // 1. Platform chrome
@@ -1945,20 +1946,20 @@ class PlatformController
             $groups['Config']['config/' . $base] = $base;
         }
 
-        // 6. CSS
-        foreach (glob($rcRoot . '/public/css/*.css') ?: [] as $f) {
+        // 6. CSS (public may live outside CruinnCMS root)
+        foreach (glob($publicRoot . '/css/*.css') ?: [] as $f) {
             $base = basename($f);
             $groups['CSS']['public/css/' . $base] = $base;
         }
 
-        // 6. JS — core
-        foreach (glob($rcRoot . '/public/js/*.js') ?: [] as $f) {
+        // 7. JS — core
+        foreach (glob($publicRoot . '/js/*.js') ?: [] as $f) {
             $base = basename($f);
             $groups['JS — Core']['public/js/' . $base] = $base;
         }
 
-        // 7. JS — admin (recursive)
-        $jsAdminBase = $rcRoot . '/public/js/admin';
+        // 8. JS — admin (recursive)
+        $jsAdminBase = $publicRoot . '/js/admin';
         if (is_dir($jsAdminBase)) {
             $iter = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($jsAdminBase, \FilesystemIterator::SKIP_DOTS)
@@ -1971,7 +1972,21 @@ class PlatformController
             if (!empty($groups['JS — Admin'])) { ksort($groups['JS — Admin']); }
         }
 
-        // 8. PHP — src (recursive)
+        // 9. JS — platform (recursive)
+        $jsPlatformBase = $publicRoot . '/js/platform';
+        if (is_dir($jsPlatformBase)) {
+            $iter = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($jsPlatformBase, \FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($iter as $file) {
+                if ($file->getExtension() !== 'js') { continue; }
+                $sub = str_replace('\\', '/', $iter->getSubPathname());
+                $groups['JS — Platform']['public/js/platform/' . $sub] = $sub;
+            }
+            if (!empty($groups['JS — Platform'])) { ksort($groups['JS — Platform']); }
+        }
+
+        // 10. PHP — src (recursive)
         $srcBase = $rcRoot . '/src';
         if (is_dir($srcBase)) {
             $iter = new \RecursiveIteratorIterator(
@@ -1985,7 +2000,7 @@ class PlatformController
             if (!empty($groups['PHP — src'])) { ksort($groups['PHP — src']); }
         }
 
-        // 9. Modules (php + templates, grouped per module slug)
+        // 11. Modules (php + templates, grouped per module slug)
         $modulesBase = $rcRoot . '/modules';
         if (is_dir($modulesBase)) {
             foreach (glob($modulesBase . '/*/') ?: [] as $modDir) {
@@ -2022,8 +2037,17 @@ class PlatformController
      */
     private function buildSourceFileTree(): array
     {
-        $root       = dirname(__DIR__, 3);
-        $rootDirs   = ['src', 'templates', 'config', 'schema', 'migrations', 'public', 'modules'];
+        $root = dirname(__DIR__, 3);
+        $publicRoot = realpath(CRUINN_PUBLIC) ?: CRUINN_PUBLIC;
+        $rootDirs = [
+            ['abs' => $root . '/src',        'rel' => 'src'],
+            ['abs' => $root . '/templates',  'rel' => 'templates'],
+            ['abs' => $root . '/config',     'rel' => 'config'],
+            ['abs' => $root . '/schema',     'rel' => 'schema'],
+            ['abs' => $root . '/migrations', 'rel' => 'migrations'],
+            ['abs' => $publicRoot,           'rel' => 'public'],
+            ['abs' => $root . '/modules',    'rel' => 'modules'],
+        ];
         $allowedExt = ['php', 'html', 'css', 'js', 'sql', 'md', 'json', 'txt'];
         $skipDirs   = ['vendor', 'instance', 'storage', 'uploads', '.git', 'node_modules', '_template'];
 
@@ -2059,13 +2083,81 @@ class PlatformController
 
         $tree = [];
         foreach ($rootDirs as $dir) {
-            $abs = $root . DIRECTORY_SEPARATOR . $dir;
+            $abs = $dir['abs'];
             if (!is_dir($abs)) { continue; }
-            $children = $walk($abs, $dir);
-            $tree[]   = ['name' => $dir, 'rel' => $dir, 'type' => 'dir', 'children' => $children];
+            $children = $walk($abs, $dir['rel']);
+            $tree[]   = ['name' => $dir['rel'], 'rel' => $dir['rel'], 'type' => 'dir', 'children' => $children];
         }
 
         return $tree;
+    }
+
+    /**
+     * Resolve a source-editor relative path to an absolute filesystem path.
+     *
+     * Paths prefixed with public/ are resolved under CRUINN_PUBLIC; all others
+     * are resolved under the CruinnCMS root.
+     *
+     * Returns [absolutePath, absoluteRoot] or null when invalid/outside root.
+     *
+     * @return array{0:string,1:string}|null
+     */
+    private function resolveSourcePath(string $relPath): ?array
+    {
+        $relPath = ltrim(str_replace(['..', '\\'], ['', '/'], $relPath), '/');
+        if ($relPath === '') { return null; }
+
+        $rcRoot     = dirname(__DIR__, 3);
+        $rcRootReal = realpath($rcRoot);
+        $publicRoot = realpath(CRUINN_PUBLIC);
+
+        if (str_starts_with($relPath, 'public/')) {
+            if (!$publicRoot) { return null; }
+            $target = realpath($publicRoot . '/' . substr($relPath, 7));
+            if ($target && str_starts_with($target, $publicRoot . DIRECTORY_SEPARATOR)) {
+                return [$target, $publicRoot];
+            }
+            return null;
+        }
+
+        if (!$rcRootReal) { return null; }
+        $target = realpath($rcRoot . '/' . $relPath);
+        if ($target && str_starts_with($target, $rcRootReal . DIRECTORY_SEPARATOR)) {
+            return [$target, $rcRootReal];
+        }
+        return null;
+    }
+
+    /**
+     * Resolve a source-editor directory path to absolute path/root.
+     *
+     * @return array{0:string,1:string}|null
+     */
+    private function resolveSourceDirPath(string $relDir): ?array
+    {
+        $relDir = ltrim(str_replace(['..', '\\'], ['', '/'], $relDir), '/');
+        if ($relDir === '') { return null; }
+
+        $rcRoot     = dirname(__DIR__, 3);
+        $rcRootReal = realpath($rcRoot);
+        $publicRoot = realpath(CRUINN_PUBLIC);
+
+        if ($relDir === 'public' || str_starts_with($relDir, 'public/')) {
+            if (!$publicRoot) { return null; }
+            $suffix = $relDir === 'public' ? '' : substr($relDir, 7);
+            $target = realpath($publicRoot . ($suffix !== '' ? '/' . $suffix : ''));
+            if ($target && ($target === $publicRoot || str_starts_with($target, $publicRoot . DIRECTORY_SEPARATOR))) {
+                return [$target, $publicRoot];
+            }
+            return null;
+        }
+
+        if (!$rcRootReal) { return null; }
+        $target = realpath($rcRoot . '/' . $relDir);
+        if ($target && ($target === $rcRootReal || str_starts_with($target, $rcRootReal . DIRECTORY_SEPARATOR))) {
+            return [$target, $rcRootReal];
+        }
+        return null;
     }
 
     /**
@@ -2101,8 +2193,6 @@ class PlatformController
     {
         if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
 
-        $rcRoot = dirname(__DIR__, 3);
-
         // ── Build categorised file tree ──────────────────────────────────
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
         $groups     = $this->buildSourceFileGroups();
@@ -2115,17 +2205,19 @@ class PlatformController
         $activeGroup = null;
 
         if ($reqFile !== null && $reqFile !== '') {
-            $absPath    = realpath($rcRoot . '/' . $reqFile);
-            $rcRootReal = realpath($rcRoot);
-            if ($absPath && $rcRootReal
-                && str_starts_with($absPath, $rcRootReal . DIRECTORY_SEPARATOR)
-                && is_file($absPath)
-                && in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
-            ) {
-                $fileContent = file_get_contents($absPath);
-                $activeFile  = $reqFile;
-                foreach ($groups as $groupName => $files) {
-                    if (isset($files[$activeFile])) { $activeGroup = $groupName; break; }
+            $resolved = $this->resolveSourcePath($reqFile);
+            if ($resolved) {
+                [$absPath] = $resolved;
+                if (is_file($absPath)
+                    && in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
+                ) {
+                    $fileContent = file_get_contents($absPath);
+                    $activeFile  = $reqFile;
+                    foreach ($groups as $groupName => $files) {
+                        if (isset($files[$activeFile])) { $activeGroup = $groupName; break; }
+                    }
+                } else {
+                    $fileError = 'File not found or not editable.';
                 }
             } else {
                 $fileError = 'File not found or not editable.';
@@ -2162,15 +2254,17 @@ class PlatformController
 
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
         $content    = $_POST['content'] ?? '';
-        $rcRoot     = dirname(__DIR__, 3);
-        $rcRootReal = realpath($rcRoot);
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
 
-        $absPath = realpath($rcRoot . '/' . $reqFile);
+        $resolved = $this->resolveSourcePath($reqFile);
+        if (!$resolved) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Invalid or disallowed file path.'];
+            header('Location: /cms/source' . ($reqFile ? '?file=' . rawurlencode($reqFile) : ''));
+            exit;
+        }
+        [$absPath] = $resolved;
 
-        if (!$absPath || !$rcRootReal
-            || !str_starts_with($absPath, $rcRootReal . DIRECTORY_SEPARATOR)
-            || !is_file($absPath)
+        if (!is_file($absPath)
             || !in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
         ) {
             $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Invalid or disallowed file path.'];
@@ -2205,8 +2299,6 @@ class PlatformController
         if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
 
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
-        $rcRoot     = dirname(__DIR__, 3);
-        $rcRootReal = realpath($rcRoot);
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
 
         // Block protected paths
@@ -2219,11 +2311,15 @@ class PlatformController
             }
         }
 
-        $absPath = realpath($rcRoot . '/' . $reqFile);
+        $resolved = $this->resolveSourcePath($reqFile);
+        if (!$resolved) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Invalid or disallowed file path.'];
+            header('Location: /cms/source' . ($reqFile ? '?file=' . rawurlencode($reqFile) : ''));
+            exit;
+        }
+        [$absPath] = $resolved;
 
-        if (!$absPath || !$rcRootReal
-            || !str_starts_with($absPath, $rcRootReal . DIRECTORY_SEPARATOR)
-            || !is_file($absPath)
+        if (!is_file($absPath)
             || !in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
         ) {
             $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Invalid or disallowed file path.'];
@@ -2331,8 +2427,6 @@ class PlatformController
         }
 
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_GET['file'] ?? '')), '/');
-        $rcRoot     = dirname(__DIR__, 3);
-        $rcRootReal = realpath($rcRoot);
 
         if ($reqFile === '') {
             http_response_code(400);
@@ -2340,12 +2434,15 @@ class PlatformController
             exit;
         }
 
-        $absPath = realpath($rcRoot . '/' . $reqFile);
+        $resolved = $this->resolveSourcePath($reqFile);
+        if (!$resolved) {
+            http_response_code(404);
+            echo 'File not found.';
+            exit;
+        }
+        [$absPath] = $resolved;
 
-        if (!$absPath || !$rcRootReal
-            || !str_starts_with($absPath, $rcRootReal . DIRECTORY_SEPARATOR)
-            || !is_file($absPath)
-        ) {
+        if (!is_file($absPath)) {
             http_response_code(404);
             echo 'File not found.';
             exit;
@@ -2664,8 +2761,6 @@ class PlatformController
         }
 
         $reqDir     = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['dir'] ?? '')), '/');
-        $rcRoot     = dirname(__DIR__, 3);
-        $rcRootReal = realpath($rcRoot);
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
 
         // Validate the directory exists within root
@@ -2674,11 +2769,13 @@ class PlatformController
             exit;
         }
 
-        $absDir = realpath($rcRoot . '/' . $reqDir);
-        if (!$absDir || !$rcRootReal
-            || !str_starts_with($absDir, $rcRootReal . DIRECTORY_SEPARATOR)
-            || !is_dir($absDir)
-        ) {
+        $resolvedDir = $this->resolveSourceDirPath($reqDir);
+        if (!$resolvedDir) {
+            echo json_encode(['ok' => false, 'error' => 'Directory not found or outside root.']);
+            exit;
+        }
+        [$absDir] = $resolvedDir;
+        if (!is_dir($absDir)) {
             echo json_encode(['ok' => false, 'error' => 'Directory not found or outside root.']);
             exit;
         }
@@ -2823,8 +2920,13 @@ class PlatformController
                 continue;
             }
 
-            $absFile = realpath($rcRoot . '/' . $localPath);
-            if (!$absFile || !str_starts_with($absFile, $rcRootReal . DIRECTORY_SEPARATOR) || !is_file($absFile)) {
+            $resolvedFile = $this->resolveSourcePath($localPath);
+            if (!$resolvedFile) {
+                $results[] = ['path' => $localPath, 'status' => 'skipped', 'error' => 'Not in local tree'];
+                continue;
+            }
+            [$absFile] = $resolvedFile;
+            if (!is_file($absFile)) {
                 // File doesn't exist locally — skip rather than create new files unexpectedly
                 $results[] = ['path' => $localPath, 'status' => 'skipped', 'error' => 'Not in local tree'];
                 continue;
