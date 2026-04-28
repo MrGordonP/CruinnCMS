@@ -1188,7 +1188,8 @@ code {
 }
 
 .source-panel.collapsed .source-panel-body,
-.source-panel.collapsed .source-panel-title {
+.source-panel.collapsed .source-panel-title,
+.source-panel.collapsed .source-panel-resize {
     display: none;
 }
 
@@ -1196,6 +1197,28 @@ code {
     flex: 1;
     overflow-y: auto;
     min-height: 0;
+}
+
+/* ── Left panel drag-resize handle ─────────────────────────────── */
+.source-panel-resize {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+}
+
+.source-panel-resize:hover,
+.source-panel-resize.dragging {
+    background: var(--plat-accent);
+    opacity: 0.35;
+}
+
+.source-panel-left {
+    position: relative;
 }
 
 /* ── File tree (inside left panel) ─────────────────────────────── */
@@ -1401,6 +1424,12 @@ code {
     white-space: nowrap;
 }
 
+.source-code-pane>.source-panel-body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .source-code-form {
     flex: 1;
     display: flex;
@@ -1588,6 +1617,7 @@ html.platform-sidebar-collapsed .platform-sidebar {
 
 /* ── Mobile / Tablet: off-canvas drawer ─────────────────────── */
 @media (max-width: 1023px) {
+
     /* Sidebar leaves flex flow — becomes a fixed overlay drawer */
     .platform-sidebar {
         position: fixed;
@@ -1634,27 +1664,10 @@ html.platform-sidebar-collapsed .platform-sidebar {
     position: relative;
 }
 
-/* Centre toggle button — always visible, sits at top-left of the pane */
+/* Centre toggle — lives inside the panel header like left/right toggles */
 #source-panel-centre-toggle {
-    position: absolute;
-    top: 50%;
-    left: 4px;
-    transform: translateY(-50%);
-    z-index: 2;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--plat-text-muted, #888);
-    font-size: 0.65rem;
-    padding: 0.2rem 0.25rem;
-    line-height: 1;
-    border-radius: 3px;
-    transition: color .12s, background .12s;
-}
-
-#source-panel-centre-toggle:hover {
-    color: var(--plat-accent, #1d9e75);
-    background: rgba(29, 158, 117, .08);
+    margin-right: auto;
+    margin-left: 0;
 }
 
 .source-code-pane.collapsed {
@@ -1664,8 +1677,6 @@ html.platform-sidebar-collapsed .platform-sidebar {
     overflow: visible;
 }
 
-.source-code-pane.collapsed .source-code-form,
-.source-code-pane.collapsed .source-flash,
-.source-code-pane.collapsed .source-empty {
+.source-code-pane.collapsed .source-panel-body {
     display: none;
 }

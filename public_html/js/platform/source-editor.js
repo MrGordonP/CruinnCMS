@@ -175,7 +175,8 @@
 }());
 
 PanelCollapse.init([
-    { panelId: 'source-panel-left',   toggleId: 'source-panel-left-toggle',   storeKey: 'cms_src_left',   side: 'left' },
-    { panelId: 'source-code-pane',    toggleId: 'source-panel-centre-toggle', storeKey: 'cms_src_centre', side: 'centre' },
-    { panelId: 'source-panel-right',  toggleId: 'source-panel-right-toggle',  storeKey: 'cms_src_right',  side: 'right' }
+    { panelId: 'source-panel-left', toggleId: 'source-panel-left-toggle', storeKey: 'cms_src_left', side: 'left' },
+    { panelId: 'source-code-pane', toggleId: 'source-panel-centre-toggle', storeKey: 'cms_src_centre', side: 'centre' },
+    { panelId: 'source-panel-right', toggleId: 'source-panel-right-toggle', storeKey: 'cms_src_right', side: 'right' }
 ]);
+PanelCollapse.initResize('source-panel-left-resize', 'source-panel-left', 'cms_src_left_w');

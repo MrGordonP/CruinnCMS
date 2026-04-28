@@ -24,9 +24,9 @@
 var PanelCollapse = (function () {
 
     var ICONS = {
-        left:   { collapsed: '\u25B6', expanded: '\u25C0' },  // ▶ ◀
+        left: { collapsed: '\u25B6', expanded: '\u25C0' },  // ▶ ◀
         centre: { collapsed: '\u25B6', expanded: '\u25C0' },  // ▶ ◀  (collapse left)
-        right:  { collapsed: '\u25C0', expanded: '\u25B6' },  // ◀ ▶
+        right: { collapsed: '\u25C0', expanded: '\u25B6' },  // ◀ ▶
     };
 
     // registry: id → { panel, btn, storeKey, side }
@@ -36,7 +36,7 @@ var PanelCollapse = (function () {
         var entry = _panels[id];
         if (!entry) return;
         var panel = entry.panel;
-        var btn   = entry.btn;
+        var btn = entry.btn;
         var icons = ICONS[entry.side] || ICONS.left;
 
         if (collapsed) {
@@ -67,14 +67,14 @@ var PanelCollapse = (function () {
     function init(configs) {
         configs.forEach(function (cfg) {
             var panel = document.getElementById(cfg.panelId);
-            var btn   = cfg.toggleId ? document.getElementById(cfg.toggleId) : null;
+            var btn = cfg.toggleId ? document.getElementById(cfg.toggleId) : null;
             if (!panel) return;
 
             _panels[cfg.panelId] = {
-                panel:    panel,
-                btn:      btn,
+                panel: panel,
+                btn: btn,
                 storeKey: cfg.storeKey || null,
-                side:     cfg.side || 'left',
+                side: cfg.side || 'left',
             };
 
             // Restore persisted state
@@ -97,6 +97,49 @@ var PanelCollapse = (function () {
         }
     }
 
-    return { init: init, expand: expand };
+    // ── Drag-resize handles ─────────────────────────────────────────
+    // Attach to any .source-panel-resize element; resizes its parent panel.
+    function initResize(handleId, panelId, storeKey) {
+        var handle = document.getElementById(handleId);
+        var panel = document.getElementById(panelId);
+        if (!handle || !panel) return;
+
+        // Restore persisted width
+        if (storeKey) {
+            var stored = localStorage.getItem(storeKey);
+            if (stored) panel.style.width = stored + 'px';
+        }
+
+        handle.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+            var startX = e.clientX;
+            var startWidth = panel.getBoundingClientRect().width;
+            handle.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+
+            function onMove(e) {
+                var delta = e.clientX - startX;
+                var newW = Math.max(140, Math.min(480, startWidth + delta));
+                panel.style.width = newW + 'px';
+            }
+
+            function onUp() {
+                handle.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+                if (storeKey) {
+                    try { localStorage.setItem(storeKey, Math.round(panel.getBoundingClientRect().width)); } catch (e) { /* ignore */ }
+                }
+            }
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    }
+
+    return { init: init, expand: expand, initResize: initResize };
 
 }());

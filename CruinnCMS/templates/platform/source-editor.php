@@ -67,11 +67,16 @@ if ($activeFile !== null && $fileContent !== null) {
         $_stRender($sourceFileTree);
         ?>
         </div>
+        <div class="source-panel-resize" id="source-panel-left-resize"></div>
     </div>
 
     <!-- ── Centre: Code pane ──────────────────────────────────── -->
     <div class="source-code-pane" id="source-code-pane">
-        <button type="button" id="source-panel-centre-toggle" class="source-panel-toggle" title="Collapse editor">&#x25C0;</button>
+        <div class="source-panel-header">
+            <button type="button" id="source-panel-centre-toggle" class="source-panel-toggle" title="Collapse editor">&#x25C0;</button>
+            <span class="source-panel-title">Editor</span>
+        </div>
+        <div class="source-panel-body">
         <?php if (!empty($savedFlash)): ?>
         <div class="source-flash source-flash-<?= htmlspecialchars($savedFlash['type'], ENT_QUOTES, 'UTF-8') ?>">
             <?= htmlspecialchars($savedFlash['message'], ENT_QUOTES, 'UTF-8') ?>
@@ -134,6 +139,7 @@ if ($activeFile !== null && $fileContent !== null) {
 
         <?php endif; ?>
 
+        </div><!-- /.source-panel-body -->
     </div><!-- /.source-code-pane -->
 
     <!-- ── Right: Properties panel ───────────────────────────── -->
