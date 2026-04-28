@@ -215,6 +215,7 @@ if ($activeFile !== null && $fileContent !== null) {
     </div>
 
 </div><!-- /#source-wrap -->
+<script src="/js/admin/panel-collapse.js"></script>
 <script src="/js/platform/source-editor.js"></script>
 
 <?php $content = ob_get_clean(); ?>
