@@ -6,9 +6,9 @@
     <title><?= e($title ?? 'Cruinn CMS') ?></title>
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
     <link rel="stylesheet" href="/css/platform.css">
+    <script src="/js/platform/boot.js"></script>
 </head>
 <body class="platform-body<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/editor') ? ' platform-editor-page' : '' ?>">
-<script>document.documentElement.classList.add('platform-layout-wide');if(window.innerWidth>=1024&&localStorage.getItem('platform-sidebar-collapsed')==='1')document.documentElement.classList.add('platform-sidebar-collapsed');</script>
 <div class="platform-wrap"><div class="platform-sidebar-backdrop" id="platform-sidebar-backdrop"></div><aside class="platform-sidebar" id="platform-sidebar"><div class="platform-sidebar-hero"><a href="/cms/dashboard"><img src="/brand/cruinn-favicon.svg" alt="Cruinn CMS">
 </a>
 <div class="platform-sidebar-wordmark">
@@ -90,10 +90,8 @@
 <div class="platform-bar-right"><button class="platform-sidebar-toggle" id="platform-sidebar-btn" aria-label="Toggle navigation" aria-expanded="true" title="Toggle sidebar">&#9776;</button><span class="platform-bar-user"><span>👤</span>
 
 <?= e($username) ?></span>
-<button class="platform-width-toggle" id="platform-width-btn" title="Toggle layout width"
-                            onclick="var w=document.documentElement.classList.toggle('platform-layout-wide');localStorage.setItem('platform-layout-wide',w?'1':'0');this.textContent=w?'\u22A1':'\u229E';"><span>⊞</span>
+<button class="platform-width-toggle" id="platform-width-btn" type="button" title="Toggle layout width"><span>⊞</span>
 </button>
-<script>document.getElementById('platform-width-btn').textContent=document.documentElement.classList.contains('platform-layout-wide')?'\u22A1':'\u229E';</script>
 <a href="/cms/logout"><span>Logout</span></a>
 </div>
 <?php endif; ?>
@@ -121,72 +119,6 @@
 <footer class="platform-footer"><span>Built with</span>
 <a href="https://cruinncms.com" target="_blank" rel="noopener"><span>Cruinn CMS</span></a>
 </footer>
-<script>
-(function () {
-    var sidebar = document.getElementById('platform-sidebar');
-    var backdrop = document.getElementById('platform-sidebar-backdrop');
-    var btn = document.getElementById('platform-sidebar-btn');
-    var DESKTOP_BP = 1024;
-
-    function isDesktop() {
-        return window.innerWidth >= DESKTOP_BP;
-    }
-
-    function syncButtonState() {
-        if (!btn) return;
-        if (isDesktop()) {
-            var collapsed = document.documentElement.classList.contains('platform-sidebar-collapsed');
-            btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-        } else {
-            btn.setAttribute('aria-expanded', sidebar && sidebar.classList.contains('open') ? 'true' : 'false');
-        }
-    }
-
-    function closeMobileSidebar() {
-        if (sidebar) sidebar.classList.remove('open');
-        if (backdrop) backdrop.classList.remove('active');
-        syncButtonState();
-    }
-
-    if (btn) {
-        btn.addEventListener('click', function () {
-            if (isDesktop()) {
-                var collapsed = document.documentElement.classList.toggle('platform-sidebar-collapsed');
-                localStorage.setItem('platform-sidebar-collapsed', collapsed ? '1' : '0');
-                syncButtonState();
-                return;
-            }
-
-            if (sidebar) {
-                var open = sidebar.classList.toggle('open');
-                if (backdrop) backdrop.classList.toggle('active', open);
-            }
-            syncButtonState();
-        });
-    }
-
-    if (backdrop) {
-        backdrop.addEventListener('click', closeMobileSidebar);
-    }
-
-    if (sidebar) {
-        sidebar.querySelectorAll('a').forEach(function (a) {
-            a.addEventListener('click', function () {
-                if (!isDesktop()) closeMobileSidebar();
-            });
-        });
-    }
-
-    window.addEventListener('resize', function () {
-        if (isDesktop()) {
-            if (sidebar) sidebar.classList.remove('open');
-            if (backdrop) backdrop.classList.remove('active');
-        }
-        syncButtonState();
-    });
-
-    syncButtonState();
-}());
-</script>
+<script src="/js/platform/shell.js"></script>
 </body>
 </html>
