@@ -1092,6 +1092,29 @@ code {
 }
 
 /* ── Source Editor (/cms/source) ──────────────────────────────── */
+html:has(#source-wrap),
+body:has(#source-wrap) {
+    height: 100%;
+    overflow: hidden;
+}
+
+.platform-body:has(#source-wrap) {
+    height: 100%;
+    min-height: unset;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.platform-body:has(#source-wrap) .platform-wrap {
+    flex: 1;
+    min-height: unset;
+    overflow: hidden;
+    display: flex;
+    max-width: none;
+    box-shadow: none;
+}
+
 .platform-main:has(#source-wrap),
 .platform-content:has(#source-wrap) {
     overflow: hidden;
@@ -1203,8 +1226,8 @@ code {
 .source-panel-resize {
     position: absolute;
     top: 0;
-    right: -3px;
-    width: 6px;
+    right: 0;
+    width: 5px;
     height: 100%;
     cursor: col-resize;
     z-index: 10;
