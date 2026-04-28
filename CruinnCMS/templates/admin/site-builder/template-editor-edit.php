@@ -14,6 +14,7 @@
         <textarea
             name="content"
             id="tpl-editor-textarea"
+            data-tab-insert="true"
             spellcheck="false"
             autocomplete="off"
             autocorrect="off"
@@ -42,19 +43,6 @@
     </form>
 </div>
 
-<script>
-(function () {
-    var textarea = document.getElementById('tpl-editor-textarea');
-    // Tab key inserts 4 spaces
-    textarea.addEventListener('keydown', function (e) {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            var s = this.selectionStart, end = this.selectionEnd;
-            this.value = this.value.substring(0, s) + '    ' + this.value.substring(end);
-            this.selectionStart = this.selectionEnd = s + 4;
-        }
-    });
-}());
-</script>
+<?php \Cruinn\Template::requireJs('tab-insert.js'); ?>
 
 <?php include __DIR__ . '/_tabs_close.php'; ?>

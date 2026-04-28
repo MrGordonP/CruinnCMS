@@ -411,24 +411,4 @@
     <?php endif; ?>
 </div>
 
-<script>
-(function() {
-    // Layout toggle
-    document.querySelectorAll('.acp-layout-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var layout = this.dataset.layout;
-            var editor = document.querySelector('.menu-item-editor');
-            if (editor) {
-                editor.classList.toggle('menu-editor-stacked', layout === '1');
-            }
-            document.querySelectorAll('.acp-layout-btn').forEach(function(b) { b.classList.remove('active'); });
-            this.classList.add('active');
-            fetch('/admin/settings/layout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'layout=' + layout + '&_csrf_token=' + encodeURIComponent(document.querySelector('input[name=_csrf_token]').value)
-            });
-        });
-    });
-})();
-</script>
+<?php \Cruinn\Template::requireJs('layout-toggle.js'); ?>

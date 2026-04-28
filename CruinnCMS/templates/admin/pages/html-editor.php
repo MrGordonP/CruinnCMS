@@ -28,6 +28,7 @@
             name="body_html"
             class="form-control html-code-editor"
             rows="30"
+            data-tab-insert="true"
             style="font-family: 'Fira Code', 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; background: #1e1e2e; color: #cdd6f4; border: 1px solid #444; border-radius: 6px;"
             spellcheck="false"><?= htmlspecialchars($page['body_html'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
         <small class="form-hint">Write any valid HTML. Do not include &lt;html&gt;, &lt;head&gt;, or &lt;body&gt; tags — the site layout handles those.</small>
@@ -43,15 +44,4 @@
 .html-code-editor { resize: vertical; tab-size: 4; }
 </style>
 
-<script>
-// Allow Tab key to insert 4 spaces instead of leaving the textarea
-document.getElementById('body_html').addEventListener('keydown', function(e) {
-    if (e.key === 'Tab') {
-        e.preventDefault();
-        const start = this.selectionStart;
-        const end   = this.selectionEnd;
-        this.value  = this.value.substring(0, start) + '    ' + this.value.substring(end);
-        this.selectionStart = this.selectionEnd = start + 4;
-    }
-});
-</script>
+<?php \Cruinn\Template::requireJs('tab-insert.js'); ?>

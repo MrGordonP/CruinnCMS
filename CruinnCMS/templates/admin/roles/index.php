@@ -9,7 +9,7 @@ $isSystem    = $role && ($role['is_system'] ?? false);
 $formAction  = $selectedId ? '/admin/roles/' . $selectedId : '/admin/roles';
 ?>
 
-<div class="panel-layout" id="roles-layout">
+<div class="panel-layout" id="roles-layout" data-role-id="<?= $selectedId ?>">
 
     <!-- Left: role list -->
     <div class="pl-sidebar">
@@ -112,85 +112,5 @@ $formAction  = $selectedId ? '/admin/roles/' . $selectedId : '/admin/roles';
 </div><!-- /.panel-layout -->
 
 <?php if ($role): ?>
-<script>
-(function() {
-    const roleId    = <?= $selectedId ?>;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-    function post(url, userId) {
-        const fd = new FormData();
-        fd.append('csrf_token', csrfToken);
-        fd.append('user_id', userId);
-        return fetch(url, { method: 'POST', body: fd }).then(r => r.json());
-    }
-
-    function escHtml(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function renderMembers(users) {
-        const list = document.getElementById('role-members-list');
-        if (!users.length) {
-            list.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No users assigned to this role.</p>';
-            return;
-        }
-        list.innerHTML = users.map(u => `
-            <div class="role-member-row" data-user-id="${u.id}">
-                <span class="role-member-name">${escHtml(u.display_name)}</span>
-                <button type="button" class="btn btn-danger btn-small remove-user-btn"
-                        data-user-id="${u.id}" data-name="${escHtml(u.display_name)}">✕</button>
-            </div>`).join('');
-        bindRemoveButtons();
-    }
-
-    function bindRemoveButtons() {
-        document.querySelectorAll('.remove-user-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const uid  = this.dataset.userId;
-                const name = this.dataset.name;
-                if (!confirm(`Remove ${name} from this role?`)) return;
-                post(`/admin/roles/${roleId}/users/remove`, uid).then(res => {
-                    if (res.ok) renderMembers(res.users);
-                    else alert(res.error || 'Error removing user.');
-                });
-            });
-        });
-    }
-
-    bindRemoveButtons();
-
-    document.getElementById('add-user-btn').addEventListener('click', function() {
-        const sel = document.getElementById('add-user-select');
-        const uid = sel.value;
-        if (!uid) return;
-        post(`/admin/roles/${roleId}/users/add`, uid).then(res => {
-            if (res.ok) {
-                renderMembers(res.users);
-                sel.querySelector(`option[value="${uid}"]`)?.remove();
-                sel.value = '';
-            } else {
-                alert(res.error || 'Error adding user.');
-            }
-        });
-    });
-
-    // Colour preview
-    const colourInput = document.getElementById('colour');
-    if (colourInput) {
-        colourInput.addEventListener('input', function() {
-            document.getElementById('colour-preview').style.background = this.value;
-        });
-    }
-
-    // Toggle all permissions in a category
-    document.querySelectorAll('.permission-toggle-all').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cat = this.dataset.category;
-            const checkboxes = document.querySelectorAll(`input[data-category="${cat}"]`);
-            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-            checkboxes.forEach(cb => cb.checked = !allChecked);
-        });
-    });
-})();
-</script>
+<?php \Cruinn\Template::requireJs('roles.js'); ?>
 <?php endif; ?>

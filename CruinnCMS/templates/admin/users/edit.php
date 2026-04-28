@@ -71,7 +71,7 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
 
 <?php else: ?>
 <!-- ─── EDIT USER: 2-column panel layout ─── -->
-<div style="display:grid;grid-template-columns:1fr 300px;gap:0;height:100%;overflow:hidden">
+<div style="display:grid;grid-template-columns:1fr 300px;gap:0;height:100%;overflow:hidden" data-user-id="<?= (int)$user['id'] ?>">
 
     <!-- Left: account form -->
     <div style="overflow-y:auto;padding:1.5rem;border-right:1px solid var(--color-border,#e5e7eb)">
@@ -214,6 +214,7 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
                 <?= csrf_field() ?>
                 <div style="flex:1;position:relative">
                     <input class="form-input" type="text" id="member-search-input" name="member_search"
+                           data-search-url="<?= url('/admin/membership/members/search') ?>"
                            placeholder="Name, number or email" style="width:100%;font-size:0.85rem" required autocomplete="off">
                     <ul id="member-search-list" style="display:none;position:absolute;z-index:999;top:100%;left:0;right:0;
                         margin:2px 0 0;padding:0;list-style:none;background:#fff;border:1px solid #ccd9d3;
@@ -221,46 +222,7 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
                 </div>
                 <button type="submit" class="btn btn-primary btn-small">Link</button>
             </form>
-            <script>
-            (function(){
-                var input=document.getElementById('member-search-input'),list=document.getElementById('member-search-list');
-                if(!input||!list)return;
-                var timer,activeIdx=-1;
-                function showList(members){
-                    list.innerHTML='';activeIdx=-1;
-                    if(!members.length){list.style.display='none';return;}
-                    members.forEach(function(m,i){
-                        var li=document.createElement('li');
-                        li.style.cssText='padding:0.4rem 0.6rem;cursor:pointer;border-bottom:1px solid #eef1ef;line-height:1.3';
-                        var num=m.membership_number?' #'+m.membership_number:'';
-                        li.innerHTML='<strong>'+m.display_name.replace(/</g,'&lt;')+num+'</strong>'
-                            +'<span style="color:#888;font-size:0.78rem;display:block">'+m.email.replace(/</g,'&lt;')+' &mdash; '+m.status+'</span>';
-                        li.addEventListener('mousedown',function(e){e.preventDefault();input.value=m.email;list.style.display='none';});
-                        li.addEventListener('mouseover',function(){setActive(i);});
-                        list.appendChild(li);
-                    });
-                    list.style.display='block';
-                }
-                function setActive(i){list.querySelectorAll('li').forEach(function(el,idx){el.style.background=idx===i?'#e8f5ef':'';});activeIdx=i;}
-                input.addEventListener('input',function(){
-                    clearTimeout(timer);var q=input.value.trim();
-                    if(q.length<2){list.style.display='none';return;}
-                    timer=setTimeout(function(){
-                        fetch('<?= url('/admin/membership/members/search') ?>?q='+encodeURIComponent(q))
-                            .then(function(r){return r.json();}).then(showList).catch(function(){list.style.display='none';});
-                    },220);
-                });
-                input.addEventListener('keydown',function(e){
-                    var items=list.querySelectorAll('li');
-                    if(!items.length||list.style.display==='none')return;
-                    if(e.key==='ArrowDown'){e.preventDefault();setActive(Math.min(activeIdx+1,items.length-1));items[activeIdx]&&items[activeIdx].scrollIntoView({block:'nearest'});}
-                    else if(e.key==='ArrowUp'){e.preventDefault();setActive(Math.max(activeIdx-1,0));items[activeIdx]&&items[activeIdx].scrollIntoView({block:'nearest'});}
-                    else if(e.key==='Enter'&&activeIdx>=0){e.preventDefault();items[activeIdx].dispatchEvent(new MouseEvent('mousedown'));}
-                    else if(e.key==='Escape'){list.style.display='none';}
-                });
-                document.addEventListener('click',function(e){if(!input.contains(e.target)&&!list.contains(e.target))list.style.display='none';});
-            })();
-            </script>
+            <?php \Cruinn\Template::requireJs('member-search.js'); ?>
             <?php endif; ?>
         </div>
 
@@ -314,128 +276,6 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
 </div>
 <?php endif; ?>
 
-<script>
-(function() {
-    const userId    = <?= (int)$user['id'] ?>;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-    function post(url, payload) {
-        const fd = new FormData();
-        fd.append('csrf_token', csrfToken);
-        Object.entries(payload).forEach(([k, v]) => fd.append(k, v));
-        return fetch(url, { method: 'POST', body: fd }).then(r => r.json());
-    }
-
-    function esc(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    // ── Roles ──
-    function renderRoles(roles) {
-        const list = document.getElementById('user-roles-list');
-        if (!roles.length) {
-            list.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No roles assigned.</p>';
-            return;
-        }
-        list.innerHTML = roles.map(r => `
-            <div class="role-member-row" data-role-id="${r.id}">
-                <span class="role-member-name">${r.colour
-                    ? `<span class="role-badge" style="background:${esc(r.colour)};font-size:0.7rem;padding:1px 5px;margin-right:0.4rem">${esc(r.name)}</span>`
-                    : esc(r.name)}</span>
-                <button type="button" class="btn btn-danger btn-small remove-role-btn"
-                        data-role-id="${r.id}" data-name="${esc(r.name)}">✕</button>
-            </div>`).join('');
-        bindRoleRemove();
-    }
-
-    function bindRoleRemove() {
-        document.querySelectorAll('.remove-role-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const roleId = this.dataset.roleId;
-                const name   = this.dataset.name;
-                if (!confirm(`Remove role "${name}" from this user?`)) return;
-                post(`/admin/users/${userId}/roles/remove`, { role_id: roleId }).then(res => {
-                    if (res.ok) {
-                        renderRoles(res.roles);
-                        const sel = document.getElementById('add-role-select');
-                        if (sel && !sel.querySelector(`option[value="${roleId}"]`)) {
-                            const opt = document.createElement('option');
-                            opt.value = roleId; opt.textContent = name;
-                            sel.appendChild(opt);
-                        }
-                    } else { alert(res.error || 'Error removing role.'); }
-                });
-            });
-        });
-    }
-
-    bindRoleRemove();
-
-    document.getElementById('add-role-btn').addEventListener('click', function() {
-        const sel = document.getElementById('add-role-select');
-        const roleId = sel.value;
-        if (!roleId) return;
-        post(`/admin/users/${userId}/roles/add`, { role_id: roleId }).then(res => {
-            if (res.ok) {
-                renderRoles(res.roles);
-                sel.querySelector(`option[value="${roleId}"]`)?.remove();
-                sel.value = '';
-            } else { alert(res.error || 'Error adding role.'); }
-        });
-    });
-
-    // ── Groups ──
-    function renderGroups(groups) {
-        const list = document.getElementById('user-groups-list');
-        if (!groups.length) {
-            list.innerHTML = '<p class="text-muted" style="font-size:0.85rem">No groups assigned.</p>';
-            return;
-        }
-        list.innerHTML = groups.map(g => `
-            <div class="role-member-row" data-group-id="${g.id}">
-                <span class="role-member-name">${esc(g.name)}</span>
-                <button type="button" class="btn btn-danger btn-small remove-group-btn"
-                        data-group-id="${g.id}" data-name="${esc(g.name)}">✕</button>
-            </div>`).join('');
-        bindGroupRemove();
-    }
-
-    function bindGroupRemove() {
-        document.querySelectorAll('.remove-group-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const groupId = this.dataset.groupId;
-                const name    = this.dataset.name;
-                if (!confirm(`Remove group "${name}" from this user?`)) return;
-                post(`/admin/users/${userId}/groups/remove`, { group_id: groupId }).then(res => {
-                    if (res.ok) {
-                        renderGroups(res.groups);
-                        const sel = document.getElementById('add-group-select');
-                        if (sel && !sel.querySelector(`option[value="${groupId}"]`)) {
-                            const opt = document.createElement('option');
-                            opt.value = groupId; opt.textContent = name;
-                            sel.appendChild(opt);
-                        }
-                    } else { alert(res.error || 'Error removing group.'); }
-                });
-            });
-        });
-    }
-
-    bindGroupRemove();
-
-    document.getElementById('add-group-btn').addEventListener('click', function() {
-        const sel = document.getElementById('add-group-select');
-        const groupId = sel.value;
-        if (!groupId) return;
-        post(`/admin/users/${userId}/groups/add`, { group_id: groupId }).then(res => {
-            if (res.ok) {
-                renderGroups(res.groups);
-                sel.querySelector(`option[value="${groupId}"]`)?.remove();
-                sel.value = '';
-            } else { alert(res.error || 'Error adding group.'); }
-        });
-    });
-})();
-</script>
+<?php \Cruinn\Template::requireJs('user-profile.js'); ?>
 
 <?php endif; ?>
