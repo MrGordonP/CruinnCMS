@@ -30,8 +30,11 @@
         }
 
         parent.addEventListener('click', function (event) {
-            event.preventDefault();
-            group.classList.toggle('open');
+            // Caret toggles the flyout; link text navigates normally
+            if (event.target.closest('.sidebar-caret')) {
+                event.preventDefault();
+                group.classList.toggle('open');
+            }
         });
     });
 

@@ -27,17 +27,15 @@ $acpLayout = $_SESSION['acp_layout'] ?? '1';
             <button type="button" class="acp-layout-btn<?= $acpLayout === '2' ? ' active' : '' ?>" data-layout="2" aria-label="Two columns">
                 <svg width="18" height="18" viewBox="0 0 18 18"><rect x="2" y="2" width="5.5" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="10.5" y="2" width="5.5" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
             </button>
+        <div class="acp-tabs">
+            <?php foreach ($tabs as $key => $t): ?>
+            <a href="<?= url($t['url']) ?>"
+               class="acp-tab<?= $key === $currentTab ? ' acp-tab-active' : '' ?>">
+                <span class="acp-tab-icon"><?= $t['icon'] ?></span>
+                <span class="acp-tab-label"><?= e($t['label']) ?></span>
+            </a>
+            <?php endforeach; ?>
         </div>
-    </div>
-
-    <div class="acp-tabs">
-        <?php foreach ($tabs as $key => $t): ?>
-        <a href="<?= url($t['url']) ?>"
-           class="acp-tab<?= $key === $currentTab ? ' acp-tab-active' : '' ?>">
-            <span class="acp-tab-icon"><?= $t['icon'] ?></span>
-            <span class="acp-tab-label"><?= e($t['label']) ?></span>
-        </a>
-        <?php endforeach; ?>
     </div>
 
     <div class="acp-panel">

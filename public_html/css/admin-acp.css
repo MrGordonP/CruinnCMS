@@ -48,6 +48,14 @@
     color: #fff;
 }
 
+/* ── Site Builder tab header ─────────────────────────────────── */
+.acp-tabs-header {
+    flex-shrink: 0;
+    background: var(--color-bg-light, #f8f9fa);
+    border-bottom: 2px solid var(--color-border, #dee2e6);
+    padding: 0 0.5rem;
+}
+
 .acp-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -56,6 +64,11 @@
     margin-bottom: 1.5rem;
     padding: 0;
     list-style: none;
+}
+
+.acp-tabs-header .acp-tabs {
+    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .acp-tab {

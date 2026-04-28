@@ -23,6 +23,13 @@
     flex-direction: column;
     min-height: 0;
     flex: 1;
+    overflow: hidden;
+}
+
+/* Override acp-wrapper constraints when used as sb-wrapper */
+.sb-wrapper.acp-wrapper {
+    max-width: none;
+    margin: 0;
 }
 
 .sb-wrapper .acp-panel {
