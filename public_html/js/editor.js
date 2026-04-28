@@ -21,6 +21,11 @@
     var API_BASE = wrap.dataset.apiBase || '/admin/editor';
     var liveStyles = document.getElementById('editor-live-styles');
 
+    // ── Viewport (responsive breakpoint) state ────────────────────
+    // 'desktop' | 'tablet' | 'mobile'
+    var activeViewport = 'desktop';
+    var VIEWPORT_WIDTHS = { desktop: null, tablet: 600, mobile: 360 };
+
     // Template zones available for this page (empty on template canvas / zone pages)
     var TEMPLATE_ZONES = (function () {
         try { return JSON.parse(wrap.dataset.templateZones || '[]'); } catch (e) { return []; }
@@ -106,23 +111,43 @@
      */
     function restoreCssProps() {
         canvas.querySelectorAll('[data-block]').forEach(function (block) {
+            // Desktop props → inline styles (base)
             var raw = block.dataset.cssProps;
-            if (!raw) { return; }
-            try {
-                var props = JSON.parse(raw);
-                Object.keys(props).forEach(function (p) {
-                    if (p[0] === '_') { return; } // internal keys
-                    // Skip zero-value height/width — these are artefacts of
-                    // serialising blocks that were measured at 0 during import
-                    // and collapse the block in the editor canvas.
-                    if ((p === 'height' || p === 'width') &&
-                        (props[p] === '0' || props[p] === '0px')) { return; }
-                    block.style.setProperty(p, props[p]);
-                });
-            } catch (e) { /* ignore malformed */ }
+            if (raw) {
+                try {
+                    var props = JSON.parse(raw);
+                    Object.keys(props).forEach(function (p) {
+                        if (p[0] === '_') { return; }
+                        if ((p === 'height' || p === 'width') &&
+                            (props[p] === '0' || props[p] === '0px')) { return; }
+                        block.style.setProperty(p, props[p]);
+                    });
+                } catch (e) { /* ignore malformed */ }
+            }
         });
         rebuildLiveStyles();
     }
+
+    // —— Viewport switching ——————————————————————————
+    function switchViewport(vp) {
+        activeViewport = vp;
+        var canvasWrap = document.getElementById('editor-canvas-wrap');
+        if (canvasWrap) {
+            canvasWrap.classList.remove('vp-tablet', 'vp-mobile');
+            if (vp === 'tablet') { canvasWrap.classList.add('vp-tablet'); }
+            if (vp === 'mobile') { canvasWrap.classList.add('vp-mobile'); }
+        }
+        document.querySelectorAll('.editor-vp-btn').forEach(function (btn) {
+            btn.classList.toggle('active', btn.dataset.viewport === vp);
+        });
+        if (activeBlock) { loadProps(activeBlock); }
+    }
+
+    document.querySelectorAll('.editor-vp-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            switchViewport(btn.dataset.viewport);
+        });
+    });
 
     // â”€â”€ Section B â€” Block ID generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -492,10 +517,18 @@
         var collapsedCb = document.getElementById('prop-collapsed');
         if (collapsedCb) { collapsedCb.checked = block.classList.contains('collapsed'); }
 
-        // CSS properties â€” read computed styles so users see actual values
+        // CSS properties — read from active viewport overrides, fallback to computed desktop
+        var vpPropsRaw = activeViewport === 'tablet' ? block.dataset.cssPropsTablet
+                       : activeViewport === 'mobile' ? block.dataset.cssPropsMobile
+                       : null;
+        var vpProps = {};
+        if (vpPropsRaw) { try { vpProps = JSON.parse(vpPropsRaw); } catch (e) {} }
+
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
             var prop = inp.dataset.prop;
-            var val = cs[prop] || '';
+            var val = (activeViewport !== 'desktop' && vpProps[prop] !== undefined)
+                ? vpProps[prop]
+                : (cs[prop] || '');
             // Skip transparent/initial values that aren't meaningful
             var isTransparent = val === 'transparent' || val === 'rgba(0, 0, 0, 0)';
             if (inp.type === 'color') {
@@ -532,11 +565,12 @@
             swatch.value = isTransparent ? '#000000' : (rgbToHex(val) || '#000000');
         });
 
-        // Numeric + unit props â€” read computed styles
+        // Numeric + unit props — on breakpoints, prefer stored override
         panel.querySelectorAll('[data-prop-num]').forEach(function (inp) {
             var prop = inp.dataset.propNum;
+            var vpVal = (activeViewport !== 'desktop' && vpProps[prop] !== undefined) ? vpProps[prop] : null;
             // Check inline style first for 'auto', then fall back to computed
-            var inline = block.style[prop] || '';
+            var inline = vpVal !== null ? vpVal : (block.style[prop] || '');
             var raw = inline || cs[prop] || '';
             var unitSel = panel.querySelector('[data-unit-for="' + prop + '"]');
             if (inline === 'auto') {
@@ -1272,7 +1306,19 @@
     }());
 
     function writeProps(block, prop, value) {
-        block.style[prop] = value;
+        if (activeViewport === 'desktop') {
+            block.style[prop] = value;
+        } else {
+            var dsKey = activeViewport === 'tablet' ? 'cssPropsTablet' : 'cssPropsMobile';
+            var stored = {};
+            try { stored = JSON.parse(block.dataset[dsKey] || '{}'); } catch (e) {}
+            if (value !== '' && value !== null && value !== undefined) {
+                stored[prop] = value;
+            } else {
+                delete stored[prop];
+            }
+            block.dataset[dsKey] = JSON.stringify(stored);
+        }
         rebuildLiveStyles();
         recordAction();
     }
@@ -1289,10 +1335,36 @@
     function rebuildLiveStyles() {
         if (!liveStyles) { return; }
         var css = '';
+        var tabletRules = '';
+        var mobileRules = '';
         canvas.querySelectorAll('[data-block]').forEach(function (block) {
-            if (!block.id || !block.style.cssText) { return; }
-            css += '#' + block.id + ' { ' + block.style.cssText + ' }\n';
+            if (!block.id) { return; }
+            if (block.style.cssText) {
+                css += '#' + block.id + ' { ' + block.style.cssText + ' }\n';
+            }
+            if (block.dataset.cssPropsTablet) {
+                try {
+                    var tp = JSON.parse(block.dataset.cssPropsTablet);
+                    var trules = '';
+                    Object.keys(tp).forEach(function (p) {
+                        if (p[0] !== '_') { trules += p + ':' + tp[p] + ';'; }
+                    });
+                    if (trules) { tabletRules += '#' + block.id + '{' + trules + '}\n'; }
+                } catch (e) {}
+            }
+            if (block.dataset.cssPropsMobile) {
+                try {
+                    var mp = JSON.parse(block.dataset.cssPropsMobile);
+                    var mrules = '';
+                    Object.keys(mp).forEach(function (p) {
+                        if (p[0] !== '_') { mrules += p + ':' + mp[p] + ';'; }
+                    });
+                    if (mrules) { mobileRules += '#' + block.id + '{' + mrules + '}\n'; }
+                } catch (e) {}
+            }
         });
+        if (tabletRules) { css += '@media (max-width:1023px){\n' + tabletRules + '}\n'; }
+        if (mobileRules) { css += '@media (max-width:599px){\n' + mobileRules + '}\n'; }
         liveStyles.textContent = css;
     }
 
@@ -1556,11 +1628,23 @@
                 try { config = JSON.parse(block.dataset.blockConfig); } catch (e) { }
             }
 
+            // Breakpoint-specific CSS props
+            var cssPropsTablet = null;
+            if (block.dataset.cssPropsTablet) {
+                try { cssPropsTablet = JSON.parse(block.dataset.cssPropsTablet); } catch (e) {}
+            }
+            var cssPropsMobile = null;
+            if (block.dataset.cssPropsMobile) {
+                try { cssPropsMobile = JSON.parse(block.dataset.cssPropsMobile); } catch (e) {}
+            }
+
             blocks.push({
                 block_id: block.id,
                 block_type: block.dataset.blockType || 'text',
                 inner_html: innerHtml || null,
                 css_props: cssProps,
+                css_props_tablet: cssPropsTablet,
+                css_props_mobile: cssPropsMobile,
                 block_config: config,
                 sort_order: sortCounters[parentKey],
                 parent_block_id: parentBlockId || null,
@@ -1800,6 +1884,14 @@
                         ? JSON.parse(b.css_props)
                         : b.css_props;
                     Object.keys(props).forEach(function (p) { el.style[p] = props[p]; });
+                }
+                if (b.css_props_tablet) {
+                    el.dataset.cssPropsTablet = typeof b.css_props_tablet === 'string'
+                        ? b.css_props_tablet : JSON.stringify(b.css_props_tablet);
+                }
+                if (b.css_props_mobile) {
+                    el.dataset.cssPropsMobile = typeof b.css_props_mobile === 'string'
+                        ? b.css_props_mobile : JSON.stringify(b.css_props_mobile);
                 }
                 // Container blocks: leave innerHTML empty so DFS can
                 // append child blocks into this element without duplication.

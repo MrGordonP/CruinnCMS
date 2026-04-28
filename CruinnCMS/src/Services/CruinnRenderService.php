@@ -102,36 +102,57 @@ class CruinnRenderService
 
     /**
      * Build the CSS stylesheet from published pages css_props.
-     * Returns a string of #id { ... } rules to be injected as a <style> tag.
+     * Returns a string of #id { ... } rules (desktop) plus @media blocks for
+     * tablet (600px – 1023px) and mobile (≤ 599px) overrides.
      */
     public function buildCss(int $pageId): string
     {
         $flat = $this->db->fetchAll(
-            'SELECT block_id, block_type, css_props, block_config FROM pages WHERE page_id = ?',
+            'SELECT block_id, block_type, css_props, css_props_tablet, css_props_mobile, block_config
+               FROM pages WHERE page_id = ?',
             [$pageId]
         );
 
-        $css = '';
+        $css        = '';
+        $tabletRules = '';
+        $mobileRules = '';
+
         foreach ($flat as $row) {
-            if (empty($row['css_props'])) {
-                continue;
-            }
-            $props = json_decode($row['css_props'], true);
-            if (!is_array($props) || empty($props)) {
-                continue;
-            }
-            $id    = htmlspecialchars($row['block_id'], ENT_QUOTES, 'UTF-8');
-            $rules = '';
-            foreach ($props as $property => $value) {
-                $property = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $property);
-                $value    = str_replace(['{', '}', ';', '<', '>'], '', (string) $value);
-                if ($property !== '' && $value !== '') {
-                    $rules .= "  {$property}: {$value};\n";
+            $id = htmlspecialchars($row['block_id'], ENT_QUOTES, 'UTF-8');
+
+            // Desktop (base)
+            if (!empty($row['css_props'])) {
+                $props = json_decode($row['css_props'], true);
+                if (is_array($props) && !empty($props)) {
+                    $rules = $this->buildRules($props);
+                    if ($rules !== '') { $css .= "#{$id} {\n{$rules}}\n"; }
                 }
             }
-            if ($rules !== '') {
-                $css .= "#{$id} {\n{$rules}}\n";
+
+            // Tablet overrides (600px – 1023px)
+            if (!empty($row['css_props_tablet'])) {
+                $props = json_decode($row['css_props_tablet'], true);
+                if (is_array($props) && !empty($props)) {
+                    $rules = $this->buildRules($props);
+                    if ($rules !== '') { $tabletRules .= "  #{$id} {\n"; foreach (explode("\n", rtrim($rules)) as $r) { $tabletRules .= "  {$r}\n"; } $tabletRules .= "  }\n"; }
+                }
             }
+
+            // Mobile overrides (≤ 599px)
+            if (!empty($row['css_props_mobile'])) {
+                $props = json_decode($row['css_props_mobile'], true);
+                if (is_array($props) && !empty($props)) {
+                    $rules = $this->buildRules($props);
+                    if ($rules !== '') { $mobileRules .= "  #{$id} {\n"; foreach (explode("\n", rtrim($rules)) as $r) { $mobileRules .= "  {$r}\n"; } $mobileRules .= "  }\n"; }
+                }
+            }
+        }
+
+        if ($tabletRules !== '') {
+            $css .= "@media (max-width: 1023px) {\n{$tabletRules}}\n";
+        }
+        if ($mobileRules !== '') {
+            $css .= "@media (max-width: 599px) {\n{$mobileRules}}\n";
         }
 
         // Emit child-element styles for php-include blocks.
@@ -173,6 +194,24 @@ class CruinnRenderService
     }
 
     // ── Private helpers ────────────────────────────────────────────
+
+    /**
+     * Convert a css_props array to sanitised CSS declaration lines.
+     * Skips internal keys (prefixed with '_').
+     */
+    private function buildRules(array $props): string
+    {
+        $rules = '';
+        foreach ($props as $property => $value) {
+            if (isset($property[0]) && $property[0] === '_') { continue; }
+            $property = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $property);
+            $value    = str_replace(['{', '}', ';', '<', '>'], '', (string) $value);
+            if ($property !== '' && $value !== '') {
+                $rules .= "  {$property}: {$value};\n";
+            }
+        }
+        return $rules;
+    }
 
     private function renderTree(string $parentKey, array $byId, array $childrenOf): string
     {

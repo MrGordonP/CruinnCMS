@@ -58,32 +58,71 @@ class EditorRenderService
     /**
      * Build a CSS stylesheet from css_props values stored in the block list.
      * Produces: #block_id { property: value; ... }
+     * Plus @media blocks for tablet (≤ 1023px) and mobile (≤ 599px) overrides.
      */
     public function buildCanvasCss(array $flat): string
     {
-        $css = '';
+        $css         = '';
+        $tabletRules = '';
+        $mobileRules = '';
+
         foreach ($flat as $row) {
-            if (empty($row['css_props'])) {
-                continue;
-            }
-            $props = json_decode($row['css_props'], true);
-            if (!is_array($props) || empty($props)) {
-                continue;
-            }
-            $id    = htmlspecialchars($row['block_id'], ENT_QUOTES, 'UTF-8');
-            $rules = '';
-            foreach ($props as $property => $value) {
-                $property = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $property);
-                $value    = str_replace(['{', '}', ';', '<', '>'], '', (string) $value);
-                if ($property !== '' && $value !== '') {
-                    $rules .= "  {$property}: {$value};\n";
+            $id = htmlspecialchars($row['block_id'], ENT_QUOTES, 'UTF-8');
+
+            // Desktop (base)
+            if (!empty($row['css_props'])) {
+                $props = json_decode($row['css_props'], true);
+                if (is_array($props) && !empty($props)) {
+                    $rules = $this->buildRules($props);
+                    if ($rules !== '') { $css .= "#{$id} {\n{$rules}}\n"; }
                 }
             }
-            if ($rules !== '') {
-                $css .= "#{$id} {\n{$rules}}\n";
+
+            // Tablet overrides
+            if (!empty($row['css_props_tablet'])) {
+                $props = json_decode($row['css_props_tablet'], true);
+                if (is_array($props) && !empty($props)) {
+                    $rules = $this->buildRules($props);
+                    if ($rules !== '') { $tabletRules .= "  #{$id} {\n"; foreach (explode("\n", rtrim($rules)) as $r) { $tabletRules .= "  {$r}\n"; } $tabletRules .= "  }\n"; }
+                }
+            }
+
+            // Mobile overrides
+            if (!empty($row['css_props_mobile'])) {
+                $props = json_decode($row['css_props_mobile'], true);
+                if (is_array($props) && !empty($props)) {
+                    $rules = $this->buildRules($props);
+                    if ($rules !== '') { $mobileRules .= "  #{$id} {\n"; foreach (explode("\n", rtrim($rules)) as $r) { $mobileRules .= "  {$r}\n"; } $mobileRules .= "  }\n"; }
+                }
             }
         }
+
+        if ($tabletRules !== '') {
+            $css .= "@media (max-width: 1023px) {\n{$tabletRules}}\n";
+        }
+        if ($mobileRules !== '') {
+            $css .= "@media (max-width: 599px) {\n{$mobileRules}}\n";
+        }
+
         return $css;
+    }
+
+    /**
+     * Convert a css_props array to sanitised CSS declaration lines.
+     * Skips internal keys (prefixed with '_').
+     */
+    private function buildRules(array $props): string
+    {
+        $rules = '';
+        foreach ($props as $property => $value) {
+            if (isset($property[0]) && $property[0] === '_') { continue; }
+            $property = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $property);
+            $value    = str_replace(['{', '}', ';', '<', '>'], '', (string) $value);
+            if ($property !== '' && $value !== '') {
+                $rules .= "  {$property}: {$value};\n";
+            }
+        }
+        return $rules;
     }
 
     // ── Private rendering helpers ─────────────────────────────────────
@@ -201,6 +240,12 @@ class EditorRenderService
             }
             if (!empty($row['css_props'])) {
                 $extraAttrs .= ' data-css-props=\'' . htmlspecialchars($row['css_props'], ENT_QUOTES, 'UTF-8') . '\'';
+            }
+            if (!empty($row['css_props_tablet'])) {
+                $extraAttrs .= ' data-css-props-tablet=\'' . htmlspecialchars($row['css_props_tablet'], ENT_QUOTES, 'UTF-8') . '\'';
+            }
+            if (!empty($row['css_props_mobile'])) {
+                $extraAttrs .= ' data-css-props-mobile=\'' . htmlspecialchars($row['css_props_mobile'], ENT_QUOTES, 'UTF-8') . '\'';
             }
 
             $innerContent  = BlockRegistry::isDynamic($row['block_type'])

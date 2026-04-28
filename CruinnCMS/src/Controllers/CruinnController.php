@@ -579,6 +579,12 @@ class CruinnController extends BaseController
                     // Cast to object so json_encode gives '{}' for empty rather than '[]'.
                     // This lets reconstructTree distinguish "explicitly empty" from "never set".
                     : json_encode((object) $b['css_props']),
+                'css_props_tablet' => !is_array($b['css_props_tablet'] ?? null)
+                    ? null
+                    : json_encode((object) $b['css_props_tablet']),
+                'css_props_mobile' => !is_array($b['css_props_mobile'] ?? null)
+                    ? null
+                    : json_encode((object) $b['css_props_mobile']),
                 'block_config'    => is_array($b['block_config'] ?? null) ? json_encode($b['block_config']) : null,
                 'sort_order'      => max(0, (int) ($b['sort_order'] ?? 0)),
                 'parent_block_id' => !empty($b['parent_block_id'])
@@ -603,12 +609,14 @@ class CruinnController extends BaseController
                 $this->db->execute(
                     'INSERT INTO pages_draft
                         (page_id, edit_seq, block_id, block_type, inner_html, css_props,
+                         css_props_tablet, css_props_mobile,
                          block_config, sort_order, parent_block_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [
                         $pageId, $newSeq,
                         $b['block_id'], $b['block_type'], $b['inner_html'],
-                        $b['css_props'], $b['block_config'],
+                        $b['css_props'], $b['css_props_tablet'], $b['css_props_mobile'],
+                        $b['block_config'],
                         $b['sort_order'], $b['parent_block_id'],
                     ]
                 );
@@ -781,8 +789,10 @@ class CruinnController extends BaseController
                         $this->db->execute(
                             'INSERT INTO pages
                                  (block_id, page_id, block_type, inner_html, css_props,
+                                  css_props_tablet, css_props_mobile,
                                   block_config, sort_order, parent_block_id)
                              SELECT block_id, page_id, block_type, inner_html, css_props,
+                                    css_props_tablet, css_props_mobile,
                                     block_config, sort_order, parent_block_id
                                FROM pages_draft
                               WHERE page_id = ? AND edit_seq = ?',
@@ -859,10 +869,12 @@ class CruinnController extends BaseController
             // Copy current draft snapshot into published table
             $this->db->execute(
                 'INSERT INTO pages
-                    (block_id, page_id, block_type, inner_html, css_props, block_config,
-                     sort_order, parent_block_id)
-                 SELECT block_id, page_id, block_type, inner_html, css_props, block_config,
-                        sort_order, parent_block_id
+                    (block_id, page_id, block_type, inner_html, css_props,
+                     css_props_tablet, css_props_mobile,
+                     block_config, sort_order, parent_block_id)
+                 SELECT block_id, page_id, block_type, inner_html, css_props,
+                        css_props_tablet, css_props_mobile,
+                        block_config, sort_order, parent_block_id
                    FROM pages_draft
                   WHERE page_id = ? AND edit_seq = (SELECT MAX(edit_seq) FROM pages_draft pd2 WHERE pd2.page_id = ?)',
                 [$pageId, $pageId]

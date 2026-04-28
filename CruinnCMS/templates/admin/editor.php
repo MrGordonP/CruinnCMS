@@ -113,6 +113,11 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <span>px</span>
             <button id="cruinn-canvas-height-clear" title="Reset to auto">&times;</button>
         </div>
+        <div id="editor-viewport-toggle" title="Switch viewport breakpoint for responsive editing">
+            <button type="button" class="editor-vp-btn active" data-viewport="desktop" title="Desktop (≥ 1024px)">&#x1F5A5;</button>
+            <button type="button" class="editor-vp-btn" data-viewport="tablet" title="Tablet (600px – 1023px)">&#x1F4F1;</button>
+            <button type="button" class="editor-vp-btn" data-viewport="mobile" title="Mobile (≤ 599px)">&#x1F4F1;</button>
+        </div>
         <div class="editor-toolbar-actions">
             <?php if ($page): ?>
             <button id="editor-code-toggle-btn" class="btn btn-small btn-outline" title="Switch between block editor and code view">
