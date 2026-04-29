@@ -140,6 +140,11 @@ class CruinnController extends BaseController
             $moduleWidgets = [];
         }
 
+        $allTemplates = $this->db->fetchAll(
+            'SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
+            ['page']
+        );
+
         $this->renderAdmin('admin/editor', [
             'title'           => 'Editor',
             'page'            => null,
@@ -150,6 +155,7 @@ class CruinnController extends BaseController
             'menus'           => $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC'),
             'contentSets'     => $openEditorContentSets,
             'moduleWidgets'   => $moduleWidgets,
+            'templates'       => $allTemplates,
             'isZonePage'      => false,
             'zoneName'        => null,
             'isTemplatePage'  => false,
@@ -607,6 +613,16 @@ class CruinnController extends BaseController
         foreach ($phpGroups as &$g) { sort($g); }
         unset($g);
 
+        $allTemplates = $this->db->fetchAll(
+            'SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
+            ['page']
+        );
+
+        $allTemplates = $this->db->fetchAll(
+            'SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
+            ['page']
+        );
+
         $this->renderAdmin('admin/editor', [
             'title'             => 'Editor — ' . $page['title'],
             'page'              => $page,
@@ -618,6 +634,8 @@ class CruinnController extends BaseController
             'contentSets'       => $contentSets,
             'contentTemplates'  => $contentTemplates,
             'moduleWidgets'     => $moduleWidgets,
+            'templates'         => $allTemplates,
+            'templates'         => $allTemplates,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
             'isTemplatePage'    => $isTemplatePage,

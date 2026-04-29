@@ -524,6 +524,34 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <div class="pl-panel-body">
             <div class="editor-props-empty">Select a block to edit its properties.</div>
 
+            <!-- Page Settings group (regular pages only, not zones/templates) -->
+            <?php if ($page && empty($isZonePage) && empty($isTemplatePage)): ?>
+            <div class="editor-accordion" data-group="page-settings" id="editor-page-settings">
+                <button class="editor-accordion-toggle">Page Settings</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row">
+                        <label for="page-template-select">Template</label>
+                        <select id="page-template-select" class="editor-prop-input">
+                            <?php foreach ($templates ?? [] as $tpl): ?>
+                            <option value="<?= e($tpl['slug']) ?>"
+                                    data-zones="<?= e($tpl['zones'] ?? '["main"]') ?>"
+                                    <?= ($page['template'] ?? 'default') === $tpl['slug'] ? 'selected' : '' ?>>
+                                <?= e($tpl['name']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="editor-prop-row">
+                        <label for="page-zone-select">Page Zone</label>
+                        <select id="page-zone-select" class="editor-prop-input">
+                            <!-- Populated dynamically based on template -->
+                        </select>
+                        <span class="editor-label-hint">Which zone in the template this page's blocks appear in.</span>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- Zone Settings group (zone blocks only) -->
             <div class="editor-accordion" data-group="zone" style="display:none">
                 <button class="editor-accordion-toggle">Zone Settings</button>

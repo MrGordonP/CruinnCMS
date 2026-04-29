@@ -51,6 +51,7 @@
         bindKeyboard();
         initCanvasResize();
         bindDocPanel();
+        bindPageSettings();
         // Auto-enter code view for HTML render-mode pages
         if (wrap.dataset.startInCodeView === '1') {
             _htmlPageMode = true;
@@ -1954,6 +1955,76 @@
             if (prop && val) { obj[prop] = val; }
         });
         return obj;
+    }
+
+    // ══ Page Settings ═════════════════════════════════════════════════════
+
+    function bindPageSettings() {
+        var templateSelect = document.getElementById('page-template-select');
+        var zoneSelect = document.getElementById('page-zone-select');
+        if (!templateSelect || !zoneSelect) { return; }
+
+        // Populate zone selector based on current template
+        function refreshZoneOptions() {
+            var selectedOpt = templateSelect.options[templateSelect.selectedIndex];
+            if (!selectedOpt) { return; }
+
+            var zonesAttr = selectedOpt.dataset.zones || '["main"]';
+            var zones = [];
+            try { zones = JSON.parse(zonesAttr); } catch (e) { zones = ['main']; }
+
+            var currentZone = zoneSelect.value;
+            zoneSelect.innerHTML = '';
+
+            zones.forEach(function (zone) {
+                // Skip header/footer zones - they're for template layout, not page content
+                if (zone === 'header' || zone === 'footer') { return; }
+                var opt = document.createElement('option');
+                opt.value = zone;
+                opt.textContent = zone.replace(/[-_]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+                zoneSelect.appendChild(opt);
+            });
+
+            // Restore previous zone selection if still available
+            if (currentZone && Array.from(zoneSelect.options).some(function (o) { return o.value === currentZone; })) {
+                zoneSelect.value = currentZone;
+            } else if (zoneSelect.options.length > 0) {
+                zoneSelect.value = zoneSelect.options[0].value;
+            }
+        }
+
+        // Initialize zone options on load
+        refreshZoneOptions();
+
+        // Handle template change
+        templateSelect.addEventListener('change', function () {
+            refreshZoneOptions();
+            savePageMetadata();
+        });
+
+        // Handle zone change
+        zoneSelect.addEventListener('change', function () {
+            savePageMetadata();
+        });
+
+        function savePageMetadata() {
+            if (!HAS_PAGE) { return; }
+
+            fetch(API_BASE + '/' + PAGE_ID + '/metadata', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': CSRF,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    template: templateSelect.value,
+                    page_zone: zoneSelect.value,
+                }),
+            }).catch(function (err) {
+                console.error('[Cruinn] savePageMetadata failed:', err);
+            });
+        }
     }
 
     var _actionTimer = null;

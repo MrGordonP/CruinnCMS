@@ -219,6 +219,7 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/editor/{pageId}/redo',           [CruinnController::class, 'redo']);
     $router->post('/admin/editor/{pageId}/publish',        [CruinnController::class, 'publish']);
     $router->post('/admin/editor/{pageId}/discard',        [CruinnController::class, 'discardDraft']);
+    $router->post('/admin/editor/{pageId}/metadata',       [CruinnController::class, 'saveMetadata']);
     $router->post('/admin/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/admin/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
 
