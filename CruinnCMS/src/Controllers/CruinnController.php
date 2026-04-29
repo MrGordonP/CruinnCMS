@@ -86,13 +86,6 @@ class CruinnController extends BaseController
              WHERE slug NOT LIKE '\\_\\_%'
              ORDER BY title ASC"
         );
-                $zonePages = $this->db->fetchAll(
-                        "SELECT id, title, slug FROM pages_index
-                         WHERE slug LIKE '\\_%'
-                             AND slug NOT IN ('_header', '_footer')
-                             AND slug NOT LIKE '\\_tpl\\_%'
-                         ORDER BY title ASC"
-                );
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
@@ -160,7 +153,6 @@ class CruinnController extends BaseController
             'headerPages'     => $headerPages,
             'footerPages'     => $footerPages,
             'sitePages'       => $sitePages,
-            'zonePages'       => $zonePages,
             'navTemplates'    => $navTemplates,
             'navMenus'        => $navMenus,
             'navCssFiles'     => $cssFiles,
@@ -423,45 +415,96 @@ class CruinnController extends BaseController
             }
         }
 
-        // ── Auto-seed zone blocks for a newly created, empty template canvas ──
-        if ($isTemplatePage && empty($flat) && !$hasDraft) {
-            $sort = 10;
+        // Ensure every declared template content zone exists as a root zone block.
+        if ($isTemplatePage) {
+            $requiredZones = [];
             foreach ($templateZonesDef as $zoneName) {
-                if (in_array($zoneName, ['header', 'footer'], true)) { continue; }
-                $blockId = 'zone-' . $zoneName . '-' . $pageId;
-                $this->db->execute(
-                    'INSERT IGNORE INTO pages
-                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
-                    [
-                        $blockId, $pageId, 'zone', '',
-                        json_encode(['min-height' => '120px']),
-                        json_encode(['zone_name' => $zoneName]),
-                        $sort,
-                    ]
-                );
-                $sort += 10;
+                if (!in_array($zoneName, ['header', 'footer'], true)) {
+                    $requiredZones[] = (string) $zoneName;
+                }
             }
-            // If no content zones defined, seed a default main zone
-            if ($sort === 10) {
-                $this->db->execute(
-                    'INSERT IGNORE INTO pages
-                         (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
-                    [
-                        'zone-main-' . $pageId, $pageId, 'zone', '',
-                        json_encode(['min-height' => '120px']),
-                        json_encode(['zone_name' => 'main']),
-                        10,
-                    ]
-                );
+            if (empty($requiredZones)) {
+                $requiredZones = ['main'];
             }
-            $flat = $this->db->fetchAll(
-                'SELECT * FROM pages
-                  WHERE page_id = ?
-                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$pageId]
-            );
+
+            $existingZones = [];
+            $maxSort = 0;
+            foreach ($flat as $row) {
+                $maxSort = max($maxSort, (int) ($row['sort_order'] ?? 0));
+                if (($row['block_type'] ?? '') !== 'zone' || !empty($row['parent_block_id'])) {
+                    continue;
+                }
+                $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+                $zn = (string) ($cfg['zone_name'] ?? 'main');
+                $existingZones[$zn] = true;
+            }
+
+            $missingZones = [];
+            foreach ($requiredZones as $zn) {
+                if (!isset($existingZones[$zn])) {
+                    $missingZones[] = $zn;
+                }
+            }
+
+            if (!empty($missingZones)) {
+                $sort = max(10, ((int) floor($maxSort / 10) + 1) * 10);
+                if ($hasDraft) {
+                    $targetSeq = (int) $this->db->fetchColumn(
+                        'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?',
+                        [$pageId]
+                    );
+                    foreach ($missingZones as $zn) {
+                        $blockId = 'zone-' . $zn . '-' . $pageId;
+                        $this->db->execute(
+                            'INSERT IGNORE INTO pages_draft
+                                 (page_id, edit_seq, block_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)',
+                            [
+                                $pageId,
+                                $targetSeq,
+                                $blockId,
+                                'zone',
+                                '',
+                                json_encode(['min-height' => '120px']),
+                                json_encode(['zone_name' => $zn]),
+                                $sort,
+                            ]
+                        );
+                        $sort += 10;
+                    }
+                    $flat = $this->db->fetchAll(
+                        'SELECT * FROM pages_draft
+                          WHERE page_id = ? AND edit_seq = ?
+                          ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                        [$pageId, $targetSeq]
+                    );
+                } else {
+                    foreach ($missingZones as $zn) {
+                        $blockId = 'zone-' . $zn . '-' . $pageId;
+                        $this->db->execute(
+                            'INSERT IGNORE INTO pages
+                                 (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
+                            [
+                                $blockId,
+                                $pageId,
+                                'zone',
+                                '',
+                                json_encode(['min-height' => '120px']),
+                                json_encode(['zone_name' => $zn]),
+                                $sort,
+                            ]
+                        );
+                        $sort += 10;
+                    }
+                    $flat = $this->db->fetchAll(
+                        'SELECT * FROM pages
+                          WHERE page_id = ?
+                          ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                        [$pageId]
+                    );
+                }
+            }
         }
 
         // All editable header pages: canvas pages for templates with a header zone
@@ -500,13 +543,6 @@ class CruinnController extends BaseController
              WHERE slug NOT LIKE '\_%'
              ORDER BY title ASC"
         );
-                $zonePages = $this->db->fetchAll(
-                        "SELECT id, title, slug FROM pages_index
-                         WHERE slug LIKE '\\_%'
-                             AND slug NOT IN ('_header', '_footer')
-                             AND slug NOT LIKE '\\_tpl\\_%'
-                         ORDER BY title ASC"
-                );
 
         // Templates for sidebar nav
         $navTemplates = $this->db->fetchAll(
@@ -578,7 +614,6 @@ class CruinnController extends BaseController
             'headerPages'       => $headerPages,
             'footerPages'       => $footerPages,
             'sitePages'            => $sitePages,
-            'zonePages'            => $zonePages,
             'navTemplates'         => $navTemplates,
             'navMenus'             => $navMenus,
             'navCssFiles'          => $cssFiles,
