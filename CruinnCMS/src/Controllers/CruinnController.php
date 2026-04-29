@@ -1511,15 +1511,18 @@ class CruinnController extends BaseController
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
-        $page = $this->db->fetch('SELECT id, is_template_page, template FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
+        $page = $this->db->fetch('SELECT id, slug, template FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
         if (!$page) {
             $this->json(['error' => 'Page not found'], 404);
         }
 
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
+        // Detect if this is a template page (slug starts with _tpl_)
+        $isTemplatePage = str_starts_with($page['slug'] ?? '', '_tpl_');
+
         // Template layout settings (for template pages only)
-        if (!empty($page['is_template_page']) && isset($body['layout_settings'])) {
+        if ($isTemplatePage && isset($body['layout_settings'])) {
             $templateSlug = $page['template'] ?? null;
             if (!$templateSlug) {
                 $this->json(['error' => 'Template slug not found'], 400);
