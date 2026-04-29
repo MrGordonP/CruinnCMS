@@ -93,6 +93,14 @@ class PageController extends BaseController
             return;
         }
 
+        // Resolve template and sidebar for all layout-wrapped render modes
+        $tpl = $this->getTemplate($page['template'] ?? 'default');
+        $cruinn = new CruinnRenderService();
+        $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        Template::addGlobal('page_tpl', $tpl);
+        Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
+        Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
+
         // ── HTML mode: raw HTML body stored in DB, wrapped in site layout ───
         if ($renderMode === 'html') {
             $this->render('public/html-page', [
@@ -105,14 +113,8 @@ class PageController extends BaseController
         }
 
         $blocks = $this->getBlocks($page['id']);
-        $tpl = $this->getTemplate($page['template'] ?? 'default');
 
         // ── Cruinn mode: block renderer ──────────────────────────────────────
-        $cruinn = new CruinnRenderService();
-        $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
-        Template::addGlobal('page_tpl', $tpl);
-        Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
-        Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
 
         if ($cruinn->hasPublished((int) $page['id'])) {
             // If the template has a canvas page, merge template layout with page content
