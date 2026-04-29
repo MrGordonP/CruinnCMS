@@ -1133,115 +1133,51 @@ body:has(#source-wrap) {
     overflow: hidden;
 }
 
-/* ── Collapsible panels (left tree + right properties) ─────────── */
-.source-panel {
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    min-height: 0;
-    border-right: 1px solid var(--plat-border);
+/* ── Platform colour overrides for shared pl-panel-* classes ───── */
+/* The layout/collapse behaviour lives in admin-panel-layout.css.   */
+/* These rules re-skin the panels for the platform dark chrome.     */
+#source-wrap .pl-panel {
     background: var(--plat-bg-card);
-    transition: width 0.18s ease;
-    overflow: hidden;
+    border-right-color: var(--plat-border);
 }
 
-.source-panel-right {
+#source-wrap .pl-panel-right {
+    border-left-color: var(--plat-border);
     border-right: none;
-    border-left: 1px solid var(--plat-border);
 }
 
-.source-panel-left {
+#source-wrap .pl-panel-left {
     width: 220px;
     min-width: 160px;
 }
 
-.source-panel-right {
+#source-wrap .pl-panel-right {
     width: 220px;
     min-width: 160px;
 }
 
-.source-panel.collapsed {
-    width: 32px !important;
-    min-width: 32px;
-}
-
-.source-panel-header {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.75rem;
+#source-wrap .pl-panel-header {
     border-bottom: 2px solid var(--plat-accent);
     background: var(--plat-dark);
-    flex-shrink: 0;
 }
 
-.source-panel-title {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
+#source-wrap .pl-panel-title {
     color: #5dcaa5;
-    white-space: nowrap;
-    overflow: hidden;
+    opacity: 1;
 }
 
-.source-panel-right .source-panel-title {
-    flex: 1;
-}
-
-.source-panel-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
+#source-wrap .pl-panel-toggle {
     color: #5dcaa5;
-    font-size: 0.65rem;
-    padding: 0.1rem 0.2rem;
-    line-height: 1;
-    flex-shrink: 0;
-    margin-left: auto;
 }
 
-.source-panel-right .source-panel-toggle {
-    margin-left: 0;
-    margin-right: auto;
-}
-
-.source-panel-toggle:hover {
+#source-wrap .pl-panel-toggle:hover {
     color: var(--plat-accent);
+    background: rgba(93, 202, 165, 0.12);
 }
 
-.source-panel.collapsed .source-panel-body,
-.source-panel.collapsed .source-panel-title,
-.source-panel.collapsed .source-panel-resize {
-    display: none;
-}
-
-.source-panel-body {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-}
-
-/* ── Left panel drag-resize handle ─────────────────────────────── */
-.source-panel-resize {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 5px;
-    height: 100%;
-    cursor: col-resize;
-    z-index: 10;
-    background: transparent;
-}
-
-.source-panel-resize:hover,
-.source-panel-resize.dragging {
-    background: var(--plat-accent);
-    opacity: 0.35;
-}
-
-.source-panel-left {
-    position: relative;
+#source-wrap .pl-main .pl-panel-header {
+    background: var(--plat-dark);
+    border-bottom-color: var(--plat-accent);
 }
 
 /* ── File tree (inside left panel) ─────────────────────────────── */
@@ -1419,7 +1355,7 @@ body:has(#source-wrap) {
     margin: 0;
 }
 
-.source-code-pane {
+#source-wrap .pl-main {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -1447,7 +1383,7 @@ body:has(#source-wrap) {
     white-space: nowrap;
 }
 
-.source-code-pane>.source-panel-body {
+#source-wrap .pl-main>.pl-panel-body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1681,25 +1617,9 @@ html.platform-sidebar-collapsed .platform-sidebar {
     }
 }
 
-/* ── Source editor: centre pane collapse (PanelCollapse.js) ─── */
-.source-code-pane {
-    transition: flex 0.18s ease, width 0.18s ease;
-    position: relative;
-}
-
-/* Centre toggle — lives inside the panel header like left/right toggles */
+/* ── Source editor: centre pane toggle position override ────── */
+/* Collapse behaviour is in admin-panel-layout.css (.pl-main.collapsed) */
 #source-panel-centre-toggle {
     margin-right: auto;
     margin-left: 0;
-}
-
-.source-code-pane.collapsed {
-    flex: 0 0 32px !important;
-    width: 32px;
-    min-width: 32px;
-    overflow: visible;
-}
-
-.source-code-pane.collapsed .source-panel-body {
-    display: none;
 }

@@ -438,6 +438,7 @@ textarea.form-input {
     gap: .5rem;
     align-items: center;
 }
+
 .media-input-row .form-input {
     flex: 1;
     min-width: 0;

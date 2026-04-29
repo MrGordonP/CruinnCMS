@@ -1,15 +1,13 @@
 /**
  * PanelCollapse — shared collapsible panel logic for three-pane layouts.
  *
- * Works with both:
- *   - admin panel-layout  (.pl-sidebar, .pl-main, .pl-detail)
- *   - platform source editor (.source-panel, .source-code-pane)
+ * Works with the shared pl-panel-* classes defined in admin-panel-layout.css.
+ * Used by: block editor, platform source editor, and any other three-pane layout.
  *
  * Usage:
  *   PanelCollapse.init([
- *     { panelId: 'source-panel-left',   toggleId: 'source-panel-left-toggle',   storeKey: 'cms_src_left',   side: 'left'   },
- *     { panelId: 'source-code-pane',    toggleId: 'source-panel-centre-toggle', storeKey: 'cms_src_centre', side: 'centre' },
- *     { panelId: 'source-panel-right',  toggleId: 'source-panel-right-toggle',  storeKey: 'cms_src_right',  side: 'right'  },
+ *     { panelId: 'editor-left',  toggleId: 'pl-panel-left-toggle',  storeKey: 'ed_left',  side: 'left'   },
+ *     { panelId: 'editor-props', toggleId: 'pl-panel-right-toggle', storeKey: 'ed_right', side: 'right'  },
  *   ]);
  *
  * Panel config keys:
@@ -98,7 +96,7 @@ var PanelCollapse = (function () {
     }
 
     // ── Drag-resize handles ─────────────────────────────────────────
-    // Attach to any .source-panel-resize element; resizes its parent panel.
+    // Attach to any .pl-panel-resize element; resizes its parent panel.
     function initResize(handleId, panelId, storeKey) {
         var handle = document.getElementById(handleId);
         var panel = document.getElementById(panelId);

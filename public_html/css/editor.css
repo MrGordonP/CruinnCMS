@@ -106,18 +106,6 @@
     overflow: hidden;
 }
 
-/* ── Left panel ───────────────────────────────────────────────── */
-
-#editor-left {
-    background: #ffffff;
-    border-right: 1px solid #e2e6ea;
-    overflow: hidden;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
 .editor-panel-section {
     border-bottom: 1px solid #e2e6ea;
     padding-bottom: 0.5rem;
@@ -814,11 +802,11 @@
     background: #6366f1;
 }
 
-#editor-props {
-    background: #ffffff;
-    border-left: 1px solid #e2e6ea;
+/* ── Right panel (properties) ─────────────────────────────── */
+/* Base structure (flex column, overflow) from admin-panel-layout.css */
+
+#editor-props .pl-panel-body {
     overflow-y: auto;
-    height: 100%;
 }
 
 .editor-props-empty {

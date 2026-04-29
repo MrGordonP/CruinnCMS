@@ -36,12 +36,12 @@ if ($activeFile !== null && $fileContent !== null) {
     data-preview-url="<?= htmlspecialchars(($activeFile !== null && $fileContent !== null && in_array(strtolower(pathinfo($activeFile, PATHINFO_EXTENSION)), ['php', 'html'], true)) ? '/cms/source/preview?file=' . rawurlencode($activeFile) : '', ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- ── Left: File tree ────────────────────────────────────── -->
-    <div class="source-panel source-panel-left" id="source-panel-left">
-        <div class="source-panel-header">
-            <span class="source-panel-title">Files</span>
-            <button type="button" class="source-panel-toggle" id="source-panel-left-toggle" title="Collapse tree">◀</button>
+    <div class="pl-panel pl-panel-left" id="pl-panel-left">
+        <div class="pl-panel-header">
+            <span class="pl-panel-title">Files</span>
+            <button type="button" class="pl-panel-toggle" id="pl-panel-left-toggle" title="Collapse tree">◀</button>
         </div>
-        <div class="source-panel-body source-tree">
+        <div class="pl-panel-body source-tree">
         <?php
         $_stActive = $activeFile ?? '';
         $_stRender = function(array $entries) use (&$_stRender, $_stActive): void {
@@ -67,16 +67,16 @@ if ($activeFile !== null && $fileContent !== null) {
         $_stRender($sourceFileTree);
         ?>
         </div>
-        <div class="source-panel-resize" id="source-panel-left-resize"></div>
+        <div class="pl-panel-resize" id="pl-panel-left-resize"></div>
     </div>
 
     <!-- ── Centre: Code pane ──────────────────────────────────── -->
-    <div class="source-code-pane" id="source-code-pane">
-        <div class="source-panel-header">
-            <button type="button" id="source-panel-centre-toggle" class="source-panel-toggle" title="Collapse editor">&#x25C0;</button>
-            <span class="source-panel-title">Editor</span>
+    <div class="pl-main" id="pl-panel-centre">
+        <div class="pl-panel-header">
+            <button type="button" id="source-panel-centre-toggle" class="pl-panel-toggle" title="Collapse editor">&#x25C0;</button>
+            <span class="pl-panel-title">Editor</span>
         </div>
-        <div class="source-panel-body">
+        <div class="pl-panel-body">
         <?php if (!empty($savedFlash)): ?>
         <div class="source-flash source-flash-<?= htmlspecialchars($savedFlash['type'], ENT_QUOTES, 'UTF-8') ?>">
             <?= htmlspecialchars($savedFlash['message'], ENT_QUOTES, 'UTF-8') ?>
@@ -139,16 +139,16 @@ if ($activeFile !== null && $fileContent !== null) {
 
         <?php endif; ?>
 
-        </div><!-- /.source-panel-body -->
-    </div><!-- /.source-code-pane -->
+        </div><!-- /.pl-panel-body -->
+    </div><!-- /.pl-main -->
 
     <!-- ── Right: Properties panel ───────────────────────────── -->
-    <div class="source-panel source-panel-right" id="source-panel-right">
-        <div class="source-panel-header">
-            <button type="button" class="source-panel-toggle" id="source-panel-right-toggle" title="Collapse properties">▶</button>
-            <span class="source-panel-title">Properties</span>
+    <div class="pl-panel pl-panel-right" id="pl-panel-right">
+        <div class="pl-panel-header">
+            <button type="button" class="pl-panel-toggle" id="pl-panel-right-toggle" title="Collapse properties">▶</button>
+            <span class="pl-panel-title">Properties</span>
         </div>
-        <div class="source-panel-body source-props">
+        <div class="pl-panel-body source-props">
 
             <!-- File properties (PHP-rendered, shown when a file is active) -->
             <div id="props-file" <?= $_fileStat === null ? 'style="display:none"' : '' ?>>

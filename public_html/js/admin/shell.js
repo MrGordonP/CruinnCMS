@@ -97,12 +97,12 @@
         // data-media-input + data-media-preview → open Cruinn media browser
         var mediaEl = el.closest('[data-media-input]');
         if (mediaEl && window.Cruinn && Cruinn.openMediaBrowser) {
-            var inputId   = mediaEl.getAttribute('data-media-input');
+            var inputId = mediaEl.getAttribute('data-media-input');
             var previewId = mediaEl.getAttribute('data-media-preview');
             Cruinn.openMediaBrowser(function (url) {
-                var inp  = document.getElementById(inputId);
+                var inp = document.getElementById(inputId);
                 var prev = document.getElementById(previewId);
-                if (inp)  { inp.value = url; }
+                if (inp) { inp.value = url; }
                 if (prev) { prev.src = url; prev.style.display = 'block'; }
             });
         }

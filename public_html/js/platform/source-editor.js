@@ -7,8 +7,8 @@
     var currentDir = null;
     var loaded = false;
 
-    var leftPanel = document.getElementById('source-panel-left');
-    var rightPanel = document.getElementById('source-panel-right');
+    var leftPanel = document.getElementById('pl-panel-left');
+    var rightPanel = document.getElementById('pl-panel-right');
     var sourceTree = document.querySelector('.source-tree');
     var dirPullBtn = document.getElementById('props-dir-pull-btn');
     var dirResults = document.getElementById('props-dir-results');
@@ -91,7 +91,7 @@
 
             if (propsDir) propsDir.style.display = '';
             if (rightPanel && rightPanel.classList.contains('collapsed')) {
-                PanelCollapse.expand('source-panel-right');
+                PanelCollapse.expand('pl-panel-right');
             }
         });
     }
@@ -175,8 +175,8 @@
 }());
 
 PanelCollapse.init([
-    { panelId: 'source-panel-left', toggleId: 'source-panel-left-toggle', storeKey: 'cms_src_left', side: 'left' },
-    { panelId: 'source-code-pane', toggleId: 'source-panel-centre-toggle', storeKey: 'cms_src_centre', side: 'centre' },
-    { panelId: 'source-panel-right', toggleId: 'source-panel-right-toggle', storeKey: 'cms_src_right', side: 'right' }
+    { panelId: 'pl-panel-left', toggleId: 'pl-panel-left-toggle', storeKey: 'cms_src_left', side: 'left' },
+    { panelId: 'pl-panel-centre', toggleId: 'source-panel-centre-toggle', storeKey: 'cms_src_centre', side: 'centre' },
+    { panelId: 'pl-panel-right', toggleId: 'pl-panel-right-toggle', storeKey: 'cms_src_right', side: 'right' },
 ]);
-PanelCollapse.initResize('source-panel-left-resize', 'source-panel-left', 'cms_src_left_w');
+PanelCollapse.initResize('pl-panel-left-resize', 'pl-panel-left', 'cms_src_left_w');

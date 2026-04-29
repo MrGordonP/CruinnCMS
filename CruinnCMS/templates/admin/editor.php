@@ -5,6 +5,7 @@
  * Three-panel layout: toolbar | left panel (palette + block tree) | canvas | right panel (properties)
  * Requires admin/layout wrapper (set by CruinnController::edit via renderAdmin).
  */
+\Cruinn\Template::requireCss('admin-panel-layout.css');
 \Cruinn\Template::requireCss('editor.css');
 $GLOBALS['admin_flush_layout'] = true;
 
@@ -141,6 +142,11 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     title="Clear draft then rebuild from page source">
                 Reload Source
             </button>
+            <?php if (!$isZonePage && !$isTemplatePage && !empty($page['slug'])): ?>
+            <a href="/<?= e($page['slug']) ?>" target="_blank" class="btn btn-small btn-outline" title="View published page in a new tab">
+                Preview
+            </a>
+            <?php endif; ?>
             <button id="editor-publish-btn" class="btn btn-small btn-primary">
                 Publish
             </button>
@@ -202,7 +208,12 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
     <div id="editor-body">
 
         <!-- Left panel: site nav + block palette + block tree -->
-        <div id="editor-left">
+        <div id="editor-left" class="pl-panel pl-panel-left">
+            <div class="pl-panel-header">
+                <span class="pl-panel-title">Blocks</span>
+                <button type="button" class="pl-panel-toggle" id="pl-panel-left-toggle" title="Collapse">&#x25C0;</button>
+            </div>
+            <div class="pl-panel-body">
 
             <!-- Site Builder navigation -->
             <div class="editor-panel-section editor-site-nav">
@@ -395,10 +406,12 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <h3 class="editor-panel-heading editor-panel-toggle">Block Tree <span class="editor-panel-chevron">▾</span></h3>
                 <div id="editor-block-tree" class="editor-block-tree"></div>
             </div>
+            </div><!-- /.pl-panel-body -->
+            <div class="pl-panel-resize" id="pl-panel-left-resize"></div>
         </div>
 
         <!-- Canvas -->
-        <div id="editor-canvas-wrap">
+        <div id="editor-canvas-wrap" class="pl-main">
 
             <?php if ((empty($isZonePage) || !empty($isTemplatePage)) && isset($headerPageId)): ?>
             <?php if (!empty($headerPages) && count($headerPages) > 1): ?>
@@ -463,7 +476,12 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         </div>
 
         <!-- Right panel: properties accordion -->
-        <div id="editor-props">
+        <div id="editor-props" class="pl-panel pl-panel-right">
+            <div class="pl-panel-header">
+                <button type="button" class="pl-panel-toggle" id="pl-panel-right-toggle" title="Collapse">&#x25B6;</button>
+                <span class="pl-panel-title">Properties</span>
+            </div>
+            <div class="pl-panel-body">
             <div class="editor-props-empty">Select a block to edit its properties.</div>
 
             <!-- Zone Settings group (zone blocks only) -->
@@ -1198,6 +1216,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                 </div>
             </div>
+            </div><!-- /.pl-panel-body -->
         </div><!-- /#editor-props -->
     </div><!-- /#editor-body -->
 
@@ -1223,5 +1242,6 @@ foreach ($btFiles as $btFile):
 ?>
 <script src="<?= url('/js/admin/block-types/' . $btName) ?>?v=<?= $btMtime ?>"></script>
 <?php endforeach; ?>
+<script src="/js/admin/panel-collapse.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/panel-collapse.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/panel-collapse.js') : 0 ?>"></script>
 <script src="/js/admin/editor-shell.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/editor-shell.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/editor-shell.js') : 0 ?>"></script>
 <script src="/js/editor.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/editor.js') ? filemtime(CRUINN_PUBLIC . '/js/editor.js') : 0 ?>"></script>

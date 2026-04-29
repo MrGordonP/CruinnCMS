@@ -597,3 +597,149 @@
 .panel-layout:has(.pl-sidebar.collapsed):has(.pl-detail.collapsed) {
     grid-template-columns: 32px 1fr 32px;
 }
+
+/* ── Generic panel header / body / resize / collapse ───────────────────────
+ *
+ * Used by: block editor (#editor-left, #editor-props, #editor-canvas-wrap)
+ *          source editor (.pl-panel-left, .pl-main, .pl-panel-right)
+ *
+ * Markup pattern (left/right side panels):
+ *   <div class="pl-panel pl-panel-left" id="...">
+ *     <div class="pl-panel-header">
+ *       <span class="pl-panel-title">Blocks</span>
+ *       <button class="pl-panel-toggle" id="...">◀</button>
+ *     </div>
+ *     <div class="pl-panel-body">…content…</div>
+ *     <div class="pl-panel-resize" id="..."></div>
+ *   </div>
+ *
+ * Markup pattern (centre / main panel):
+ *   <div class="pl-main" id="...">
+ *     <div class="pl-panel-header">
+ *       <button class="pl-panel-toggle" id="...">◀</button>
+ *       <span class="pl-panel-title">Canvas</span>
+ *     </div>
+ *     <div class="pl-panel-body">…content…</div>
+ *   </div>
+ * ─────────────────────────────────────────────────────────────────────── */
+
+.pl-panel {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    min-height: 0;
+    overflow: hidden;
+    transition: width 0.18s ease;
+    position: relative;
+}
+
+.pl-panel-left {
+    border-right: 1px solid var(--color-border, #ccd9d3);
+}
+
+.pl-panel-right {
+    border-left: 1px solid var(--color-border, #ccd9d3);
+}
+
+.pl-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-border, #ccd9d3);
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.pl-panel-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--color-text, #0c1614);
+    opacity: 0.6;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.pl-panel-right .pl-panel-title {
+    flex: 1;
+}
+
+.pl-panel-right .pl-panel-toggle {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.pl-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* ── Drag-resize handle (left panel only) ─────────────────────── */
+.pl-panel-resize {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+}
+
+.pl-panel-resize:hover,
+.pl-panel-resize.dragging {
+    background: var(--color-primary, #1d9e75);
+    opacity: 0.35;
+}
+
+/* ── Collapsed state ──────────────────────────────────────────── */
+.pl-panel.collapsed {
+    width: 32px !important;
+    min-width: 32px;
+}
+
+.pl-panel.collapsed .pl-panel-body,
+.pl-panel.collapsed .pl-panel-title,
+.pl-panel.collapsed .pl-panel-resize {
+    display: none;
+}
+
+.pl-panel.collapsed .pl-panel-header {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.4rem 0;
+    gap: 0;
+}
+
+.pl-panel.collapsed .pl-panel-toggle {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* Centre pane collapse — shrinks flex share rather than fixed width */
+.pl-main.collapsed {
+    flex: 0 0 32px !important;
+    width: 32px;
+    min-width: 32px;
+    overflow: visible;
+}
+
+.pl-main.collapsed .pl-panel-body {
+    display: none;
+}
+
+/* Update the editor grid when pl-panel side panels are used inside it */
+#editor-body:has(.pl-panel-left.collapsed) {
+    grid-template-columns: 32px 1fr 280px;
+}
+
+#editor-body:has(.pl-panel-right.collapsed) {
+    grid-template-columns: 220px 1fr 32px;
+}
+
+#editor-body:has(.pl-panel-left.collapsed):has(.pl-panel-right.collapsed) {
+    grid-template-columns: 32px 1fr 32px;
+}
