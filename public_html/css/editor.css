@@ -914,6 +914,32 @@
     min-width: 0;
 }
 
+/* Optional modifier classes for connected number+unit controls.
+   Keep the component linked while allowing per-group width tuning. */
+.editor-prop-with-unit--size .editor-prop-input {
+    flex: 1 1 auto;
+}
+
+.editor-prop-with-unit--size .editor-unit-select {
+    width: 58px;
+}
+
+.editor-prop-with-unit--typography .editor-unit-select {
+    width: 56px;
+}
+
+.editor-prop-with-unit--spacing .editor-unit-select {
+    width: 54px;
+}
+
+.editor-prop-with-unit--image .editor-unit-select {
+    width: 56px;
+}
+
+.editor-prop-with-unit--border .editor-unit-select {
+    width: 52px;
+}
+
 .editor-unit-select {
     width: 52px;
     padding: 4px 2px;

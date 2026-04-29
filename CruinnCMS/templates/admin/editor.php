@@ -635,7 +635,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <div class="editor-prop-row">
                         <label>Font Size</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--typography">
                             <input type="number" class="editor-prop-input" data-prop-num="fontSize" min="0" step="1">
                             <select class="editor-unit-select" data-unit-for="fontSize">
                                 <option value="px">px</option>
@@ -701,7 +701,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <div class="editor-prop-row">
                         <label>Letter Spacing</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--typography">
                             <input type="number" class="editor-prop-input" data-prop-num="letterSpacing" step="0.5">
                             <select class="editor-unit-select" data-unit-for="letterSpacing">
                                 <option value="px">px</option>
@@ -731,7 +731,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <label><?= $label ?></label>
                         <div class="editor-trbl-grid">
                             <?php foreach (['Top', 'Right', 'Bottom', 'Left'] as $side): ?>
-                            <div class="editor-prop-with-unit">
+                            <div class="editor-prop-with-unit editor-prop-with-unit--spacing">
                                 <input type="number" class="editor-prop-input"
                                        data-prop-num="<?= $prop . $side ?>"
                                        placeholder="<?= $side[0] ?>" min="0" step="1">
@@ -766,7 +766,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <div class="editor-prop-row">
                         <label>Width</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--image">
                             <input type="number" class="editor-prop-input" id="prop-img-width-num" min="0" step="1">
                             <select class="editor-unit-select" id="prop-img-width-unit">
                                 <option value="px">px</option>
@@ -777,7 +777,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <div class="editor-prop-row">
                         <label>Height</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--image">
                             <input type="number" class="editor-prop-input" id="prop-img-height-num" min="0" step="1" placeholder="auto">
                             <select class="editor-unit-select" id="prop-img-height-unit">
                                 <option value="px">px</option>
@@ -862,7 +862,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
                         <label>Width</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--border">
                             <input type="number" class="editor-prop-input" data-prop-num="borderWidth" min="0" step="1">
                             <select class="editor-unit-select" data-unit-for="borderWidth">
                                 <option value="px">px</option>
@@ -989,7 +989,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
                         <label>Width</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
                             <input type="number" class="editor-prop-input" data-prop-num="width" min="0" step="1">
                             <select class="editor-unit-select" data-unit-for="width">
                                 <option value="px">px</option>
@@ -1002,7 +1002,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <div class="editor-prop-row">
                         <label>Height</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
                             <input type="number" class="editor-prop-input" data-prop-num="height" min="0" step="1">
                             <select class="editor-unit-select" data-unit-for="height">
                                 <option value="px">px</option>
@@ -1015,13 +1015,52 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                     <div class="editor-prop-row">
                         <label>Min Height</label>
-                        <div class="editor-prop-with-unit">
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
                             <input type="number" class="editor-prop-input" data-prop-num="minHeight" min="0" step="1">
                             <select class="editor-unit-select" data-unit-for="minHeight">
                                 <option value="px">px</option>
                                 <option value="%">%</option>
                                 <option value="rem">rem</option>
                                 <option value="vh">vh</option>
+                                <option value="auto">auto</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="editor-prop-row">
+                        <label>Max Height</label>
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
+                            <input type="number" class="editor-prop-input" data-prop-num="maxHeight" min="0" step="1">
+                            <select class="editor-unit-select" data-unit-for="maxHeight">
+                                <option value="px">px</option>
+                                <option value="%">%</option>
+                                <option value="rem">rem</option>
+                                <option value="vh">vh</option>
+                                <option value="auto">auto</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="editor-prop-row">
+                        <label>Min Width</label>
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
+                            <input type="number" class="editor-prop-input" data-prop-num="minWidth" min="0" step="1">
+                            <select class="editor-unit-select" data-unit-for="minWidth">
+                                <option value="px">px</option>
+                                <option value="%">%</option>
+                                <option value="rem">rem</option>
+                                <option value="vw">vw</option>
+                                <option value="auto">auto</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="editor-prop-row">
+                        <label>Max Width</label>
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
+                            <input type="number" class="editor-prop-input" data-prop-num="maxWidth" min="0" step="1">
+                            <select class="editor-unit-select" data-unit-for="maxWidth">
+                                <option value="px">px</option>
+                                <option value="%">%</option>
+                                <option value="rem">rem</option>
+                                <option value="vw">vw</option>
                                 <option value="auto">auto</option>
                             </select>
                         </div>
@@ -1061,7 +1100,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <label>Offset (T / R / B / L)</label>
                         <div class="editor-trbl-grid">
                             <?php foreach (['top', 'right', 'bottom', 'left'] as $side): ?>
-                            <div class="editor-prop-with-unit">
+                            <div class="editor-prop-with-unit editor-prop-with-unit--size">
                                 <input type="number" class="editor-prop-input"
                                        data-prop-num="<?= $side ?>"
                                        placeholder="<?= strtoupper($side[0]) ?>" step="1">
