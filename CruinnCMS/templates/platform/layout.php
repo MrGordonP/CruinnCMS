@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Cruinn CMS') ?></title>
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
+    <link rel="stylesheet" href="/css/admin-panel-layout.css">
     <link rel="stylesheet" href="/css/platform.css">
     <script src="/js/platform/boot.js"></script>
 </head>
