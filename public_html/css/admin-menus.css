@@ -146,8 +146,6 @@
     flex-shrink: 0;
 }
 
-}
-
 /* Meta info (type badge, URL) */
 .menu-tree-meta {
     display: flex;
@@ -391,4 +389,3 @@
 .btn-select-all:hover {
     color: var(--color-primary, #4f7942);
 }
-
