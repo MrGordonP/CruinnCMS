@@ -455,12 +455,25 @@ class PlatformController
             if ($pageId !== null) {
                 $pageRow = $db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
                 if ($pageRow) {
-                    $page     = $pageRow;
-                    $hasDraft = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]) > 0;
-                    $state    = null;
+                    $page  = $pageRow;
+                    $state = null;
 
-                    if ($hasDraft) {
-                        $maxSeq = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                    // For file/html render modes, edit_seq=1 is the auto-import baseline
+                    // written on every fresh open — not a user edit. Only seq>=2 means the
+                    // user has made actual changes worth prompting about.
+                    $renderMode      = $page['render_mode'] ?? 'block';
+                    $anyDraftRows    = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]) > 0;
+                    if (in_array($renderMode, ['file', 'html'], true)) {
+                        $maxSeq   = (int) $db->fetchColumn('SELECT COALESCE(MAX(edit_seq), 0) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                        $hasDraft = $maxSeq > 1;
+                    } else {
+                        $hasDraft = $anyDraftRows;
+                        $maxSeq   = $anyDraftRows
+                            ? (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId])
+                            : 0;
+                    }
+
+                    if ($anyDraftRows) {
                         $flat = $db->fetchAll(
                             'SELECT * FROM pages_draft
                               WHERE page_id = ? AND edit_seq = ?
@@ -477,16 +490,12 @@ class PlatformController
                     }
 
                     // ── Auto-import: parse file content into typed blocks on first open ──
-                    $renderMode = $page['render_mode'] ?? 'block';
                     $docOnlyTypes = ['doc-html', 'doc-head', 'doc-body'];
                     $hasVisibleBlocks = !empty(array_filter($flat, fn($r) => !in_array($r['block_type'], $docOnlyTypes, true)));
                     if (in_array($renderMode, ['html', 'file'], true) && !$hasVisibleBlocks) {
-                            // Clear any existing doc-only blocks before re-importing
+                        // Clear any existing doc-only blocks before re-importing
                         if (!empty($flat)) {
-                            $db->execute(
-                                'DELETE FROM pages_draft WHERE page_id = ?',
-                                [$pageId]
-                            );
+                            $db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
                             $flat = [];
                         }
                         $importSvc = new \Cruinn\Services\ImportService();
@@ -500,13 +509,13 @@ class PlatformController
                             } catch (\Throwable $e) {
                                 error_log('Platform Import failed: ' . $e->getMessage());
                             }
-                            $hasDraft = true;
-                            $maxSeq   = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
-                            $flat     = $db->fetchAll(
+                            // Auto-import always writes edit_seq=1 — not a user edit, so hasDraft stays false.
+                            $maxSeq = 1;
+                            $flat   = $db->fetchAll(
                                 'SELECT * FROM pages_draft
-                                  WHERE page_id = ? AND edit_seq = ?
+                                  WHERE page_id = ? AND edit_seq = 1
                                   ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                                [$pageId, $maxSeq]
+                                [$pageId]
                             );
                         }
                     }
@@ -799,11 +808,21 @@ class PlatformController
         if ($pageId !== null) {
             $pageRow = $db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
             if ($pageRow) {
-                    $hasDraft = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]) > 0;
+                    // For file/html render modes, edit_seq=1 is the auto-import baseline — not a user edit.
+                    $renderMode   = $pageRow['render_mode'] ?? 'block';
+                    $anyDraftRows = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]) > 0;
+                    if (in_array($renderMode, ['file', 'html'], true)) {
+                        $maxSeq   = (int) $db->fetchColumn('SELECT COALESCE(MAX(edit_seq), 0) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                        $hasDraft = $maxSeq > 1;
+                    } else {
+                        $hasDraft = $anyDraftRows;
+                        $maxSeq   = $anyDraftRows
+                            ? (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId])
+                            : 0;
+                    }
                     $state    = null;
 
-                    if ($hasDraft) {
-                        $maxSeq = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
+                    if ($anyDraftRows) {
                         $flat = $db->fetchAll(
                             'SELECT * FROM pages_draft
                               WHERE page_id = ? AND edit_seq = ?
@@ -855,13 +874,13 @@ class PlatformController
                             error_log('Platform Import failed: ' . $e->getMessage());
                         }
 
-                        $hasDraft   = true;
-                        $maxSeq     = (int) $db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]);
-                        $flat       = $db->fetchAll(
+                        // Auto-import always writes edit_seq=1 — not a user edit, hasDraft stays false.
+                        $maxSeq = 1;
+                        $flat   = $db->fetchAll(
                             'SELECT * FROM pages_draft
-                              WHERE page_id = ? AND edit_seq = ?
+                              WHERE page_id = ? AND edit_seq = 1
                               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                            [$pageId, $maxSeq]
+                            [$pageId]
                         );
 
                         $editorSvc  = new \Cruinn\Services\EditorRenderService();

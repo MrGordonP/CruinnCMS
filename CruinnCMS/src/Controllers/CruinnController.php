@@ -188,14 +188,26 @@ class CruinnController extends BaseController
             return;
         }
 
-        $hasDraft = (int) $this->db->fetchColumn(
+        // For file/html render modes, edit_seq=1 is the auto-import baseline written
+        // on every fresh open — not a user edit. Only seq>=2 means the user has made
+        // actual changes worth showing the "unsaved draft" banner for.
+        $renderMode  = $page['render_mode'] ?? 'block';
+        $anyDraftRows = (int) $this->db->fetchColumn(
             'SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]
         ) > 0;
-        $maxDraftSeq = $hasDraft
-            ? (int) $this->db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId])
-            : 0;
+        if (in_array($renderMode, ['file', 'html'], true)) {
+            $maxDraftSeq = (int) $this->db->fetchColumn(
+                'SELECT COALESCE(MAX(edit_seq), 0) FROM pages_draft WHERE page_id = ?', [$pageId]
+            );
+            $hasDraft = $maxDraftSeq > 1;
+        } else {
+            $hasDraft    = $anyDraftRows;
+            $maxDraftSeq = $anyDraftRows
+                ? (int) $this->db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId])
+                : 0;
+        }
 
-        if ($hasDraft) {
+        if ($anyDraftRows) {
             $flat = $this->db->fetchAll(
                 'SELECT * FROM pages_draft
                   WHERE page_id = ? AND edit_seq = ?
@@ -210,8 +222,6 @@ class CruinnController extends BaseController
                 [$pageId]
             );
         }
-
-        $renderMode = $page['render_mode'] ?? 'block';
 
         // ── Auto-import: parse source HTML into typed blocks on first open ──
         if (in_array($renderMode, ['html', 'file'], true) && empty($flat)) {
@@ -232,15 +242,13 @@ class CruinnController extends BaseController
                     error_log('Import failed: ' . $e->getMessage());
                 }
 
-                $hasDraft = true;
-                $maxDraftSeq = (int) $this->db->fetchColumn(
-                    'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
-                );
+                // Auto-import always writes edit_seq=1 — not a user edit, hasDraft stays false.
+                $maxDraftSeq = 1;
                 $flat = $this->db->fetchAll(
                     'SELECT * FROM pages_draft
-                      WHERE page_id = ? AND edit_seq = ?
+                      WHERE page_id = ? AND edit_seq = 1
                       ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                    [$pageId, $maxDraftSeq]
+                    [$pageId]
                 );
             }
         }
