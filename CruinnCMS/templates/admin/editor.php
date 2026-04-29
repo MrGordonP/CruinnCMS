@@ -35,6 +35,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
      data-has-draft="<?= $hasDraft ? '1' : '0' ?>"
      data-template-zones="<?= htmlspecialchars(json_encode($templateZones ?? []), ENT_QUOTES, 'UTF-8') ?>"
      data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
+    data-module-widgets="<?= htmlspecialchars(json_encode($moduleWidgets ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
@@ -400,6 +401,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Event List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>PHP Include</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="module-widget" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Module Widget</button>
                     <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
                 </div>
             </div>
@@ -1309,6 +1311,18 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                                           placeholder="<h3>{{name}}</h3>&#10;<p>{{bio}}</p>"></textarea>
                                 <div id="prop-data-list-tokens" style="font-size:0.72rem;color:#6b7280;line-height:1.8"></div>
                             </div>
+                        </div>
+                    </div>
+                    <!-- module-widget config -->
+                    <div class="editor-content-group" data-content-type="module-widget" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Widget</label>
+                            <select class="editor-prop-input" id="prop-module-widget-key" data-config="widget_key">
+                                <option value="">— Select widget —</option>
+                                <?php foreach (($moduleWidgets ?? []) as $_mw): ?>
+                                <option value="<?= e($_mw['key'] ?? '') ?>"><?= e(($_mw['module'] ?? 'module') . ' — ' . ($_mw['title'] ?? ($_mw['key'] ?? 'Widget'))) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                     </div>
                 </div>

@@ -163,22 +163,45 @@ class ModuleRegistry
      */
     public static function collectWidgets(): array
     {
-        self::load();
         $widgets = [];
-        foreach (self::$modules as $slug => $def) {
-            if (self::$statuses[$slug] !== 'active') {
-                continue;
-            }
-            if (is_callable($def['widgets'] ?? null)) {
-                $result = ($def['widgets'])();
-                if (is_array($result)) {
-                    foreach ($result as $widget) {
-                        $widgets[] = $widget;
-                    }
-                }
-            }
+        foreach (self::collectWidgetEntries() as $entry) {
+            $widgets[] = [
+                'title' => $entry['title'],
+                'html'  => $entry['html'],
+            ];
         }
         return $widgets;
+    }
+
+    /**
+     * Return key-addressable module widgets for editor selectors.
+     * Each entry: ['key' => 'module:key', 'module' => slug, 'title' => title].
+     */
+    public static function widgetCatalog(): array
+    {
+        $catalog = [];
+        foreach (self::collectWidgetEntries() as $entry) {
+            $catalog[] = [
+                'key'    => $entry['key'],
+                'module' => $entry['module'],
+                'title'  => $entry['title'],
+            ];
+        }
+        return $catalog;
+    }
+
+    /**
+     * Render a module widget by its stable key (module:key).
+     * Returns empty string when not found or offline.
+     */
+    public static function renderWidgetByKey(string $widgetKey): string
+    {
+        foreach (self::collectWidgetEntries() as $entry) {
+            if ($entry['key'] === $widgetKey) {
+                return (string) ($entry['html'] ?? '');
+            }
+        }
+        return '';
     }
 
     /**
@@ -433,5 +456,84 @@ class ModuleRegistry
         }
 
         return $sorted;
+    }
+
+    /**
+     * Collect active module widgets with stable keys and full metadata.
+     * Entry: ['key', 'module', 'title', 'html'].
+     */
+    private static function collectWidgetEntries(): array
+    {
+        self::load();
+
+        $entries = [];
+        $seen = [];
+
+        foreach (self::$modules as $slug => $def) {
+            if ((self::$statuses[$slug] ?? 'discovered') !== 'active') {
+                continue;
+            }
+            if (!is_callable($def['widgets'] ?? null)) {
+                continue;
+            }
+
+            try {
+                $result = ($def['widgets'])();
+            } catch (\Throwable $e) {
+                error_log("ModuleRegistry widget callable failed for {$slug}: " . $e->getMessage());
+                continue;
+            }
+
+            if (!is_array($result)) {
+                continue;
+            }
+
+            foreach (array_values($result) as $idx => $widget) {
+                if (!is_array($widget)) {
+                    continue;
+                }
+
+                $title = trim((string) ($widget['title'] ?? 'Widget'));
+                $html  = (string) ($widget['html'] ?? '');
+                $rawKey = trim((string) ($widget['key'] ?? ''));
+                $safeRaw = self::normaliseWidgetKeyPart($rawKey);
+
+                if ($safeRaw === '') {
+                    $safeRaw = self::normaliseWidgetKeyPart($title);
+                }
+                if ($safeRaw === '') {
+                    $safeRaw = 'widget-' . ((int) $idx + 1);
+                }
+
+                $baseKey = $slug . ':' . $safeRaw;
+                $fullKey = $baseKey;
+                $suffix = 2;
+                while (isset($seen[$fullKey])) {
+                    $fullKey = $baseKey . '-' . $suffix;
+                    $suffix++;
+                }
+                $seen[$fullKey] = true;
+
+                $entries[] = [
+                    'key'    => $fullKey,
+                    'module' => $slug,
+                    'title'  => $title !== '' ? $title : $fullKey,
+                    'html'   => $html,
+                ];
+            }
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Convert an arbitrary key/title segment into [a-z0-9_-].
+     */
+    private static function normaliseWidgetKeyPart(string $value): string
+    {
+        $v = strtolower(trim($value));
+        $v = preg_replace('/[^a-z0-9_-]+/', '-', $v) ?? '';
+        $v = trim($v, '-_');
+        return $v;
     }
 }

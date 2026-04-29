@@ -38,6 +38,10 @@
         try { return JSON.parse(wrap.dataset.contextFields || '[]'); } catch (e) { return []; }
     }());
 
+    var MODULE_WIDGETS = (function () {
+        try { return JSON.parse(wrap.dataset.moduleWidgets || '[]'); } catch (e) { return []; }
+    }());
+
     document.addEventListener('DOMContentLoaded', function () {
         restoreCssProps();
         reInitAll();
@@ -400,8 +404,8 @@
     var ZONE_TYPES = ['zone'];
     var IMAGE_TYPES = ['image', 'site-logo'];
     var TITLE_TYPES = ['site-title'];
-    var DYNAMIC_TYPES = ['event-list', 'data-list'];
-    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list'];
+    var DYNAMIC_TYPES = ['event-list', 'data-list', 'module-widget'];
+    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list', 'module-widget'];
     var PHP_CODE_TYPES = ['php-code'];
     // Block types whose inner_html slot is bindable
     var BIND_INNER_TYPES = ['text', 'html', 'heading', 'inline', 'anchor'];
@@ -720,6 +724,31 @@
             updateDataListTokenHints(config.set_slug || '');
         }
 
+        // Module widget: populate picker and ensure selected key exists in options.
+        if (type === 'module-widget') {
+            var mwSel = document.getElementById('prop-module-widget-key');
+            if (mwSel) {
+                var selectedKey = (config.widget_key || '').toString();
+                mwSel.innerHTML = '<option value="">— Select widget —</option>';
+                MODULE_WIDGETS.forEach(function (w) {
+                    var key = (w.key || '').toString();
+                    if (!key) { return; }
+                    var opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = (w.module || 'module') + ' — ' + (w.title || key);
+                    mwSel.appendChild(opt);
+                });
+                if (selectedKey && !Array.from(mwSel.options).some(function (o) { return o.value === selectedKey; })) {
+                    var stale = document.createElement('option');
+                    stale.value = selectedKey;
+                    stale.textContent = '(missing) ' + selectedKey;
+                    mwSel.appendChild(stale);
+                }
+                mwSel.value = selectedKey;
+            }
+            refreshModuleWidgetPreview(block);
+        }
+
         // Site title / tagline text
         if (TITLE_TYPES.indexOf(type) !== -1) {
             var h1El = block.querySelector('.site-name');
@@ -997,6 +1026,12 @@
                 inp.onchange = function () {
                     writeConfig(block, 'template_slug', inp.value);
                     syncCardWrap();
+                };
+            }
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'widget_key' && block.dataset.blockType === 'module-widget') {
+                inp.onchange = function () {
+                    writeConfig(block, 'widget_key', inp.value);
+                    refreshModuleWidgetPreview(block);
                 };
             }
         });
@@ -1494,6 +1529,24 @@
         debounceAction();
     }
 
+    function refreshModuleWidgetPreview(block) {
+        if (!block || block.dataset.blockType !== 'module-widget') { return; }
+        var cfg = {};
+        try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+        var key = (cfg.widget_key || '').toString();
+        if (!key) {
+            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget — select a widget in Content settings.</p>';
+            return;
+        }
+        var hit = MODULE_WIDGETS.find(function (w) { return (w.key || '') === key; });
+        if (!hit) {
+            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget — missing widget: ' + key + '</p>';
+            return;
+        }
+        block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget: ' +
+            (hit.module || 'module') + ' — ' + (hit.title || key) + '</p>';
+    }
+
 
     function rebuildLiveStyles() {
         if (!liveStyles) { return; }
@@ -1573,6 +1626,7 @@
         'site-title': { tag: 'div', inner: '<h1 class="site-name">Site Name</h1><p class="site-tagline"></p>', initCss: PORTRAIT_INIT },
         'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
         'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
+        'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget ΓÇö select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
@@ -1618,6 +1672,16 @@
         if (type === 'zone') {
             var defCfg = def.defaultConfig || {};
             el.setAttribute('data-zone-name', defCfg.zone_name || 'main');
+        }
+
+        if (type === 'module-widget') {
+            var widgetCfg = {};
+            try { widgetCfg = JSON.parse(el.dataset.blockConfig || '{}'); } catch (e) { }
+            if (!widgetCfg.widget_key && MODULE_WIDGETS.length > 0) {
+                widgetCfg.widget_key = MODULE_WIDGETS[0].key || '';
+                el.dataset.blockConfig = JSON.stringify(widgetCfg);
+            }
+            refreshModuleWidgetPreview(el);
         }
 
         // Columns block: create initial 2 column sections

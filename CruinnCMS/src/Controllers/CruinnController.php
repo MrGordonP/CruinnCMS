@@ -134,6 +134,12 @@ class CruinnController extends BaseController
             $openEditorContentSets = [];
         }
 
+        try {
+            $moduleWidgets = \Cruinn\Modules\ModuleRegistry::widgetCatalog();
+        } catch (\Throwable $e) {
+            $moduleWidgets = [];
+        }
+
         $this->renderAdmin('admin/editor', [
             'title'           => 'Editor',
             'page'            => null,
@@ -143,6 +149,7 @@ class CruinnController extends BaseController
             'cruinnCss'       => '',
             'menus'           => $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC'),
             'contentSets'     => $openEditorContentSets,
+            'moduleWidgets'   => $moduleWidgets,
             'isZonePage'      => false,
             'zoneName'        => null,
             'isTemplatePage'  => false,
@@ -284,6 +291,12 @@ class CruinnController extends BaseController
             );
         } catch (\Exception $e) {
             $contentTemplates = [];
+        }
+
+        try {
+            $moduleWidgets = \Cruinn\Modules\ModuleRegistry::widgetCatalog();
+        } catch (\Throwable $e) {
+            $moduleWidgets = [];
         }
 
         // Detect global zone pages and template canvas pages (slug starts with '_')
@@ -604,6 +617,7 @@ class CruinnController extends BaseController
             'menus'             => $menus,
             'contentSets'       => $contentSets,
             'contentTemplates'  => $contentTemplates,
+            'moduleWidgets'     => $moduleWidgets,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
             'isTemplatePage'    => $isTemplatePage,
