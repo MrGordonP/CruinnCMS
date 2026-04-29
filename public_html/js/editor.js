@@ -1675,12 +1675,6 @@
         }
 
         if (type === 'module-widget') {
-            var widgetCfg = {};
-            try { widgetCfg = JSON.parse(el.dataset.blockConfig || '{}'); } catch (e) { }
-            if (!widgetCfg.widget_key && MODULE_WIDGETS.length > 0) {
-                widgetCfg.widget_key = MODULE_WIDGETS[0].key || '';
-                el.dataset.blockConfig = JSON.stringify(widgetCfg);
-            }
             refreshModuleWidgetPreview(el);
         }
 
