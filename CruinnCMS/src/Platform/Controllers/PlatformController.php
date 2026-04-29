@@ -427,7 +427,7 @@ class PlatformController
                     $slug  = '_cms_src_' . md5($fileParam);
                     $title = basename($fileParam);
                     $db->execute(
-                        'INSERT INTO pages (title, slug, render_mode, render_file, status)
+                        'INSERT INTO pages_index (title, slug, render_mode, render_file, status)
                              VALUES (?, ?, "file", ?, "draft")
                              ON DUPLICATE KEY UPDATE title = VALUES(title), render_file = VALUES(render_file)',
                         [$title, $slug, '@cms/' . $fileParam]
