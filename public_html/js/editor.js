@@ -52,6 +52,7 @@
         initCanvasResize();
         bindDocPanel();
         bindPageSettings();
+        bindTemplateLayout();
         // Auto-enter code view for HTML render-mode pages
         if (wrap.dataset.startInCodeView === '1') {
             _htmlPageMode = true;
@@ -2034,6 +2035,67 @@
                 console.error('[Cruinn] savePageMetadata failed:', err);
             });
         }
+    }
+
+    function bindTemplateLayout() {
+        var maxWidthNum = document.getElementById('tpl-body-max-width-num');
+        var maxWidthUnit = document.getElementById('tpl-body-max-width-unit');
+        var padding = document.getElementById('tpl-body-padding');
+
+        if (!maxWidthNum || !maxWidthUnit || !padding) { return; }
+
+        // Load existing settings from data attribute
+        var wrap = document.getElementById('editor-wrap');
+        if (wrap && wrap.dataset.templateLayout) {
+            try {
+                var settings = JSON.parse(wrap.dataset.templateLayout);
+                if (settings.maxWidth) {
+                    maxWidthNum.value = settings.maxWidth;
+                }
+                if (settings.maxWidthUnit) {
+                    maxWidthUnit.value = settings.maxWidthUnit;
+                }
+                if (settings.padding) {
+                    padding.value = settings.padding;
+                }
+            } catch (e) {
+                console.warn('[Cruinn] Failed to parse template layout settings:', e);
+            }
+        }
+
+        // Debounced save
+        var saveTimer = null;
+        function saveTemplateLayout() {
+            if (!HAS_PAGE) { return; }
+
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(function () {
+                var maxWidth = maxWidthNum.value ? parseInt(maxWidthNum.value, 10) : null;
+                var unit = maxWidthUnit.value;
+
+                fetch(API_BASE + '/' + PAGE_ID + '/metadata', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': CSRF,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        layout_settings: {
+                            maxWidth: maxWidth,
+                            maxWidthUnit: unit,
+                            padding: padding.value.trim() || null,
+                        },
+                    }),
+                }).catch(function (err) {
+                    console.error('[Cruinn] saveTemplateLayout failed:', err);
+                });
+            }, 500);
+        }
+
+        maxWidthNum.addEventListener('input', saveTemplateLayout);
+        maxWidthUnit.addEventListener('change', saveTemplateLayout);
+        padding.addEventListener('input', saveTemplateLayout);
     }
 
     var _actionTimer = null;

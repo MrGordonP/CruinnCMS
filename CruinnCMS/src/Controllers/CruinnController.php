@@ -315,13 +315,20 @@ class CruinnController extends BaseController
         $templateId      = null;
         $templateZonesDef = [];
         $contextFields   = [];   // [{key, label, type}] for content template binding
+        $templateLayoutSettings = [];  // Layout settings for template pages
         if ($isTemplatePage) {
             $tplRow = $this->db->fetch(
-                'SELECT id, zones, context_source FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+                'SELECT id, zones, context_source, settings FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
                 [$pageId]
             );
             $templateId       = $tplRow ? (int) $tplRow['id'] : null;
             $templateZonesDef = $tplRow ? (json_decode($tplRow['zones'] ?? '[]', true) ?: []) : [];
+
+            // Template layout settings for .site-body-wrap
+            if ($tplRow && !empty($tplRow['settings'])) {
+                $settings = json_decode($tplRow['settings'], true) ?: [];
+                $templateLayoutSettings = $settings['body_layout'] ?? [];
+            }
 
             // Resolve context fields from context_source
             if ($tplRow && !empty($tplRow['context_source'])) {
@@ -661,6 +668,7 @@ class CruinnController extends BaseController
             'sidebarContextPageId'=> $sidebarContextPageId,
             'sidebarContextLabel' => $sidebarContextLabel,
             'contextFields'       => $contextFields,
+            'templateLayoutSettings' => $templateLayoutSettings,
             'startInCodeView'   => !$hasImportedBlocks && $renderMode === 'html',
             'htmlContent'       => !$hasImportedBlocks && $renderMode === 'html' ? ($page['body_html'] ?? '') : null,
             'isFileMode'        => $renderMode === 'file',
@@ -1492,6 +1500,62 @@ class CruinnController extends BaseController
             ],
         ];
         return $builtIn[$contextSource] ?? [];
+    }
+
+    /**
+     * POST /admin/editor/{pageId}/metadata
+     * Save page metadata (template, zone) or template layout settings.
+     */
+    public function saveMetadata(string $pageId): void
+    {
+        $this->requireEditorAuth();
+        $pageId = (int) $pageId;
+
+        $page = $this->db->fetch('SELECT id, is_template_page, template FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
+        if (!$page) {
+            $this->json(['error' => 'Page not found'], 404);
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        // Template layout settings (for template pages only)
+        if (!empty($page['is_template_page']) && isset($body['layout_settings'])) {
+            $templateSlug = $page['template'] ?? null;
+            if (!$templateSlug) {
+                $this->json(['error' => 'Template slug not found'], 400);
+            }
+
+            $currentTpl = $this->db->fetch(
+                'SELECT settings FROM page_templates WHERE slug = ? LIMIT 1',
+                [$templateSlug]
+            );
+            if (!$currentTpl) {
+                $this->json(['error' => 'Template not found'], 404);
+            }
+
+            $settings = json_decode($currentTpl['settings'] ?? '{}', true) ?: [];
+            $settings['body_layout'] = $body['layout_settings'];
+
+            $this->db->execute(
+                'UPDATE page_templates SET settings = ? WHERE slug = ?',
+                [json_encode($settings), $templateSlug]
+            );
+
+            $this->json(['success' => true]);
+            return;
+        }
+
+        // Regular page metadata (template + zone)
+        if (isset($body['template'])) {
+            $template = preg_replace('/[^a-z0-9_\-]/', '', $body['template']);
+            $this->db->execute('UPDATE pages_index SET template = ? WHERE id = ?', [$template, $pageId]);
+        }
+        if (isset($body['page_zone'])) {
+            $zone = preg_replace('/[^a-z0-9_\-]/', '', $body['page_zone']);
+            $this->db->execute('UPDATE pages_index SET page_zone = ? WHERE id = ?', [$zone, $pageId]);
+        }
+
+        $this->json(['success' => true]);
     }
 
 }

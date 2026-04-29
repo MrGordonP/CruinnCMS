@@ -116,7 +116,20 @@ $_cruinnHeader = (new \Cruinn\Services\CruinnRenderService())->buildZone('header
 </div>
 <?php endif; ?>
 
-<div class="site-body-wrap">
+<?php
+// Template layout settings for .site-body-wrap
+$_bodyWrapStyle = '';
+$_bodyLayout = $_tplSettings['body_layout'] ?? [];
+if (!empty($_bodyLayout['maxWidth'])) {
+    $val = $_bodyLayout['maxWidth'];
+    $unit = $_bodyLayout['maxWidthUnit'] ?? 'px';
+    $_bodyWrapStyle .= 'max-width:' . ($unit === 'none' ? 'none' : e($val) . e($unit)) . ';';
+}
+if (!empty($_bodyLayout['padding'])) {
+    $_bodyWrapStyle .= 'padding:' . e($_bodyLayout['padding']) . ';';
+}
+?>
+<div class="site-body-wrap"<?= $_bodyWrapStyle ? ' style="' . $_bodyWrapStyle . '"' : '' ?>>
     <main id="main-content">
         <?= $_pageContent ?>
     </main>

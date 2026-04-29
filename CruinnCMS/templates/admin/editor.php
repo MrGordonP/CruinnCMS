@@ -40,7 +40,8 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
      data-start-in-code-view="<?= !empty($startInCodeView) ? '1' : '0' ?>"
-     data-html-content="<?= htmlspecialchars($htmlContent ?? '', ENT_QUOTES, 'UTF-8') ?>">
+     data-html-content="<?= htmlspecialchars($htmlContent ?? '', ENT_QUOTES, 'UTF-8') ?>"
+     data-template-layout="<?= htmlspecialchars(json_encode($templateLayoutSettings ?? []), ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- ── Draft resume banner ─────────────────────────────────── -->
     <div id="editor-draft-banner" style="display:none" role="dialog" aria-modal="true" aria-labelledby="editor-draft-banner-title">
@@ -523,6 +524,33 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
             <div class="pl-panel-body">
             <div class="editor-props-empty">Select a block to edit its properties.</div>
+
+            <!-- Template Layout Settings (template pages only) -->
+            <?php if ($page && !empty($isTemplatePage)): ?>
+            <div class="editor-accordion" data-group="template-layout" id="editor-template-layout">
+                <button class="editor-accordion-toggle">Template Layout</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row">
+                        <label for="tpl-body-max-width-num">Body Max Width</label>
+                        <div class="editor-prop-with-unit editor-prop-with-unit--size">
+                            <input type="number" class="editor-prop-input" id="tpl-body-max-width-num" min="0" step="1" placeholder="1200">
+                            <select class="editor-unit-select" id="tpl-body-max-width-unit">
+                                <option value="px">px</option>
+                                <option value="%">%</option>
+                                <option value="vw">vw</option>
+                                <option value="none">none</option>
+                            </select>
+                        </div>
+                        <span class="editor-label-hint">Max width of .site-body-wrap. Leave empty for no constraint.</span>
+                    </div>
+                    <div class="editor-prop-row">
+                        <label for="tpl-body-padding">Body Padding</label>
+                        <input type="text" class="editor-prop-input" id="tpl-body-padding" placeholder="0 1rem">
+                        <span class="editor-label-hint">CSS padding value (e.g., "0 2rem" or "1rem").</span>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <!-- Page Settings group (regular pages only, not zones/templates) -->
             <?php if ($page && empty($isZonePage) && empty($isTemplatePage)): ?>
