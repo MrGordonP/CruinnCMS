@@ -448,19 +448,30 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <?php endif; ?>
 
             <div class="editor-canvas-shell<?= $hasSidebarContext ? ' has-sidebar' : '' ?>">
+                <?php if (!$page): ?>
+                <div class="editor-canvas-main">
+                    <div class="editor-no-page-panel" role="region" aria-label="No page selected">
+                        <h2>No page selected</h2>
+                        <p>Choose a page from the left panel to start editing, or create a new page.</p>
+                        <div class="editor-no-page-actions">
+                            <a href="<?= e($_editorPagesHref) ?>" class="btn btn-primary">Open Page List</a>
+                            <?php if (empty($isPlatformMode)): ?>
+                            <a href="<?= url('/admin/site-builder/pages/new') ?>" class="btn btn-outline">Create New Page</a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
                 <div class="editor-canvas-main">
                     <div id="editor-canvas" class="editor-mode<?= !empty($isZonePage) ? ' zone-canvas' : '' ?>">
-                        <?php if (!$page): ?>
-                        <div class="editor-empty-canvas editor-no-page">Select a page from the left panel to begin editing.</div>
-                        <?php else: ?>
                         <?= $cruinnHtml ?>
                         <?php if (empty(trim($cruinnHtml))): ?>
                         <div class="editor-empty-canvas">Click a block type on the left to begin.</div>
                         <?php endif; ?>
-                        <?php endif; ?>
                     </div>
                     <div id="cruinn-canvas-resize-handle" title="Drag to resize canvas height"></div>
                 </div>
+                <?php endif; ?>
 
                 <?php if ($hasSidebarContext): ?>
                 <aside class="editor-sidebar-context" aria-label="Sidebar context preview">

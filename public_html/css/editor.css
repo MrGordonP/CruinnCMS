@@ -655,6 +655,37 @@
     pointer-events: none;
 }
 
+.editor-no-page-panel {
+    max-width: 640px;
+    margin: 2rem auto 0;
+    padding: 2rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.editor-no-page-panel h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    color: #111827;
+}
+
+.editor-no-page-panel p {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.9rem;
+}
+
+.editor-no-page-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
 /* ── Editor mode block affordances ────────────────────────────── */
 
 .editor-mode [data-block] {
