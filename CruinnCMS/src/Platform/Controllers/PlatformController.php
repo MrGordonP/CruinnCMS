@@ -2148,6 +2148,38 @@ class PlatformController
     }
 
     /**
+     * Resolve a writable source path, allowing targets that do not exist yet.
+     * Returns [absoluteTargetPath, absoluteRoot] or null when outside allowed roots.
+     *
+     * @return array{0:string,1:string}|null
+     */
+    private function resolveSourceWritePath(string $relPath): ?array
+    {
+        $relPath = ltrim(str_replace(['..', '\\'], ['', '/'], $relPath), '/');
+        if ($relPath === '') { return null; }
+
+        $rcRoot     = dirname(__DIR__, 3);
+        $rcRootReal = realpath($rcRoot);
+        $publicRoot = realpath(CRUINN_PUBLIC);
+
+        if (str_starts_with($relPath, 'public/')) {
+            if (!$publicRoot) { return null; }
+            $suffix = substr($relPath, 7);
+            $target = rtrim($publicRoot, DIRECTORY_SEPARATOR)
+                . DIRECTORY_SEPARATOR
+                . str_replace('/', DIRECTORY_SEPARATOR, $suffix);
+            return [$target, $publicRoot];
+        }
+
+        if (!$rcRootReal) { return null; }
+        $target = rtrim($rcRootReal, DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR
+            . str_replace('/', DIRECTORY_SEPARATOR, $relPath);
+
+        return [$target, $rcRootReal];
+    }
+
+    /**
      * Resolve a source-editor directory path to absolute path/root.
      *
      * @return array{0:string,1:string}|null
@@ -2939,15 +2971,22 @@ class PlatformController
                 continue;
             }
 
-            $resolvedFile = $this->resolveSourcePath($localPath);
+            $resolvedFile = $this->resolveSourceWritePath($localPath);
             if (!$resolvedFile) {
                 $results[] = ['path' => $localPath, 'status' => 'skipped', 'error' => 'Not in local tree'];
                 continue;
             }
-            [$absFile] = $resolvedFile;
-            if (!is_file($absFile)) {
-                // File doesn't exist locally — skip rather than create new files unexpectedly
-                $results[] = ['path' => $localPath, 'status' => 'skipped', 'error' => 'Not in local tree'];
+            [$absFile, $absRoot] = $resolvedFile;
+            $normalizedRoot = rtrim(str_replace('\\', '/', $absRoot), '/');
+            $normalizedFile = str_replace('\\', '/', $absFile);
+            if (!(str_starts_with($normalizedFile, $normalizedRoot . '/'))) {
+                $results[] = ['path' => $localPath, 'status' => 'skipped', 'error' => 'Outside allowed root'];
+                continue;
+            }
+
+            $parentDir = dirname($absFile);
+            if (!is_dir($parentDir) && !@mkdir($parentDir, 0755, true) && !is_dir($parentDir)) {
+                $results[] = ['path' => $localPath, 'status' => 'write_error', 'error' => 'Could not create directory'];
                 continue;
             }
 
