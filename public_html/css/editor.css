@@ -417,6 +417,64 @@
     /* contain position:fixed children to this scroll box */
 }
 
+.editor-canvas-shell {
+    display: block;
+}
+
+.editor-canvas-shell.has-sidebar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.editor-sidebar-context {
+    background: #f8f9fb;
+    border: 1px solid #d6dbe3;
+    border-radius: 6px;
+    overflow: hidden;
+    position: sticky;
+    top: 0.75rem;
+}
+
+.editor-sidebar-context-head {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #4b5563;
+    background: #e5e7eb;
+    padding: 0.55rem 0.75rem;
+}
+
+.editor-sidebar-context-body {
+    padding: 0.75rem;
+}
+
+.editor-sidebar-context-link {
+    display: block;
+    border-top: 1px solid #d6dbe3;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.78rem;
+    text-decoration: none;
+    color: #0d7a5b;
+    font-weight: 600;
+}
+
+.editor-sidebar-context-link:hover {
+    background: #e8f5f1;
+}
+
+@media (max-width: 1300px) {
+    .editor-canvas-shell.has-sidebar {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-sidebar-context {
+        position: static;
+    }
+}
+
 #editor-canvas {
     background: #ffffff;
     min-height: 400px;
@@ -462,6 +520,10 @@
     transition: background 0.1s;
     position: relative;
     user-select: none;
+}
+
+.editor-canvas-shell.has-sidebar #cruinn-canvas-resize-handle {
+    max-width: none;
 }
 
 #cruinn-canvas-resize-handle::after {

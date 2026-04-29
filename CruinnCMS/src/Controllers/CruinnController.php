@@ -165,6 +165,10 @@ class CruinnController extends BaseController
             'templateCanvasPageId' => null,
             'templateCanvasHtml'   => '',
             'templateCanvasCss'    => '',
+            'sidebarContextHtml'   => '',
+            'sidebarContextCss'    => '',
+            'sidebarContextPageId' => null,
+            'sidebarContextLabel'  => '',
             'startInCodeView' => false,
             'htmlContent'     => null,
             'editorPageBase'  => null,
@@ -319,6 +323,10 @@ class CruinnController extends BaseController
         $templateCanvasPageId = null;
         $templateCanvasHtml  = '';
         $templateCanvasCss   = '';
+        $sidebarContextHtml  = '';
+        $sidebarContextCss   = '';
+        $sidebarContextPageId = null;
+        $sidebarContextLabel = '';
 
         if (!$isZonePage || $isTemplatePage) {
             $hp = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
@@ -345,7 +353,7 @@ class CruinnController extends BaseController
                 $pageTemplateSlug = $page['template'] ?? 'default';
                 if ($pageTemplateSlug && $pageTemplateSlug !== 'none') {
                     $tplRow = $this->db->fetch(
-                        'SELECT id, canvas_page_id FROM page_templates WHERE slug = ? LIMIT 1',
+                        'SELECT id, slug, name, canvas_page_id, zones, settings FROM page_templates WHERE slug = ? LIMIT 1',
                         [$pageTemplateSlug]
                     );
                     if ($tplRow && !empty($tplRow['canvas_page_id'])) {
@@ -364,6 +372,44 @@ class CruinnController extends BaseController
                                 $zn   = $cfg['zone_name'] ?? 'main';
                                 if (!in_array($zn, $templateZones, true)) {
                                     $templateZones[] = $zn;
+                                }
+                            }
+                        }
+                    }
+
+                    // Sidebar context preview: mirror public runtime sidebar source resolution.
+                    if ($tplRow) {
+                        $tplZones = json_decode($tplRow['zones'] ?? '[]', true) ?: [];
+                        $hasSidebarZone = in_array('sidebar', $tplZones, true);
+                        if ($hasSidebarZone) {
+                            $tplSettings = json_decode($tplRow['settings'] ?? '{}', true) ?: [];
+                            $sidebarSource = (string) ($tplSettings['sidebar_source'] ?? 'default');
+
+                            if ($sidebarSource === 'default') {
+                                $sidebarContextHtml = $this->buildModuleSidebarHtml();
+                                $sidebarContextLabel = 'Auto - module widgets';
+                            } else {
+                                $sourceSlug = $sidebarSource === 'custom'
+                                    ? ($tplRow['slug'] ?? '')
+                                    : $sidebarSource;
+                                if (preg_match('/^[a-z0-9_\-]+$/', $sourceSlug)) {
+                                    $sourceTpl = $this->db->fetch(
+                                        "SELECT id, name, slug, canvas_page_id FROM page_templates
+                                          WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"')
+                                          LIMIT 1",
+                                        [$sourceSlug]
+                                    );
+                                    if ($sourceTpl && !empty($sourceTpl['canvas_page_id'])) {
+                                        $sourceCanvasId = (int) $sourceTpl['canvas_page_id'];
+                                        if ($cruinnSvc->hasPublished($sourceCanvasId)) {
+                                            $sidebarContextHtml = $cruinnSvc->buildHtml($sourceCanvasId);
+                                            $sidebarContextCss  = $cruinnSvc->buildCss($sourceCanvasId);
+                                            $sidebarContextPageId = $sourceCanvasId;
+                                            $sidebarContextLabel = ($sidebarSource === 'custom')
+                                                ? 'Custom - this template'
+                                                : ('Template - ' . ($sourceTpl['name'] ?? $sourceSlug));
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -532,6 +578,10 @@ class CruinnController extends BaseController
             'templateCanvasPageId' => $templateCanvasPageId,
             'templateCanvasHtml'  => $templateCanvasHtml,
             'templateCanvasCss'   => $templateCanvasCss,
+            'sidebarContextHtml'  => $sidebarContextHtml,
+            'sidebarContextCss'   => $sidebarContextCss,
+            'sidebarContextPageId'=> $sidebarContextPageId,
+            'sidebarContextLabel' => $sidebarContextLabel,
             'contextFields'       => $contextFields,
             'startInCodeView'   => !$hasImportedBlocks && $renderMode === 'html',
             'htmlContent'       => !$hasImportedBlocks && $renderMode === 'html' ? ($page['body_html'] ?? '') : null,
@@ -1364,6 +1414,28 @@ class CruinnController extends BaseController
             ],
         ];
         return $builtIn[$contextSource] ?? [];
+    }
+
+    private function buildModuleSidebarHtml(): string
+    {
+        $widgets = \Cruinn\Modules\ModuleRegistry::collectWidgets();
+        if (empty($widgets)) {
+            return '';
+        }
+
+        $html = '';
+        foreach ($widgets as $widget) {
+            $title = isset($widget['title']) ? (string) $widget['title'] : '';
+            $body  = isset($widget['html']) ? (string) $widget['html'] : '';
+            $html .= '<section class="widget">';
+            if ($title !== '') {
+                $html .= '<h2 class="widget-title">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h2>';
+            }
+            $html .= '<div class="widget-body">' . $body . '</div>';
+            $html .= '</section>';
+        }
+
+        return $html;
     }
 
 }

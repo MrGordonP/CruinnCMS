@@ -412,6 +412,12 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 
         <!-- Canvas -->
         <div id="editor-canvas-wrap" class="pl-main">
+            <?php $hasSidebarContext = !empty($sidebarContextHtml); ?>
+            <?php if (!empty($sidebarContextCss)): ?>
+            <style id="editor-sidebar-context-styles">
+<?= $sidebarContextCss ?>
+            </style>
+            <?php endif; ?>
 
             <?php if ((empty($isZonePage) || !empty($isTemplatePage)) && isset($headerPageId)): ?>
             <?php if (!empty($headerPages) && count($headerPages) > 1): ?>
@@ -440,17 +446,37 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <?php endif; ?>
             <?php endif; ?>
 
-            <div id="editor-canvas" class="editor-mode<?= !empty($isZonePage) ? ' zone-canvas' : '' ?>">
-                <?php if (!$page): ?>
-                <div class="editor-empty-canvas editor-no-page">Select a page from the left panel to begin editing.</div>
-                <?php else: ?>
-                <?= $cruinnHtml ?>
-                <?php if (empty(trim($cruinnHtml))): ?>
-                <div class="editor-empty-canvas">Click a block type on the left to begin.</div>
-                <?php endif; ?>
+            <div class="editor-canvas-shell<?= $hasSidebarContext ? ' has-sidebar' : '' ?>">
+                <div class="editor-canvas-main">
+                    <div id="editor-canvas" class="editor-mode<?= !empty($isZonePage) ? ' zone-canvas' : '' ?>">
+                        <?php if (!$page): ?>
+                        <div class="editor-empty-canvas editor-no-page">Select a page from the left panel to begin editing.</div>
+                        <?php else: ?>
+                        <?= $cruinnHtml ?>
+                        <?php if (empty(trim($cruinnHtml))): ?>
+                        <div class="editor-empty-canvas">Click a block type on the left to begin.</div>
+                        <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div id="cruinn-canvas-resize-handle" title="Drag to resize canvas height"></div>
+                </div>
+
+                <?php if ($hasSidebarContext): ?>
+                <aside class="editor-sidebar-context" aria-label="Sidebar context preview">
+                    <div class="editor-sidebar-context-head">
+                        Sidebar Context<?= !empty($sidebarContextLabel) ? ': ' . e($sidebarContextLabel) : '' ?>
+                    </div>
+                    <div class="editor-sidebar-context-body">
+                        <?= $sidebarContextHtml ?>
+                    </div>
+                    <?php if (!empty($sidebarContextPageId)): ?>
+                    <a href="<?= e($_editorPageHref((int)$sidebarContextPageId)) ?>" class="editor-sidebar-context-link">
+                        Edit Sidebar Source
+                    </a>
+                    <?php endif; ?>
+                </aside>
                 <?php endif; ?>
             </div>
-            <div id="cruinn-canvas-resize-handle" title="Drag to resize canvas height"></div>
 
             <?php if (!empty($templateCanvasHtml)): ?>
             <div class="editor-zone-preview editor-template-canvas-preview">
