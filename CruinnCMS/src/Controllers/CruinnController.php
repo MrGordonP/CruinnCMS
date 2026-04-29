@@ -657,7 +657,7 @@ class CruinnController extends BaseController
         } catch (\Throwable $e) {
             $pdo->rollBack();
             error_log('CruinnController::recordAction failed: ' . $e->getMessage());
-            $this->json(['error' => 'Failed to record action'], 500);
+            $this->json(['error' => 'Failed to record action: ' . $e->getMessage()], 500);
         }
     }
 
