@@ -159,6 +159,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (el.id) {
             btn.setAttribute('aria-controls', el.id);
         }
+        var align = (el.getAttribute('data-ui-collapse-align') || '').trim();
+        if (align) { btn.setAttribute('data-ui-collapse-align', align); }
         btn.innerHTML = '<span class="ui-collapse-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>' +
             '<span class="ui-collapse-toggle-label">' + buildCollapseLabel(el) + '</span>';
 
