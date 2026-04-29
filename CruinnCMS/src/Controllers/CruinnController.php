@@ -417,7 +417,11 @@ class CruinnController extends BaseController
                                 if ($sourceTpl && !empty($sourceTpl['canvas_page_id'])) {
                                     $sourceCanvasId = (int) $sourceTpl['canvas_page_id'];
                                     if ($cruinnSvc->hasPublished($sourceCanvasId)) {
-                                        $sidebarContextHtml = $cruinnSvc->buildHtml($sourceCanvasId);
+                                        // For custom sidebar, render only sidebar zone blocks
+                                        // For global/other templates, render entire canvas (backward compatible)
+                                        $sidebarContextHtml = ($sidebarSource === 'custom')
+                                            ? $cruinnSvc->buildZoneHtml($sourceCanvasId, 'sidebar')
+                                            : $cruinnSvc->buildHtml($sourceCanvasId);
                                         $sidebarContextCss  = $cruinnSvc->buildCss($sourceCanvasId);
                                         $sidebarContextPageId = $sourceCanvasId;
                                         $sidebarContextLabel = ($sidebarSource === 'default')

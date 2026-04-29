@@ -209,8 +209,14 @@ class PageController extends BaseController
             return ['html' => '', 'css' => ''];
         }
 
+        // For custom sidebar source, render only the sidebar zone blocks
+        // For global or other templates, render the entire canvas (backward compatible)
+        $html = ($source === 'custom')
+            ? $cruinn->buildZoneHtml($canvasPageId, 'sidebar')
+            : $cruinn->buildHtml($canvasPageId);
+
         return [
-            'html' => $cruinn->buildHtml($canvasPageId),
+            'html' => $html,
             'css'  => $cruinn->buildCss($canvasPageId),
         ];
     }

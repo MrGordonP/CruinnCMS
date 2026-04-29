@@ -67,11 +67,53 @@ class CruinnRenderService
     }
 
     /**
-     * Build HTML + CSS for a named global zone ('header' or 'footer').
-     * Looks up the reserved page by slug (_header / _footer), reads its published
-     * pages, and returns ['page_id', 'html', 'css'].
-     * Returns null when the zone page does not exist or has no published content.
-     * Results are statically cached for the lifetime of the request.
+     * Build HTML for blocks within a specific zone.
+     * Finds zone blocks matching the zone name, then renders their children.
+     * Returns empty string if no matching zone found.
+     */
+    public function buildZoneHtml(int $pageId, string $zoneName): string
+    {
+        $flat = $this->db->fetchAll(
+            'SELECT * FROM pages
+              WHERE page_id = ?
+              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+            [$pageId]
+        );
+
+        $byId       = [];
+        $childrenOf = [];
+        $zoneBlockIds = [];
+
+        foreach ($flat as $row) {
+            $byId[$row['block_id']] = $row;
+            $pid = $row['parent_block_id'] ?? null;
+            $childrenOf[$pid ?? '__root'][] = $row['block_id'];
+
+            // Track root-level zone blocks matching the target zone name
+            if ($row['block_type'] === 'zone' && $pid === null) {
+                $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+                if (($cfg['zone_name'] ?? 'main') === $zoneName) {
+                    $zoneBlockIds[] = $row['block_id'];
+                }
+            }
+        }
+
+        if (empty($zoneBlockIds)) {
+            return '';
+        }
+
+        // Render all matching zone blocks and their children
+        $html = '';
+        foreach ($zoneBlockIds as $zoneId) {
+            $html .= $this->renderTree($zoneId, $byId, $childrenOf);
+        }
+
+        return $html;
+    }
+
+    /**
+     * Build the full page HTML from published pages.
+     * Dynamic blocks have their content server-rendered here.
      */
     public function buildZone(string $zone): ?array
     {
