@@ -527,12 +527,18 @@
         var uiCollapseEnabled = document.getElementById('prop-ui-collapse-enabled');
         var uiCollapseRow = document.getElementById('prop-ui-collapse-row');
         var uiCollapseSel = document.getElementById('prop-ui-collapse');
+        var uiCollapseLabelRow = document.getElementById('prop-ui-collapse-label-row');
+        var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
         var uiCollapse = (config.ui_collapse || '').toString();
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var isEnabled = uiCollapse === 'tablet' || uiCollapse === 'mobile';
             uiCollapseEnabled.checked = isEnabled;
             uiCollapseRow.style.display = isEnabled ? '' : 'none';
             uiCollapseSel.value = isEnabled ? uiCollapse : 'tablet';
+            if (uiCollapseLabelRow && uiCollapseLabelInp) {
+                uiCollapseLabelRow.style.display = isEnabled ? '' : 'none';
+                uiCollapseLabelInp.value = (config.ui_collapse_label || '').toString();
+            }
         }
 
         // CSS properties — read from active viewport overrides, fallback to computed desktop
@@ -989,8 +995,13 @@
                 try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
                 if (uiCollapseEnabled.checked) {
                     cfg.ui_collapse = uiCollapseSel.value === 'mobile' ? 'mobile' : 'tablet';
+                    if (uiCollapseLabelInp) {
+                        var lbl = uiCollapseLabelInp.value.trim();
+                        if (lbl) { cfg.ui_collapse_label = lbl; } else { delete cfg.ui_collapse_label; }
+                    }
                 } else {
                     delete cfg.ui_collapse;
+                    delete cfg.ui_collapse_label;
                 }
                 block.dataset.blockConfig = JSON.stringify(cfg);
                 recordAction();
@@ -998,6 +1009,7 @@
 
             uiCollapseEnabled.onchange = function () {
                 uiCollapseRow.style.display = this.checked ? '' : 'none';
+                if (uiCollapseLabelRow) { uiCollapseLabelRow.style.display = this.checked ? '' : 'none'; }
                 if (this.checked && !uiCollapseSel.value) {
                     uiCollapseSel.value = 'tablet';
                 }
@@ -1008,6 +1020,13 @@
                 if (!uiCollapseEnabled.checked) { return; }
                 writeUiCollapse();
             };
+
+            if (uiCollapseLabelInp) {
+                uiCollapseLabelInp.oninput = function () {
+                    if (!uiCollapseEnabled.checked) { return; }
+                    writeUiCollapse();
+                };
+            }
         }
 
         // Image block: src browse + attr bindings

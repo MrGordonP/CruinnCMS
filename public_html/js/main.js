@@ -137,9 +137,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function buildCollapseLabel(el) {
-        if (el.dataset.blockType === 'nav-menu') {
-            return 'Menu';
-        }
+        var custom = (el.getAttribute('data-ui-collapse-label') || '').trim();
+        if (custom) { return custom; }
+        if (el.dataset.blockType === 'nav-menu') { return 'Menu'; }
         return 'Section';
     }
 

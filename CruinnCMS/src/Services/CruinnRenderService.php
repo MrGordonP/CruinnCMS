@@ -246,6 +246,10 @@ class CruinnRenderService
             $uiCollapse = (string) ($cfg['ui_collapse'] ?? '');
             if ($uiCollapse === 'tablet' || $uiCollapse === 'mobile') {
                 $extraAttrs .= ' data-ui-collapse="' . $uiCollapse . '"';
+                $uiLabel = trim((string) ($cfg['ui_collapse_label'] ?? ''));
+                if ($uiLabel !== '') {
+                    $extraAttrs .= ' data-ui-collapse-label="' . htmlspecialchars($uiLabel, ENT_QUOTES, 'UTF-8') . '"';
+                }
             }
 
             $isDynamic    = $this->isDynamicType($row['block_type']);

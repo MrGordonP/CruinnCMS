@@ -556,6 +556,10 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                             <option value="mobile">Mobile only (<= 767px)</option>
                         </select>
                     </div>
+                    <div class="editor-prop-row" id="prop-ui-collapse-label-row" style="display:none">
+                        <label>Button label</label>
+                        <input type="text" class="editor-prop-input" id="prop-ui-collapse-label" placeholder="e.g. Menu, Navigation, Utility">
+                    </div>
                 </div>
             </div>
 
