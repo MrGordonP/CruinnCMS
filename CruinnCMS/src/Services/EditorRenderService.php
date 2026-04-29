@@ -206,7 +206,7 @@ class EditorRenderService
             $restrictedTags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
                                'dt', 'figcaption', 'caption', 'pre'];
             // Tags that must not execute or render raw in the canvas.
-            $inertTags = ['script', 'style', 'noscript'];
+            $inertTags = ['script', 'style', 'noscript', 'html', 'head', 'body'];
 
             if (in_array($tag, $inertTags, true)) {
                 $tag = 'div';
@@ -251,6 +251,8 @@ class EditorRenderService
             $innerContent  = BlockRegistry::isDynamic($row['block_type'])
                 ? BlockRegistry::renderDynamic($row, $db)
                 : ($row['inner_html'] ?? '');
+            // Strip any DOCTYPE declarations from inner content — safe for canvas rendering.
+            $innerContent  = preg_replace('/<!DOCTYPE[^>]*>/i', '', $innerContent);
             $innerContent .= $this->renderTree($blockId, $byId, $childrenOf, $db, $visited);
 
             $html .= "<{$tag} id=\"{$id}\" data-block data-block-type=\"{$type}\"{$extraAttrs}>"
