@@ -445,7 +445,14 @@
 
         // Show/hide groups
         panel.querySelector('.editor-props-empty').style.display = 'none';
+        
+        // Page Settings always visible (page-level, not block-level)
+        var pageSettings = document.getElementById('editor-page-settings');
+        if (pageSettings) { pageSettings.style.display = ''; }
+        
         panel.querySelectorAll('.editor-accordion').forEach(function (acc) {
+            // Skip page-settings, already handled above
+            if (acc.id === 'editor-page-settings') { return; }
             acc.style.display = '';
         });
 
