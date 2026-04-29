@@ -989,6 +989,8 @@
         var uiCollapseEnabled = document.getElementById('prop-ui-collapse-enabled');
         var uiCollapseRow = document.getElementById('prop-ui-collapse-row');
         var uiCollapseSel = document.getElementById('prop-ui-collapse');
+        var uiCollapseLabelRow = document.getElementById('prop-ui-collapse-label-row');
+        var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var writeUiCollapse = function () {
                 var cfg = {};
