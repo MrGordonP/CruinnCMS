@@ -102,10 +102,14 @@ class CruinnRenderService
             return '';
         }
 
-        // Render all matching zone blocks and their children
+        // Render children of all matching zone blocks (zone wrapper is transparent)
         $html = '';
         foreach ($zoneBlockIds as $zoneId) {
-            $html .= $this->renderTree($zoneId, $byId, $childrenOf);
+            if (!empty($childrenOf[$zoneId])) {
+                foreach ($childrenOf[$zoneId] as $childBlockId) {
+                    $html .= $this->renderTree($childBlockId, $byId, $childrenOf);
+                }
+            }
         }
 
         return $html;
