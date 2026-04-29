@@ -71,6 +71,7 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/maintenance/links',           [\Cruinn\Admin\Controllers\MaintenanceController::class, 'runLinkCheck']);
     $router->get('/admin/maintenance/migrations',       [\Cruinn\Admin\Controllers\MaintenanceController::class, 'migrations']);
     $router->post('/admin/maintenance/migrations',      [\Cruinn\Admin\Controllers\MaintenanceController::class, 'runMigrations']);
+    $router->post('/admin/maintenance/migrations/rerun', [\Cruinn\Admin\Controllers\MaintenanceController::class, 'rerunMigration']);
 
     // -- Authentication ---------------------------------------------
     $router->get('/login',            [AuthController::class, 'showLogin']);

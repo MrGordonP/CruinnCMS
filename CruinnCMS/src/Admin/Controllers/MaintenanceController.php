@@ -195,6 +195,64 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
     // ── Migrations ────────────────────────────────────────────────
 
     /**
+     * POST /admin/maintenance/migrations/rerun
+     * Delete the tracking record for a single migration and re-execute it.
+     */
+    public function rerunMigration(): void
+    {
+        Auth::requireRole('admin');
+        CSRF::validate();
+
+        $db     = Database::getInstance();
+        $module = preg_replace('/[^a-z0-9_\-]/', '', (string) ($_POST['module'] ?? ''));
+        $file   = preg_replace('/[^a-z0-9_\-.]/', '', (string) ($_POST['file'] ?? ''));
+
+        if ($module === '' || $file === '') {
+            http_response_code(400);
+            echo 'Invalid request';
+            return;
+        }
+
+        [$all] = $this->collectMigrationState();
+        $target = null;
+        foreach ($all as $m) {
+            if ($m['module'] === $module && $m['file'] === $file) {
+                $target = $m;
+                break;
+            }
+        }
+
+        if (!$target) {
+            http_response_code(404);
+            echo 'Migration not found';
+            return;
+        }
+
+        // Delete tracking row so it runs again
+        $db->execute(
+            "DELETE FROM module_migrations WHERE module = ? AND filename = ?",
+            [$module, $file]
+        );
+
+        $sql = file_get_contents($target['path']);
+        if ($sql === false || trim($sql) === '') {
+            header('Location: /admin/maintenance/migrations?rerun=empty');
+            return;
+        }
+
+        try {
+            $this->execSqlWithDelimiters($db->pdo(), $sql);
+            $db->execute(
+                "INSERT IGNORE INTO module_migrations (module, filename) VALUES (?, ?)",
+                [$module, $file]
+            );
+            header('Location: /admin/maintenance/migrations?rerun=ok&file=' . urlencode($file));
+        } catch (\Throwable $e) {
+            header('Location: /admin/maintenance/migrations?rerun=error&msg=' . urlencode($e->getMessage()));
+        }
+    }
+
+    /**
      * GET /admin/maintenance/migrations — Show migration status.
      */
     public function migrations(): void
