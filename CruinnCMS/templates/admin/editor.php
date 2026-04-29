@@ -556,6 +556,15 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                             <option value="mobile">Mobile only (<= 767px)</option>
                         </select>
                     </div>
+                    <div class="editor-prop-row" id="prop-ui-collapse-align-row" style="display:none">
+                        <label>Open alignment</label>
+                        <select class="editor-prop-input" id="prop-ui-collapse-align">
+                            <option value="">Full width</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                            <option value="center">Center</option>
+                        </select>
+                    </div>
                     <div class="editor-prop-row" id="prop-ui-collapse-label-row" style="display:none">
                         <label>Button label</label>
                         <input type="text" class="editor-prop-input" id="prop-ui-collapse-label" placeholder="e.g. Menu, Navigation, Utility">

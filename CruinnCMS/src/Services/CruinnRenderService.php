@@ -250,6 +250,10 @@ class CruinnRenderService
                 if ($uiLabel !== '') {
                     $extraAttrs .= ' data-ui-collapse-label="' . htmlspecialchars($uiLabel, ENT_QUOTES, 'UTF-8') . '"';
                 }
+                $uiAlign = (string) ($cfg['ui_collapse_align'] ?? '');
+                if (in_array($uiAlign, ['left', 'right', 'center'], true)) {
+                    $extraAttrs .= ' data-ui-collapse-align="' . $uiAlign . '"';
+                }
             }
 
             $isDynamic    = $this->isDynamicType($row['block_type']);

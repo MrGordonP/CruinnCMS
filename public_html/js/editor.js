@@ -529,12 +529,18 @@
         var uiCollapseSel = document.getElementById('prop-ui-collapse');
         var uiCollapseLabelRow = document.getElementById('prop-ui-collapse-label-row');
         var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
+        var uiCollapseAlignRow = document.getElementById('prop-ui-collapse-align-row');
+        var uiCollapseAlignSel = document.getElementById('prop-ui-collapse-align');
         var uiCollapse = (config.ui_collapse || '').toString();
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var isEnabled = uiCollapse === 'tablet' || uiCollapse === 'mobile';
             uiCollapseEnabled.checked = isEnabled;
             uiCollapseRow.style.display = isEnabled ? '' : 'none';
             uiCollapseSel.value = isEnabled ? uiCollapse : 'tablet';
+            if (uiCollapseAlignRow && uiCollapseAlignSel) {
+                uiCollapseAlignRow.style.display = isEnabled ? '' : 'none';
+                uiCollapseAlignSel.value = (config.ui_collapse_align || '').toString();
+            }
             if (uiCollapseLabelRow && uiCollapseLabelInp) {
                 uiCollapseLabelRow.style.display = isEnabled ? '' : 'none';
                 uiCollapseLabelInp.value = (config.ui_collapse_label || '').toString();
@@ -991,18 +997,25 @@
         var uiCollapseSel = document.getElementById('prop-ui-collapse');
         var uiCollapseLabelRow = document.getElementById('prop-ui-collapse-label-row');
         var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
+        var uiCollapseAlignRow = document.getElementById('prop-ui-collapse-align-row');
+        var uiCollapseAlignSel = document.getElementById('prop-ui-collapse-align');
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var writeUiCollapse = function () {
                 var cfg = {};
                 try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
                 if (uiCollapseEnabled.checked) {
                     cfg.ui_collapse = uiCollapseSel.value === 'mobile' ? 'mobile' : 'tablet';
+                    if (uiCollapseAlignSel) {
+                        var align = uiCollapseAlignSel.value;
+                        if (align) { cfg.ui_collapse_align = align; } else { delete cfg.ui_collapse_align; }
+                    }
                     if (uiCollapseLabelInp) {
                         var lbl = uiCollapseLabelInp.value.trim();
                         if (lbl) { cfg.ui_collapse_label = lbl; } else { delete cfg.ui_collapse_label; }
                     }
                 } else {
                     delete cfg.ui_collapse;
+                    delete cfg.ui_collapse_align;
                     delete cfg.ui_collapse_label;
                 }
                 block.dataset.blockConfig = JSON.stringify(cfg);
@@ -1011,6 +1024,7 @@
 
             uiCollapseEnabled.onchange = function () {
                 uiCollapseRow.style.display = this.checked ? '' : 'none';
+                if (uiCollapseAlignRow) { uiCollapseAlignRow.style.display = this.checked ? '' : 'none'; }
                 if (uiCollapseLabelRow) { uiCollapseLabelRow.style.display = this.checked ? '' : 'none'; }
                 if (this.checked && !uiCollapseSel.value) {
                     uiCollapseSel.value = 'tablet';
@@ -1022,6 +1036,13 @@
                 if (!uiCollapseEnabled.checked) { return; }
                 writeUiCollapse();
             };
+
+            if (uiCollapseAlignSel) {
+                uiCollapseAlignSel.onchange = function () {
+                    if (!uiCollapseEnabled.checked) { return; }
+                    writeUiCollapse();
+                };
+            }
 
             if (uiCollapseLabelInp) {
                 uiCollapseLabelInp.oninput = function () {
