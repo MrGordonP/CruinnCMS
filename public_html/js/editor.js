@@ -410,6 +410,30 @@
     // Block types whose href slot is bindable
     var BIND_HREF_TYPES = ['anchor'];
 
+    function getAvailableZoneNames(currentName) {
+        var seen = {};
+        var names = [];
+
+        function pushName(name) {
+            var n = (name || '').toString().trim();
+            if (!n || seen[n]) { return; }
+            seen[n] = true;
+            names.push(n);
+        }
+
+        ['main', 'header', 'footer', 'sidebar'].forEach(pushName);
+        TEMPLATE_ZONES.forEach(pushName);
+
+        canvas.querySelectorAll('[data-block-type="zone"]').forEach(function (zoneEl) {
+            var cfg = {};
+            try { cfg = JSON.parse(zoneEl.dataset.blockConfig || '{}'); } catch (e) { }
+            pushName(cfg.zone_name || zoneEl.getAttribute('data-zone-name') || 'main');
+        });
+
+        pushName(currentName);
+        return names;
+    }
+
     function loadProps(block) {
         var type = block.dataset.blockType;
         var cs = getComputedStyle(block); // computed styles for reading actual CSS values
@@ -523,6 +547,38 @@
         try {
             config = JSON.parse(block.dataset.blockConfig || '{}');
         } catch (e) { /* ignore */ }
+
+        // Zone block naming: dropdown-first with optional custom value
+        if (type === 'zone') {
+            var zoneNameSel = document.getElementById('prop-zone-name');
+            var zoneNameCustom = document.getElementById('prop-zone-name-custom');
+            if (zoneNameSel && zoneNameCustom) {
+                var currentZoneName = (config.zone_name || block.getAttribute('data-zone-name') || 'main').toString().trim() || 'main';
+                var availableZoneNames = getAvailableZoneNames(currentZoneName);
+
+                zoneNameSel.innerHTML = '';
+                availableZoneNames.forEach(function (zn) {
+                    var opt = document.createElement('option');
+                    opt.value = zn;
+                    opt.textContent = zn;
+                    zoneNameSel.appendChild(opt);
+                });
+                var customOpt = document.createElement('option');
+                customOpt.value = '__custom__';
+                customOpt.textContent = 'Custom...';
+                zoneNameSel.appendChild(customOpt);
+
+                if (availableZoneNames.indexOf(currentZoneName) !== -1) {
+                    zoneNameSel.value = currentZoneName;
+                    zoneNameCustom.style.display = 'none';
+                    zoneNameCustom.value = '';
+                } else {
+                    zoneNameSel.value = '__custom__';
+                    zoneNameCustom.style.display = '';
+                    zoneNameCustom.value = currentZoneName;
+                }
+            }
+        }
 
         // Responsive UI collapse controls
         var uiCollapseEnabled = document.getElementById('prop-ui-collapse-enabled');
@@ -945,12 +1001,32 @@
             }
         });
 
-        // Zone name input: also update data-zone-name attribute for CSS label
-        var zoneNameInp = document.getElementById('prop-zone-name');
-        if (zoneNameInp && block.dataset.blockType === 'zone') {
-            zoneNameInp.oninput = function () {
-                writeConfig(block, 'zone_name', this.value);
-                block.setAttribute('data-zone-name', this.value || 'main');
+        // Zone name selector (dropdown + optional custom): updates block_config.zone_name
+        var zoneNameSel2 = document.getElementById('prop-zone-name');
+        var zoneNameCustom2 = document.getElementById('prop-zone-name-custom');
+        if (zoneNameSel2 && zoneNameCustom2 && block.dataset.blockType === 'zone') {
+            var applyZoneName = function (name) {
+                var resolved = (name || '').toString().trim() || 'main';
+                writeConfig(block, 'zone_name', resolved);
+                block.setAttribute('data-zone-name', resolved);
+            };
+
+            zoneNameSel2.onchange = function () {
+                if (zoneNameSel2.value === '__custom__') {
+                    zoneNameCustom2.style.display = '';
+                    zoneNameCustom2.focus();
+                    applyZoneName(zoneNameCustom2.value);
+                    return;
+                }
+                zoneNameCustom2.style.display = 'none';
+                zoneNameCustom2.value = '';
+                applyZoneName(zoneNameSel2.value);
+            };
+
+            zoneNameCustom2.oninput = function () {
+                if (zoneNameSel2.value === '__custom__') {
+                    applyZoneName(zoneNameCustom2.value);
+                }
             };
         }
 

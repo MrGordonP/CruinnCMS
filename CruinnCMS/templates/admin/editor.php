@@ -528,9 +528,16 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <div class="editor-accordion-body">
                     <div class="editor-prop-row">
                         <label>Zone Name</label>
-                        <input type="text" class="editor-prop-input" id="prop-zone-name"
-                               data-config="zone_name" placeholder="main">
-                        <span class="editor-label-hint">e.g. main, sidebar, footer</span>
+                        <select class="editor-prop-input" id="prop-zone-name">
+                            <option value="main">main</option>
+                            <option value="header">header</option>
+                            <option value="footer">footer</option>
+                            <option value="sidebar">sidebar</option>
+                            <option value="__custom__">Custom...</option>
+                        </select>
+                        <input type="text" class="editor-prop-input" id="prop-zone-name-custom"
+                               placeholder="custom-zone" style="display:none;margin-top:0.35rem">
+                        <span class="editor-label-hint">Choose a predefined zone, or pick Custom for a custom name.</span>
                     </div>
                     <div class="editor-prop-row">
                         <label>Display Label</label>
