@@ -245,6 +245,12 @@ class SiteBuilderController extends BaseController
         $this->redirect('/admin/templates/' . $tpl['id'] . '/edit');
     }
 
+    public function builderGlobalSidebar(): void
+    {
+        $tpl = $this->getOrCreateGlobalSidebar();
+        $this->redirect('/admin/templates/' . $tpl['id'] . '/edit');
+    }
+
     private function getOrCreateGlobalFooter(): array
     {
         $tpl = $this->db->fetch(
@@ -264,6 +270,32 @@ class SiteBuilderController extends BaseController
                     'show_header'   => false,
                     'show_footer'   => true,
                     'footer_source' => 'custom',
+                ]),
+            ]);
+            $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [$id]);
+        }
+        return $tpl;
+    }
+
+    private function getOrCreateGlobalSidebar(): array
+    {
+        $tpl = $this->db->fetch(
+            'SELECT * FROM page_templates WHERE slug = ? LIMIT 1',
+            ['_global_sidebar']
+        );
+        if (!$tpl) {
+            $id = $this->db->insert('page_templates', [
+                'name'        => 'Default Sidebar',
+                'slug'        => '_global_sidebar',
+                'description' => 'Global default sidebar — blocks in the Sidebar zone appear on templates using a sidebar source template.',
+                'zones'       => json_encode(['sidebar']),
+                'css_class'   => '',
+                'is_system'   => 1,
+                'sort_order'  => 2,
+                'settings'    => json_encode([
+                    'show_header'    => false,
+                    'show_footer'    => false,
+                    'sidebar_source' => 'custom',
                 ]),
             ]);
             $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [$id]);
@@ -299,6 +331,14 @@ class SiteBuilderController extends BaseController
             [(int) $id]
         );
 
+                // All templates that have a 'sidebar' zone — valid sidebar_source choices.
+                $sidebarTemplates = $this->db->fetchAll(
+                        "SELECT id, slug, name, canvas_page_id FROM page_templates
+                            WHERE JSON_CONTAINS(zones, '\"sidebar\"') AND id != ?
+                            ORDER BY sort_order, name",
+                        [(int) $id]
+                );
+
         $contentSets = $this->db->fetchAll(
             'SELECT slug, name FROM content_sets ORDER BY name'
         );
@@ -310,6 +350,7 @@ class SiteBuilderController extends BaseController
             'tpl'             => $tpl,
             'pages'           => $pages,
             'headerTemplates' => $headerTemplates,
+            'sidebarTemplates'=> $sidebarTemplates,
             'contentSets'     => $contentSets,
         ]);
     }
@@ -434,6 +475,7 @@ class SiteBuilderController extends BaseController
             'sidebar_position' => in_array($this->input('sidebar_position', 'right'), ['left', 'right'], true)
                                     ? $this->input('sidebar_position', 'right') : 'right',
             'header_source'    => $this->resolveHeaderSource($this->input('header_source', 'default')),
+            'sidebar_source'   => $this->resolveSidebarSource($this->input('sidebar_source', 'default')),
         ];
 
         $existingSettings = json_decode($tpl['settings'] ?? '{}', true) ?: [];
@@ -467,6 +509,24 @@ class SiteBuilderController extends BaseController
         if (preg_match('/^[a-z0-9_\-]+$/', $value)) {
             $tpl = $this->db->fetch(
                 "SELECT id FROM page_templates WHERE slug = ? AND JSON_CONTAINS(zones, '\"header\"') LIMIT 1",
+                [$value]
+            );
+            if ($tpl) {
+                return $value;
+            }
+        }
+        return 'default';
+    }
+
+    private function resolveSidebarSource(string $value): string
+    {
+        if (in_array($value, ['default', 'custom'], true)) {
+            return $value;
+        }
+        // Allow any valid template slug that actually has a sidebar zone.
+        if (preg_match('/^[a-z0-9_\-]+$/', $value)) {
+            $tpl = $this->db->fetch(
+                "SELECT id FROM page_templates WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"') LIMIT 1",
                 [$value]
             );
             if ($tpl) {

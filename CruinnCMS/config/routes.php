@@ -288,6 +288,7 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/templates',                         [SiteBuilderController::class, 'builderCreateTemplate']);
     $router->get('/admin/site-builder/global-header',         [SiteBuilderController::class, 'builderGlobalHeader']);
     $router->get('/admin/site-builder/global-footer',         [SiteBuilderController::class, 'builderGlobalFooter']);
+    $router->get('/admin/site-builder/global-sidebar',        [SiteBuilderController::class, 'builderGlobalSidebar']);
     $router->get('/admin/templates/{id}/edit',                [SiteBuilderController::class, 'builderEditTemplate']);
     $router->get('/admin/templates/{id}/preview',             [SiteBuilderController::class, 'builderPreviewTemplate']);
     $router->post('/admin/templates/{id}',                    [SiteBuilderController::class, 'builderUpdateTemplate']);

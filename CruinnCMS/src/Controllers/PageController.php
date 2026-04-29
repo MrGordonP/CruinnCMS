@@ -34,9 +34,15 @@ class PageController extends BaseController
         }
 
         $blocks = $this->getBlocks($page['id']);
+        $tpl = $this->getTemplate($page['template'] ?? 'default');
 
         // Cruinn CMS: if published Cruinn blocks exist, hand off to Cruinn renderer
         $cruinn = new CruinnRenderService();
+        $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        Template::addGlobal('page_tpl', $tpl);
+        Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
+        Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
+
         if ($cruinn->hasPublished((int) $page['id'])) {
             Template::addGlobal('cruinn_css', $cruinn->buildCss((int) $page['id']));
             $this->render('public/cruinn-page', [
@@ -51,6 +57,7 @@ class PageController extends BaseController
             'title'  => $page['title'],
             'page'   => $page,
             'blocks' => $blocks,
+            'page_tpl' => $tpl,
         ]);
     }
 
@@ -102,6 +109,11 @@ class PageController extends BaseController
 
         // ── Cruinn mode: block renderer ──────────────────────────────────────
         $cruinn = new CruinnRenderService();
+        $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        Template::addGlobal('page_tpl', $tpl);
+        Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
+        Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
+
         if ($cruinn->hasPublished((int) $page['id'])) {
             // If the template has a canvas page, merge template layout with page content
             $canvasPageId = isset($tpl['canvas_page_id']) ? (int) $tpl['canvas_page_id'] : 0;
@@ -154,7 +166,6 @@ class PageController extends BaseController
         }
 
         // Set template-level globals so layout.php can use them
-        Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_footer_blocks', $templateBlocks['footer'] ?? []);
 
         $this->render('public/page', [
@@ -164,6 +175,47 @@ class PageController extends BaseController
             'blocks'           => $blocks,
             'page_tpl'         => $tpl,
         ]);
+    }
+
+    private function resolveSidebarRender(array $tpl, CruinnRenderService $cruinn): array
+    {
+        $zones = $tpl['zones'] ?? ['main'];
+        if (!in_array('sidebar', $zones, true)) {
+            return ['html' => '', 'css' => ''];
+        }
+
+        $settings = $tpl['settings'] ?? [];
+        $source = (string) ($settings['sidebar_source'] ?? 'default');
+
+        // 'default' means module sidebar widgets (layout fallback).
+        if ($source === 'default') {
+            return ['html' => '', 'css' => ''];
+        }
+
+        $targetSlug = $source === 'custom' ? ($tpl['slug'] ?? '') : $source;
+        if (!preg_match('/^[a-z0-9_\-]+$/', $targetSlug)) {
+            return ['html' => '', 'css' => ''];
+        }
+
+        $sourceTpl = $this->db->fetch(
+            "SELECT canvas_page_id, zones FROM page_templates
+             WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"')
+             LIMIT 1",
+            [$targetSlug]
+        );
+        if (!$sourceTpl) {
+            return ['html' => '', 'css' => ''];
+        }
+
+        $canvasPageId = (int) ($sourceTpl['canvas_page_id'] ?? 0);
+        if ($canvasPageId <= 0 || !$cruinn->hasPublished($canvasPageId)) {
+            return ['html' => '', 'css' => ''];
+        }
+
+        return [
+            'html' => $cruinn->buildHtml($canvasPageId),
+            'css'  => $cruinn->buildCss($canvasPageId),
+        ];
     }
 
     /**

@@ -52,6 +52,12 @@ $_pageContent = $content ?? '';
 $_tplSettings = ($page_tpl ?? [])['settings'] ?? [];
 $_showHeader = $_tplSettings['show_header'] ?? true;
 $_showFooter = $_tplSettings['show_footer'] ?? true;
+$_tplZones = ($page_tpl ?? [])['zones'] ?? [];
+$_hasSidebarZone = in_array('sidebar', $_tplZones, true);
+$_sidebarHtml = $tpl_sidebar_html ?? '';
+$_sidebarCss = $tpl_sidebar_css ?? '';
+$_hasModuleSidebar = !empty($sidebar_widgets);
+$_renderSidebar = $_hasSidebarZone && (!empty($_sidebarHtml) || $_hasModuleSidebar);
 ?>
 
 <?php if ($_showHeader): ?>
@@ -115,7 +121,18 @@ $_cruinnHeader = (new \Cruinn\Services\CruinnRenderService())->buildZone('header
     <main id="main-content">
         <?= $_pageContent ?>
     </main>
-    <?php include __DIR__ . '/components/sidebar.php'; ?>
+    <?php if ($_renderSidebar): ?>
+        <?php if (!empty($_sidebarHtml)): ?>
+            <?php if (!empty($_sidebarCss)): ?>
+            <style id="cruinn-sidebar-styles"><?= $_sidebarCss ?></style>
+            <?php endif; ?>
+            <aside class="site-sidebar site-sidebar-cruinn" aria-label="Sidebar">
+                <div class="cruinn-zone-output"><?= $_sidebarHtml ?></div>
+            </aside>
+        <?php else: ?>
+            <?php include __DIR__ . '/components/sidebar.php'; ?>
+        <?php endif; ?>
+    <?php endif; ?>
 </div>
 
 <?php if ($_showFooter): ?>

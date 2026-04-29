@@ -195,6 +195,39 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
                 </div>
             </div>
 
+            <div class="form-group">
+                <label for="tpl_sidebar_source">Sidebar Source</label>
+                <select id="tpl_sidebar_source" name="sidebar_source" class="form-input"
+                        <?= $hasSidebar ? '' : 'disabled' ?>>
+                    <option value="default" <?= ($s['sidebar_source'] ?? 'default') === 'default' ? 'selected' : '' ?>>
+                        Auto — module widgets
+                    </option>
+                    <?php foreach ($sidebarTemplates ?? [] as $_st): ?>
+                    <option value="<?= e($_st['slug']) ?>"
+                        <?= ($s['sidebar_source'] ?? '') === $_st['slug'] ? 'selected' : '' ?>>
+                        <?= e($_st['name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                    <option value="custom" <?= ($s['sidebar_source'] ?? '') === 'custom' ? 'selected' : '' ?>>
+                        Custom — sidebar blocks on this template
+                    </option>
+                </select>
+                <small class="form-help">
+                    <?php
+                    $__ss = $s['sidebar_source'] ?? 'default';
+                    if ($__ss === 'default') { ?>
+                        <a href="<?= url('/admin/site-builder/global-sidebar') ?>">Edit the global default sidebar in Cruinn &rarr;</a>
+                    <?php } elseif ($__ss !== 'custom') {
+                        foreach ($sidebarTemplates ?? [] as $_st) {
+                            if ($_st['slug'] === $__ss) { ?>
+                        <a href="<?= url('/admin/templates/' . (int)$_st['id'] . '/edit') ?>">Edit &ldquo;<?= e($_st['name']) ?>&rdquo; in Cruinn &rarr;</a>
+                            <?php break;
+                            }
+                        }
+                    } ?>
+                </small>
+            </div>
+
             <input type="hidden" name="zones" id="tplZones" value="<?= e($tpl['zones'] ?? '["main"]') ?>">
             <input type="hidden" name="css_class" value="<?= e($tpl['css_class'] ?? '') ?>">
             <input type="hidden" name="sort_order" value="<?= (int)($tpl['sort_order'] ?? 0) ?>">
