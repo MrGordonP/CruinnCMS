@@ -200,7 +200,7 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
                 <select id="tpl_sidebar_source" name="sidebar_source" class="form-input"
                         <?= $hasSidebar ? '' : 'disabled' ?>>
                     <option value="default" <?= ($s['sidebar_source'] ?? 'default') === 'default' ? 'selected' : '' ?>>
-                        Auto — module widgets
+                        Auto — global default sidebar
                     </option>
                     <?php foreach ($sidebarTemplates ?? [] as $_st): ?>
                     <option value="<?= e($_st['slug']) ?>"

@@ -134,9 +134,6 @@ class App
         // so module paths like /news, /events, /forum are never shadowed.
         Modules\ModuleRegistry::registerRoutes($this->router);
 
-        // Collect sidebar widgets from active modules and expose to all templates.
-        Template::addGlobal('sidebar_widgets', Modules\ModuleRegistry::collectWidgets());
-
         // ── Public page catch-alls (must be last) ──────────────────────────
         $this->router->get('/',         [Controllers\PageController::class, 'home']);
         $this->router->get('/{slug*}',  [Controllers\PageController::class, 'show']);

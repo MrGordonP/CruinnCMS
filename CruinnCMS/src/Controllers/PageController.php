@@ -186,13 +186,9 @@ class PageController extends BaseController
 
         $settings = $tpl['settings'] ?? [];
         $source = (string) ($settings['sidebar_source'] ?? 'default');
-
-        // 'default' means module sidebar widgets (layout fallback).
-        if ($source === 'default') {
-            return ['html' => '', 'css' => ''];
-        }
-
-        $targetSlug = $source === 'custom' ? ($tpl['slug'] ?? '') : $source;
+        $targetSlug = $source === 'default'
+            ? '_global_sidebar'
+            : ($source === 'custom' ? ($tpl['slug'] ?? '') : $source);
         if (!preg_match('/^[a-z0-9_\-]+$/', $targetSlug)) {
             return ['html' => '', 'css' => ''];
         }

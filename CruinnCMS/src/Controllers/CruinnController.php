@@ -385,30 +385,27 @@ class CruinnController extends BaseController
                             $tplSettings = json_decode($tplRow['settings'] ?? '{}', true) ?: [];
                             $sidebarSource = (string) ($tplSettings['sidebar_source'] ?? 'default');
 
-                            if ($sidebarSource === 'default') {
-                                $sidebarContextHtml = $this->buildModuleSidebarHtml();
-                                $sidebarContextLabel = 'Auto - module widgets';
-                            } else {
-                                $sourceSlug = $sidebarSource === 'custom'
-                                    ? ($tplRow['slug'] ?? '')
-                                    : $sidebarSource;
-                                if (preg_match('/^[a-z0-9_\-]+$/', $sourceSlug)) {
-                                    $sourceTpl = $this->db->fetch(
-                                        "SELECT id, name, slug, canvas_page_id FROM page_templates
-                                          WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"')
-                                          LIMIT 1",
-                                        [$sourceSlug]
-                                    );
-                                    if ($sourceTpl && !empty($sourceTpl['canvas_page_id'])) {
-                                        $sourceCanvasId = (int) $sourceTpl['canvas_page_id'];
-                                        if ($cruinnSvc->hasPublished($sourceCanvasId)) {
-                                            $sidebarContextHtml = $cruinnSvc->buildHtml($sourceCanvasId);
-                                            $sidebarContextCss  = $cruinnSvc->buildCss($sourceCanvasId);
-                                            $sidebarContextPageId = $sourceCanvasId;
-                                            $sidebarContextLabel = ($sidebarSource === 'custom')
+                            $sourceSlug = $sidebarSource === 'default'
+                                ? '_global_sidebar'
+                                : ($sidebarSource === 'custom' ? ($tplRow['slug'] ?? '') : $sidebarSource);
+                            if (preg_match('/^[a-z0-9_\-]+$/', $sourceSlug)) {
+                                $sourceTpl = $this->db->fetch(
+                                    "SELECT id, name, slug, canvas_page_id FROM page_templates
+                                      WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"')
+                                      LIMIT 1",
+                                    [$sourceSlug]
+                                );
+                                if ($sourceTpl && !empty($sourceTpl['canvas_page_id'])) {
+                                    $sourceCanvasId = (int) $sourceTpl['canvas_page_id'];
+                                    if ($cruinnSvc->hasPublished($sourceCanvasId)) {
+                                        $sidebarContextHtml = $cruinnSvc->buildHtml($sourceCanvasId);
+                                        $sidebarContextCss  = $cruinnSvc->buildCss($sourceCanvasId);
+                                        $sidebarContextPageId = $sourceCanvasId;
+                                        $sidebarContextLabel = ($sidebarSource === 'default')
+                                            ? 'Auto - global default sidebar'
+                                            : (($sidebarSource === 'custom')
                                                 ? 'Custom - this template'
-                                                : ('Template - ' . ($sourceTpl['name'] ?? $sourceSlug));
-                                        }
+                                                : ('Template - ' . ($sourceTpl['name'] ?? $sourceSlug)));
                                     }
                                 }
                             }
@@ -1414,28 +1411,6 @@ class CruinnController extends BaseController
             ],
         ];
         return $builtIn[$contextSource] ?? [];
-    }
-
-    private function buildModuleSidebarHtml(): string
-    {
-        $widgets = \Cruinn\Modules\ModuleRegistry::collectWidgets();
-        if (empty($widgets)) {
-            return '';
-        }
-
-        $html = '';
-        foreach ($widgets as $widget) {
-            $title = isset($widget['title']) ? (string) $widget['title'] : '';
-            $body  = isset($widget['html']) ? (string) $widget['html'] : '';
-            $html .= '<section class="widget">';
-            if ($title !== '') {
-                $html .= '<h2 class="widget-title">' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</h2>';
-            }
-            $html .= '<div class="widget-body">' . $body . '</div>';
-            $html .= '</section>';
-        }
-
-        return $html;
     }
 
 }
