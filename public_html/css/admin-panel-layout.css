@@ -39,6 +39,8 @@
     flex-direction: column;
     padding: 0;
     overflow: hidden;
+    border: none;
+    border-radius: 0;
 }
 
 .sb-wrapper .acp-panel>.panel-layout {
