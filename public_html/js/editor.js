@@ -447,13 +447,15 @@
         // Show/hide groups
         panel.querySelector('.editor-props-empty').style.display = 'none';
 
-        // Page Settings always visible (page-level, not block-level)
+        // Page Settings and Template Layout always visible (page/template-level, not block-level)
         var pageSettings = document.getElementById('editor-page-settings');
         if (pageSettings) { pageSettings.style.display = ''; }
+        var templateLayout = document.getElementById('editor-template-layout');
+        if (templateLayout) { templateLayout.style.display = ''; }
 
         panel.querySelectorAll('.editor-accordion').forEach(function (acc) {
-            // Skip page-settings, already handled above
-            if (acc.id === 'editor-page-settings') { return; }
+            // Skip page-settings and template-layout, already handled above
+            if (acc.id === 'editor-page-settings' || acc.id === 'editor-template-layout') { return; }
             acc.style.display = '';
         });
 
@@ -912,8 +914,8 @@
     function clearPanel() {
         panel.querySelector('.editor-props-empty').style.display = '';
         panel.querySelectorAll('.editor-accordion').forEach(function (acc) {
-            // Keep Page Settings always visible (page-level, not block-level)
-            if (acc.id === 'editor-page-settings') { return; }
+            // Keep Page Settings and Template Layout always visible (page/template-level, not block-level)
+            if (acc.id === 'editor-page-settings' || acc.id === 'editor-template-layout') { return; }
             acc.style.display = 'none';
         });
     }
