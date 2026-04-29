@@ -102,14 +102,11 @@ class CruinnRenderService
             return '';
         }
 
-        // Render children of all matching zone blocks (zone wrapper is transparent)
+        // Render all matching zone blocks with their wrappers and children
+        // Zone wrappers carry important layout properties (width, height, etc.)
         $html = '';
         foreach ($zoneBlockIds as $zoneId) {
-            if (!empty($childrenOf[$zoneId])) {
-                foreach ($childrenOf[$zoneId] as $childBlockId) {
-                    $html .= $this->renderTree($childBlockId, $byId, $childrenOf);
-                }
-            }
+            $html .= $this->renderTree($zoneId, $byId, $childrenOf);
         }
 
         return $html;
