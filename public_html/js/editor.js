@@ -17,6 +17,7 @@
     if (!wrap || !canvas || !panel) { return; }
 
     var PAGE_ID = wrap.dataset.pageId;
+    var HAS_PAGE = wrap.dataset.hasPage === '1' && !!PAGE_ID;
     var CSRF = wrap.dataset.csrf;
     var API_BASE = wrap.dataset.apiBase || '/admin/editor';
     var liveStyles = document.getElementById('editor-live-styles');
@@ -1512,6 +1513,7 @@
     }
 
     function addBlock(type) {
+        if (!HAS_PAGE) { return; }
         var def = BLOCK_DEFS[type];
         if (!def) { return; }
 
@@ -1768,6 +1770,7 @@
     }
 
     function saveDocAttrs() {
+        if (!HAS_PAGE) { return; }
         var panel = document.getElementById('editor-doc-panel');
         if (!panel) { return; }
 
@@ -1822,6 +1825,7 @@
     var _actionTimer = null;
 
     function recordAction() {
+        if (!HAS_PAGE) { return; }
         if (_htmlPageMode) { return; } // HTML pages: save only on publish
         clearTimeout(_actionTimer);
         var blocks = serialiseCanvas();
@@ -1899,6 +1903,7 @@
     }
 
     function undo() {
+        if (!HAS_PAGE) { return; }
         // Optimistic: restore from local buffer immediately
         if (localUndoStack.length) {
             localRedoStack.push(canvas.innerHTML);
@@ -1924,6 +1929,7 @@
     }
 
     function redo() {
+        if (!HAS_PAGE) { return; }
         if (localRedoStack.length) {
             localUndoStack.push(canvas.innerHTML);
             canvas.innerHTML = localRedoStack.pop();
@@ -2052,6 +2058,7 @@
     // ΓöÇΓöÇ Section K ΓÇö Publish / Discard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function bindToolbar() {
+        if (!HAS_PAGE) { return; }
         var publishBtn = document.getElementById('editor-publish-btn');
         if (publishBtn) {
             publishBtn.addEventListener('click', function () {

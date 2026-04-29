@@ -29,6 +29,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 <?php endif; ?>
 <div id="editor-wrap"
      data-page-id="<?= $page ? (int) $page['id'] : '' ?>"
+    data-has-page="<?= $page ? '1' : '0' ?>"
      data-csrf="<?= htmlspecialchars(\Cruinn\CSRF::getToken(), ENT_QUOTES, 'UTF-8') ?>"
      data-api-base="<?= htmlspecialchars($apiBase ?? '/admin/editor', ENT_QUOTES, 'UTF-8') ?>"
      data-has-draft="<?= $hasDraft ? '1' : '0' ?>"
@@ -385,21 +386,21 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             <div class="editor-panel-section">
                 <h3 class="editor-panel-heading editor-panel-toggle">Add Block <span class="editor-panel-chevron">▾</span></h3>
                 <div class="editor-palette">
-                    <button class="palette-btn" data-add-block="text">Text</button>
-                    <button class="palette-btn" data-add-block="heading">Heading</button>
-                    <button class="palette-btn" data-add-block="image">Image</button>
-                    <button class="palette-btn" data-add-block="section">Section</button>
-                    <button class="palette-btn" data-add-block="columns">Columns</button>
-                    <button class="palette-btn" data-add-block="gallery">Gallery</button>
-                    <button class="palette-btn" data-add-block="html">HTML</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-header">Site Header</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="nav-menu">Nav Menu</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-logo">Site Logo</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-title">Site Title</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="event-list">Event List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="data-list">Data List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="php-include">PHP Include</button>
-                    <button class="palette-btn palette-btn--zone" data-add-block="zone">Zone</button>
+                    <button class="palette-btn" data-add-block="text" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Text</button>
+                    <button class="palette-btn" data-add-block="heading" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Heading</button>
+                    <button class="palette-btn" data-add-block="image" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Image</button>
+                    <button class="palette-btn" data-add-block="section" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Section</button>
+                    <button class="palette-btn" data-add-block="columns" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Columns</button>
+                    <button class="palette-btn" data-add-block="gallery" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Gallery</button>
+                    <button class="palette-btn" data-add-block="html" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>HTML</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="site-header" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Site Header</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="nav-menu" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Nav Menu</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="site-logo" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Site Logo</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="site-title" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Site Title</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Event List</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>PHP Include</button>
+                    <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
                 </div>
             </div>
             <div class="editor-panel-section" id="editor-tree-section">
