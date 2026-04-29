@@ -5,9 +5,9 @@
 -- Mobile overrides: ≤ 599px         -> css_props_mobile (NULL = inherit desktop)
 
 ALTER TABLE `pages`
-    ADD COLUMN `css_props_tablet` JSON NULL AFTER `css_props`,
-    ADD COLUMN `css_props_mobile` JSON NULL AFTER `css_props_tablet`;
+    ADD COLUMN IF NOT EXISTS `css_props_tablet` JSON NULL AFTER `css_props`,
+    ADD COLUMN IF NOT EXISTS `css_props_mobile` JSON NULL AFTER `css_props_tablet`;
 
 ALTER TABLE `pages_draft`
-    ADD COLUMN `css_props_tablet` JSON NULL AFTER `css_props`,
-    ADD COLUMN `css_props_mobile` JSON NULL AFTER `css_props_tablet`;
+    ADD COLUMN IF NOT EXISTS `css_props_tablet` JSON NULL AFTER `css_props`,
+    ADD COLUMN IF NOT EXISTS `css_props_mobile` JSON NULL AFTER `css_props_tablet`;

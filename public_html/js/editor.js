@@ -537,10 +537,10 @@
 
         // CSS properties — read from active viewport overrides, fallback to computed desktop
         var vpPropsRaw = activeViewport === 'tablet' ? block.dataset.cssPropsTablet
-                       : activeViewport === 'mobile' ? block.dataset.cssPropsMobile
-                       : null;
+            : activeViewport === 'mobile' ? block.dataset.cssPropsMobile
+                : null;
         var vpProps = {};
-        if (vpPropsRaw) { try { vpProps = JSON.parse(vpPropsRaw); } catch (e) {} }
+        if (vpPropsRaw) { try { vpProps = JSON.parse(vpPropsRaw); } catch (e) { } }
 
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
             var prop = inp.dataset.prop;
@@ -1355,7 +1355,7 @@
         } else {
             var dsKey = activeViewport === 'tablet' ? 'cssPropsTablet' : 'cssPropsMobile';
             var stored = {};
-            try { stored = JSON.parse(block.dataset[dsKey] || '{}'); } catch (e) {}
+            try { stored = JSON.parse(block.dataset[dsKey] || '{}'); } catch (e) { }
             if (value !== '' && value !== null && value !== undefined) {
                 stored[prop] = value;
             } else {
@@ -1394,7 +1394,7 @@
                         if (p[0] !== '_') { trules += p + ':' + tp[p] + ';'; }
                     });
                     if (trules) { tabletRules += '#' + block.id + '{' + trules + '}\n'; }
-                } catch (e) {}
+                } catch (e) { }
             }
             if (block.dataset.cssPropsMobile) {
                 try {
@@ -1404,7 +1404,7 @@
                         if (p[0] !== '_') { mrules += p + ':' + mp[p] + ';'; }
                     });
                     if (mrules) { mobileRules += '#' + block.id + '{' + mrules + '}\n'; }
-                } catch (e) {}
+                } catch (e) { }
             }
         });
         if (tabletRules) { css += '@media (max-width:1023px){\n' + tabletRules + '}\n'; }
@@ -1675,11 +1675,11 @@
             // Breakpoint-specific CSS props
             var cssPropsTablet = null;
             if (block.dataset.cssPropsTablet) {
-                try { cssPropsTablet = JSON.parse(block.dataset.cssPropsTablet); } catch (e) {}
+                try { cssPropsTablet = JSON.parse(block.dataset.cssPropsTablet); } catch (e) { }
             }
             var cssPropsMobile = null;
             if (block.dataset.cssPropsMobile) {
-                try { cssPropsMobile = JSON.parse(block.dataset.cssPropsMobile); } catch (e) {}
+                try { cssPropsMobile = JSON.parse(block.dataset.cssPropsMobile); } catch (e) { }
             }
 
             blocks.push({
@@ -1795,16 +1795,45 @@
             },
             body: JSON.stringify({ blocks: blocks }),
         })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    setUndoRedoState(data.can_undo, data.can_redo);
-                    showDraftBadge(true);
+            .then(function (r) {
+                if (!r.ok) {
+                    return r.text().then(function (t) {
+                        console.error('recordAction HTTP ' + r.status + ':', t);
+                        showSaveError('Save failed (' + r.status + ') — check console');
+                    });
                 }
+                return r.json().then(function (data) {
+                    if (data.success) {
+                        setUndoRedoState(data.can_undo, data.can_redo);
+                        showDraftBadge(true);
+                        clearSaveError();
+                    } else {
+                        console.error('recordAction error:', data.error || data);
+                        showSaveError('Save error: ' + (data.error || 'unknown'));
+                    }
+                });
             })
             .catch(function (err) {
                 console.error('recordAction failed:', err);
+                showSaveError('Save failed — check console');
             });
+    }
+
+    var _saveErrorEl = null;
+    function showSaveError(msg) {
+        if (!_saveErrorEl) {
+            _saveErrorEl = document.createElement('div');
+            _saveErrorEl.id = 'editor-save-error';
+            _saveErrorEl.style.cssText = 'position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);' +
+                'background:#c0392b;color:#fff;padding:0.5rem 1rem;border-radius:6px;' +
+                'font-size:0.82rem;z-index:9999;pointer-events:none;';
+            document.body.appendChild(_saveErrorEl);
+        }
+        _saveErrorEl.textContent = msg;
+        _saveErrorEl.style.display = '';
+    }
+    function clearSaveError() {
+        if (_saveErrorEl) { _saveErrorEl.style.display = 'none'; }
     }
 
     var _debounceTimer = null;

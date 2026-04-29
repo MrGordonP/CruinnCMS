@@ -164,6 +164,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         el.parentNode.insertBefore(btn, el);
 
+        // nav-menu blocks need a positioning context so the open state can
+        // overflow the header as an overlay rather than expanding in-flow.
+        if (el.dataset.blockType === 'nav-menu' && el.parentNode) {
+            if (!el.parentNode.style.position) {
+                el.parentNode.style.position = 'relative';
+            }
+        }
+
         function closeTarget() {
             el.classList.remove('ui-collapse-open');
             btn.setAttribute('aria-expanded', 'false');
