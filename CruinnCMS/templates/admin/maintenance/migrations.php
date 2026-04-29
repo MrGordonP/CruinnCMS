@@ -19,22 +19,6 @@ include dirname(__DIR__) . '/settings/_tabs.php';
     Tracked migrations for core and all modules. Apply pending migrations to update the database schema.
 </p>
 
-<?php
-$_rerun = $_GET['rerun'] ?? null;
-if ($_rerun === 'ok'): ?>
-<div style="margin-bottom:1.5rem;padding:.75rem 1rem;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;color:#166534;">
-    ✅ Migration <strong><?= e($_GET['file'] ?? '') ?></strong> re-applied successfully.
-</div>
-<?php elseif ($_rerun === 'error'): ?>
-<div style="margin-bottom:1.5rem;padding:.75rem 1rem;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;color:#991b1b;">
-    ❌ Rerun failed: <?= e($_GET['msg'] ?? 'Unknown error') ?>
-</div>
-<?php elseif ($_rerun === 'empty'): ?>
-<div style="margin-bottom:1.5rem;padding:.75rem 1rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;color:#92400e;">
-    ⚠ Migration file was empty — tracking record removed but nothing executed.
-</div>
-<?php endif ?>
-
 <?php if ($slugRemapped > 0): ?>
 <div class="alert alert-info" style="margin-bottom:1.5rem;padding:.75rem 1rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;color:#1e40af;">
     ℹ️ Housekeeping: <?= (int)$slugRemapped ?> migration record(s) renamed from module <code>articles</code> → <code>blog</code> to match current module slug.

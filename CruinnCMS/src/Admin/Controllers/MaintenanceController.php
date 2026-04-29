@@ -208,9 +208,8 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
         $file   = preg_replace('/[^a-z0-9_\-.]/', '', (string) ($_POST['file'] ?? ''));
 
         if ($module === '' || $file === '') {
-            http_response_code(400);
-            echo 'Invalid request';
-            return;
+            Auth::flash('error', 'Invalid migration reference.');
+            $this->redirect('/admin/maintenance/migrations');
         }
 
         [$all] = $this->collectMigrationState();
@@ -223,9 +222,8 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
         }
 
         if (!$target) {
-            http_response_code(404);
-            echo 'Migration not found';
-            return;
+            Auth::flash('error', "Migration not found: [{$module}] {$file}");
+            $this->redirect('/admin/maintenance/migrations');
         }
 
         // Delete tracking row so it runs again
@@ -236,8 +234,8 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
 
         $sql = file_get_contents($target['path']);
         if ($sql === false || trim($sql) === '') {
-            header('Location: /admin/maintenance/migrations?rerun=empty');
-            return;
+            Auth::flash('warning', "Migration file was empty — tracking record removed but nothing executed.");
+            $this->redirect('/admin/maintenance/migrations');
         }
 
         try {
@@ -246,10 +244,12 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
                 "INSERT IGNORE INTO module_migrations (module, filename) VALUES (?, ?)",
                 [$module, $file]
             );
-            header('Location: /admin/maintenance/migrations?rerun=ok&file=' . urlencode($file));
+            Auth::flash('success', "Migration [{$module}] {$file} re-applied successfully.");
         } catch (\Throwable $e) {
-            header('Location: /admin/maintenance/migrations?rerun=error&msg=' . urlencode($e->getMessage()));
+            Auth::flash('error', "Rerun failed: " . $e->getMessage());
         }
+
+        $this->redirect('/admin/maintenance/migrations');
     }
 
     /**
