@@ -904,6 +904,8 @@
     function clearPanel() {
         panel.querySelector('.editor-props-empty').style.display = '';
         panel.querySelectorAll('.editor-accordion').forEach(function (acc) {
+            // Keep Page Settings always visible (page-level, not block-level)
+            if (acc.id === 'editor-page-settings') { return; }
             acc.style.display = 'none';
         });
     }

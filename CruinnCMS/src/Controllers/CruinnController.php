@@ -618,11 +618,6 @@ class CruinnController extends BaseController
             ['page']
         );
 
-        $allTemplates = $this->db->fetchAll(
-            'SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
-            ['page']
-        );
-
         $this->renderAdmin('admin/editor', [
             'title'             => 'Editor — ' . $page['title'],
             'page'              => $page,
@@ -634,7 +629,6 @@ class CruinnController extends BaseController
             'contentSets'       => $contentSets,
             'contentTemplates'  => $contentTemplates,
             'moduleWidgets'     => $moduleWidgets,
-            'templates'         => $allTemplates,
             'templates'         => $allTemplates,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
