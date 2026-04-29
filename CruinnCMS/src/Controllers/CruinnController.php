@@ -1523,7 +1523,8 @@ class CruinnController extends BaseController
 
         // Template layout settings (for template pages only)
         if ($isTemplatePage && isset($body['layout_settings'])) {
-            $templateSlug = $page['template'] ?? null;
+            // Extract template slug from page slug: _tpl_landing → landing
+            $templateSlug = substr($page['slug'], 5);
             if (!$templateSlug) {
                 $this->json(['error' => 'Template slug not found'], 400);
             }
