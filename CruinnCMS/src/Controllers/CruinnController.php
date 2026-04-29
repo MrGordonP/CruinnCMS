@@ -86,6 +86,13 @@ class CruinnController extends BaseController
              WHERE slug NOT LIKE '\\_\\_%'
              ORDER BY title ASC"
         );
+                $zonePages = $this->db->fetchAll(
+                        "SELECT id, title, slug FROM pages_index
+                         WHERE slug LIKE '\\_%'
+                             AND slug NOT IN ('_header', '_footer')
+                             AND slug NOT LIKE '\\_tpl\\_%'
+                         ORDER BY title ASC"
+                );
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
@@ -153,6 +160,7 @@ class CruinnController extends BaseController
             'headerPages'     => $headerPages,
             'footerPages'     => $footerPages,
             'sitePages'       => $sitePages,
+            'zonePages'       => $zonePages,
             'navTemplates'    => $navTemplates,
             'navMenus'        => $navMenus,
             'navCssFiles'     => $cssFiles,
@@ -492,6 +500,13 @@ class CruinnController extends BaseController
              WHERE slug NOT LIKE '\_%'
              ORDER BY title ASC"
         );
+                $zonePages = $this->db->fetchAll(
+                        "SELECT id, title, slug FROM pages_index
+                         WHERE slug LIKE '\\_%'
+                             AND slug NOT IN ('_header', '_footer')
+                             AND slug NOT LIKE '\\_tpl\\_%'
+                         ORDER BY title ASC"
+                );
 
         // Templates for sidebar nav
         $navTemplates = $this->db->fetchAll(
@@ -563,6 +578,7 @@ class CruinnController extends BaseController
             'headerPages'       => $headerPages,
             'footerPages'       => $footerPages,
             'sitePages'            => $sitePages,
+            'zonePages'            => $zonePages,
             'navTemplates'         => $navTemplates,
             'navMenus'             => $navMenus,
             'navCssFiles'          => $cssFiles,

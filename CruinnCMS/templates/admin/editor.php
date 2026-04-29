@@ -311,6 +311,20 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         </div>
                     </div>
                     <?php endif; ?>
+                    <?php if (!empty($zonePages)): ?>
+                    <div class="editor-site-nav-group collapsed">
+                        <span class="editor-site-nav-label">Zones <span class="editor-group-chevron">▾</span></span>
+                        <div class="editor-site-nav-list">
+                            <?php foreach ($zonePages as $_zp): ?>
+                            <a href="<?= e($_editorPageHref((int)$_zp['id'])) ?>"
+                               class="editor-site-nav-link<?= $page && (int)$_zp['id'] === (int)$page['id'] ? ' active' : '' ?>"
+                               title="<?= e($_zp['slug'] ?? '') ?>">
+                                <?= e($_zp['title']) ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($navTemplates)): ?>
                     <div class="editor-site-nav-group collapsed">
                         <span class="editor-site-nav-label">Templates <span class="editor-group-chevron">▾</span></span>
