@@ -209,6 +209,31 @@ document.addEventListener('DOMContentLoaded', function () {
         syncCollapseMode();
     });
 
+    // Group sibling collapse-toggle buttons into a flex bar so they
+    // lay out horizontally rather than stacking.
+    (function () {
+        var parents = [];
+        document.querySelectorAll('.ui-collapse-toggle').forEach(function (btn) {
+            if (parents.indexOf(btn.parentNode) === -1) {
+                parents.push(btn.parentNode);
+            }
+        });
+        parents.forEach(function (parent) {
+            var btns = Array.prototype.slice.call(
+                parent.querySelectorAll(':scope > .ui-collapse-toggle')
+            );
+            if (btns.length < 2) { return; }
+            var bar = document.createElement('div');
+            bar.className = 'ui-collapse-bar';
+            parent.insertBefore(bar, btns[0]);
+            btns.forEach(function (b) { bar.appendChild(b); });
+            // restore positioning context on the parent now the buttons moved
+            if (!parent.style.position) {
+                parent.style.position = 'relative';
+            }
+        });
+    }());
+
     // ── Flash Message Dismissal ───────────────────────────────
     document.querySelectorAll('.flash-close').forEach(function (btn) {
         btn.addEventListener('click', function () {

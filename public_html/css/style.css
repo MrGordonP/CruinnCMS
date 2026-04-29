@@ -530,6 +530,12 @@ p {
 }
 
 /* Generic UI collapse toggle (driven by data-ui-collapse) */
+.ui-collapse-bar {
+    display: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .ui-collapse-toggle {
     display: none;
     align-items: center;
@@ -576,6 +582,11 @@ p {
 }
 
 @media (max-width: 1023px) {
+    .ui-collapse-bar:has(.ui-collapse-toggle[data-ui-collapse-mode="tablet"]) {
+        display: flex;
+        align-items: center;
+    }
+
     .ui-collapse-toggle[data-ui-collapse-mode="tablet"] {
         display: inline-flex;
     }
@@ -636,6 +647,11 @@ p {
 }
 
 @media (max-width: 767px) {
+    .ui-collapse-bar:has(.ui-collapse-toggle[data-ui-collapse-mode="mobile"]) {
+        display: flex;
+        align-items: center;
+    }
+
     .ui-collapse-toggle[data-ui-collapse-mode="mobile"] {
         display: inline-flex;
     }
