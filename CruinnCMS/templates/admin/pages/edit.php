@@ -8,6 +8,21 @@
 \Cruinn\Template::requireCss('admin-site-builder.css');
 
 if (!$page) {
+    $templateZoneMap = [];
+    foreach (($templates ?? []) as $tpl) {
+        $zones = $tpl['zones'] ?? ['main'];
+        $contentZones = [];
+        foreach ($zones as $z) {
+            if (in_array($z, ['header', 'footer'], true)) {
+                continue;
+            }
+            $contentZones[] = $z;
+        }
+        if (empty($contentZones)) {
+            $contentZones = ['main'];
+        }
+        $templateZoneMap[$tpl['slug']] = $contentZones;
+    }
     ?>
     <div class="admin-page-editor">
         <h1>New Page</h1>
@@ -43,10 +58,16 @@ if (!$page) {
                 </div>
                 <div class="form-group">
                     <label for="template">Template</label>
-                    <select id="template" name="template" class="form-input">
+                    <select id="template" name="template" class="form-input" data-template-zones='<?= e(json_encode($templateZoneMap)) ?>'>
                         <?php foreach ($templates ?? [] as $tpl): ?>
                         <option value="<?= e($tpl['slug']) ?>"><?= e($tpl['name']) ?></option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="page_zone">Page Zone</label>
+                    <select id="page_zone" name="page_zone" class="form-input">
+                        <option value="main" selected>Main</option>
                     </select>
                 </div>
             </div>
@@ -62,6 +83,26 @@ if (!$page) {
 // Existing page — metadata edit form.
 ?>
 <div class="admin-page-editor">
+    <?php
+    $templateZoneMap = [];
+    foreach (($templates ?? []) as $tpl) {
+        $zones = $tpl['zones'] ?? ['main'];
+        $contentZones = [];
+        foreach ($zones as $z) {
+            if (in_array($z, ['header', 'footer'], true)) {
+                continue;
+            }
+            $contentZones[] = $z;
+        }
+        if (empty($contentZones)) {
+            $contentZones = ['main'];
+        }
+        $templateZoneMap[$tpl['slug']] = $contentZones;
+    }
+    $selectedTemplate = $page['template'] ?? 'default';
+    $selectedZone = $page['page_zone'] ?? 'main';
+    $selectedZones = $templateZoneMap[$selectedTemplate] ?? ['main'];
+    ?>
     <h1>Edit Page</h1>
     <form method="post" action="/admin/pages/<?= (int)$page['id'] ?>" class="form-page-meta">
         <?= csrf_field() ?>
@@ -99,9 +140,17 @@ if (!$page) {
             </div>
             <div class="form-group">
                 <label for="template">Template</label>
-                <select id="template" name="template" class="form-input">
+                <select id="template" name="template" class="form-input" data-template-zones='<?= e(json_encode($templateZoneMap)) ?>'>
                     <?php foreach ($templates ?? [] as $tpl): ?>
                     <option value="<?= e($tpl['slug']) ?>" <?= ($page['template'] ?? '') === $tpl['slug'] ? 'selected' : '' ?>><?= e($tpl['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="page_zone">Page Zone</label>
+                <select id="page_zone" name="page_zone" class="form-input">
+                    <?php foreach ($selectedZones as $zone): ?>
+                    <option value="<?= e($zone) ?>" <?= $selectedZone === $zone ? 'selected' : '' ?>><?= e(ucwords(str_replace(['-', '_'], ' ', $zone))) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -123,3 +172,39 @@ if (!$page) {
         </div>
     </form>
 </div>
+
+<script>
+(function () {
+    var templateSelect = document.getElementById('template');
+    var zoneSelect = document.getElementById('page_zone');
+    if (!templateSelect || !zoneSelect) return;
+
+    var zoneMap = {};
+    try { zoneMap = JSON.parse(templateSelect.dataset.templateZones || '{}'); } catch (e) { zoneMap = {}; }
+
+    function labelForZone(zone) {
+        return String(zone || 'main').replace(/[-_]+/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+    }
+
+    function refreshZones() {
+        var templateSlug = templateSelect.value || 'default';
+        var zones = Array.isArray(zoneMap[templateSlug]) && zoneMap[templateSlug].length
+            ? zoneMap[templateSlug]
+            : ['main'];
+        var current = zoneSelect.value;
+        zoneSelect.innerHTML = '';
+        zones.forEach(function (zone) {
+            var opt = document.createElement('option');
+            opt.value = zone;
+            opt.textContent = labelForZone(zone);
+            zoneSelect.appendChild(opt);
+        });
+        if (zones.indexOf(current) >= 0) {
+            zoneSelect.value = current;
+        }
+    }
+
+    templateSelect.addEventListener('change', refreshZones);
+    refreshZones();
+}());
+</script>

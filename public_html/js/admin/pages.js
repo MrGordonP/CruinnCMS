@@ -4,16 +4,27 @@
 
     var csrfToken = layout.dataset.csrf;
     var templates = JSON.parse(layout.dataset.templates || '[]');
+    var templateZonesBySlug = {};
+    templates.forEach(function (t) {
+        if (!t || !t.slug) return;
+        var zones = Array.isArray(t.zones) && t.zones.length ? t.zones : ['main'];
+        templateZonesBySlug[t.slug] = zones.filter(function (z) {
+            return z !== 'header' && z !== 'footer';
+        });
+        if (!templateZonesBySlug[t.slug].length) {
+            templateZonesBySlug[t.slug] = ['main'];
+        }
+    });
 
-    var rows          = document.querySelectorAll('#pages-table tbody tr');
-    var filterLinks   = document.querySelectorAll('.pl-nav-item[data-filter]');
-    var searchInput   = document.getElementById('pages-search');
-    var filterLabel   = document.getElementById('pages-filter-label');
-    var placeholder   = document.getElementById('pages-detail-placeholder');
+    var rows = document.querySelectorAll('#pages-table tbody tr');
+    var filterLinks = document.querySelectorAll('.pl-nav-item[data-filter]');
+    var searchInput = document.getElementById('pages-search');
+    var filterLabel = document.getElementById('pages-filter-label');
+    var placeholder = document.getElementById('pages-detail-placeholder');
     var detailContent = document.getElementById('pages-detail-content');
 
     var activeFilter = 'all';
-    var activeRow    = null;
+    var activeRow = null;
 
     // ── Filter sidebar ──
     filterLinks.forEach(function (link) {
@@ -92,33 +103,40 @@
             return '<option value="' + escHtml(t.slug) + '"' + (p.template === t.slug ? ' selected' : '') + '>' + escHtml(t.name) + '</option>';
         }).join('');
 
+        var zoneOptions = (templateZonesBySlug[p.template] || ['main']).map(function (zone) {
+            var label = String(zone).replace(/[-_]+/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+            return '<option value="' + escHtml(zone) + '"' + ((p.page_zone || 'main') === zone ? ' selected' : '') + '>' + escHtml(label) + '</option>';
+        }).join('');
+
         var settingsHtml = '<form method="POST" action="/admin/pages/' + p.id + '" class="pl-detail-settings">'
             + '<input type="hidden" name="csrf_token" value="' + escHtml(csrfToken) + '">'
             + '<div class="pl-detail-settings-section">Settings</div>'
             + '<div class="form-group"><label>Title</label>'
-            +   '<input type="text" name="title" value="' + escHtml(p.title) + '" class="form-input" required></div>'
+            + '<input type="text" name="title" value="' + escHtml(p.title) + '" class="form-input" required></div>'
             + '<div class="form-group"><label>URL Slug</label>'
-            +   '<div class="input-with-prefix"><span class="input-prefix">/</span>'
-            +   '<input type="text" name="slug" value="' + escHtml(p.slug) + '" class="form-input" pattern="[a-z0-9\\/\\-]+" required></div></div>'
+            + '<div class="input-with-prefix"><span class="input-prefix">/</span>'
+            + '<input type="text" name="slug" value="' + escHtml(p.slug) + '" class="form-input" pattern="[a-z0-9\\/\\-]+" required></div></div>'
             + '<div class="form-group"><label>Status</label>'
-            +   '<select name="status" class="form-input">'
-            +     '<option value="published"' + (p.status === 'published' ? ' selected' : '') + '>Published</option>'
-            +     '<option value="draft"' + (p.status === 'draft' ? ' selected' : '') + '>Draft</option>'
-            +     '<option value="archived"' + (p.status === 'archived' ? ' selected' : '') + '>Archived</option>'
-            +   '</select></div>'
+            + '<select name="status" class="form-input">'
+            + '<option value="published"' + (p.status === 'published' ? ' selected' : '') + '>Published</option>'
+            + '<option value="draft"' + (p.status === 'draft' ? ' selected' : '') + '>Draft</option>'
+            + '<option value="archived"' + (p.status === 'archived' ? ' selected' : '') + '>Archived</option>'
+            + '</select></div>'
             + '<div class="form-group"><label>Render Mode</label>'
-            +   '<select name="render_mode" class="form-input">'
-            +     '<option value="block"' + (p.mode === 'block' ? ' selected' : '') + '>Cruinn (block editor)</option>'
-            +     '<option value="html"' + (p.mode === 'html' ? ' selected' : '') + '>HTML (code editor)</option>'
-            +     '<option value="file"' + (p.mode === 'file' ? ' selected' : '') + '>File</option>'
-            +   '</select></div>'
+            + '<select name="render_mode" class="form-input">'
+            + '<option value="block"' + (p.mode === 'block' ? ' selected' : '') + '>Cruinn (block editor)</option>'
+            + '<option value="html"' + (p.mode === 'html' ? ' selected' : '') + '>HTML (code editor)</option>'
+            + '<option value="file"' + (p.mode === 'file' ? ' selected' : '') + '>File</option>'
+            + '</select></div>'
             + '<div class="form-group"><label>Template</label>'
-            +   '<select name="template" class="form-input">' + templateOptions + '</select></div>'
+            + '<select name="template" id="pl-page-template" class="form-input">' + templateOptions + '</select></div>'
+            + '<div class="form-group"><label>Page Zone</label>'
+            + '<select name="page_zone" id="pl-page-zone" class="form-input">' + zoneOptions + '</select></div>'
             + '<div class="form-group"><label>Meta Description</label>'
-            +   '<input type="text" name="meta_description" value="' + escHtml(p.meta_description || '') + '" class="form-input"></div>'
+            + '<input type="text" name="meta_description" value="' + escHtml(p.meta_description || '') + '" class="form-input"></div>'
             + '<table class="pl-meta" style="margin-bottom:.75rem">'
-            +   '<tr><th>Author</th><td>' + escHtml(p.author) + '</td></tr>'
-            +   '<tr><th>Updated</th><td>' + escHtml(p.updated) + '</td></tr>'
+            + '<tr><th>Author</th><td>' + escHtml(p.author) + '</td></tr>'
+            + '<tr><th>Updated</th><td>' + escHtml(p.updated) + '</td></tr>'
             + '</table>'
             + '<button type="submit" class="btn btn-primary" style="width:100%">Save Settings</button></form>';
 
@@ -129,6 +147,25 @@
             + actionsHtml
             + settingsHtml;
         detailContent.style.display = '';
+
+        var templateSelect = document.getElementById('pl-page-template');
+        var zoneSelect = document.getElementById('pl-page-zone');
+        if (templateSelect && zoneSelect) {
+            templateSelect.addEventListener('change', function () {
+                var zones = templateZonesBySlug[templateSelect.value] || ['main'];
+                var current = zoneSelect.value;
+                zoneSelect.innerHTML = '';
+                zones.forEach(function (zone) {
+                    var opt = document.createElement('option');
+                    opt.value = zone;
+                    opt.textContent = String(zone).replace(/[-_]+/g, ' ').replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+                    zoneSelect.appendChild(opt);
+                });
+                if (zones.indexOf(current) >= 0) {
+                    zoneSelect.value = current;
+                }
+            });
+        }
     }
 
     function escHtml(s) {
@@ -139,6 +176,6 @@
 }());
 
 PanelCollapse.init([
-    { panelId: 'pl-sidebar',   toggleId: 'pl-sidebar-toggle', storeKey: 'admin_pages_sidebar', side: 'left' },
-    { panelId: 'pages-detail', toggleId: 'pl-detail-toggle',  storeKey: 'admin_pages_detail',  side: 'right' }
+    { panelId: 'pl-sidebar', toggleId: 'pl-sidebar-toggle', storeKey: 'admin_pages_sidebar', side: 'left' },
+    { panelId: 'pages-detail', toggleId: 'pl-detail-toggle', storeKey: 'admin_pages_detail', side: 'right' }
 ]);

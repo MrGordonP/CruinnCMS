@@ -280,7 +280,7 @@ class CruinnRenderService
      * (padding, background, etc.) wraps the injected content.
      * Returns ['html' => ..., 'css' => ...].
      */
-    public function buildWithTemplate(int $pageId, int $canvasPageId): array
+    public function buildWithTemplate(int $pageId, int $canvasPageId, string $defaultZone = 'main'): array
     {
         // Template canvas blocks
         $tplFlat = $this->db->fetchAll(
@@ -318,7 +318,7 @@ class CruinnRenderService
             // Only index root-level page blocks by zone
             if ($pid === null) {
                 $cfg      = json_decode($row['block_config'] ?? '{}', true) ?: [];
-                $zoneName = $cfg['zone_name'] ?? 'main';
+                $zoneName = $cfg['zone_name'] ?? $defaultZone;
                 $pageByZone[$zoneName][] = $row;
             }
         }

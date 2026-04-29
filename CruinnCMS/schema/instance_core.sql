@@ -248,6 +248,7 @@ CREATE TABLE `pages_index` (
     `slug`             VARCHAR(255)  NOT NULL,
     `status`           ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
     `template`         VARCHAR(50)   NOT NULL DEFAULT 'default',
+    `page_zone`        VARCHAR(50)   NOT NULL DEFAULT 'main' COMMENT 'Target template zone for this page\'s content',
     `editor_mode`      ENUM('structured','freeform') NOT NULL DEFAULT 'structured',
     `meta_description` VARCHAR(320)  NULL DEFAULT '',
     `render_mode`      ENUM('block','html','file') NOT NULL DEFAULT 'block',

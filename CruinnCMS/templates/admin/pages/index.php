@@ -15,7 +15,7 @@ foreach ($pages as $pg) {
 
 <div class="panel-layout" id="pages-layout"
      data-csrf="<?= e(\Cruinn\CSRF::getToken()) ?>"
-     data-templates="<?= e(json_encode(array_map(fn($t) => ['slug' => $t['slug'], 'name' => $t['name']], $templates ?? []))) ?>">
+    data-templates="<?= e(json_encode(array_map(fn($t) => ['slug' => $t['slug'], 'name' => $t['name'], 'zones' => $t['zones'] ?? ['main']], $templates ?? []))) ?>">
 
     <!-- ── Left: Filters ──────────────────────────────────────── -->
     <div class="pl-sidebar" id="pl-sidebar">
@@ -98,6 +98,7 @@ foreach ($pages as $pg) {
                         'mode'            => $mode,
                         'status'          => $status,
                         'template'        => $pg['template'] ?? 'default',
+                        'page_zone'       => $pg['page_zone'] ?? 'main',
                         'meta_description'=> $pg['meta_description'] ?? '',
                         'author'          => $pg['author_name'] ?? '—',
                         'updated'         => format_date($pg['updated_at'], 'j M Y'),

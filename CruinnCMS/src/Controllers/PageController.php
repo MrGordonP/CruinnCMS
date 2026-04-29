@@ -117,8 +117,9 @@ class PageController extends BaseController
         if ($cruinn->hasPublished((int) $page['id'])) {
             // If the template has a canvas page, merge template layout with page content
             $canvasPageId = isset($tpl['canvas_page_id']) ? (int) $tpl['canvas_page_id'] : 0;
+            $pageZone = (string) ($page['page_zone'] ?? 'main');
             if ($canvasPageId > 0 && $cruinn->hasPublished($canvasPageId)) {
-                $merged = $cruinn->buildWithTemplate((int) $page['id'], $canvasPageId);
+                $merged = $cruinn->buildWithTemplate((int) $page['id'], $canvasPageId, $pageZone);
                 Template::addGlobal('cruinn_css', $merged['css']);
                 $this->render('public/cruinn-page', [
                     'title'            => $page['title'],

@@ -25,7 +25,11 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
              ORDER BY p.updated_at DESC"
         );
 
-        $templates = $this->db->fetchAll('SELECT slug, name FROM page_templates ORDER BY sort_order');
+        $templates = $this->db->fetchAll('SELECT slug, name, zones FROM page_templates ORDER BY sort_order');
+        foreach ($templates as &$tpl) {
+            $tpl['zones'] = json_decode($tpl['zones'] ?? '[]', true) ?: ['main'];
+        }
+        unset($tpl);
 
         $this->renderAdmin('admin/pages/index', [
             'title'         => 'Pages',
@@ -40,7 +44,11 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function newPage(): void
     {
-        $templates = $this->db->fetchAll('SELECT slug, name, description FROM page_templates ORDER BY sort_order');
+        $templates = $this->db->fetchAll('SELECT slug, name, description, zones FROM page_templates ORDER BY sort_order');
+        foreach ($templates as &$tpl) {
+            $tpl['zones'] = json_decode($tpl['zones'] ?? '[]', true) ?: ['main'];
+        }
+        unset($tpl);
 
         $this->renderAdmin('admin/pages/edit', [
             'title'       => 'New Page',
@@ -80,11 +88,15 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             $renderMode = 'block';
         }
 
+        $templateSlug = $this->input('template', 'default');
+        $pageZone = $this->resolvePageZoneForTemplate($templateSlug, $this->input('page_zone', 'main'));
+
         $id = $this->db->insert('pages_index', [
             'title'            => $this->input('title'),
             'slug'             => $slug,
             'status'           => $this->input('status', 'draft'),
-            'template'         => $this->input('template', 'default'),
+            'template'         => $templateSlug,
+            'page_zone'        => $pageZone,
             'meta_description' => $this->input('meta_description', ''),
             'render_mode'      => $renderMode,
             'created_by'       => Auth::userId(),
@@ -128,11 +140,15 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             $renderMode = 'block';
         }
 
+        $templateSlug = $this->input('template', 'default');
+        $pageZone = $this->resolvePageZoneForTemplate($templateSlug, $this->input('page_zone', $page['page_zone'] ?? 'main'));
+
         $this->db->update('pages_index', [
             'title'            => $this->input('title'),
             'slug'             => $slug,
             'status'           => $this->input('status', 'draft'),
-            'template'         => $this->input('template', 'default'),
+            'template'         => $templateSlug,
+            'page_zone'        => $pageZone,
             'meta_description' => $this->input('meta_description', ''),
             'render_mode'      => $renderMode,
             'updated_at'       => date('Y-m-d H:i:s'),
@@ -371,5 +387,37 @@ HTML;
 
         $this->logActivity('reparent', 'page', (int) $id, "{$oldSlug} → {$newSlug}");
         $this->json(['success' => true, 'old_slug' => $oldSlug, 'new_slug' => $newSlug]);
+    }
+
+    private function resolvePageZoneForTemplate(string $templateSlug, string $requestedZone): string
+    {
+        $template = $this->db->fetch('SELECT zones FROM page_templates WHERE slug = ? LIMIT 1', [$templateSlug]);
+        $zones = $template ? (json_decode($template['zones'] ?? '[]', true) ?: ['main']) : ['main'];
+
+        $contentZones = [];
+        foreach ($zones as $zone) {
+            if (!is_string($zone)) {
+                continue;
+            }
+            $zone = trim($zone);
+            if (!preg_match('/^[a-z0-9_\-]+$/', $zone)) {
+                continue;
+            }
+            if (in_array($zone, ['header', 'footer'], true)) {
+                continue;
+            }
+            $contentZones[] = $zone;
+        }
+
+        if (empty($contentZones)) {
+            $contentZones = ['main'];
+        }
+
+        $requestedZone = trim($requestedZone);
+        if (in_array($requestedZone, $contentZones, true)) {
+            return $requestedZone;
+        }
+
+        return $contentZones[0];
     }
 }
