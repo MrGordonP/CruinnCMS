@@ -122,6 +122,10 @@ class MailboxService
             return $this->connections[$cacheKey];
         }
 
+        if (!function_exists('imap_open')) {
+            throw new \RuntimeException('IMAP extension (php-imap) is not installed on this server.');
+        }
+
         $enc      = strtolower($mailbox['imap_encryption'] ?? 'ssl');
         $port     = (int) ($mailbox['imap_port'] ?? 993);
         $flags    = match ($enc) {
@@ -137,7 +141,7 @@ class MailboxService
 
         if ($stream === false) {
             throw new \RuntimeException(
-                'IMAP connection failed for mailbox ' . $mailbox['id'] . ': ' . imap_last_error()
+                'IMAP connection failed for mailbox ' . $mailbox['id'] . ': ' . (function_exists('imap_last_error') ? imap_last_error() : 'unknown error')
             );
         }
 
@@ -167,7 +171,11 @@ class MailboxService
      */
     public function getFolders(array $mailbox): array
     {
-        $stream  = $this->connect($mailbox);
+        try {
+            $stream = $this->connect($mailbox);
+        } catch (\RuntimeException) {
+            return [];
+        }
         $enc     = strtolower($mailbox['imap_encryption'] ?? 'ssl');
         $port    = (int) ($mailbox['imap_port'] ?? 993);
         $flags   = match ($enc) {
