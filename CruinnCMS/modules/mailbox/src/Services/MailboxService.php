@@ -546,7 +546,12 @@ class MailboxService
             return;
         }
 
-        $uids = $socket->uidSearch($folder, 'UID ' . ($lastUid + 1) . ':*');
+        try {
+            $uids = $socket->uidSearch($folder, 'UID ' . ($lastUid + 1) . ':*');
+        } catch (\RuntimeException $e) {
+            $this->lastError = $e->getMessage();
+            return;
+        }
 
         if (empty($uids)) {
             return;
@@ -561,7 +566,7 @@ class MailboxService
 
         $lastUidMap[$folder] = max($uids);
         $this->db->execute(
-            'UPDATE organisation_officers SET imap_last_uid = ? WHERE id = ?',
+            'UPDATE mailboxes SET imap_last_uid = ? WHERE id = ?',
             [json_encode($lastUidMap), $mailbox['id']]
         );
     }
