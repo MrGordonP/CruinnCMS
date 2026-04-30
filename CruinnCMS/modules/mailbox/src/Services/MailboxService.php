@@ -43,23 +43,23 @@ class MailboxService
     {
         if ($role === 'admin') {
             return $this->db->fetchAll(
-                'SELECT id, label AS position, email,
+                'SELECT id, label, label AS position, email,
                         imap_host, imap_port, imap_encryption,
                         imap_user, imap_pass_enc,
                         smtp_host, smtp_port, smtp_encryption,
-                        smtp_user, smtp_pass_enc, imap_last_uid, enabled
+                        smtp_user, smtp_pass_enc, imap_last_uid, enabled, sort_order
                    FROM mailboxes
                   WHERE enabled = 1
-                  ORDER BY label'
+                  ORDER BY sort_order, label'
             );
         }
 
         return $this->db->fetchAll(
-            'SELECT DISTINCT mb.id, mb.label AS position, mb.email,
+            'SELECT DISTINCT mb.id, mb.label, mb.label AS position, mb.email,
                     mb.imap_host, mb.imap_port, mb.imap_encryption,
                     mb.imap_user, mb.imap_pass_enc,
                     mb.smtp_host, mb.smtp_port, mb.smtp_encryption,
-                    mb.smtp_user, mb.smtp_pass_enc, mb.imap_last_uid, mb.enabled
+                    mb.smtp_user, mb.smtp_pass_enc, mb.imap_last_uid, mb.enabled, mb.sort_order
                FROM mailboxes mb
                JOIN mailbox_access ma ON ma.mailbox_id = mb.id
               WHERE mb.enabled = 1
@@ -69,7 +69,7 @@ class MailboxService
                         SELECT id FROM organisation_officers WHERE user_id = ?
                     )
                 )
-              ORDER BY mb.label',
+              ORDER BY mb.sort_order, mb.label',
             [$userId, $userId]
         );
     }

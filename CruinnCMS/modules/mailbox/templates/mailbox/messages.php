@@ -19,11 +19,8 @@ $pages   = (int) ceil($total / $per_page);
 <style>
 /* Mailbox-specific additions — engine classes handle layout/table/nav */
 .mb-error  { background: #fef2f2; border-bottom: 1px solid #fca5a5; color: #991b1b; padding: 0.55rem 1rem; font-size: 0.85rem; flex-shrink: 0; }
-.mb-compose { display: block; margin: 0.6rem 0.75rem 0.4rem; padding: 0.4rem 0.75rem; background: var(--color-primary, #1d9e75); color: #fff; border-radius: 4px; font-size: 0.83rem; font-weight: 600; text-align: center; text-decoration: none; }
+.mb-compose { display: block; margin: 0.4rem 0.75rem 0.2rem; padding: 0.35rem 0.75rem; background: var(--color-primary, #1d9e75); color: #fff; border-radius: 4px; font-size: 0.8rem; font-weight: 600; text-align: center; text-decoration: none; }
 .mb-compose:hover { background: var(--color-primary-dark, #166b52); color: #fff; text-decoration: none; }
-.mb-account { padding: 0.65rem 0.9rem 0.5rem; border-bottom: 1px solid var(--color-border, #ccd9d3); }
-.mb-account-name  { display: block; font-size: 0.84rem; font-weight: 700; color: var(--color-text, #0c1614); }
-.mb-account-email { display: block; font-size: 0.75rem; color: #888; }
 .pl-table tr.state-unread td { font-weight: 600; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .dot-unread  { background: var(--color-primary, #1d9e75); }
@@ -32,6 +29,15 @@ $pages   = (int) ceil($total / $per_page);
 .mb-pagination { display: flex; gap: 0.3rem; padding: 0.6rem 1rem; flex-shrink: 0; border-top: 1px solid var(--color-border, #ccd9d3); }
 .mb-page-link { display: inline-block; padding: 0.2rem 0.55rem; font-size: 0.8rem; border: 1px solid var(--color-border, #ccd9d3); border-radius: 3px; color: var(--color-text, #0c1614); text-decoration: none; }
 .mb-page-link.active, .mb-page-link:hover { background: var(--color-primary, #1d9e75); color: #fff; border-color: var(--color-primary, #1d9e75); }
+/* Multi-mailbox sidebar */
+.mb-nav-account { border-bottom: 1px solid var(--color-border, #ccd9d3); }
+.mb-nav-account-label { display: block; padding: 0.55rem 0.9rem 0.45rem; text-decoration: none; color: inherit; }
+.mb-nav-account-label:hover { background: var(--color-hover, #f0f6f3); }
+.mb-nav-account.active > .mb-nav-account-label { background: var(--color-hover, #f0f6f3); }
+.mb-nav-account-name  { display: block; font-size: 0.84rem; font-weight: 700; color: var(--color-text, #0c1614); }
+.mb-nav-account-email { display: block; font-size: 0.72rem; color: #888; }
+.mb-nav-folders { padding-bottom: 0.4rem; }
+.pl-nav-item-sub { padding-left: 1.4rem; font-size: 0.82rem; }
 </style>
 
 <?php if ($imap_error ?? null): ?>
@@ -40,21 +46,30 @@ $pages   = (int) ceil($total / $per_page);
 
 <div class="panel-layout">
 
-    <!-- Folder sidebar -->
+    <!-- Unified mailbox sidebar: all accessible mailboxes -->
     <div class="pl-sidebar">
-        <div class="mb-account">
-            <span class="mb-account-name"><?= e($mailbox['position']) ?></span>
-            <span class="mb-account-email"><?= e($mailbox['email'] ?? '') ?></span>
-        </div>
-        <a class="mb-compose" href="<?= $baseUrl ?>/compose">+ Compose</a>
         <div class="pl-sidebar-scroll">
-            <?php foreach ($folders as $f): ?>
-                <a class="pl-nav-item <?= $f === $folder ? 'active' : '' ?>"
-                   href="<?= $baseUrl ?>/<?= urlencode($f) ?>"><?= e($f) ?></a>
+            <?php foreach ($all_mailboxes as $mb_nav): ?>
+                <?php
+                    $isActive  = (int) $mb_nav['id'] === (int) $mailbox['id'];
+                    $inboxUrl  = '/mail/' . (int) $mb_nav['id'] . '/INBOX';
+                ?>
+                <div class="mb-nav-account <?= $isActive ? 'active' : '' ?>">
+                    <a class="mb-nav-account-label" href="<?= $inboxUrl ?>">
+                        <span class="mb-nav-account-name"><?= e($mb_nav['label']) ?></span>
+                        <span class="mb-nav-account-email"><?= e($mb_nav['email']) ?></span>
+                    </a>
+                    <?php if ($isActive): ?>
+                        <div class="mb-nav-folders">
+                            <?php foreach ($folders as $f): ?>
+                                <a class="pl-nav-item pl-nav-item-sub <?= $f === $folder ? 'active' : '' ?>"
+                                   href="<?= $baseUrl ?>/<?= urlencode($f) ?>"><?= e($f) ?></a>
+                            <?php endforeach; ?>
+                            <a class="mb-compose" href="<?= $baseUrl ?>/compose">+ Compose</a>
+                        </div>
+                    <?php endif; ?>
+                </div>
             <?php endforeach; ?>
-        </div>
-        <div class="pl-sidebar-footer">
-            <a href="/mail" style="font-size:0.8rem;color:#888;text-decoration:none;">← All Mailboxes</a>
         </div>
     </div>
 

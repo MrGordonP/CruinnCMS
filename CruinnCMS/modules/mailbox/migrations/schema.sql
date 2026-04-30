@@ -103,6 +103,7 @@ CREATE TABLE IF NOT EXISTS `mailboxes` (
     `smtp_pass_enc`   TEXT          NULL,
     `imap_last_uid`   JSON          NULL,
     `enabled`         TINYINT(1)    NOT NULL DEFAULT 0,
+    `sort_order`      INT UNSIGNED  NOT NULL DEFAULT 0,
     `created_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

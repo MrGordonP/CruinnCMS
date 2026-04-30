@@ -71,6 +71,11 @@ $action = $is_new ? '/admin/mailbox' : '/admin/mailbox/' . (int)$mb['id'] . '/cr
                     <input type="email" id="cred-email" name="email"
                            value="<?= e($mb['email']) ?>" placeholder="president@example.org">
                 </div>
+                <div class="form-group" style="flex:0 0 7rem">
+                    <label for="cred-sort-order">Sort order</label>
+                    <input type="number" id="cred-sort-order" name="sort_order" min="0"
+                           value="<?= (int) ($mb['sort_order'] ?? 0) ?>">
+                </div>
             </div>
             <?php if ($is_new): ?>
             <div class="form-group" style="margin-top:0.25rem">

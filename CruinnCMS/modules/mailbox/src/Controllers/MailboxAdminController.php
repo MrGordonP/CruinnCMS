@@ -77,6 +77,7 @@ class MailboxAdminController extends BaseController
             'smtp_encryption' => \Cruinn\App::config('mail.encryption', 'tls'),
             'smtp_user'       => '',
             'enabled'         => 0,
+            'sort_order'      => 0,
             'has_imap_pass'   => false,
             'has_smtp_pass'   => false,
         ];
@@ -99,7 +100,7 @@ class MailboxAdminController extends BaseController
             'SELECT id, label, email,
                     imap_host, imap_port, imap_encryption, imap_user,
                     smtp_host, smtp_port, smtp_encryption, smtp_user,
-                    enabled,
+                    enabled, sort_order,
                     (imap_pass_enc IS NOT NULL AND imap_pass_enc != \'\') AS has_imap_pass,
                     (smtp_pass_enc IS NOT NULL AND smtp_pass_enc != \'\') AS has_smtp_pass
                FROM mailboxes WHERE id = ?',
@@ -417,6 +418,7 @@ class MailboxAdminController extends BaseController
             'smtp_encryption' => $this->input('smtp_encryption', 'tls'),
             'smtp_user'       => trim($this->input('smtp_user', '')) ?: null,
             'enabled'         => $this->input('enabled', '0') === '1' ? 1 : 0,
+            'sort_order'      => (int) $this->input('sort_order', 0),
         ];
     }
 }

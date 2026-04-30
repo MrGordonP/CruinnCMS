@@ -35,14 +35,22 @@ class MailboxController extends BaseController
 
     public function index(): void
     {
-        $userId   = Auth::userId();
-        $role     = Auth::role();
+        $userId    = Auth::userId();
+        $role      = Auth::role();
         $mailboxes = $this->mailbox->getAccessibleMailboxes($userId, $role);
 
-        $this->renderAdmin('mailbox/index', [
-            'mailboxes'  => $mailboxes,
-            'page_title' => 'Mailbox',
-        ]);
+        if (empty($mailboxes)) {
+            $this->renderAdmin('mailbox/index', [
+                'mailboxes'  => [],
+                'page_title' => 'Mailbox',
+            ]);
+            return;
+        }
+
+        // Redirect to first mailbox INBOX — the messages template now shows all
+        // mailboxes in its left sidebar, making a separate landing page redundant.
+        $first = reset($mailboxes);
+        $this->redirect('/mail/' . (int) $first['id'] . '/INBOX');
     }
 
     // -------------------------------------------------------------------------
@@ -68,24 +76,26 @@ class MailboxController extends BaseController
 
     public function messages(string $mailbox_id, string $folder): void
     {
-        $mb     = $this->resolveMailbox((int) $mailbox_id);
-        $folder = urldecode($folder);
-        $page   = max(1, (int) ($this->query('page', 1)));
+        $mb          = $this->resolveMailbox((int) $mailbox_id);
+        $folder      = urldecode($folder);
+        $page        = max(1, (int) ($this->query('page', 1)));
 
-        $messages = $this->mailbox->getMessages($mb, $folder, Auth::userId(), Auth::role(), $page);
-        $total    = $this->mailbox->getMessageCount((int) $mb['id'], $folder);
-        $folders  = $this->mailbox->getFolders($mb);
+        $messages    = $this->mailbox->getMessages($mb, $folder, Auth::userId(), Auth::role(), $page);
+        $total       = $this->mailbox->getMessageCount((int) $mb['id'], $folder);
+        $folders     = $this->mailbox->getFolders($mb);
+        $allMailboxes = $this->mailbox->getAccessibleMailboxes(Auth::userId(), Auth::role());
 
         $this->renderAdmin('mailbox/messages', [
-            'mailbox'    => $mb,
-            'folder'     => $folder,
-            'folders'    => $folders,
-            'messages'   => $messages,
-            'page'       => $page,
-            'total'      => $total,
-            'per_page'   => 50,
-            'imap_error' => $this->mailbox->getLastError(),
-            'page_title' => $mb['position'] . ' — ' . $folder,
+            'mailbox'      => $mb,
+            'folder'       => $folder,
+            'folders'      => $folders,
+            'all_mailboxes' => $allMailboxes,
+            'messages'     => $messages,
+            'page'         => $page,
+            'total'        => $total,
+            'per_page'     => 50,
+            'imap_error'   => $this->mailbox->getLastError(),
+            'page_title'   => $mb['position'] . ' — ' . $folder,
         ]);
     }
 

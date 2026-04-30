@@ -23,6 +23,7 @@ return [
         __DIR__ . '/migrations/schema.sql',
         __DIR__ . '/migrations/002_officers_imap_columns.sql',
         __DIR__ . '/migrations/003_mailboxes_table.sql',
+        __DIR__ . '/migrations/004_mailbox_sort_order.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
