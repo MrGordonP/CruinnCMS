@@ -6,32 +6,11 @@ namespace Cruinn\Module\Mailbox\Services;
 
 use Cruinn\Database;
 
-// IMAP extension — functions and constants are in global namespace; import explicitly.
-use function imap_open;
-use function imap_close;
-use function imap_last_error;
-use function imap_list;
-use function imap_search;
-use function imap_msgno;
-use function imap_headerinfo;
-use function imap_fetchstructure;
-use function imap_fetchbody;
-use function imap_mail_move;
-use function imap_expunge;
-use function imap_delete;
-use function imap_utf8;
-use const SE_UID;
-use const TYPEMULTIPART;
-use const TYPETEXT;
-use const ENC7BIT;
-use const ENCBASE64;
-use const ENCQUOTEDPRINTABLE;
-
 /**
  * MailboxService — IMAP access, header sync, send, thread resolution.
  *
  * All IMAP interaction goes through this service. Controllers never touch
- * imap_* functions directly.
+ * IMAP protocol directly — that is handled by ImapSocket.
  *
  * Encryption: IMAP/SMTP passwords are stored AES-256-CBC encrypted.
  * The key is derived from the instance secret (config 'secret_key').
@@ -39,11 +18,10 @@ use const ENCQUOTEDPRINTABLE;
  */
 class MailboxService
 {
-    private Database $db;
-    private string   $encryptionKey;
-
-    /** IMAP connection pool — reuse within a request. */
-    private array $connections = [];
+    private Database    $db;
+    private string      $encryptionKey;
+    private ?ImapSocket $socket        = null;
+    private ?int        $socketMailbox = null; // mailbox id currently connected
 
     public function __construct(Database $db, string $instanceSecret)
     {
@@ -109,55 +87,42 @@ class MailboxService
     // -------------------------------------------------------------------------
 
     /**
-     * Open (or reuse) an IMAP connection for the given mailbox row.
-     * Returns the IMAP stream resource or throws on failure.
+     * Open (or reuse) an ImapSocket for the given mailbox row.
+     * Returns the connected ImapSocket or throws on failure.
      *
      * @throws \RuntimeException
      */
-    public function connect(array $mailbox, string $folder = 'INBOX'): mixed
+    public function connect(array $mailbox): ImapSocket
     {
-        $cacheKey = $mailbox['id'] . ':' . $folder;
-
-        if (isset($this->connections[$cacheKey])) {
-            return $this->connections[$cacheKey];
+        if ($this->socket !== null && $this->socketMailbox === (int) $mailbox['id']) {
+            return $this->socket;
         }
 
-        if (!function_exists('imap_open')) {
-            throw new \RuntimeException('IMAP extension (php-imap) is not installed on this server.');
-        }
+        $this->closeAll();
 
         $enc      = strtolower($mailbox['imap_encryption'] ?? 'ssl');
         $port     = (int) ($mailbox['imap_port'] ?? 993);
-        $flags    = match ($enc) {
-            'ssl'   => '/imap/ssl',
-            'tls'   => '/imap/tls',
-            default => '/imap/notls',
-        };
-
         $password = $this->decryptPassword((string) $mailbox['imap_pass_enc']);
-        $mailstr  = '{' . $mailbox['imap_host'] . ':' . $port . $flags . '}' . $folder;
 
-        $stream = @imap_open($mailstr, $mailbox['imap_user'], $password);
+        $socket = new ImapSocket();
+        $socket->connect($mailbox['imap_host'], $port, $enc, $mailbox['imap_user'], $password);
 
-        if ($stream === false) {
-            throw new \RuntimeException(
-                'IMAP connection failed for mailbox ' . $mailbox['id'] . ': ' . (function_exists('imap_last_error') ? imap_last_error() : 'unknown error')
-            );
-        }
+        $this->socket        = $socket;
+        $this->socketMailbox = (int) $mailbox['id'];
 
-        $this->connections[$cacheKey] = $stream;
-        return $stream;
+        return $socket;
     }
 
     /**
-     * Close all open IMAP connections. Call at end of request if needed.
+     * Close the open IMAP connection. Call at end of request if needed.
      */
     public function closeAll(): void
     {
-        foreach ($this->connections as $stream) {
-            @imap_close($stream);
+        if ($this->socket !== null) {
+            $this->socket->disconnect();
+            $this->socket        = null;
+            $this->socketMailbox = null;
         }
-        $this->connections = [];
     }
 
     // -------------------------------------------------------------------------
@@ -172,28 +137,11 @@ class MailboxService
     public function getFolders(array $mailbox): array
     {
         try {
-            $stream = $this->connect($mailbox);
+            $socket = $this->connect($mailbox);
+            return $socket->listFolders();
         } catch (\RuntimeException) {
             return [];
         }
-        $enc     = strtolower($mailbox['imap_encryption'] ?? 'ssl');
-        $port    = (int) ($mailbox['imap_port'] ?? 993);
-        $flags   = match ($enc) {
-            'ssl'   => '/imap/ssl',
-            'tls'   => '/imap/tls',
-            default => '/imap/notls',
-        };
-        $ref     = '{' . $mailbox['imap_host'] . ':' . $port . $flags . '}';
-        $raw     = imap_list($stream, $ref, '*');
-
-        if ($raw === false) {
-            return [];
-        }
-
-        return array_map(
-            static fn(string $f): string => str_replace($ref, '', $f),
-            $raw
-        );
     }
 
     // -------------------------------------------------------------------------
@@ -274,21 +222,19 @@ class MailboxService
      */
     public function fetchBody(array $mailbox, string $folder, int $uid): array
     {
-        $stream  = $this->connect($mailbox, $folder);
-        $msgNo   = imap_msgno($stream, $uid);
+        $socket    = $this->connect($mailbox);
+        $structure = $socket->uidFetchStructure($folder, $uid);
+        $headers   = $socket->uidFetchEnvelope($folder, $uid);
 
-        if ($msgNo === 0) {
+        if ($structure === null || $headers === null) {
             throw new \RuntimeException('Message UID ' . $uid . ' not found in ' . $folder);
         }
 
-        $structure = imap_fetchstructure($stream, $msgNo);
-        $headers   = imap_headerinfo($stream, $msgNo);
-
-        $textBody  = '';
-        $htmlBody  = '';
+        $textBody    = '';
+        $htmlBody    = '';
         $attachments = [];
 
-        $this->parseStructure($stream, $msgNo, $structure, $textBody, $htmlBody, $attachments);
+        $this->parseStructure($socket, $folder, $uid, $structure, $textBody, $htmlBody, $attachments);
 
         return [
             'headers'     => $headers,
@@ -356,12 +302,11 @@ class MailboxService
 
     public function moveMessage(array $mailbox, string $fromFolder, int $uid, string $toFolder): void
     {
-        $stream = $this->connect($mailbox, $fromFolder);
-        $msgNo  = imap_msgno($stream, $uid);
-        imap_mail_move($stream, (string) $msgNo, $toFolder);
-        imap_expunge($stream);
+        $socket = $this->connect($mailbox);
+        $socket->uidCopy($fromFolder, $uid, $toFolder);
+        $socket->uidStore($fromFolder, $uid, '\\Deleted', true);
+        $socket->expunge($fromFolder);
 
-        // Remove from index — will be re-synced in destination folder
         $this->db->execute(
             'DELETE FROM mailbox_messages WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
             [$mailbox['id'], $fromFolder, $uid]
@@ -372,18 +317,15 @@ class MailboxService
 
     public function deleteMessage(array $mailbox, string $folder, int $uid): void
     {
-        // Determine Trash folder name (try common variants)
         $folders = $this->getFolders($mailbox);
         $trash   = $this->findSpecialFolder($folders, ['Trash', 'INBOX.Trash', 'Deleted Messages', 'Deleted Items']);
 
         if ($trash && $folder !== $trash) {
             $this->moveMessage($mailbox, $folder, $uid, $trash);
         } else {
-            // Already in trash — permanently delete
-            $stream = $this->connect($mailbox, $folder);
-            $msgNo  = imap_msgno($stream, $uid);
-            imap_delete($stream, (string) $msgNo);
-            imap_expunge($stream);
+            $socket = $this->connect($mailbox);
+            $socket->uidStore($folder, $uid, '\\Deleted', true);
+            $socket->expunge($folder);
 
             $this->db->execute(
                 'DELETE FROM mailbox_messages WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
@@ -461,12 +403,16 @@ class MailboxService
      */
     public function search(array $mailbox, string $folder, string $query): array
     {
-        $stream = $this->connect($mailbox, $folder);
-        // IMAP SEARCH criteria — search subject and body text
-        $criteria = 'OR SUBJECT "' . addslashes($query) . '" BODY "' . addslashes($query) . '"';
-        $uids     = imap_search($stream, $criteria, SE_UID);
+        try {
+            $socket = $this->connect($mailbox);
+        } catch (\RuntimeException) {
+            return [];
+        }
 
-        if ($uids === false) {
+        $criteria = 'OR SUBJECT "' . addslashes($query) . '" BODY "' . addslashes($query) . '"';
+        $uids     = $socket->uidSearch($folder, $criteria);
+
+        if (empty($uids)) {
             return [];
         }
 
@@ -493,15 +439,14 @@ class MailboxService
         $lastUid    = (int) ($lastUidMap[$folder] ?? 0);
 
         try {
-            $stream = $this->connect($mailbox, $folder);
+            $socket = $this->connect($mailbox);
         } catch (\RuntimeException) {
-            return; // Connection failure — skip silently, don't break page load
+            return;
         }
 
-        // Fetch UIDs newer than lastUid
-        $uids = imap_search($stream, 'UID ' . ($lastUid + 1) . ':*', SE_UID);
+        $uids = $socket->uidSearch($folder, 'UID ' . ($lastUid + 1) . ':*');
 
-        if ($uids === false || empty($uids)) {
+        if (empty($uids)) {
             return;
         }
 
@@ -509,10 +454,9 @@ class MailboxService
             if ($uid <= $lastUid) {
                 continue;
             }
-            $this->syncMessage($stream, $mailbox['id'], $folder, $uid);
+            $this->syncMessage($socket, $mailbox['id'], $folder, $uid);
         }
 
-        // Update last UID marker
         $lastUidMap[$folder] = max($uids);
         $this->db->execute(
             'UPDATE organisation_officers SET imap_last_uid = ? WHERE id = ?',
@@ -524,26 +468,27 @@ class MailboxService
     // Private helpers
     // -------------------------------------------------------------------------
 
-    private function syncMessage(mixed $stream, int $mailboxId, string $folder, int $uid): void
+    private function syncMessage(ImapSocket $socket, int $mailboxId, string $folder, int $uid): void
     {
-        $msgNo   = imap_msgno($stream, $uid);
-        if ($msgNo === 0) {
+        $headers = $socket->uidFetchEnvelope($folder, $uid);
+        if ($headers === null) {
             return;
         }
 
-        $headers = imap_headerinfo($stream, $msgNo);
         $flags   = $this->parseFlags($headers);
 
         $messageId  = trim($headers->message_id ?? '');
         $inReplyTo  = trim($headers->in_reply_to ?? '');
         $subject    = $this->decodeHeader($headers->subject ?? '');
         $fromName   = $this->decodeHeader($headers->fromaddress ?? '');
-        $fromEmail  = $headers->from[0]->mailbox . '@' . ($headers->from[0]->host ?? '') ?? '';
+        $fromEmail  = isset($headers->from[0])
+            ? ($headers->from[0]->mailbox . '@' . ($headers->from[0]->host ?? ''))
+            : '';
         $toAddress  = $headers->toaddress ?? '';
         $ccAddress  = $headers->ccaddress ?? '';
         $sentAt     = date('Y-m-d H:i:s', $headers->udate ?? time());
 
-        $hasAttachments = $this->checkAttachments($stream, $msgNo);
+        $hasAttachments = $this->checkAttachments($socket, $folder, $uid);
         $threadId       = $this->resolveThread($mailboxId, $messageId, $inReplyTo, $subject, $sentAt);
 
         $this->db->execute(
@@ -628,25 +573,25 @@ class MailboxService
      * and recording attachment metadata (name, encoding, part number).
      */
     private function parseStructure(
-        mixed  $stream,
-        int    $msgNo,
-        object $structure,
-        string &$textBody,
-        string &$htmlBody,
-        array  &$attachments,
-        string $partNum = ''
+        ImapSocket $socket,
+        string     $folder,
+        int        $uid,
+        object     $structure,
+        string     &$textBody,
+        string     &$htmlBody,
+        array      &$attachments,
+        string     $partNum = ''
     ): void {
-        if ($structure->type === TYPEMULTIPART) {
+        if ($structure->type === ImapSocket::TYPEMULTIPART) {
             foreach ($structure->parts as $i => $part) {
                 $num = $partNum ? $partNum . '.' . ($i + 1) : (string) ($i + 1);
-                $this->parseStructure($stream, $msgNo, $part, $textBody, $htmlBody, $attachments, $num);
+                $this->parseStructure($socket, $folder, $uid, $part, $textBody, $htmlBody, $attachments, $num);
             }
             return;
         }
 
         $partNum = $partNum ?: '1';
 
-        // Check disposition — attachment vs inline
         $disposition = strtolower($structure->disposition ?? '');
         $filename    = $this->getFilename($structure);
 
@@ -660,10 +605,10 @@ class MailboxService
             return;
         }
 
-        $body = imap_fetchbody($stream, $msgNo, $partNum);
-        $body = $this->decodeBody($body, $structure->encoding ?? ENC7BIT);
+        $rawBody = $socket->uidFetchBodyPart($folder, $uid, $partNum);
+        $body    = $this->decodeBody($rawBody, $structure->encoding ?? ImapSocket::ENC7BIT);
 
-        if ($structure->type === TYPETEXT) {
+        if ($structure->type === ImapSocket::TYPETEXT) {
             if (strtolower($structure->subtype) === 'plain') {
                 $textBody .= $body;
             } elseif (strtolower($structure->subtype) === 'html') {
@@ -675,9 +620,9 @@ class MailboxService
     private function decodeBody(string $body, int $encoding): string
     {
         return match ($encoding) {
-            ENCBASE64          => base64_decode($body),
-            ENCQUOTEDPRINTABLE => quoted_printable_decode($body),
-            default            => $body,
+            ImapSocket::ENCBASE64          => base64_decode($body),
+            ImapSocket::ENCQUOTEDPRINTABLE => quoted_printable_decode($body),
+            default                        => $body,
         };
     }
 
@@ -685,21 +630,21 @@ class MailboxService
     {
         foreach ($structure->parameters ?? [] as $p) {
             if (strtolower($p->attribute) === 'name') {
-                return imap_utf8($p->value);
+                return mb_decode_mimeheader($p->value);
             }
         }
         foreach ($structure->dparameters ?? [] as $p) {
             if (strtolower($p->attribute) === 'filename') {
-                return imap_utf8($p->value);
+                return mb_decode_mimeheader($p->value);
             }
         }
         return '';
     }
 
-    private function checkAttachments(mixed $stream, int $msgNo): bool
+    private function checkAttachments(ImapSocket $socket, string $folder, int $uid): bool
     {
-        $structure = imap_fetchstructure($stream, $msgNo);
-        if ($structure->type !== TYPEMULTIPART) {
+        $structure = $socket->uidFetchStructure($folder, $uid);
+        if ($structure === null || $structure->type !== ImapSocket::TYPEMULTIPART) {
             return false;
         }
         foreach ($structure->parts ?? [] as $part) {
@@ -713,15 +658,15 @@ class MailboxService
     private function parseFlags(object $headers): string
     {
         $flags = [];
-        if ($headers->Unseen  ?? false) { $flags[] = ''; } else { $flags[] = '\\Seen'; }
-        if ($headers->Answered ?? false) { $flags[] = '\\Answered'; }
-        if ($headers->Flagged  ?? false) { $flags[] = '\\Flagged'; }
+        if (!($headers->Unseen  ?? false)) { $flags[] = '\\Seen'; }
+        if ($headers->Answered ?? false)   { $flags[] = '\\Answered'; }
+        if ($headers->Flagged  ?? false)   { $flags[] = '\\Flagged'; }
         return implode(' ', array_filter($flags));
     }
 
     private function decodeHeader(string $value): string
     {
-        return imap_utf8($value);
+        return mb_decode_mimeheader($value);
     }
 
     /**
