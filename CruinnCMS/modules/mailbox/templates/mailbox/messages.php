@@ -9,11 +9,18 @@
  * @var int    $page
  * @var int    $total
  * @var int    $per_page
+ * @var string|null $imap_error
  */
 $baseUrl = '/mail/' . (int) $mailbox['id'];
 $pages   = (int) ceil($total / $per_page);
 ?>
 <div class="mailbox-shell">
+
+    <?php if ($imap_error ?? null): ?>
+        <div class="mailbox-error-banner">
+            <strong>IMAP connection failed:</strong> <?= e($imap_error) ?>
+        </div>
+    <?php endif; ?>
 
     <!-- Sidebar: account + folder tree -->
     <nav class="mailbox-sidebar">

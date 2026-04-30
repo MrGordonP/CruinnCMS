@@ -84,6 +84,7 @@ class MailboxController extends BaseController
             'page'       => $page,
             'total'      => $total,
             'per_page'   => 50,
+            'imap_error' => $this->mailbox->getLastError(),
             'page_title' => $mb['position'] . ' — ' . $folder,
         ]);
     }

@@ -22,6 +22,7 @@ class MailboxService
     private string      $encryptionKey;
     private ?ImapSocket $socket        = null;
     private ?int        $socketMailbox = null; // mailbox id currently connected
+    private ?string     $lastError     = null;
 
     public function __construct(Database $db, string $instanceSecret)
     {
@@ -139,9 +140,15 @@ class MailboxService
         try {
             $socket = $this->connect($mailbox);
             return $socket->listFolders();
-        } catch (\RuntimeException) {
+        } catch (\RuntimeException $e) {
+            $this->lastError = $e->getMessage();
             return [];
         }
+    }
+
+    public function getLastError(): ?string
+    {
+        return $this->lastError;
     }
 
     // -------------------------------------------------------------------------
@@ -440,7 +447,8 @@ class MailboxService
 
         try {
             $socket = $this->connect($mailbox);
-        } catch (\RuntimeException) {
+        } catch (\RuntimeException $e) {
+            $this->lastError = $e->getMessage();
             return;
         }
 
