@@ -78,7 +78,12 @@ class Mailer
             // Recipients
             $recipients = is_array($to) ? $to : [$to];
             foreach ($recipients as $recipient) {
-                $mail->addAddress($recipient);
+                // Parse "Name <email>" format if present
+                if (preg_match('/^(.+?)\s*<([^>]+)>\s*$/', $recipient, $m)) {
+                    $mail->addAddress(trim($m[2]), trim($m[1], " \t\"'"));
+                } else {
+                    $mail->addAddress($recipient);
+                }
             }
 
             // Content

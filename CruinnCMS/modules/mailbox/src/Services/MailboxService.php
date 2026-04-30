@@ -285,51 +285,109 @@ class MailboxService
     // -------------------------------------------------------------------------
 
     /**
-     * Send a message via the mailbox's SMTP config using PHPMailer.
+     * Send a message via the mailbox's SMTP config.
+     * Uses PHPMailer if available, otherwise falls back to PHP mail().
      * $data keys: to, cc (optional), subject, text_body, html_body (optional),
-     *             reply_to_uid (optional, for In-Reply-To threading),
-     *             reply_to_folder (optional)
+     *             in_reply_to (optional, for threading)
      *
      * @throws \RuntimeException on send failure
      */
     public function send(array $mailbox, array $data): void
     {
-        if (!class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
-            throw new \RuntimeException('PHPMailer is required for sending mail.');
+        $to      = $data['to']      ?? '';
+        $cc      = $data['cc']      ?? '';
+        $subject = $data['subject'] ?? '';
+        $text    = $data['text_body'] ?? '';
+        $html    = $data['html_body'] ?? nl2br(htmlspecialchars($text, ENT_QUOTES));
+
+        if (class_exists(\PHPMailer\PHPMailer\PHPMailer::class)) {
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+            $mail->CharSet  = 'UTF-8';
+            $mail->isSMTP();
+            $mail->Host       = $mailbox['smtp_host'];
+            $mail->Port       = (int) ($mailbox['smtp_port'] ?? 587);
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $mailbox['smtp_user'];
+            $mail->Password   = $this->decryptPassword((string) $mailbox['smtp_pass_enc']);
+
+            $enc = strtolower($mailbox['smtp_encryption'] ?? 'tls');
+            $mail->SMTPSecure = match ($enc) {
+                'ssl'   => \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS,
+                default => \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS,
+            };
+
+            $mail->setFrom($mailbox['email'], $mailbox['position'] ?? '');
+
+            foreach ($this->parseAddressList($to) as [$addr, $name]) {
+                $mail->addAddress($addr, $name);
+            }
+            if ($cc !== '') {
+                foreach ($this->parseAddressList($cc) as [$addr, $name]) {
+                    $mail->addCC($addr, $name);
+                }
+            }
+
+            $mail->Subject = $subject;
+            $mail->isHTML(true);
+            $mail->Body    = $html;
+            $mail->AltBody = $text;
+
+            if (!empty($data['in_reply_to'])) {
+                $mail->addCustomHeader('In-Reply-To', $data['in_reply_to']);
+                $mail->addCustomHeader('References',  $data['in_reply_to']);
+            }
+
+            $mail->send();
+            return;
         }
 
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-        $mail->isSMTP();
-        $mail->Host       = $mailbox['smtp_host'];
-        $mail->Port       = (int) ($mailbox['smtp_port'] ?? 587);
-        $mail->SMTPAuth   = true;
-        $mail->Username   = $mailbox['smtp_user'];
-        $mail->Password   = $this->decryptPassword((string) $mailbox['smtp_pass_enc']);
+        // Fallback: PHP mail() via the server MTA
+        $fromName  = $mailbox['position'] ?? '';
+        $fromEmail = $mailbox['email'];
+        $boundary  = md5(uniqid('', true));
 
-        $enc = strtolower($mailbox['smtp_encryption'] ?? 'tls');
-        $mail->SMTPSecure = match ($enc) {
-            'ssl'   => \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS,
-            default => \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS,
-        };
-
-        $mail->setFrom($mailbox['email'], $mailbox['position'] ?? '');
-        $mail->addAddress($data['to']);
-
-        if (!empty($data['cc'])) {
-            $mail->addCC($data['cc']);
+        $headers  = 'From: ' . ($fromName ? $fromName . ' <' . $fromEmail . '>' : $fromEmail) . "\r\n";
+        $headers .= 'Reply-To: ' . $fromEmail . "\r\n";
+        if ($cc !== '') {
+            $headers .= 'Cc: ' . $cc . "\r\n";
         }
-
-        $mail->Subject = $data['subject'];
-        $mail->Body    = $data['html_body'] ?? nl2br(htmlspecialchars($data['text_body'], ENT_QUOTES));
-        $mail->AltBody = $data['text_body'];
-
-        // Thread headers
         if (!empty($data['in_reply_to'])) {
-            $mail->addCustomHeader('In-Reply-To', $data['in_reply_to']);
-            $mail->addCustomHeader('References',  $data['in_reply_to']);
+            $headers .= 'In-Reply-To: ' . $data['in_reply_to'] . "\r\n";
+            $headers .= 'References: '  . $data['in_reply_to'] . "\r\n";
         }
+        $headers .= "MIME-Version: 1.0\r\n";
+        $headers .= "Content-Type: multipart/alternative; boundary=\"{$boundary}\"\r\n";
 
-        $mail->send();
+        $body  = "--{$boundary}\r\n";
+        $body .= "Content-Type: text/plain; charset=UTF-8\r\n\r\n" . $text . "\r\n\r\n";
+        $body .= "--{$boundary}\r\n";
+        $body .= "Content-Type: text/html; charset=UTF-8\r\n\r\n" . $html . "\r\n\r\n";
+        $body .= "--{$boundary}--";
+
+        if (!mail($to, $subject, $body, $headers)) {
+            throw new \RuntimeException('mail() failed — check server MTA configuration.');
+        }
+    }
+
+    /**
+     * Parse one or more email addresses in RFC 5321 format.
+     * Accepts "Name <email>", "<email>", or plain "email".
+     * Returns array of [email, name] pairs.
+     *
+     * @return array<int, array{0: string, 1: string}>
+     */
+    private function parseAddressList(string $input): array
+    {
+        $result = [];
+        foreach (explode(',', $input) as $part) {
+            $part = trim($part);
+            if (preg_match('/^(.+?)\s*<([^>]+)>\s*$/', $part, $m)) {
+                $result[] = [trim($m[2]), trim($m[1], " \t\"'")];
+            } elseif ($part !== '') {
+                $result[] = [$part, ''];
+            }
+        }
+        return $result ?: [[$input, '']];
     }
 
     // -------------------------------------------------------------------------
