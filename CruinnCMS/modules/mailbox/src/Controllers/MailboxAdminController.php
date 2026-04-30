@@ -38,7 +38,7 @@ class MailboxAdminController extends BaseController
     public function index(): void
     {
         $mailboxes = $this->db->fetchAll(
-            'SELECT id, label, email, imap_host, imap_port, imap_encryption,
+            'SELECT id, label, label AS position, email, imap_host, imap_port, imap_encryption,
                     imap_user, smtp_host, smtp_port, smtp_encryption, smtp_user,
                     enabled,
                     (SELECT COUNT(*) FROM mailbox_messages mm WHERE mm.mailbox_id = mailboxes.id) AS indexed_count
