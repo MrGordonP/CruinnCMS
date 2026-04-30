@@ -39,7 +39,7 @@ class MailboxController extends BaseController
         $role     = Auth::role();
         $mailboxes = $this->mailbox->getAccessibleMailboxes($userId, $role);
 
-        $this->render('mailbox/index', [
+        $this->renderAdmin('mailbox/index', [
             'mailboxes'  => $mailboxes,
             'page_title' => 'Mailbox',
         ]);
@@ -55,7 +55,7 @@ class MailboxController extends BaseController
 
         $folders = $this->mailbox->getFolders($mb);
 
-        $this->render('mailbox/folders', [
+        $this->renderAdmin('mailbox/folders', [
             'mailbox'    => $mb,
             'folders'    => $folders,
             'page_title' => $mb['position'] . ' — Folders',
@@ -76,7 +76,7 @@ class MailboxController extends BaseController
         $total    = $this->mailbox->getMessageCount((int) $mb['id'], $folder);
         $folders  = $this->mailbox->getFolders($mb);
 
-        $this->render('mailbox/messages', [
+        $this->renderAdmin('mailbox/messages', [
             'mailbox'    => $mb,
             'folder'     => $folder,
             'folders'    => $folders,
@@ -107,7 +107,7 @@ class MailboxController extends BaseController
         // Record read receipt
         $this->mailbox->markRead((int) $mb['id'], $folder, $uid, Auth::userId());
 
-        $this->render('mailbox/message', [
+        $this->renderAdmin('mailbox/message', [
             'mailbox'    => $mb,
             'folder'     => $folder,
             'uid'        => $uid,
@@ -177,7 +177,7 @@ class MailboxController extends BaseController
     {
         $mb = $this->resolveMailbox((int) $mailbox_id);
 
-        $this->render('mailbox/compose', [
+        $this->renderAdmin('mailbox/compose', [
             'mailbox'    => $mb,
             'csrf_token' => CSRF::getToken(),
             'page_title' => 'New Message — ' . $mb['position'],
@@ -199,7 +199,7 @@ class MailboxController extends BaseController
 
         $errors = $this->validateCompose($data);
         if ($errors) {
-            $this->render('mailbox/compose', [
+            $this->renderAdmin('mailbox/compose', [
                 'mailbox'    => $mb,
                 'csrf_token' => CSRF::getToken(),
                 'page_title' => 'New Message — ' . $mb['position'],
@@ -225,7 +225,7 @@ class MailboxController extends BaseController
         $body = $this->mailbox->fetchBody($mb, urldecode($folder), $uid);
         $orig = $body['headers'];
 
-        $this->render('mailbox/compose', [
+        $this->renderAdmin('mailbox/compose', [
             'mailbox'    => $mb,
             'csrf_token' => CSRF::getToken(),
             'page_title' => 'Reply — ' . ($orig->subject ?? ''),
@@ -252,7 +252,7 @@ class MailboxController extends BaseController
 
         $errors = $this->validateCompose($data);
         if ($errors) {
-            $this->render('mailbox/compose', [
+            $this->renderAdmin('mailbox/compose', [
                 'mailbox'    => $mb,
                 'csrf_token' => CSRF::getToken(),
                 'page_title' => 'Reply',
@@ -274,7 +274,7 @@ class MailboxController extends BaseController
         $body = $this->mailbox->fetchBody($mb, urldecode($folder), $uid);
         $orig = $body['headers'];
 
-        $this->render('mailbox/compose', [
+        $this->renderAdmin('mailbox/compose', [
             'mailbox'    => $mb,
             'csrf_token' => CSRF::getToken(),
             'page_title' => 'Forward — ' . ($orig->subject ?? ''),
@@ -325,7 +325,7 @@ class MailboxController extends BaseController
 
         $results = $query ? $this->mailbox->search($mb, $folder, $query) : [];
 
-        $this->render('mailbox/search', [
+        $this->renderAdmin('mailbox/search', [
             'mailbox'    => $mb,
             'query'      => $query,
             'folder'     => $folder,
