@@ -12,12 +12,12 @@
  * @var string|null $imap_error
  */
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 $baseUrl = '/mail/' . (int) $mailbox['id'];
 $pages   = (int) ceil($total / $per_page);
 ?>
 <style>
 /* Mailbox-specific additions — engine classes handle layout/table/nav */
-.mb-shell { display: flex; flex-direction: column; height: calc(100vh - 44px); overflow: hidden; }
 .mb-error  { background: #fef2f2; border-bottom: 1px solid #fca5a5; color: #991b1b; padding: 0.55rem 1rem; font-size: 0.85rem; flex-shrink: 0; }
 .mb-compose { display: block; margin: 0.6rem 0.75rem 0.4rem; padding: 0.4rem 0.75rem; background: var(--color-primary, #1d9e75); color: #fff; border-radius: 4px; font-size: 0.83rem; font-weight: 600; text-align: center; text-decoration: none; }
 .mb-compose:hover { background: var(--color-primary-dark, #166b52); color: #fff; text-decoration: none; }
@@ -34,14 +34,11 @@ $pages   = (int) ceil($total / $per_page);
 .mb-page-link.active, .mb-page-link:hover { background: var(--color-primary, #1d9e75); color: #fff; border-color: var(--color-primary, #1d9e75); }
 </style>
 
-<div class="sb-wrapper">
-<div class="acp-panel">
-
 <?php if ($imap_error ?? null): ?>
     <div class="mb-error"><strong>IMAP connection failed:</strong> <?= e($imap_error) ?></div>
 <?php endif; ?>
 
-<div class="panel-layout mb-shell">
+<div class="panel-layout">
 
     <!-- Folder sidebar -->
     <div class="pl-sidebar">
@@ -136,8 +133,6 @@ $pages   = (int) ceil($total / $per_page);
     </div>
 
 </div><!-- .panel-layout -->
-</div><!-- .acp-panel -->
-</div><!-- .sb-wrapper -->
 
 <script>
 (function () {

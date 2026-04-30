@@ -15,6 +15,7 @@
  * @var string $csrf_token
  */
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 $h       = $body['headers'];
 $baseUrl = '/mail/' . (int) $mailbox['id'];
 $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
@@ -25,7 +26,6 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
 .mb-account { padding: 0.65rem 0.9rem 0.5rem; border-bottom: 1px solid var(--color-border, #ccd9d3); }
 .mb-account-name  { display: block; font-size: 0.84rem; font-weight: 700; color: var(--color-text, #0c1614); }
 .mb-account-email { display: block; font-size: 0.75rem; color: #888; }
-.mb-shell { display: flex; flex-direction: column; height: calc(100vh - 44px); overflow: hidden; }
 .msg-header { padding: 0.9rem 1.25rem 0.75rem; border-bottom: 1px solid var(--color-border, #ccd9d3); background: #fff; flex-shrink: 0; }
 .msg-subject { margin: 0 0 0.5rem; font-size: 1.1rem; font-weight: 700; }
 .msg-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; font-size: 0.82rem; color: #555; margin-bottom: 0.65rem; }
@@ -45,9 +45,7 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
 .tag-toggle.applied { background: var(--tag-colour, #aaa); color: #fff; }
 </style>
 
-<div class="sb-wrapper">
-<div class="acp-panel">
-<div class="panel-layout no-detail mb-shell">
+<div class="panel-layout no-detail">
 
     <!-- Folder sidebar -->
     <div class="pl-sidebar">
@@ -158,8 +156,6 @@ $msgBase = $baseUrl . '/' . urlencode($folder) . '/' . $uid;
     </div><!-- .pl-main -->
 
 </div><!-- .panel-layout -->
-</div><!-- .acp-panel -->
-</div><!-- .sb-wrapper -->
 
 <script>
 // Tag toggle
