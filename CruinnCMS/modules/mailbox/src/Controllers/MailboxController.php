@@ -186,7 +186,16 @@ class MailboxController extends BaseController
         }
 
         $this->mailbox->moveMessage($mb, $folder, (int) $uid, $toFolder);
-        $this->json(['ok' => true]);
+
+        // If called via fetch (X-Requested-With), return JSON; otherwise redirect
+        // back to the source folder so the user sees the updated list.
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+            $this->json(['ok' => true]);
+            return;
+        }
+
+        Auth::flash('success', 'Message moved to ' . $toFolder . '.');
+        $this->redirect('/mail/' . $mailbox_id . '/' . rawurlencode($folder));
     }
 
     public function delete(string $mailbox_id, string $folder, string $uid): void
