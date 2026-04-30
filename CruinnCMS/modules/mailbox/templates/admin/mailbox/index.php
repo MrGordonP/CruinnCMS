@@ -136,7 +136,7 @@ $mailboxesJson = json_encode(array_values($mailboxes), JSON_HEX_TAG | JSON_HEX_A
             <div class="pl-nav-item <?= $i === 0 ? 'active' : '' ?>"
                  data-mb-index="<?= $i ?>"
                  onclick="selectMailbox(<?= $i ?>)">
-                <span><?= $mb['imap_enabled'] ? '✅' : '○' ?></span>
+                <span><?= $mb['enabled'] ? '✅' : '○' ?></span>
                 <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?= e($mb['position']) ?></span>
                 <span class="pl-nav-count"><?= (int)$mb['indexed_count'] ?></span>
             </div>
