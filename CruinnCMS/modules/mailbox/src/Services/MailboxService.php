@@ -462,7 +462,7 @@ class MailboxService
             if ($uid <= $lastUid) {
                 continue;
             }
-            $this->syncMessage($socket, $mailbox['id'], $folder, $uid);
+            $this->syncMessage($socket, (int) $mailbox['id'], $folder, $uid);
         }
 
         $lastUidMap[$folder] = max($uids);
