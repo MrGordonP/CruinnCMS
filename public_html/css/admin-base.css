@@ -359,76 +359,98 @@ html.admin-layout-wide .admin-wrap {
     padding: 0 0.25rem;
 }
 
-/* ── Responsive: collapse sidebar ────────────────────────────── */
-@media (max-width: 768px) {
-    .admin-wrap {
-        flex-direction: column;
-    }
+/* ──────────────────────────────────────────────────────────────
+   Responsive Sidebar — collapseable (desktop) + off-canvas (mobile/tablet)
+   ────────────────────────────────────────────────────────────── */
 
+/* ── Sidebar toggle button (in topbar) ─────────────────────── */
+.admin-sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, .7);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 0.3rem 0.55rem;
+    border-radius: 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    opacity: .7;
+    transition: background .15s, opacity .15s;
+}
+
+.admin-sidebar-toggle:hover {
+    background: rgba(255, 255, 255, .12);
+    opacity: 1;
+}
+
+/* ── Sidebar: transition for smooth collapse ────────────────── */
+.admin-sidebar {
+    overflow: hidden;
+    transition: width .25s ease;
+}
+
+/* ── Desktop collapse: toggled via html.admin-sidebar-collapsed ── */
+html.admin-sidebar-collapsed .admin-sidebar {
+    width: 0;
+    border-right: none;
+}
+
+/* ── Backdrop — only visible on mobile/tablet ───────────────── */
+.admin-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 199;
+}
+
+.admin-sidebar-backdrop.active {
+    display: block;
+}
+
+@media (min-width: 1024px) {
+    .admin-sidebar-backdrop {
+        display: none !important;
+    }
+}
+
+/* ── Mobile / Tablet: off-canvas drawer ─────────────────────── */
+@media (max-width: 1023px) {
+
+    /* Sidebar leaves flex flow — becomes a fixed overlay drawer */
     .admin-sidebar {
-        width: 100%;
-        height: auto;
-        position: static;
-        flex-direction: row;
-        flex-wrap: wrap;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 200;
+        width: 200px !important;
+        overflow: hidden;
+        overflow-y: auto;
+        transform: translateX(-100%);
+        transition: transform .25s ease;
     }
 
-    .admin-sidebar-hero {
-        border-bottom: none;
-        border-right: 1px solid rgba(255, 255, 255, .1);
+    .admin-sidebar.open {
+        transform: translateX(0);
     }
 
-    .admin-sidebar-nav {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0;
-        padding: 0.25rem 0;
+    /* Desktop collapse class has no effect on mobile */
+    html.admin-sidebar-collapsed .admin-sidebar {
+        width: 200px !important;
     }
 
-    .admin-sidebar-nav a {
-        border-right: none;
-        padding: 0.35rem 0.75rem;
+    .admin-content {
+        padding: 1.25rem 1rem;
     }
+}
 
-    .admin-sidebar-label {
-        display: none;
-    }
-
-    .admin-sidebar-sep {
-        display: none;
-    }
-
-    .admin-sidebar-flyout {
-        position: static;
-        box-shadow: none;
-        border: none;
-        background: rgba(0, 0, 0, .15);
-        border-radius: 0;
-        min-width: 0;
-    }
-
-    .admin-sidebar-group.open>.admin-sidebar-flyout {
-        display: flex;
-        flex-wrap: wrap;
-    }
-
-    .sidebar-caret {
-        display: none;
-    }
-
-    .admin-sidebar-stats {
-        width: 100%;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0 1rem;
-    }
-
-    .admin-sidebar-footer {
-        margin-top: 0;
-        border-top: none;
-        border-left: 1px solid rgba(255, 255, 255, .1);
-        display: flex;
-        align-items: center;
+@media (max-width: 480px) {
+    .admin-content {
+        padding: 1rem 0.75rem;
     }
 }
 

@@ -16,7 +16,7 @@
 
 <div class="admin-wrap">
     <!-- ── Sidebar ────────────────────────────────────────────── -->
-    <aside class="admin-sidebar">
+    <aside class="admin-sidebar" id="admin-sidebar">
         <div class="admin-sidebar-hero">
             <a href="<?= url('/admin/dashboard') ?>" class="admin-sidebar-logo">
                 <?= e(\Cruinn\App::config('site.name', 'Admin')) ?>
@@ -124,6 +124,7 @@
                 </div>
                 <?php endif; ?>
                 <div class="admin-topbar-right">
+                    <button class="admin-sidebar-toggle" id="admin-sidebar-btn" aria-label="Toggle navigation" aria-expanded="true" title="Toggle sidebar">&#9776;</button>
                     <a href="<?= url('/') ?>" class="admin-topbar-site-link" title="View live site" target="_blank">⬡ View Site</a>
                     <?php if (\Cruinn\Platform\PlatformAuth::check()): ?>
                     <a href="/cms/dashboard" class="admin-topbar-cms-link" title="Back to Cruinn CMS platform">← CMS</a>
@@ -153,6 +154,7 @@
         </div>
     </div>
 </div>
+<div class="admin-sidebar-backdrop" id="admin-sidebar-backdrop"></div>
 
 <!-- Cruinn Media Browser -->
 <div class="media-modal-overlay" id="media-modal" style="display:none">
