@@ -93,6 +93,24 @@ class OrganisationAdminController extends BaseController
             'SELECT id, display_name, email FROM users WHERE active = 1 ORDER BY display_name'
         );
 
+        // Mailbox integration — only when module is active
+        $allMailboxes       = [];
+        $mailboxGrantsByOfficer = [];
+        if (\Cruinn\Modules\ModuleRegistry::isActive('mailbox')) {
+            $allMailboxes = $this->db->fetchAll(
+                'SELECT id, label FROM mailboxes WHERE enabled = 1 ORDER BY label'
+            );
+            $grants = $this->db->fetchAll(
+                'SELECT ma.id AS grant_id, ma.officer_position_id, ma.mailbox_id, mb.label
+                   FROM mailbox_access ma
+                   JOIN mailboxes mb ON mb.id = ma.mailbox_id
+                  WHERE ma.officer_position_id IS NOT NULL'
+            );
+            foreach ($grants as $g) {
+                $mailboxGrantsByOfficer[(int)$g['officer_position_id']][] = $g;
+            }
+        }
+
         $this->renderAdmin('admin/organisation/officers', [
             'title'       => 'Officers',
             'breadcrumbs' => [
@@ -100,8 +118,10 @@ class OrganisationAdminController extends BaseController
                 ['Organisation Admin', '/admin/organisation/profile'],
                 ['Officers'],
             ],
-            'officers'    => $officers,
-            'users'       => $users,
+            'officers'              => $officers,
+            'users'                 => $users,
+            'allMailboxes'          => $allMailboxes,
+            'mailboxGrantsByOfficer' => $mailboxGrantsByOfficer,
         ]);
     }
 
@@ -192,6 +212,47 @@ class OrganisationAdminController extends BaseController
         $this->db->delete('organisation_officers', 'id = ?', [$id]);
 
         Auth::flash('success', 'Officer removed.');
+        $this->redirect('/admin/organisation/officers');
+    }
+
+    /**
+     * POST /admin/organisation/officers/{id}/mailbox/assign
+     */
+    public function assignMailbox(int $id): void
+    {
+        Auth::requireRole('admin');
+        CSRF::verify();
+
+        $mailboxId = (int) $this->input('mailbox_id', 0);
+        if (!$mailboxId) {
+            Auth::flash('error', 'No mailbox selected.');
+            $this->redirect('/admin/organisation/officers');
+        }
+
+        // Upsert — ignore if already granted
+        $this->db->execute(
+            'INSERT IGNORE INTO mailbox_access (mailbox_id, officer_position_id) VALUES (?, ?)',
+            [$mailboxId, $id]
+        );
+
+        Auth::flash('success', 'Mailbox access granted.');
+        $this->redirect('/admin/organisation/officers');
+    }
+
+    /**
+     * POST /admin/organisation/officers/{id}/mailbox/{grant_id}/revoke
+     */
+    public function revokeMailbox(int $id, int $grant_id): void
+    {
+        Auth::requireRole('admin');
+        CSRF::verify();
+
+        $this->db->execute(
+            'DELETE FROM mailbox_access WHERE id = ? AND officer_position_id = ?',
+            [$grant_id, $id]
+        );
+
+        Auth::flash('success', 'Mailbox access revoked.');
         $this->redirect('/admin/organisation/officers');
     }
 

@@ -111,10 +111,7 @@
                                 onclick="this.closest('tr').nextElementSibling.style.display='table-row';this.style.display='none'">
                             Edit
                         </button>
-                        <?php if (\Cruinn\Modules\ModuleRegistry::isActive('mailbox')): ?>
-                        <a href="/admin/mailbox/officer/<?= (int)$o['id'] ?>/credentials"
-                           class="btn btn-xs btn-secondary" title="Configure mailbox credentials">✉️</a>
-                        <?php endif; ?>
+
                         <form method="post" action="/admin/organisation/officers/<?= (int)$o['id'] ?>/delete" style="display:inline">
                             <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
                             <button type="submit" class="btn btn-xs btn-danger"
@@ -186,6 +183,43 @@
                             <button type="button" class="btn btn-sm btn-link"
                                     onclick="this.closest('tr').style.display='none'">Cancel</button>
                         </form>
+
+                        <?php if (!empty($allMailboxes)): ?>
+                        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+                            <strong style="font-size:0.85rem">Mailbox Access</strong>
+                            <?php $grants = $mailboxGrantsByOfficer[(int)$o['id']] ?? []; ?>
+                            <?php if (!empty($grants)): ?>
+                            <ul style="margin:0.5rem 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:0.4rem">
+                                <?php foreach ($grants as $g): ?>
+                                <li style="display:flex;align-items:center;gap:0.3rem;background:var(--bg-alt,#f4f4f4);border-radius:4px;padding:0.2rem 0.5rem;font-size:0.82rem">
+                                    ✉️ <?= e($g['label']) ?>
+                                    <form method="post" action="/admin/organisation/officers/<?= (int)$o['id'] ?>/mailbox/<?= (int)$g['grant_id'] ?>/revoke" style="display:inline">
+                                        <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
+                                        <button type="submit" class="btn btn-xs btn-danger" style="padding:0 0.3rem;line-height:1.4" title="Revoke">×</button>
+                                    </form>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                            <?php else: ?>
+                            <p style="font-size:0.82rem;color:#888;margin:0.4rem 0">No mailboxes assigned.</p>
+                            <?php endif; ?>
+                            <?php
+                            $assignedIds = array_column($grants, 'mailbox_id');
+                            $available   = array_filter($allMailboxes, fn($m) => !in_array($m['id'], $assignedIds));
+                            ?>
+                            <?php if (!empty($available)): ?>
+                            <form method="post" action="/admin/organisation/officers/<?= (int)$o['id'] ?>/mailbox/assign" style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem">
+                                <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
+                                <select name="mailbox_id" class="form-select" style="flex:1">
+                                    <?php foreach ($available as $m): ?>
+                                    <option value="<?= (int)$m['id'] ?>"><?= e($m['label']) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-secondary">Assign</button>
+                            </form>
+                            <?php endif; ?>
+                        </div>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
