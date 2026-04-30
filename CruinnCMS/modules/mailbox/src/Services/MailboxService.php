@@ -412,8 +412,8 @@ class MailboxService
             'DELETE FROM mailbox_messages WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
             [$mailbox['id'], $fromFolder, $uid]
         );
-        $this->pruneReads($mailbox['id'], $fromFolder, $uid);
-        $this->pruneTagMap($mailbox['id'], $fromFolder, $uid);
+        $this->pruneReads((int) $mailbox['id'], $fromFolder, $uid);
+        $this->pruneTagMap((int) $mailbox['id'], $fromFolder, $uid);
     }
 
     public function deleteMessage(array $mailbox, string $folder, int $uid): void
@@ -432,8 +432,8 @@ class MailboxService
                 'DELETE FROM mailbox_messages WHERE mailbox_id = ? AND folder = ? AND imap_uid = ?',
                 [$mailbox['id'], $folder, $uid]
             );
-            $this->pruneReads($mailbox['id'], $folder, $uid);
-            $this->pruneTagMap($mailbox['id'], $folder, $uid);
+            $this->pruneReads((int) $mailbox['id'], $folder, $uid);
+            $this->pruneTagMap((int) $mailbox['id'], $folder, $uid);
         }
     }
 
