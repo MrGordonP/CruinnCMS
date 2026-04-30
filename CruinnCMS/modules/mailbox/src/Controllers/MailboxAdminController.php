@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 declare(strict_types=1);
 
@@ -10,7 +10,7 @@ use Cruinn\Controllers\BaseController;
 use Cruinn\Module\Mailbox\Services\MailboxService;
 
 /**
- * MailboxAdminController — ACP routes for mailbox configuration.
+ * MailboxAdminController â€” ACP routes for mailbox configuration.
  *
  * Manages:
  *  - Mailbox credential records (mailboxes table)
@@ -33,7 +33,7 @@ class MailboxAdminController extends BaseController
     }
 
     // -------------------------------------------------------------------------
-    // Overview — three-panel shell
+    // Overview â€” three-panel shell
     // -------------------------------------------------------------------------
 
     public function index(): void
@@ -50,17 +50,17 @@ class MailboxAdminController extends BaseController
         $this->renderAdmin('admin/mailbox/index', [
             'mailboxes'   => $mailboxes,
             'csrf_token'  => CSRF::getToken(),
-            'page_title'  => 'Mailbox — Settings',
+            'page_title'  => 'Mailbox â€” Settings',
             'breadcrumbs' => [['Admin', '/admin'], ['Mailbox']],
         ]);
     }
 
     // -------------------------------------------------------------------------
-    // Credentials panel (HTML fragment — fetched into middle pl-main)
+    // Credentials panel (HTML fragment â€” fetched into middle pl-main)
     // -------------------------------------------------------------------------
 
     /**
-     * GET /admin/mailbox/new — blank credentials form fragment
+     * GET /admin/mailbox/new â€” blank credentials form fragment
      */
     public function newForm(): void
     {
@@ -89,7 +89,7 @@ class MailboxAdminController extends BaseController
     }
 
     /**
-     * GET /admin/mailbox/{id}/credentials-panel — credentials form fragment for existing mailbox
+     * GET /admin/mailbox/{id}/credentials-panel â€” credentials form fragment for existing mailbox
      */
     public function credentialsPanel(string $id): void
     {
@@ -121,7 +121,7 @@ class MailboxAdminController extends BaseController
     }
 
     /**
-     * POST /admin/mailbox — create new mailbox
+     * POST /admin/mailbox â€” create new mailbox
      */
     public function create(): void
     {
@@ -151,7 +151,7 @@ class MailboxAdminController extends BaseController
     }
 
     /**
-     * POST /admin/mailbox/{id}/credentials — update existing mailbox
+     * POST /admin/mailbox/{id}/credentials â€” update existing mailbox
      */
     public function saveCredentials(string $id): void
     {
@@ -202,11 +202,11 @@ class MailboxAdminController extends BaseController
     }
 
     // -------------------------------------------------------------------------
-    // Access panel (HTML fragment — fetched into right pl-detail)
+    // Access panel (HTML fragment â€” fetched into right pl-detail)
     // -------------------------------------------------------------------------
 
     /**
-     * GET /admin/mailbox/{id}/access — access list + grant form fragment
+     * GET /admin/mailbox/{id}/access â€” access list + grant form fragment
      */
     public function accessPanel(string $id): void
     {
@@ -309,7 +309,7 @@ class MailboxAdminController extends BaseController
         $this->renderAdmin('admin/mailbox/tags', [
             'tags'        => $tags,
             'csrf_token'  => CSRF::getToken(),
-            'page_title'  => 'Mailbox — Tags',
+            'page_title'  => 'Mailbox â€” Tags',
             'breadcrumbs' => [['Admin', '/admin'], ['Mailbox', '/admin/mailbox'], ['Tags']],
         ]);
     }
@@ -419,203 +419,5 @@ class MailboxAdminController extends BaseController
             'smtp_user'       => trim($this->input('smtp_user', '')) ?: null,
             'enabled'         => $this->input('enabled', '0') === '1' ? 1 : 0,
         ];
-    }
-}
-
-        $tags = $this->mailbox->getTags();
-
-        $this->renderAdmin('admin/mailbox/tags', [
-            'tags'        => $tags,
-            'csrf_token'  => CSRF::getToken(),
-            'page_title'  => 'Mailbox — Tags',
-            'breadcrumbs' => [['Admin', '/admin'], ['Mailbox', '/admin/mailbox'], ['Tags']],
-        ]);
-    }
-
-    public function createTag(): void
-    {
-        CSRF::verify();
-
-        $label  = trim($this->input('label', ''));
-        $colour = trim($this->input('colour', '#888888'));
-
-        if ($label === '') {
-            Auth::flash('error', 'Tag label is required.');
-            $this->redirect('/admin/mailbox/tags');
-        }
-
-        $this->db->insert('mailbox_tags', [
-            'label'      => $label,
-            'colour'     => $colour,
-            'sort_order' => (int) $this->input('sort_order', 0),
-        ]);
-
-        Auth::flash('success', 'Tag "' . htmlspecialchars($label) . '" created.');
-        $this->redirect('/admin/mailbox/tags');
-    }
-
-    public function updateTag(array $params): void
-    {
-        CSRF::verify();
-
-        $id     = (int) $params['id'];
-        $label  = trim($this->input('label', ''));
-        $colour = trim($this->input('colour', '#888888'));
-
-        if ($label === '') {
-            Auth::flash('error', 'Tag label is required.');
-            $this->redirect('/admin/mailbox/tags');
-        }
-
-        $this->db->execute(
-            'UPDATE mailbox_tags SET label = ?, colour = ?, sort_order = ? WHERE id = ?',
-            [$label, $colour, (int) $this->input('sort_order', 0), $id]
-        );
-
-        Auth::flash('success', 'Tag updated.');
-        $this->redirect('/admin/mailbox/tags');
-    }
-
-    public function deleteTag(array $params): void
-    {
-        CSRF::verify();
-        $id = (int) $params['id'];
-        // tag_map rows CASCADE on delete (FK defined in migration)
-        $this->db->execute('DELETE FROM mailbox_tags WHERE id = ?', [$id]);
-        Auth::flash('success', 'Tag deleted.');
-        $this->redirect('/admin/mailbox/tags');
-    }
-
-    // -------------------------------------------------------------------------
-    // Manual sync
-    // -------------------------------------------------------------------------
-
-    public function sync(string $mailbox_id): void
-    {
-        CSRF::verify();
-        $mailboxId = (int) $mailbox_id;
-
-        $mb = $this->db->fetch(
-            'SELECT * FROM organisation_officers WHERE id = ? AND imap_enabled = 1',
-            [$mailboxId]
-        );
-
-        if (!$mb) {
-            $this->json(['error' => 'Mailbox not found or not enabled.'], 404);
-        }
-
-        $folders = $this->mailbox->getFolders($mb);
-        $synced  = 0;
-
-        foreach ($folders as $folder) {
-            $before = $this->mailbox->getMessageCount($mailboxId, $folder);
-            $this->mailbox->syncFolder($mb, $folder);
-            $after  = $this->mailbox->getMessageCount($mailboxId, $folder);
-            $synced += max(0, $after - $before);
-        }
-
-        $this->json(['ok' => true, 'new_messages' => $synced]);
-    }
-
-    // -------------------------------------------------------------------------
-    // Officer mailbox credentials
-    // -------------------------------------------------------------------------
-
-    /**
-     * GET /admin/mailbox/officer/{id}/credentials
-     *
-     * Shows the IMAP/SMTP credential form for a single officer position.
-     * Passwords are write-only — never echoed back to the page.
-     */
-    public function credentials(string $id): void
-    {
-        $id = (int) $id;
-
-        $officer = $this->db->fetch(
-            'SELECT id, position, email, imap_host, imap_port, imap_encryption,
-                    imap_user, smtp_host, smtp_port, smtp_encryption, smtp_user,
-                    imap_enabled,
-                    (imap_pass_enc IS NOT NULL AND imap_pass_enc != \'\') AS has_imap_pass,
-                    (smtp_pass_enc IS NOT NULL AND smtp_pass_enc != \'\') AS has_smtp_pass
-               FROM organisation_officers WHERE id = ?',
-            [$id]
-        );
-
-        if (!$officer) {
-            Auth::flash('error', 'Officer not found.');
-            $this->redirect('/admin/organisation/officers');
-        }
-
-        // Pre-fill host/port/encryption from system email settings when not yet set on the officer
-        if (empty($officer['imap_host'])) {
-            $officer['imap_host']       = \Cruinn\App::config('imap.host', '');
-            $officer['imap_port']       = \Cruinn\App::config('imap.port', 993);
-            $officer['imap_encryption'] = 'ssl';
-            $officer['imap_user']       = $officer['email'] ?? '';
-        }
-        if (empty($officer['smtp_host'])) {
-            $officer['smtp_host']       = \Cruinn\App::config('mail.host', '');
-            $officer['smtp_port']       = \Cruinn\App::config('mail.port', 587);
-            $officer['smtp_encryption'] = \Cruinn\App::config('mail.encryption', 'tls');
-            $officer['smtp_user']       = $officer['email'] ?? '';
-        }
-
-        $this->renderAdmin('admin/mailbox/officer-credentials', [
-            'officer'     => $officer,
-            'csrf_token'  => CSRF::getToken(),
-            'page_title'  => 'Mailbox Credentials — ' . $officer['position'],
-            'breadcrumbs' => [
-                ['Admin', '/admin'],
-                ['Officers', '/admin/organisation/officers'],
-                ['Mailbox Credentials'],
-            ],
-        ]);
-    }
-
-    /**
-     * POST /admin/mailbox/officer/{id}/credentials
-     */
-    public function saveCredentials(string $id): void
-    {
-        CSRF::verify();
-        $id = (int) $id;
-
-        $officer = $this->db->fetch('SELECT id FROM organisation_officers WHERE id = ?', [$id]);
-        if (!$officer) {
-            Auth::flash('error', 'Officer not found.');
-            $this->redirect('/admin/organisation/officers');
-        }
-
-        $fields = [
-            'imap_host'       => trim($this->input('imap_host', '')) ?: null,
-            'imap_port'       => (int) $this->input('imap_port', 993),
-            'imap_encryption' => $this->input('imap_encryption', 'ssl'),
-            'imap_user'       => trim($this->input('imap_user', '')) ?: null,
-            'smtp_host'       => trim($this->input('smtp_host', '')) ?: null,
-            'smtp_port'       => (int) $this->input('smtp_port', 587),
-            'smtp_encryption' => $this->input('smtp_encryption', 'tls'),
-            'smtp_user'       => trim($this->input('smtp_user', '')) ?: null,
-            'imap_enabled'    => $this->input('imap_enabled', '0') === '1' ? 1 : 0,
-        ];
-
-        // Passwords — only update if a new value was submitted
-        $imapPass = $this->input('imap_pass', '');
-        if ($imapPass !== '') {
-            $fields['imap_pass_enc'] = $this->mailbox->encryptPassword($imapPass);
-        }
-
-        $smtpPass = $this->input('smtp_pass', '');
-        if ($smtpPass !== '') {
-            $fields['smtp_pass_enc'] = $this->mailbox->encryptPassword($smtpPass);
-        }
-
-        $set    = implode(', ', array_map(fn($k) => "`{$k}` = ?", array_keys($fields)));
-        $values = array_values($fields);
-        $values[] = $id;
-
-        $this->db->execute("UPDATE organisation_officers SET {$set} WHERE id = ?", $values);
-
-        Auth::flash('success', 'Mailbox credentials saved.');
-        $this->redirect('/admin/mailbox/officer/' . $id . '/credentials');
     }
 }
