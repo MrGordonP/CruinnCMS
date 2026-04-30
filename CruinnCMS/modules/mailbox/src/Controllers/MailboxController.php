@@ -73,7 +73,7 @@ class MailboxController extends BaseController
         $page   = max(1, (int) ($this->query('page', 1)));
 
         $messages = $this->mailbox->getMessages($mb, $folder, Auth::userId(), Auth::role(), $page);
-        $total    = $this->mailbox->getMessageCount($mb['id'], $folder);
+        $total    = $this->mailbox->getMessageCount((int) $mb['id'], $folder);
         $folders  = $this->mailbox->getFolders($mb);
 
         $this->render('mailbox/messages', [
@@ -99,12 +99,12 @@ class MailboxController extends BaseController
         $uid    = (int) $uid;
 
         $body    = $this->mailbox->fetchBody($mb, $folder, $uid);
-        $tags    = $this->mailbox->getTagsForMessage($mb['id'], $folder, $uid);
+        $tags    = $this->mailbox->getTagsForMessage((int) $mb['id'], $folder, $uid);
         $allTags = $this->mailbox->getTags();
         $folders = $this->mailbox->getFolders($mb);
 
         // Record read receipt
-        $this->mailbox->markRead($mb['id'], $folder, $uid, Auth::userId());
+        $this->mailbox->markRead((int) $mb['id'], $folder, $uid, Auth::userId());
 
         $this->render('mailbox/message', [
             'mailbox'    => $mb,
@@ -127,7 +127,7 @@ class MailboxController extends BaseController
     {
         CSRF::verify();
         $mb  = $this->resolveMailbox((int) $mailbox_id);
-        $this->mailbox->markRead($mb['id'], urldecode($folder), (int) $uid, Auth::userId());
+        $this->mailbox->markRead((int) $mb['id'], urldecode($folder), (int) $uid, Auth::userId());
         $this->json(['ok' => true]);
     }
 
@@ -135,7 +135,7 @@ class MailboxController extends BaseController
     {
         CSRF::verify();
         $mb  = $this->resolveMailbox((int) $mailbox_id);
-        $this->mailbox->markUnread($mb['id'], urldecode($folder), (int) $uid, Auth::userId());
+        $this->mailbox->markUnread((int) $mb['id'], urldecode($folder), (int) $uid, Auth::userId());
         $this->json(['ok' => true]);
     }
 
@@ -299,7 +299,7 @@ class MailboxController extends BaseController
         CSRF::verify();
         $mb    = $this->resolveMailbox((int) $mailbox_id);
         $tagId = (int) $this->input('tag_id');
-        $this->mailbox->addTag($tagId, $mb['id'], urldecode($folder), (int) $uid, Auth::userId());
+        $this->mailbox->addTag($tagId, (int) $mb['id'], urldecode($folder), (int) $uid, Auth::userId());
         $this->json(['ok' => true]);
     }
 
@@ -308,7 +308,7 @@ class MailboxController extends BaseController
         CSRF::verify();
         $mb    = $this->resolveMailbox((int) $mailbox_id);
         $tagId = (int) $this->input('tag_id');
-        $this->mailbox->removeTag($tagId, $mb['id'], urldecode($folder), (int) $uid);
+        $this->mailbox->removeTag($tagId, (int) $mb['id'], urldecode($folder), (int) $uid);
         $this->json(['ok' => true]);
     }
 
