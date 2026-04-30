@@ -41,7 +41,7 @@ $pages   = (int) ceil($total / $per_page);
     <div class="mb-error"><strong>IMAP connection failed:</strong> <?= e($imap_error) ?></div>
 <?php endif; ?>
 
-<div class="panel-layout no-detail mb-shell">
+<div class="panel-layout mb-shell">
 
     <!-- Folder sidebar -->
     <div class="pl-sidebar">
@@ -95,7 +95,7 @@ $pages   = (int) ceil($total / $per_page);
                                 $state  = $msg['read_state'] ?? 'unread';
                                 $msgUrl = $baseUrl . '/' . urlencode($folder) . '/' . (int) $msg['imap_uid'];
                             ?>
-                            <tr class="state-<?= e($state) ?>" onclick="location.href='<?= $msgUrl ?>'" style="cursor:pointer">
+                            <tr class="state-<?= e($state) ?>" data-preview-url="<?= $msgUrl ?>/preview" style="cursor:pointer">
                                 <td style="text-align:center">
                                     <?php if ($state === 'unread'): ?>
                                         <span class="dot dot-unread" title="Unread"></span>
@@ -124,8 +124,55 @@ $pages   = (int) ceil($total / $per_page);
                 <?php endfor; ?>
             </div>
         <?php endif; ?>
+    </div><!-- .pl-main -->
+
+    <!-- Message preview panel -->
+    <div class="pl-detail" id="mb-preview-panel">
+        <div class="pl-detail-placeholder" id="mb-preview-placeholder">
+            <span class="pl-detail-placeholder-icon">✉️</span>
+            <span>Select a message to preview</span>
+        </div>
+        <div id="mb-preview-content" style="display:none;height:100%;overflow:hidden;"></div>
     </div>
 
 </div><!-- .panel-layout -->
 </div><!-- .acp-panel -->
 </div><!-- .sb-wrapper -->
+
+<script>
+(function () {
+    const previewPlaceholder = document.getElementById('mb-preview-placeholder');
+    const previewContent    = document.getElementById('mb-preview-content');
+    let   activeRow         = null;
+
+    document.querySelectorAll('.pl-table tbody tr').forEach(row => {
+        row.addEventListener('click', async function (e) {
+            if (e.target.closest('a, button, form')) return;
+
+            const url = this.dataset.previewUrl;
+            if (!url) return;
+
+            if (activeRow) activeRow.classList.remove('selected');
+            activeRow = this;
+            this.classList.add('selected');
+
+            previewPlaceholder.style.display = 'none';
+            previewContent.style.display     = 'block';
+            previewContent.innerHTML         = '<div class="pl-detail-placeholder"><span style="color:#aaa;font-size:0.85rem">Loading…</span></div>';
+
+            try {
+                const res  = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                const html = await res.text();
+                previewContent.innerHTML = html;
+
+                const dot = this.querySelector('.dot');
+                if (dot) { dot.classList.remove('dot-unread', 'dot-partial'); dot.classList.add('dot-read'); }
+                this.classList.remove('state-unread', 'state-partial');
+                this.classList.add('state-read');
+            } catch (err) {
+                previewContent.innerHTML = '<div class="pl-detail-placeholder"><span style="color:#c00">Failed to load message.</span></div>';
+            }
+        });
+    });
+}());
+</script>

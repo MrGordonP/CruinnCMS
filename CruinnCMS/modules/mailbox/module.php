@@ -51,6 +51,9 @@ return [
         // Single message view
         $router->get('/mail/{mailbox_id}/{folder}/{uid}', [MailboxController::class, 'message']);
 
+        // Message preview fragment (no layout — loaded into pl-detail panel via fetch)
+        $router->get('/mail/{mailbox_id}/{folder}/{uid}/preview', [MailboxController::class, 'preview']);
+
         // Mark read/unread (POST, returns JSON)
         $router->post('/mail/{mailbox_id}/{folder}/{uid}/read',   [MailboxController::class, 'markRead']);
         $router->post('/mail/{mailbox_id}/{folder}/{uid}/unread', [MailboxController::class, 'markUnread']);

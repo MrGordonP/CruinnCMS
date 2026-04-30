@@ -121,6 +121,30 @@ class MailboxController extends BaseController
     }
 
     // -------------------------------------------------------------------------
+    // Message preview (HTML fragment — no layout, loaded into pl-detail panel)
+    // -------------------------------------------------------------------------
+
+    public function preview(string $mailbox_id, string $folder, string $uid): void
+    {
+        $mb     = $this->resolveMailbox((int) $mailbox_id);
+        $folder = urldecode($folder);
+        $uid    = (int) $uid;
+
+        $body = $this->mailbox->fetchBody($mb, $folder, $uid);
+        $this->mailbox->markRead((int) $mb['id'], $folder, $uid, Auth::userId());
+
+        $this->template->setLayout(null);
+        echo $this->template->render('mailbox/preview', [
+            'mailbox'    => $mb,
+            'folder'     => $folder,
+            'uid'        => $uid,
+            'body'       => $body,
+            'csrf_token' => CSRF::getToken(),
+            'base_url'   => '/mail/' . (int) $mb['id'],
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
     // Mark read / unread (JSON)
     // -------------------------------------------------------------------------
 
