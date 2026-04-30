@@ -1106,6 +1106,10 @@ body:has(#source-wrap) {
     flex-direction: column;
 }
 
+.platform-body:has(#source-wrap) .platform-bar {
+    flex-shrink: 0;
+}
+
 .platform-body:has(#source-wrap) .platform-wrap {
     flex: 1;
     min-height: unset;
@@ -1129,6 +1133,7 @@ body:has(#source-wrap) {
 #source-wrap {
     flex: 1;
     min-height: 0;
+    height: 100%;
     display: flex;
     overflow: hidden;
 }
