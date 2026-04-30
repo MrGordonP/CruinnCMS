@@ -99,7 +99,13 @@ class MailboxController extends BaseController
         $folder = urldecode($folder);
         $uid    = (int) $uid;
 
-        $body    = $this->mailbox->fetchBody($mb, $folder, $uid);
+        try {
+            $body = $this->mailbox->fetchBody($mb, $folder, $uid);
+        } catch (\RuntimeException $e) {
+            Auth::flash('error', 'This message could not be found — it may have been moved or deleted.');
+            $this->redirect('/admin/mailbox/' . $mailbox_id . '/folder/' . rawurlencode($folder));
+            return;
+        }
         $tags    = $this->mailbox->getTagsForMessage((int) $mb['id'], $folder, $uid);
         $allTags = $this->mailbox->getTags();
         $folders = $this->mailbox->getFolders($mb);
