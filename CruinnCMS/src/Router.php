@@ -172,7 +172,7 @@ class Router
                 if ($name === 'id') {
                     return '(?P<' . $name . '>\d+)';
                 }
-                return '(?P<' . $name . '>[a-zA-Z0-9_-]+)';
+                return '(?P<' . $name . '>[a-zA-Z0-9_.+%-]+)';
             },
             $pattern
         );
