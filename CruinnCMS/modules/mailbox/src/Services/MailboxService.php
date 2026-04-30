@@ -346,7 +346,14 @@ class MailboxService
         $fromEmail = $mailbox['email'];
         $boundary  = md5(uniqid('', true));
 
-        $headers  = 'From: ' . ($fromName ? $fromName . ' <' . $fromEmail . '>' : $fromEmail) . "\r\n";
+        // For the mail() $to argument, use bare email addresses only.
+        // PHP's mail() passes $to to the MTA directly; "Name <email>" can
+        // trigger notices on some builds. The To: header carries the full form.
+        $toParsed   = $this->parseAddressList($to);
+        $toEnvelope = implode(', ', array_column($toParsed, 0)); // bare emails
+
+        $headers  = 'To: ' . $to . "\r\n";
+        $headers .= 'From: ' . ($fromName ? $fromName . ' <' . $fromEmail . '>' : $fromEmail) . "\r\n";
         $headers .= 'Reply-To: ' . $fromEmail . "\r\n";
         if ($cc !== '') {
             $headers .= 'Cc: ' . $cc . "\r\n";
@@ -364,7 +371,7 @@ class MailboxService
         $body .= "Content-Type: text/html; charset=UTF-8\r\n\r\n" . $html . "\r\n\r\n";
         $body .= "--{$boundary}--";
 
-        if (!mail($to, $subject, $body, $headers)) {
+        if (!mail($toEnvelope, $subject, $body, $headers)) {
             throw new \RuntimeException('mail() failed — check server MTA configuration.');
         }
     }
