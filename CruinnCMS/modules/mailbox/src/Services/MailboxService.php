@@ -43,24 +43,34 @@ class MailboxService
     {
         if ($role === 'admin') {
             return $this->db->fetchAll(
-                'SELECT id, position, email, imap_host, imap_port, imap_encryption,
-                        imap_user, imap_pass_enc, smtp_host, smtp_port, smtp_encryption,
-                        smtp_user, smtp_pass_enc
-                   FROM organisation_officers
-                  WHERE imap_enabled = 1
-                  ORDER BY sort_order, position'
+                'SELECT id, label AS position, email,
+                        imap_host, imap_port, imap_encryption,
+                        imap_user, imap_pass_enc,
+                        smtp_host, smtp_port, smtp_encryption,
+                        smtp_user, smtp_pass_enc, imap_last_uid, enabled
+                   FROM mailboxes
+                  WHERE enabled = 1
+                  ORDER BY label'
             );
         }
 
         return $this->db->fetchAll(
-            'SELECT id, position, email, imap_host, imap_port, imap_encryption,
-                    imap_user, imap_pass_enc, smtp_host, smtp_port, smtp_encryption,
-                    smtp_user, smtp_pass_enc
-               FROM organisation_officers
-              WHERE imap_enabled = 1
-                AND user_id = ?
-              ORDER BY sort_order, position',
-            [$userId]
+            'SELECT DISTINCT mb.id, mb.label AS position, mb.email,
+                    mb.imap_host, mb.imap_port, mb.imap_encryption,
+                    mb.imap_user, mb.imap_pass_enc,
+                    mb.smtp_host, mb.smtp_port, mb.smtp_encryption,
+                    mb.smtp_user, mb.smtp_pass_enc, mb.imap_last_uid, mb.enabled
+               FROM mailboxes mb
+               JOIN mailbox_access ma ON ma.mailbox_id = mb.id
+              WHERE mb.enabled = 1
+                AND (
+                    ma.user_id = ?
+                    OR ma.officer_position_id IN (
+                        SELECT id FROM organisation_officers WHERE user_id = ?
+                    )
+                )
+              ORDER BY mb.label',
+            [$userId, $userId]
         );
     }
 
@@ -72,14 +82,33 @@ class MailboxService
     {
         if ($role === 'admin') {
             return $this->db->fetch(
-                'SELECT * FROM organisation_officers WHERE id = ? AND imap_enabled = 1',
+                'SELECT id, label AS position, email,
+                        imap_host, imap_port, imap_encryption,
+                        imap_user, imap_pass_enc,
+                        smtp_host, smtp_port, smtp_encryption,
+                        smtp_user, smtp_pass_enc, imap_last_uid, enabled
+                   FROM mailboxes WHERE id = ? AND enabled = 1',
                 [$mailboxId]
             ) ?: null;
         }
 
         return $this->db->fetch(
-            'SELECT * FROM organisation_officers WHERE id = ? AND user_id = ? AND imap_enabled = 1',
-            [$mailboxId, $userId]
+            'SELECT DISTINCT mb.id, mb.label AS position, mb.email,
+                    mb.imap_host, mb.imap_port, mb.imap_encryption,
+                    mb.imap_user, mb.imap_pass_enc,
+                    mb.smtp_host, mb.smtp_port, mb.smtp_encryption,
+                    mb.smtp_user, mb.smtp_pass_enc, mb.imap_last_uid, mb.enabled
+               FROM mailboxes mb
+               JOIN mailbox_access ma ON ma.mailbox_id = mb.id
+              WHERE mb.id = ? AND mb.enabled = 1
+                AND (
+                    ma.user_id = ?
+                    OR ma.officer_position_id IN (
+                        SELECT id FROM organisation_officers WHERE user_id = ?
+                    )
+                )
+              LIMIT 1',
+            [$mailboxId, $userId, $userId]
         ) ?: null;
     }
 
@@ -179,8 +208,8 @@ class MailboxService
                       WHERE r.mailbox_id = m.mailbox_id
                         AND r.folder = m.folder
                         AND r.imap_uid = m.imap_uid) AS read_count,
-                    (SELECT COUNT(*) FROM organisation_officers o
-                      WHERE o.id = m.mailbox_id AND o.imap_enabled = 1) AS holder_count,
+                    (SELECT COUNT(*) FROM mailbox_access ma
+                      WHERE ma.mailbox_id = m.mailbox_id) AS holder_count,
                     (SELECT 1 FROM mailbox_reads r2
                       WHERE r2.mailbox_id = m.mailbox_id
                         AND r2.folder = m.folder

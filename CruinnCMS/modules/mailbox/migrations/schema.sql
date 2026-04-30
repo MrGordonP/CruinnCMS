@@ -85,3 +85,40 @@ ALTER TABLE `organisation_officers`
     ADD COLUMN IF NOT EXISTS `smtp_pass_enc`   TEXT                                NULL     COMMENT 'AES-256 encrypted SMTP password' AFTER `smtp_user`,
     ADD COLUMN IF NOT EXISTS `imap_last_uid`   JSON                                NULL     COMMENT 'JSON map of folder→last synced UID' AFTER `smtp_pass_enc`,
     ADD COLUMN IF NOT EXISTS `imap_enabled`    TINYINT(1)                          NOT NULL DEFAULT 0 COMMENT '1 = mailbox active in Cruinn' AFTER `imap_last_uid`;
+
+-- ── Dedicated mailboxes store ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS `mailboxes` (
+    `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `label`           VARCHAR(100)  NOT NULL                  COMMENT 'Human display name',
+    `email`           VARCHAR(255)  NOT NULL DEFAULT '',
+    `imap_host`       VARCHAR(255)  NULL,
+    `imap_port`       SMALLINT      NOT NULL DEFAULT 993,
+    `imap_encryption` ENUM('ssl','tls','none') NOT NULL DEFAULT 'ssl',
+    `imap_user`       VARCHAR(255)  NULL,
+    `imap_pass_enc`   TEXT          NULL,
+    `smtp_host`       VARCHAR(255)  NULL,
+    `smtp_port`       SMALLINT      NOT NULL DEFAULT 587,
+    `smtp_encryption` ENUM('tls','ssl','none') NOT NULL DEFAULT 'tls',
+    `smtp_user`       VARCHAR(255)  NULL,
+    `smtp_pass_enc`   TEXT          NULL,
+    `imap_last_uid`   JSON          NULL,
+    `enabled`         TINYINT(1)    NOT NULL DEFAULT 0,
+    `created_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Per-mailbox access control ────────────────────────────────
+CREATE TABLE IF NOT EXISTS `mailbox_access` (
+    `id`                  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `mailbox_id`          INT UNSIGNED NOT NULL,
+    `user_id`             INT UNSIGNED NULL,
+    `officer_position_id` INT UNSIGNED NULL,
+    `granted_by`          INT UNSIGNED NULL,
+    `granted_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_access_user`     (`mailbox_id`, `user_id`),
+    UNIQUE KEY `uq_access_position` (`mailbox_id`, `officer_position_id`),
+    KEY `idx_access_mailbox`        (`mailbox_id`),
+    KEY `idx_access_user`           (`user_id`),
+    KEY `idx_access_position`       (`officer_position_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

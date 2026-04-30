@@ -22,6 +22,7 @@ return [
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
         __DIR__ . '/migrations/002_officers_imap_columns.sql',
+        __DIR__ . '/migrations/003_mailboxes_table.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
@@ -83,20 +84,38 @@ return [
 
         // --- Admin routes ---
 
-        // Overview: all mailboxes, sync status
+        // Overview: three-panel mailbox settings
         $router->get('/admin/mailbox', [MailboxAdminController::class, 'index']);
 
-        // Officer mailbox credentials (IMAP/SMTP per officer position)
-        $router->get('/admin/mailbox/officer/{id}/credentials',  [MailboxAdminController::class, 'credentials']);
-        $router->post('/admin/mailbox/officer/{id}/credentials', [MailboxAdminController::class, 'saveCredentials']);
+        // New mailbox — blank credentials fragment
+        $router->get('/admin/mailbox/new', [MailboxAdminController::class, 'newForm']);
+
+        // Create new mailbox
+        $router->post('/admin/mailbox', [MailboxAdminController::class, 'create']);
+
+        // Credentials panel fragment (fetched into middle panel)
+        $router->get('/admin/mailbox/{id}/credentials-panel', [MailboxAdminController::class, 'credentialsPanel']);
+
+        // Save credentials for existing mailbox
+        $router->post('/admin/mailbox/{id}/credentials', [MailboxAdminController::class, 'saveCredentials']);
+
+        // Delete mailbox
+        $router->post('/admin/mailbox/{id}/delete', [MailboxAdminController::class, 'delete']);
+
+        // Access panel fragment (fetched into right panel)
+        $router->get('/admin/mailbox/{id}/access', [MailboxAdminController::class, 'accessPanel']);
+
+        // Grant / revoke access
+        $router->post('/admin/mailbox/{id}/access/grant',              [MailboxAdminController::class, 'grantAccess']);
+        $router->post('/admin/mailbox/{id}/access/{grant_id}/revoke',  [MailboxAdminController::class, 'revokeAccess']);
 
         // Tag management
-        $router->get('/admin/mailbox/tags',             [MailboxAdminController::class, 'tags']);
-        $router->post('/admin/mailbox/tags',            [MailboxAdminController::class, 'createTag']);
-        $router->post('/admin/mailbox/tags/{id}/update',[MailboxAdminController::class, 'updateTag']);
-        $router->post('/admin/mailbox/tags/{id}/delete',[MailboxAdminController::class, 'deleteTag']);
+        $router->get('/admin/mailbox/tags',              [MailboxAdminController::class, 'tags']);
+        $router->post('/admin/mailbox/tags',             [MailboxAdminController::class, 'createTag']);
+        $router->post('/admin/mailbox/tags/{id}/update', [MailboxAdminController::class, 'updateTag']);
+        $router->post('/admin/mailbox/tags/{id}/delete', [MailboxAdminController::class, 'deleteTag']);
 
         // Trigger manual sync for a mailbox (AJAX or form POST)
-        $router->post('/admin/mailbox/{mailbox_id}/sync', [MailboxAdminController::class, 'sync']);
+        $router->post('/admin/mailbox/{id}/sync', [MailboxAdminController::class, 'sync']);
     },
 ];
