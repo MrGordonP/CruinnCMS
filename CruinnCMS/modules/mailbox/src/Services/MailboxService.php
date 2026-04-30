@@ -6,6 +6,27 @@ namespace Cruinn\Module\Mailbox\Services;
 
 use Cruinn\Database;
 
+// IMAP extension — functions and constants are in global namespace; import explicitly.
+use function imap_open;
+use function imap_close;
+use function imap_last_error;
+use function imap_list;
+use function imap_search;
+use function imap_msgno;
+use function imap_headerinfo;
+use function imap_fetchstructure;
+use function imap_fetchbody;
+use function imap_mail_move;
+use function imap_expunge;
+use function imap_delete;
+use function imap_utf8;
+use const SE_UID;
+use const TYPEMULTIPART;
+use const TYPETEXT;
+use const ENC7BIT;
+use const ENCBASE64;
+use const ENCQUOTEDPRINTABLE;
+
 /**
  * MailboxService — IMAP access, header sync, send, thread resolution.
  *
