@@ -27,9 +27,12 @@ class MailingListController extends BaseController
              ORDER BY ml.name'
         );
 
+        $groups = $this->db->fetchAll('SELECT id, name FROM groups ORDER BY name');
+
         $this->renderAdmin('admin/lists/index', [
             'title'       => 'Mailing Lists',
             'lists'       => $lists,
+            'groups'      => $groups,
             'breadcrumbs' => [['Mailout', '/admin/mailout'], ['Mailing Lists']],
         ]);
     }
@@ -83,6 +86,8 @@ class MailingListController extends BaseController
         $desc = trim($this->input('description', ''));
         $mode = $this->input('subscription_mode', 'open');
         $pub  = (int)(bool)$this->input('is_public', 1);
+        $isDynamic = (int)(bool)$this->input('is_dynamic', 0);
+        $sourceTable = $isDynamic ? $this->input('source_table', '') : null;
 
         if ($name === '' || $slug === '') {
             Auth::flash('error', 'Name and slug are required.');
@@ -100,16 +105,49 @@ class MailingListController extends BaseController
             $this->redirect('/admin/mailout/lists');
         }
 
-        $this->db->insert('mailing_lists', [
+        // Build source criteria JSON for dynamic lists
+        $sourceCriteria = null;
+        if ($isDynamic && $sourceTable) {
+            $criteria = [];
+
+            if ($sourceTable === 'members') {
+                if ($status = $this->input('criteria_status')) {
+                    $criteria['status'] = $status;
+                }
+                if ($year = $this->input('criteria_year')) {
+                    $criteria['year'] = (int)$year;
+                }
+            } elseif ($sourceTable === 'users') {
+                if ($active = $this->input('criteria_active')) {
+                    $criteria['active'] = (int)$active;
+                }
+            } elseif ($sourceTable === 'groups') {
+                if ($groupId = $this->input('criteria_group_id')) {
+                    $criteria['group_id'] = (int)$groupId;
+                }
+            }
+
+            $sourceCriteria = !empty($criteria) ? json_encode($criteria) : null;
+        }
+
+        $newId = $this->db->insert('mailing_lists', [
             'name'              => $name,
             'slug'              => $slug,
             'description'       => $desc !== '' ? $desc : null,
-            'subscription_mode' => in_array($mode, ['open', 'request'], true) ? $mode : 'open',
+            'subscription_mode' => $isDynamic ? 'open' : (in_array($mode, ['open', 'request'], true) ? $mode : 'open'),
             'is_public'         => $pub,
             'is_active'         => 1,
+            'is_dynamic'        => $isDynamic,
+            'source_table'      => $sourceTable,
+            'source_criteria'   => $sourceCriteria,
         ]);
 
-        Auth::flash('success', "Mailing list \"{$name}\" created.");
+        // Auto-sync if dynamic
+        if ($isDynamic && $newId) {
+            $this->syncMailingList((int)$newId);
+        }
+
+        Auth::flash('success', "Mailing list \"{$name}\" created" . ($isDynamic ? ' and synced.' : '.'));
         $this->redirect('/admin/mailout/lists');
     }
 
@@ -225,5 +263,128 @@ class MailingListController extends BaseController
             [$subId, $id]
         );
         $this->json(['success' => true]);
+    }
+
+    /**
+     * POST /admin/mailout/lists/{id}/sync — Manually sync a dynamic mailing list.
+     */
+    public function syncList(int $id): void
+    {
+        Auth::requireRole('admin');
+        CSRF::validate();
+
+        $affected = $this->syncMailingList($id);
+
+        if ($affected === false) {
+            $this->json(['error' => 'List not found or not configured as dynamic'], 400);
+        } else {
+            $this->json([
+                'success' => true,
+                'message' => "List synced successfully. {$affected} member(s) added.",
+                'added'   => $affected,
+            ]);
+        }
+    }
+
+    /**
+     * Sync a dynamic mailing list from its source criteria.
+     * Returns number of members added, or false if not a dynamic list.
+     */
+    private function syncMailingList(int $listId): int|false
+    {
+        $list = $this->db->fetch('SELECT * FROM mailing_lists WHERE id = ?', [$listId]);
+
+        if (!$list || !$list['is_dynamic'] || !$list['source_table']) {
+            return false;
+        }
+
+        $criteria = $list['source_criteria'] ? json_decode($list['source_criteria'], true) : [];
+        $sourceTable = $list['source_table'];
+
+        $users = [];
+
+        // Build query based on source table
+        if ($sourceTable === 'members') {
+            $where = ['m.id IS NOT NULL'];
+            $params = [];
+
+            if (!empty($criteria['status'])) {
+                $where[] = 'm.status = ?';
+                $params[] = $criteria['status'];
+            }
+            if (!empty($criteria['year'])) {
+                $where[] = 'm.membership_year = ?';
+                $params[] = (int)$criteria['year'];
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $users = $this->db->fetchAll(
+                "SELECT m.user_id AS id, m.email, CONCAT(m.forenames, ' ', m.surnames) AS display_name
+                 FROM members m
+                 {$whereClause}
+                 ORDER BY m.email",
+                $params
+            );
+        } elseif ($sourceTable === 'users') {
+            $where = ['u.id IS NOT NULL'];
+            $params = [];
+
+            if (isset($criteria['active'])) {
+                $where[] = 'u.active = ?';
+                $params[] = (int)$criteria['active'];
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $users = $this->db->fetchAll(
+                "SELECT u.id, u.email, u.display_name
+                 FROM users u
+                 {$whereClause}
+                 ORDER BY u.email",
+                $params
+            );
+        } elseif ($sourceTable === 'groups') {
+            if (!empty($criteria['group_id'])) {
+                $users = $this->db->fetchAll(
+                    "SELECT DISTINCT u.id, u.email, u.display_name
+                     FROM users u
+                     INNER JOIN group_members gm ON gm.user_id = u.id
+                     WHERE gm.group_id = ?
+                     ORDER BY u.email",
+                    [(int)$criteria['group_id']]
+                );
+            }
+        }
+
+        $added = 0;
+
+        foreach ($users as $user) {
+            // Check if already subscribed
+            $exists = $this->db->fetch(
+                'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                [$listId, $user['email']]
+            );
+
+            if (!$exists) {
+                $this->db->insert('mailing_list_subscriptions', [
+                    'list_id'           => $listId,
+                    'user_id'           => $user['id'] ? (int)$user['id'] : null,
+                    'email'             => $user['email'],
+                    'name'              => $user['display_name'],
+                    'unsubscribe_token' => bin2hex(random_bytes(32)),
+                    'status'            => 'active',
+                    'subscribed_at'     => date('Y-m-d H:i:s'),
+                ]);
+                $added++;
+            }
+        }
+
+        // Update last_synced_at
+        $this->db->update('mailing_lists', [
+            'last_synced_at' => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$listId]);
+
+        return $added;
     }
 }

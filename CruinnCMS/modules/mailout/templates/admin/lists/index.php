@@ -28,9 +28,16 @@
                        'subscription_mode' => $ml['subscription_mode'],
                        'is_public'         => (int)$ml['is_public'],
                        'is_active'         => (int)$ml['is_active'],
+                       'is_dynamic'        => (int)($ml['is_dynamic'] ?? 0),
+                       'source_table'      => $ml['source_table'] ?? '',
+                       'source_criteria'   => $ml['source_criteria'] ?? '',
+                       'last_synced_at'    => $ml['last_synced_at'] ?? '',
                        'subscriber_count'  => (int)($ml['subscriber_count'] ?? 0),
                    ])) ?>'>
                     <?= e($ml['name']) ?>
+                    <?php if (!empty($ml['is_dynamic'])): ?>
+                        <span style="font-size:.7rem;color:#1d9e75;margin-left:.3rem" title="Dynamic list">⚡</span>
+                    <?php endif; ?>
                     <span class="pl-nav-count"><?= (int)($ml['subscriber_count'] ?? 0) ?></span>
                 </a>
                 <?php endforeach; ?>
@@ -39,18 +46,65 @@
 
         <!-- New list form (hidden until button clicked) -->
         <div id="new-list-form" style="display:none;border-top:1px solid var(--color-border,#ccd9d3);padding:.75rem">
-            <form method="POST" action="/admin/mailout/lists">
+            <form method="POST" action="/admin/mailout/lists" id="new-list-form-elem">
                 <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
                 <div style="margin-bottom:.5rem">
                     <input type="text" name="name" class="pl-search-input" placeholder="List name" required style="width:100%;margin-bottom:.4rem" id="new-list-name">
                     <input type="text" name="slug" class="pl-search-input" placeholder="slug (auto)" style="width:100%;margin-bottom:.4rem" id="new-list-slug">
-                    <select name="subscription_mode" class="pl-search-input" style="width:100%;margin-bottom:.4rem">
-                        <option value="open">Open subscription</option>
-                        <option value="request">Request only</option>
-                    </select>
-                    <label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem">
+
+                    <div id="new-subscription-mode-wrapper" style="margin-bottom:.4rem">
+                        <select name="subscription_mode" class="pl-search-input" style="width:100%">
+                            <option value="open">Open subscription</option>
+                            <option value="request">Request only</option>
+                        </select>
+                    </div>
+
+                    <label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">
                         <input type="checkbox" name="is_public" value="1" checked> Public (visible in subscription prefs)
                     </label>
+                    <label style="font-size:.8rem;display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">
+                        <input type="checkbox" name="is_dynamic" value="1" id="new-is-dynamic"> Dynamic (auto-populate)
+                    </label>
+
+                    <!-- Dynamic list configuration -->
+                    <div id="new-dynamic-config" style="display:none;padding:.5rem;background:#f0f0f0;border-radius:4px;margin-top:.4rem">
+                        <select name="source_table" id="new-source-table" class="pl-search-input" style="width:100%;margin-bottom:.4rem;font-size:.8rem">
+                            <option value="">-- Source --</option>
+                            <option value="members">Members</option>
+                            <option value="users">Users</option>
+                            <option value="groups">Groups</option>
+                        </select>
+
+                        <!-- Members criteria -->
+                        <div id="new-members-criteria" class="source-criteria" style="display:none">
+                            <select name="criteria_status" class="pl-search-input" style="width:100%;margin-bottom:.4rem;font-size:.8rem">
+                                <option value="">Any status</option>
+                                <option value="active">Active</option>
+                                <option value="applicant">Applicant</option>
+                                <option value="lapsed">Lapsed</option>
+                            </select>
+                            <input type="number" name="criteria_year" class="pl-search-input" placeholder="Year (e.g. 2026)" style="width:100%;font-size:.8rem" min="2000" max="2100">
+                        </div>
+
+                        <!-- Users criteria -->
+                        <div id="new-users-criteria" class="source-criteria" style="display:none">
+                            <select name="criteria_active" class="pl-search-input" style="width:100%;font-size:.8rem">
+                                <option value="">Any</option>
+                                <option value="1">Active only</option>
+                                <option value="0">Inactive only</option>
+                            </select>
+                        </div>
+
+                        <!-- Groups criteria -->
+                        <div id="new-groups-criteria" class="source-criteria" style="display:none">
+                            <select name="criteria_group_id" class="pl-search-input" style="width:100%;font-size:.8rem">
+                                <option value="">-- Select group --</option>
+                                <?php foreach ($groups as $g): ?>
+                                    <option value="<?= (int)$g['id'] ?>"><?= e($g['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div style="display:flex;gap:.4rem">
                     <button type="submit" class="btn btn-sm btn-primary">Create</button>
@@ -65,6 +119,7 @@
         <div class="pl-main-toolbar">
             <span class="pl-main-title" id="list-main-title">Select a list</span>
             <div class="pl-main-toolbar-actions" id="list-main-actions" style="display:none">
+                <button class="btn btn-sm btn-success" id="sync-list-btn" style="display:none;margin-right: 0.5rem;" title="Sync dynamic list">↻ Sync</button>
                 <button class="btn btn-sm btn-primary" id="add-subscriber-btn" style="margin-right: 0.5rem;">+ Add Member</button>
                 <select id="status-filter" class="pl-search-input" style="width:auto">
                     <option value="">All statuses</option>
@@ -78,7 +133,7 @@
         <div class="pl-main-search">
             <input type="search" class="pl-search-input" id="sub-search" placeholder="Search subscribers…" autocomplete="off" disabled>
         </div>
-        
+
         <!-- Add Subscriber Form (hidden) -->
         <div id="add-subscriber-form" style="display:none; padding: 1rem; background: #f9f9f9; border-bottom: 1px solid var(--color-border,#ccd9d3);">
             <form id="add-sub-form-elem">
@@ -97,7 +152,7 @@
                 </div>
             </form>
         </div>
-        
+
         <div class="pl-main-scroll">
             <div class="pl-empty" id="sub-placeholder">← Select a mailing list to view subscribers.</div>
             <table class="pl-table" id="sub-table" style="display:none">
@@ -152,6 +207,11 @@
     const addSubForm    = document.getElementById('add-subscriber-form');
     const addSubFormElem = document.getElementById('add-sub-form-elem');
     const addSubCancel  = document.getElementById('add-sub-cancel');
+    const isDynamicCheckbox = document.getElementById('new-is-dynamic');
+    const dynamicConfig = document.getElementById('new-dynamic-config');
+    const sourceTableSelect = document.getElementById('new-source-table');
+    const subscriptionModeWrapper = document.getElementById('new-subscription-mode-wrapper');
+    const syncListBtn   = document.getElementById('sync-list-btn');
 
     let activeListId = null;
     let searchTimeout = null;
@@ -163,16 +223,40 @@
     });
     newListSlug.addEventListener('input', () => { newListSlug.dataset.edited = '1'; });
 
+    // ── Dynamic list form toggling ──
+    isDynamicCheckbox.addEventListener('change', () => {
+        if (isDynamicCheckbox.checked) {
+            dynamicConfig.style.display = '';
+            subscriptionModeWrapper.style.display = 'none';
+        } else {
+            dynamicConfig.style.display = 'none';
+            subscriptionModeWrapper.style.display = '';
+            sourceTableSelect.value = '';
+            document.querySelectorAll('.source-criteria').forEach(el => el.style.display = 'none');
+        }
+    });
+
+    sourceTableSelect.addEventListener('change', () => {
+        document.querySelectorAll('.source-criteria').forEach(el => el.style.display = 'none');
+        if (sourceTableSelect.value === 'members') {
+            document.getElementById('new-members-criteria').style.display = '';
+        } else if (sourceTableSelect.value === 'users') {
+            document.getElementById('new-users-criteria').style.display = '';
+        } else if (sourceTableSelect.value === 'groups') {
+            document.getElementById('new-groups-criteria').style.display = '';
+        }
+    });
+
     // ── New list panel ──
     newListBtn.addEventListener('click', () => { newListForm.style.display = ''; newListName.focus(); });
     newListCancel.addEventListener('click', () => { newListForm.style.display = 'none'; });
 
     // ── Add subscriber panel ──
-    addSubBtn.addEventListener('click', () => { 
-        addSubForm.style.display = ''; 
+    addSubBtn.addEventListener('click', () => {
+        addSubForm.style.display = '';
         addSubFormElem.querySelector('input[name="email"]').focus();
     });
-    addSubCancel.addEventListener('click', () => { 
+    addSubCancel.addEventListener('click', () => {
         addSubForm.style.display = 'none';
         addSubFormElem.reset();
     });
@@ -180,7 +264,7 @@
     addSubFormElem.addEventListener('submit', e => {
         e.preventDefault();
         if (!activeListId) return;
-        
+
         const formData = new FormData(addSubFormElem);
         const email = formData.get('email');
         const name = formData.get('name');
@@ -220,6 +304,39 @@
             mainTitle.textContent = list.name;
             mainActions.style.display = '';
             subSearch.disabled = false;
+
+            // Show/hide sync button for dynamic lists
+            if (list.is_dynamic) {
+                syncListBtn.style.display = '';
+            } else {
+                syncListBtn.style.display = 'none';
+            }
+        });
+    });
+
+    // ── Sync button handler ──
+    syncListBtn.addEventListener('click', () => {
+        if (!activeListId) return;
+        if (!confirm('Sync this list from its source?')) return;
+
+        const formData = new FormData();
+        formData.append('csrf_token', '<?= e(\Cruinn\CSRF::getToken()) ?>');
+
+        fetch(`/admin/mailout/lists/${activeListId}/sync`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else if (data.success) {
+                loadSubscribers(activeListId);
+                if (data.message) alert(data.message);
+            }
+        })
+        .catch(err => {
+            alert('Failed to sync: ' + err.message);
         });
     });
 

@@ -20,6 +20,7 @@ return [
         $router->post('/admin/mailout/lists',                                              [MailingListController::class, 'create']);
         $router->get('/admin/mailout/lists/{id}/subscribers',                              [MailingListController::class, 'subscribers']);
         $router->post('/admin/mailout/lists/{id}/subscribers/add',                         [MailingListController::class, 'addSubscriber']);
+        $router->post('/admin/mailout/lists/{id}/sync',                                    [MailingListController::class, 'syncList']);
         $router->post('/admin/mailout/lists/{id}',                                         [MailingListController::class, 'update']);
         $router->post('/admin/mailout/lists/{id}/delete',                                  [MailingListController::class, 'delete']);
         $router->post('/admin/mailout/lists/{id}/subscribers/{subId}/remove',              [MailingListController::class, 'removeSubscriber']);

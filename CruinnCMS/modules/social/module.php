@@ -18,7 +18,6 @@ return [
 
     'acp_sections' => [
         ['group' => 'Comms', 'label' => 'Social Hub', 'url' => '/admin/social', 'icon' => '📢'],
-        ['group' => 'Comms', 'label' => 'Mailing Lists', 'url' => '/admin/social/mailing-lists', 'icon' => '📧'],
         ['group' => 'Comms', 'label' => 'Accounts', 'url' => '/admin/social/accounts', 'icon' => '🔗'],
         ['group' => 'Comms', 'label' => 'Distribute', 'url' => '/admin/social/distribute', 'icon' => '📤'],
         ['group' => 'Settings', 'label' => 'Social Config', 'url' => '/admin/settings/social', 'icon' => '📡'],
@@ -26,7 +25,6 @@ return [
 
     'dashboard_sections' => [
         ['group' => 'Social & Communications', 'label' => 'Social Hub', 'url' => '/admin/social', 'icon' => '📢', 'roles' => ['admin']],
-        ['group' => 'Social & Communications', 'label' => 'Mailing Lists', 'url' => '/admin/social/mailing-lists', 'icon' => '📧', 'roles' => ['admin']],
         ['group' => 'Social & Communications', 'label' => 'Accounts', 'url' => '/admin/social/accounts', 'icon' => '🔗', 'roles' => ['admin']],
         ['group' => 'Social & Communications', 'label' => 'Distribute', 'url' => '/admin/social/distribute', 'icon' => '📤', 'roles' => ['admin']],
         ['group' => 'Settings', 'label' => 'Social Config', 'url' => '/admin/settings/social', 'icon' => '📡', 'roles' => ['admin']],
@@ -48,15 +46,6 @@ return [
         $router->post('/admin/social/accounts/{id}/disconnect',   [SocialController::class, 'disconnectAccount']);
         $router->get('/admin/social/connect/{platform}',          [SocialController::class, 'oauthConnect']);
         $router->get('/admin/social/callback/{platform}',         [SocialController::class, 'oauthCallback']);
-        $router->get('/admin/social/mailing-lists',               [SocialController::class, 'mailingLists']);
-        $router->post('/admin/social/mailing-lists',              [SocialController::class, 'saveMailingList']);
-        $router->post('/admin/social/mailing-lists/{id}/delete',  [SocialController::class, 'deleteMailingList']);
-        $router->post('/admin/social/mailing-lists/{id}/sync',    [SocialController::class, 'syncMailingListRoute']);
-        $router->get('/admin/social/mailing-lists/{id}/members',                      [SocialController::class, 'listMembers']);
-        $router->post('/admin/social/mailing-lists/{id}/members/add',                 [SocialController::class, 'addMember']);
-        $router->post('/admin/social/mailing-lists/{id}/members/{subId}/remove',      [SocialController::class, 'removeMember']);
-        $router->post('/admin/social/mailing-lists/{id}/members/{subId}/approve',     [SocialController::class, 'approveMember']);
-        $router->post('/admin/social/mailing-lists/{id}/members/{subId}/reject',      [SocialController::class, 'rejectMember']);
 
         // Member self-service (profile)
         $router->post('/profile/mailing-lists/{id}/subscribe',   [SocialController::class, 'subscribeSelf']);
