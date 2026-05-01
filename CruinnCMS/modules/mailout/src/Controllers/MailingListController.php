@@ -167,6 +167,52 @@ class MailingListController extends BaseController
     }
 
     /**
+     * POST /admin/mailout/lists/{id}/subscribers/add — Add a subscriber to the list.
+     */
+    public function addSubscriber(int $id): void
+    {
+        Auth::requireRole('admin');
+        CSRF::validate();
+
+        $list = $this->db->fetch('SELECT id, name FROM mailing_lists WHERE id = ?', [$id]);
+        if (!$list) {
+            $this->json(['error' => 'List not found'], 404);
+        }
+
+        $email = strtolower(trim($this->input('email', '')));
+        $name  = trim($this->input('name', ''));
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->json(['error' => 'Invalid email address'], 400);
+        }
+
+        // Check if already subscribed
+        $exists = $this->db->fetch(
+            'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+            [$id, $email]
+        );
+
+        if ($exists) {
+            $this->json(['error' => 'Email is already subscribed to this list'], 400);
+        }
+
+        // Add subscriber
+        $this->db->insert('mailing_list_subscriptions', [
+            'list_id'           => $id,
+            'email'             => $email,
+            'name'              => $name !== '' ? $name : null,
+            'status'            => 'active',
+            'unsubscribe_token' => bin2hex(random_bytes(32)),
+            'subscribed_at'     => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->json([
+            'success' => true,
+            'message' => "Added {$email} to {$list['name']}"
+        ]);
+    }
+
+    /**
      * POST /admin/mailout/lists/{id}/subscribers/{subId}/remove
      */
     public function removeSubscriber(int $id, int $subId): void

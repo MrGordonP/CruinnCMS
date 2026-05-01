@@ -65,6 +65,7 @@
         <div class="pl-main-toolbar">
             <span class="pl-main-title" id="list-main-title">Select a list</span>
             <div class="pl-main-toolbar-actions" id="list-main-actions" style="display:none">
+                <button class="btn btn-sm btn-primary" id="add-subscriber-btn" style="margin-right: 0.5rem;">+ Add Member</button>
                 <select id="status-filter" class="pl-search-input" style="width:auto">
                     <option value="">All statuses</option>
                     <option value="active">Active</option>
@@ -77,6 +78,26 @@
         <div class="pl-main-search">
             <input type="search" class="pl-search-input" id="sub-search" placeholder="Search subscribers…" autocomplete="off" disabled>
         </div>
+        
+        <!-- Add Subscriber Form (hidden) -->
+        <div id="add-subscriber-form" style="display:none; padding: 1rem; background: #f9f9f9; border-bottom: 1px solid var(--color-border,#ccd9d3);">
+            <form id="add-sub-form-elem">
+                <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem; color: #666; display: block; margin-bottom: 0.25rem;">Email Address</label>
+                        <input type="email" name="email" class="pl-search-input" placeholder="name@example.com" required style="width: 100%;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.75rem; color: #666; display: block; margin-bottom: 0.25rem;">Name (optional)</label>
+                        <input type="text" name="name" class="pl-search-input" placeholder="Display name" style="width: 100%;">
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary">Add</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="add-sub-cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+        
         <div class="pl-main-scroll">
             <div class="pl-empty" id="sub-placeholder">← Select a mailing list to view subscribers.</div>
             <table class="pl-table" id="sub-table" style="display:none">
@@ -91,7 +112,7 @@
                 </thead>
                 <tbody id="sub-tbody"></tbody>
             </table>
-            <div class="pl-empty" id="sub-empty" style="display:none">No subscribers match your search.</div>
+            <div class="pl-empty" id="sub-empty" style="display:none">No subscribers found.</div>
         </div>
     </div>
 
@@ -127,6 +148,10 @@
     const newListCancel = document.getElementById('new-list-cancel');
     const newListName   = document.getElementById('new-list-name');
     const newListSlug   = document.getElementById('new-list-slug');
+    const addSubBtn     = document.getElementById('add-subscriber-btn');
+    const addSubForm    = document.getElementById('add-subscriber-form');
+    const addSubFormElem = document.getElementById('add-sub-form-elem');
+    const addSubCancel  = document.getElementById('add-sub-cancel');
 
     let activeListId = null;
     let searchTimeout = null;
@@ -142,6 +167,44 @@
     newListBtn.addEventListener('click', () => { newListForm.style.display = ''; newListName.focus(); });
     newListCancel.addEventListener('click', () => { newListForm.style.display = 'none'; });
 
+    // ── Add subscriber panel ──
+    addSubBtn.addEventListener('click', () => { 
+        addSubForm.style.display = ''; 
+        addSubFormElem.querySelector('input[name="email"]').focus();
+    });
+    addSubCancel.addEventListener('click', () => { 
+        addSubForm.style.display = 'none';
+        addSubFormElem.reset();
+    });
+
+    addSubFormElem.addEventListener('submit', e => {
+        e.preventDefault();
+        if (!activeListId) return;
+        
+        const formData = new FormData(addSubFormElem);
+        const email = formData.get('email');
+        const name = formData.get('name');
+
+        fetch(`/admin/mailout/lists/${activeListId}/subscribers/add`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else if (data.success) {
+                addSubForm.style.display = 'none';
+                addSubFormElem.reset();
+                loadSubscribers(activeListId);
+                if (data.message) alert(data.message);
+            }
+        })
+        .catch(err => {
+            alert('Failed to add subscriber: ' + err.message);
+        });
+    });
+
     // ── Select list ──
     navItems.forEach(item => {
         item.addEventListener('click', e => {
@@ -150,6 +213,8 @@
             item.classList.add('active');
             const list = JSON.parse(item.dataset.list);
             activeListId = list.id;
+            addSubForm.style.display = 'none';
+            addSubFormElem.reset();
             loadSubscribers(list.id);
             showDetail(list);
             mainTitle.textContent = list.name;
