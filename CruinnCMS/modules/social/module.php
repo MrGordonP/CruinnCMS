@@ -51,6 +51,7 @@ return [
         $router->get('/admin/social/mailing-lists',               [SocialController::class, 'mailingLists']);
         $router->post('/admin/social/mailing-lists',              [SocialController::class, 'saveMailingList']);
         $router->post('/admin/social/mailing-lists/{id}/delete',  [SocialController::class, 'deleteMailingList']);
+        $router->post('/admin/social/mailing-lists/{id}/sync',    [SocialController::class, 'syncMailingListRoute']);
         $router->get('/admin/social/mailing-lists/{id}/members',                      [SocialController::class, 'listMembers']);
         $router->post('/admin/social/mailing-lists/{id}/members/add',                 [SocialController::class, 'addMember']);
         $router->post('/admin/social/mailing-lists/{id}/members/{subId}/remove',      [SocialController::class, 'removeMember']);
