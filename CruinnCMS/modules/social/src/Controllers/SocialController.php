@@ -935,11 +935,10 @@ class SocialController extends BaseController
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
             $users = $this->db->fetchAll(
-                "SELECT u.id, u.email, u.display_name
-                 FROM users u
-                 INNER JOIN members m ON m.user_id = u.id
+                "SELECT m.user_id AS id, m.email, CONCAT(m.forenames, ' ', m.surnames) AS display_name
+                 FROM members m
                  {$whereClause}
-                 ORDER BY u.email",
+                 ORDER BY m.email",
                 $params
             );
         } elseif ($sourceTable === 'users') {
@@ -985,7 +984,7 @@ class SocialController extends BaseController
             if (!$exists) {
                 $this->db->insert('mailing_list_subscriptions', [
                     'list_id'           => $listId,
-                    'user_id'           => (int)$user['id'],
+                    'user_id'           => $user['id'] ? (int)$user['id'] : null,
                     'email'             => $user['email'],
                     'name'              => $user['display_name'],
                     'unsubscribe_token' => bin2hex(random_bytes(32)),
