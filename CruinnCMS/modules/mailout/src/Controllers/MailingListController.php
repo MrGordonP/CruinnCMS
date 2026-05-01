@@ -264,8 +264,8 @@ class MailingListController extends BaseController
                 [$filterGroupId]
             );
         } elseif ($source === 'members') {
-            // Members only (users who have member records)
-            $where  = ['m.id IS NOT NULL'];
+            // Members only - ALL members from members table regardless of user account status
+            $where  = ['1=1'];
             $params = [];
 
             if ($filterStatus !== '') {
@@ -280,12 +280,15 @@ class MailingListController extends BaseController
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
             $availableUsers = $this->db->fetchAll(
-                "SELECT u.id, u.display_name, u.email, u.active,
-                        m.status AS member_status, m.membership_year
-                 FROM users u
-                 INNER JOIN members m ON m.user_id = u.id
+                "SELECT CONCAT('m_', m.id) AS id, 
+                        COALESCE(u.display_name, CONCAT(m.first_name, ' ', m.last_name)) AS display_name,
+                        m.email, u.active,
+                        m.status AS member_status, m.membership_year,
+                        m.id AS member_id, u.id AS user_id
+                 FROM members m
+                 LEFT JOIN users u ON u.id = m.user_id
                  {$whereClause}
-                 ORDER BY u.display_name",
+                 ORDER BY display_name",
                 $params
             );
         } else {
@@ -369,32 +372,65 @@ class MailingListController extends BaseController
             $this->redirect('/admin/mailout/lists');
         }
 
-        $userIds = array_map('intval', array_filter((array)($_POST['user_ids'] ?? []), 'is_numeric'));
+        $selectedIds = array_filter((array)($_POST['user_ids'] ?? []));
         $email   = strtolower(trim($this->input('email', '')));
         $name    = trim($this->input('name', ''));
         $added   = 0;
 
-        // Bulk add selected users (from members page checkboxes)
-        foreach ($userIds as $userId) {
-            $user = $this->db->fetch('SELECT id, display_name, email FROM users WHERE id = ?', [$userId]);
-            if (!$user) continue;
+        // Bulk add selected users/members (from members page checkboxes)
+        foreach ($selectedIds as $selectedId) {
+            // Check if it's a member ID (prefixed with 'm_') or user ID
+            if (str_starts_with($selectedId, 'm_')) {
+                // Member-only record
+                $memberId = (int)substr($selectedId, 2);
+                $member = $this->db->fetch(
+                    'SELECT m.email, CONCAT(m.first_name, " ", m.last_name) AS name, u.id AS user_id
+                     FROM members m
+                     LEFT JOIN users u ON u.id = m.user_id
+                     WHERE m.id = ?',
+                    [$memberId]
+                );
+                if (!$member) continue;
 
-            $exists = $this->db->fetch(
-                'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
-                [$id, $user['email']]
-            );
-            if ($exists) continue;
+                $exists = $this->db->fetch(
+                    'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                    [$id, $member['email']]
+                );
+                if ($exists) continue;
 
-            $this->db->insert('mailing_list_subscriptions', [
-                'list_id'           => $id,
-                'user_id'           => $userId,
-                'email'             => $user['email'],
-                'name'              => $user['display_name'],
-                'unsubscribe_token' => bin2hex(random_bytes(32)),
-                'status'            => 'active',
-                'subscribed_at'     => date('Y-m-d H:i:s'),
-            ]);
-            $added++;
+                $this->db->insert('mailing_list_subscriptions', [
+                    'list_id'           => $id,
+                    'user_id'           => $member['user_id'],
+                    'email'             => $member['email'],
+                    'name'              => $member['name'],
+                    'unsubscribe_token' => bin2hex(random_bytes(32)),
+                    'status'            => 'active',
+                    'subscribed_at'     => date('Y-m-d H:i:s'),
+                ]);
+                $added++;
+            } else {
+                // User record
+                $userId = (int)$selectedId;
+                $user = $this->db->fetch('SELECT id, display_name, email FROM users WHERE id = ?', [$userId]);
+                if (!$user) continue;
+
+                $exists = $this->db->fetch(
+                    'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                    [$id, $user['email']]
+                );
+                if ($exists) continue;
+
+                $this->db->insert('mailing_list_subscriptions', [
+                    'list_id'           => $id,
+                    'user_id'           => $userId,
+                    'email'             => $user['email'],
+                    'name'              => $user['display_name'],
+                    'unsubscribe_token' => bin2hex(random_bytes(32)),
+                    'status'            => 'active',
+                    'subscribed_at'     => date('Y-m-d H:i:s'),
+                ]);
+                $added++;
+            }
         }
 
         // Single email add (from AJAX form or manual entry)
@@ -443,10 +479,10 @@ class MailingListController extends BaseController
             ]);
         } else {
             // Form submission from members page - redirect
-            if ($added === 0 && empty($userIds) && !$email) {
+            if ($added === 0 && empty($selectedIds) && !$email) {
                 Auth::flash('warning', 'No users selected.');
             } else {
-                Auth::flash('success', $added . ' member(s) added to ' . $list['name'] . '.');
+                Auth::flash('success', $added . ' contact(s) added to ' . $list['name'] . '.');
             }
             $this->redirect('/admin/mailout/lists/' . $id . '/members');
         }

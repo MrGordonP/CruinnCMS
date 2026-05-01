@@ -289,8 +289,8 @@
                     <?= csrf_field() ?>
                     <ul class="ml-user-list">
                         <?php foreach ($availableUsers as $u): ?>
-                            <li class="ml-user-item" data-user-id="<?= (int)$u['id'] ?>" onclick="toggleUserSelection(this)">
-                                <input type="checkbox" name="user_ids[]" value="<?= (int)$u['id'] ?>" style="display:none;" class="user-checkbox">
+                            <li class="ml-user-item" data-user-id="<?= e($u['id']) ?>" onclick="toggleUserSelection(this)">
+                                <input type="checkbox" name="user_ids[]" value="<?= e($u['id']) ?>" style="display:none;" class="user-checkbox">
                                 <div class="ml-user-name"><?= e($u['display_name']) ?></div>
                                 <div class="ml-user-email"><?= e($u['email']) ?></div>
                                 <?php if (!empty($u['member_status']) || !empty($u['membership_year'])): ?>
