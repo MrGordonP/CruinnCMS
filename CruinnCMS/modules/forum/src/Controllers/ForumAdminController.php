@@ -4,6 +4,7 @@ namespace Cruinn\Module\Forum\Controllers;
 
 use Cruinn\Auth;
 use Cruinn\Controllers\BaseController;
+use Cruinn\Module\Forum\Forum\ForumManager;
 
 class ForumAdminController extends BaseController
 {
@@ -56,10 +57,13 @@ class ForumAdminController extends BaseController
             'SELECT id, title FROM forum_categories ORDER BY sort_order ASC, title ASC'
         );
 
+        $categoriesHierarchical = ForumManager::provider()->listCategoriesHierarchical('admin');
+
         $this->renderAdmin('admin/forum/index', [
             'title' => 'Forum Moderation',
             'threads' => $threads,
             'categories' => $categories,
+            'categoriesHierarchical' => $categoriesHierarchical,
             'filters' => [
                 'q' => $search,
                 'category_id' => $categoryId,
