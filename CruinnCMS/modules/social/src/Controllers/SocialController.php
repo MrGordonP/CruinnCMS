@@ -618,7 +618,7 @@ class SocialController extends BaseController
             $this->redirect('/admin/social/mailing-lists');
         }
 
-        // Current list members (for the bottom table and email exclusion)
+        // Current list members (for the right panel and email exclusion)
         $members = $this->db->fetchAll(
             "SELECT mls.id AS sub_id, mls.email, mls.name, mls.status, mls.subscribed_at, u.id AS user_id, u.display_name
              FROM mailing_list_subscriptions mls
@@ -640,53 +640,106 @@ class SocialController extends BaseController
         $memberEmails = array_column($members, 'email');
         $pendingEmails = array_column($pendingMembers, 'email');
         $excludeEmails = array_merge($memberEmails, $pendingEmails);
-        // Filter params
-        $filterStatus = $this->query('status', '');
-        $filterYear   = $this->query('year', '');
-        $filterActive = $this->query('active', '');
-        $sort         = in_array($this->query('sort'), ['display_name', 'email', 'm.status', 'm.membership_year']) ? $this->query('sort') : 'u.display_name';
-        $dir          = $this->query('dir', 'asc') === 'desc' ? 'DESC' : 'ASC';
 
-        // Build user query with optional membership join
-        $where  = ['u.id IS NOT NULL'];
-        $params = [];
+        // Source selection and filters
+        $source        = $this->query('source', 'users');
+        $filterStatus  = $this->query('status', '');
+        $filterYear    = $this->query('year', '');
+        $filterActive  = $this->query('active', '');
+        $filterGroupId = (int) $this->query('group_id', 0);
 
-        if ($filterActive !== '') {
-            $where[]  = 'u.active = ?';
-            $params[] = (int)$filterActive;
+        $availableUsers = [];
+
+        // Fetch available users based on source
+        if ($source === 'manual') {
+            // Manual entry - no available users list
+            $availableUsers = [];
+        } elseif ($source === 'groups' && $filterGroupId > 0) {
+            // Get users from selected group
+            $availableUsers = $this->db->fetchAll(
+                "SELECT DISTINCT u.id, u.display_name, u.email, u.active,
+                        m.status AS member_status, m.membership_year
+                 FROM users u
+                 INNER JOIN group_members gm ON gm.user_id = u.id
+                 LEFT JOIN members m ON m.user_id = u.id
+                 WHERE gm.group_id = ?
+                 ORDER BY u.display_name",
+                [$filterGroupId]
+            );
+        } elseif ($source === 'members') {
+            // Members only (must have a members record)
+            $where  = ['m.id IS NOT NULL'];
+            $params = [];
+
+            if ($filterActive !== '') {
+                $where[]  = 'u.active = ?';
+                $params[] = (int)$filterActive;
+            }
+            if ($filterStatus !== '') {
+                $where[]  = 'm.status = ?';
+                $params[] = $filterStatus;
+            }
+            if ($filterYear !== '') {
+                $where[]  = 'm.membership_year = ?';
+                $params[] = (int)$filterYear;
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $availableUsers = $this->db->fetchAll(
+                "SELECT u.id, u.display_name, u.email, u.active,
+                        m.status AS member_status, m.membership_year
+                 FROM users u
+                 INNER JOIN members m ON m.user_id = u.id
+                 {$whereClause}
+                 ORDER BY u.display_name",
+                $params
+            );
+        } else {
+            // Users (all users, with optional member filters)
+            $where  = ['u.id IS NOT NULL'];
+            $params = [];
+
+            if ($filterActive !== '') {
+                $where[]  = 'u.active = ?';
+                $params[] = (int)$filterActive;
+            }
+            if ($filterStatus !== '') {
+                $where[]  = 'm.status = ?';
+                $params[] = $filterStatus;
+            }
+            if ($filterYear !== '') {
+                $where[]  = 'm.membership_year = ?';
+                $params[] = (int)$filterYear;
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $availableUsers = $this->db->fetchAll(
+                "SELECT u.id, u.display_name, u.email, u.active,
+                        m.status AS member_status, m.membership_year
+                 FROM users u
+                 LEFT JOIN members m ON m.user_id = u.id
+                 {$whereClause}
+                 ORDER BY u.display_name",
+                $params
+            );
         }
-        if ($filterStatus !== '') {
-            $where[]  = 'm.status = ?';
-            $params[] = $filterStatus;
-        }
-        if ($filterYear !== '') {
-            $where[]  = 'm.membership_year = ?';
-            $params[] = (int)$filterYear;
-        }
-
-        $whereClause = 'WHERE ' . implode(' AND ', $where);
-
-        $users = $this->db->fetchAll(
-            "SELECT u.id, u.display_name, u.email, u.active,
-                    m.status AS member_status, m.membership_year
-             FROM users u
-             LEFT JOIN members m ON m.user_id = u.id
-             {$whereClause}
-             ORDER BY {$sort} {$dir}",
-            $params
-        );
 
         // Exclude already-subscribed
-        $users = array_values(array_filter($users, fn($u) => !in_array($u['email'], $excludeEmails)));
+        $availableUsers = array_values(array_filter($availableUsers, fn($u) => !in_array($u['email'], $excludeEmails)));
+
+        // Fetch groups for group source selector
+        $groups = $this->db->fetchAll('SELECT id, name FROM groups ORDER BY name');
 
         // Distinct years for filter dropdown
         $years = $this->db->fetchAll(
             'SELECT DISTINCT membership_year FROM members WHERE membership_year IS NOT NULL ORDER BY membership_year DESC'
         );
 
-        $this->renderAdmin('admin/social/members', [
-            'title'       => 'Members: ' . $list['name'],
-            'breadcrumbs' => [
+        $this->renderAdmin('admin/social/members-v2', [
+            'title'          => 'Members: ' . $list['name'],
+            'breadcrumbs'    => [
                 ['Admin', '/admin'],
                 ['Social Media', '/admin/social'],
                 ['Mailing Lists', '/admin/social/mailing-lists'],
@@ -695,13 +748,14 @@ class SocialController extends BaseController
             'list'           => $list,
             'members'        => $members,
             'pendingMembers' => $pendingMembers,
-            'users'          => $users,
-            'years'         => array_column($years, 'membership_year'),
-            'filterStatus'  => $filterStatus,
-            'filterYear'    => $filterYear,
-            'filterActive'  => $filterActive,
-            'sort'          => $sort,
-            'dir'           => $dir,
+            'availableUsers' => $availableUsers,
+            'groups'         => $groups,
+            'years'          => array_column($years, 'membership_year'),
+            'source'         => $source,
+            'filterStatus'   => $filterStatus,
+            'filterYear'     => $filterYear,
+            'filterActive'   => $filterActive,
+            'filterGroupId'  => $filterGroupId,
         ]);
     }
 
