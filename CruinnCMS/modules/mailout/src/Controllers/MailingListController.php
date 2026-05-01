@@ -264,8 +264,8 @@ class MailingListController extends BaseController
                 [$filterGroupId]
             );
         } elseif ($source === 'members') {
-            // Members only (directly from members table)
-            $where  = ['1=1'];
+            // Members only (users who have member records)
+            $where  = ['m.id IS NOT NULL'];
             $params = [];
 
             if ($filterStatus !== '') {
@@ -280,25 +280,14 @@ class MailingListController extends BaseController
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
             $availableUsers = $this->db->fetchAll(
-                "SELECT m.id, m.first_name, m.last_name, m.email, m.status AS member_status, m.membership_year,
-                        u.id AS user_id, u.display_name, u.active
-                 FROM members m
-                 LEFT JOIN users u ON u.id = m.user_id
+                "SELECT u.id, u.display_name, u.email, u.active,
+                        m.status AS member_status, m.membership_year
+                 FROM users u
+                 INNER JOIN members m ON m.user_id = u.id
                  {$whereClause}
-                 ORDER BY m.last_name, m.first_name",
+                 ORDER BY u.display_name",
                 $params
             );
-
-            // Normalize display name for members without user accounts
-            foreach ($availableUsers as &$user) {
-                if (!$user['display_name']) {
-                    $user['display_name'] = trim($user['first_name'] . ' ' . $user['last_name']);
-                }
-                if (!$user['id']) {
-                    $user['id'] = 'm_' . $user['id']; // Prefix member-only IDs
-                }
-            }
-            unset($user);
         } else {
             // Users (all users, with optional member filters)
             $where  = ['u.id IS NOT NULL'];
@@ -342,7 +331,7 @@ class MailingListController extends BaseController
         );
 
         $this->renderAdmin('admin/lists/members', [
-            'title'          => 'Members: ' . $list['name'],
+            'title'          => 'Contacts: ' . $list['name'],
             'breadcrumbs'    => [
                 ['Mailout', '/admin/mailout'],
                 ['Mailing Lists', '/admin/mailout/lists'],

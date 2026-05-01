@@ -418,7 +418,7 @@
 
             <div style="margin:1rem 0">
                 <a href="/admin/mailout/lists/${list.id}/members" class="btn btn-sm btn-primary" style="width:100%;text-align:center">
-                    👥 Manage Members
+                    👥 Manage Contacts
                 </a>
             </div>
 

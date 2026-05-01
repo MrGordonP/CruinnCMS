@@ -173,10 +173,7 @@
 <div class="card-header-row" style="margin-bottom: var(--space-lg);">
     <div>
         <h1><?= e($list['name']) ?></h1>
-        <p class="text-muted" style="margin: 0.25rem 0 0;"><?= e($list['description'] ?? 'Manage mailing list members') ?></p>
-    </div>
-    <a href="<?= url('/admin/mailout/lists') ?>" class="btn btn-outline">← Back to Lists</a>
-</div>
+        <p class="text-muted" style="margin: 0.25rem 0 0;"><?= e($list['description'] ?? 'Manage mailing list contacts') ?></p>
 
 <div class="ml-workspace">
     <!-- LEFT PANEL: Source & Filters -->
@@ -325,10 +322,10 @@
         <?php endif; ?>
     </div>
 
-    <!-- RIGHT PANEL: Current Members -->
+    <!-- RIGHT PANEL: Current Contacts -->
     <div class="ml-panel ml-panel-right">
         <div class="ml-panel-header">
-            <span class="ml-panel-title">Current Members <span class="badge badge-muted"><?= count($members) ?></span></span>
+            <span class="ml-panel-title">Current Contacts <span class="badge badge-muted"><?= count($members) ?></span></span>
         </div>
         <div class="ml-panel-body" style="padding: 0;">
             <?php if (!empty($pendingMembers)): ?>
@@ -359,7 +356,7 @@
 
             <?php if (empty($members)): ?>
                 <div class="ml-empty-state">
-                    <p>No members yet.</p>
+                    <p>No contacts yet.</p>
                 </div>
             <?php else: ?>
                 <?php foreach ($members as $m): ?>
