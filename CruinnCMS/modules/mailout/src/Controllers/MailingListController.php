@@ -280,7 +280,7 @@ class MailingListController extends BaseController
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
             $availableUsers = $this->db->fetchAll(
-                "SELECT CONCAT('m_', m.id) AS id, 
+                "SELECT CONCAT('m_', m.id) AS id,
                         COALESCE(u.display_name, CONCAT(m.first_name, ' ', m.last_name)) AS display_name,
                         m.email, u.active,
                         m.status AS member_status, m.membership_year,
