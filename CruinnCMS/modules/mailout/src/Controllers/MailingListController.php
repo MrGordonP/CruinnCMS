@@ -205,7 +205,165 @@ class MailingListController extends BaseController
     }
 
     /**
-     * POST /admin/mailout/lists/{id}/subscribers/add — Add a subscriber to the list.
+     * GET /admin/mailout/lists/{id}/members — Three-panel member browsing and bulk addition.
+     */
+    public function listMembers(int $id): void
+    {
+        $list = $this->db->fetch('SELECT * FROM mailing_lists WHERE id = ?', [$id]);
+        if (!$list) {
+            Auth::flash('danger', 'Mailing list not found.');
+            $this->redirect('/admin/mailout/lists');
+        }
+
+        // Current list members (for the right panel and email exclusion)
+        $members = $this->db->fetchAll(
+            "SELECT mls.id AS sub_id, mls.email, mls.name, mls.status, mls.subscribed_at, u.id AS user_id, u.display_name
+             FROM mailing_list_subscriptions mls
+             LEFT JOIN users u ON u.id = mls.user_id
+             WHERE mls.list_id = ? AND mls.status != 'pending'
+             ORDER BY mls.email",
+            [$id]
+        );
+
+        $pendingMembers = $this->db->fetchAll(
+            "SELECT mls.id AS sub_id, mls.email, mls.name, mls.subscribed_at, u.id AS user_id, u.display_name
+             FROM mailing_list_subscriptions mls
+             LEFT JOIN users u ON u.id = mls.user_id
+             WHERE mls.list_id = ? AND mls.status = 'pending'
+             ORDER BY mls.subscribed_at",
+            [$id]
+        );
+
+        $memberEmails = array_column($members, 'email');
+        $pendingEmails = array_column($pendingMembers, 'email');
+        $excludeEmails = array_merge($memberEmails, $pendingEmails);
+
+        // Source selection and filters
+        $source        = $this->query('source', 'users');
+        $filterStatus  = $this->query('status', '');
+        $filterYear    = $this->query('year', '');
+        $filterActive  = $this->query('active', '');
+        $filterGroupId = (int) $this->query('group_id', 0);
+
+        $availableUsers = [];
+
+        // Fetch available users based on source
+        if ($source === 'manual') {
+            // Manual entry - no available users list
+            $availableUsers = [];
+        } elseif ($source === 'groups' && $filterGroupId > 0) {
+            // Get users from selected group
+            $availableUsers = $this->db->fetchAll(
+                "SELECT DISTINCT u.id, u.display_name, u.email, u.active,
+                        m.status AS member_status, m.membership_year
+                 FROM users u
+                 INNER JOIN group_members gm ON gm.user_id = u.id
+                 LEFT JOIN members m ON m.user_id = u.id
+                 WHERE gm.group_id = ?
+                 ORDER BY u.display_name",
+                [$filterGroupId]
+            );
+        } elseif ($source === 'members') {
+            // Members only (directly from members table)
+            $where  = ['1=1'];
+            $params = [];
+
+            if ($filterStatus !== '') {
+                $where[]  = 'm.status = ?';
+                $params[] = $filterStatus;
+            }
+            if ($filterYear !== '') {
+                $where[]  = 'm.membership_year = ?';
+                $params[] = (int)$filterYear;
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $availableUsers = $this->db->fetchAll(
+                "SELECT m.id, m.first_name, m.last_name, m.email, m.status AS member_status, m.membership_year,
+                        u.id AS user_id, u.display_name, u.active
+                 FROM members m
+                 LEFT JOIN users u ON u.id = m.user_id
+                 {$whereClause}
+                 ORDER BY m.last_name, m.first_name",
+                $params
+            );
+
+            // Normalize display name for members without user accounts
+            foreach ($availableUsers as &$user) {
+                if (!$user['display_name']) {
+                    $user['display_name'] = trim($user['first_name'] . ' ' . $user['last_name']);
+                }
+                if (!$user['id']) {
+                    $user['id'] = 'm_' . $user['id']; // Prefix member-only IDs
+                }
+            }
+            unset($user);
+        } else {
+            // Users (all users, with optional member filters)
+            $where  = ['u.id IS NOT NULL'];
+            $params = [];
+
+            if ($filterActive !== '') {
+                $where[]  = 'u.active = ?';
+                $params[] = (int)$filterActive;
+            }
+            if ($filterStatus !== '') {
+                $where[]  = 'm.status = ?';
+                $params[] = $filterStatus;
+            }
+            if ($filterYear !== '') {
+                $where[]  = 'm.membership_year = ?';
+                $params[] = (int)$filterYear;
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $availableUsers = $this->db->fetchAll(
+                "SELECT u.id, u.display_name, u.email, u.active,
+                        m.status AS member_status, m.membership_year
+                 FROM users u
+                 LEFT JOIN members m ON m.user_id = u.id
+                 {$whereClause}
+                 ORDER BY u.display_name",
+                $params
+            );
+        }
+
+        // Exclude already-subscribed
+        $availableUsers = array_values(array_filter($availableUsers, fn($u) => !in_array($u['email'], $excludeEmails)));
+
+        // Fetch groups for group source selector
+        $groups = $this->db->fetchAll('SELECT id, name FROM groups ORDER BY name');
+
+        // Distinct years for filter dropdown
+        $years = $this->db->fetchAll(
+            'SELECT DISTINCT membership_year FROM members WHERE membership_year IS NOT NULL ORDER BY membership_year DESC'
+        );
+
+        $this->renderAdmin('admin/lists/members', [
+            'title'          => 'Members: ' . $list['name'],
+            'breadcrumbs'    => [
+                ['Mailout', '/admin/mailout'],
+                ['Mailing Lists', '/admin/mailout/lists'],
+                [$list['name']],
+            ],
+            'list'           => $list,
+            'members'        => $members,
+            'pendingMembers' => $pendingMembers,
+            'availableUsers' => $availableUsers,
+            'groups'         => $groups,
+            'years'          => array_column($years, 'membership_year'),
+            'source'         => $source,
+            'filterStatus'   => $filterStatus,
+            'filterYear'     => $filterYear,
+            'filterActive'   => $filterActive,
+            'filterGroupId'  => $filterGroupId,
+        ]);
+    }
+
+    /**
+     * POST /admin/mailout/lists/{id}/subscribers/add — Add subscriber(s) to the list (bulk or single).
      */
     public function addSubscriber(int $id): void
     {
@@ -214,40 +372,95 @@ class MailingListController extends BaseController
 
         $list = $this->db->fetch('SELECT id, name FROM mailing_lists WHERE id = ?', [$id]);
         if (!$list) {
-            $this->json(['error' => 'List not found'], 404);
+            // Check if AJAX request
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                $this->json(['error' => 'List not found'], 404);
+            }
+            Auth::flash('danger', 'Mailing list not found.');
+            $this->redirect('/admin/mailout/lists');
         }
 
-        $email = strtolower(trim($this->input('email', '')));
-        $name  = trim($this->input('name', ''));
+        $userIds = array_map('intval', array_filter((array)($_POST['user_ids'] ?? []), 'is_numeric'));
+        $email   = strtolower(trim($this->input('email', '')));
+        $name    = trim($this->input('name', ''));
+        $added   = 0;
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->json(['error' => 'Invalid email address'], 400);
+        // Bulk add selected users (from members page checkboxes)
+        foreach ($userIds as $userId) {
+            $user = $this->db->fetch('SELECT id, display_name, email FROM users WHERE id = ?', [$userId]);
+            if (!$user) continue;
+
+            $exists = $this->db->fetch(
+                'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                [$id, $user['email']]
+            );
+            if ($exists) continue;
+
+            $this->db->insert('mailing_list_subscriptions', [
+                'list_id'           => $id,
+                'user_id'           => $userId,
+                'email'             => $user['email'],
+                'name'              => $user['display_name'],
+                'unsubscribe_token' => bin2hex(random_bytes(32)),
+                'status'            => 'active',
+                'subscribed_at'     => date('Y-m-d H:i:s'),
+            ]);
+            $added++;
         }
 
-        // Check if already subscribed
-        $exists = $this->db->fetch(
-            'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
-            [$id, $email]
-        );
+        // Single email add (from AJAX form or manual entry)
+        if ($email && empty($userIds)) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                // Check if AJAX
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    $this->json(['error' => 'Invalid email address'], 400);
+                }
+                Auth::flash('danger', 'Invalid email address.');
+                $this->redirect('/admin/mailout/lists/' . $id . '/members');
+            }
 
-        if ($exists) {
-            $this->json(['error' => 'Email is already subscribed to this list'], 400);
+            $exists = $this->db->fetch(
+                'SELECT id FROM mailing_list_subscriptions WHERE list_id = ? AND email = ?',
+                [$id, $email]
+            );
+
+            if ($exists) {
+                // Check if AJAX
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    $this->json(['error' => 'Email is already subscribed to this list'], 400);
+                }
+                Auth::flash('warning', $email . ' is already on this list.');
+                $this->redirect('/admin/mailout/lists/' . $id . '/members');
+            }
+
+            $this->db->insert('mailing_list_subscriptions', [
+                'list_id'           => $id,
+                'user_id'           => null,
+                'email'             => $email,
+                'name'              => $name !== '' ? $name : null,
+                'unsubscribe_token' => bin2hex(random_bytes(32)),
+                'status'            => 'active',
+                'subscribed_at'     => date('Y-m-d H:i:s'),
+            ]);
+            $added++;
         }
 
-        // Add subscriber
-        $this->db->insert('mailing_list_subscriptions', [
-            'list_id'           => $id,
-            'email'             => $email,
-            'name'              => $name !== '' ? $name : null,
-            'status'            => 'active',
-            'unsubscribe_token' => bin2hex(random_bytes(32)),
-            'subscribed_at'     => date('Y-m-d H:i:s'),
-        ]);
-
-        $this->json([
-            'success' => true,
-            'message' => "Added {$email} to {$list['name']}"
-        ]);
+        // Return based on request type
+        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+            // AJAX request - return JSON
+            $this->json([
+                'success' => true,
+                'message' => "Added {$email} to {$list['name']}"
+            ]);
+        } else {
+            // Form submission from members page - redirect
+            if ($added === 0 && empty($userIds) && !$email) {
+                Auth::flash('warning', 'No users selected.');
+            } else {
+                Auth::flash('success', $added . ' member(s) added to ' . $list['name'] . '.');
+            }
+            $this->redirect('/admin/mailout/lists/' . $id . '/members');
+        }
     }
 
     /**

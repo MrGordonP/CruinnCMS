@@ -18,6 +18,7 @@ return [
     'routes' => function (Router $router): void {
         $router->get('/admin/mailout/lists',                                               [MailingListController::class, 'index']);
         $router->post('/admin/mailout/lists',                                              [MailingListController::class, 'create']);
+        $router->get('/admin/mailout/lists/{id}/members',                                  [MailingListController::class, 'listMembers']);
         $router->get('/admin/mailout/lists/{id}/subscribers',                              [MailingListController::class, 'subscribers']);
         $router->post('/admin/mailout/lists/{id}/subscribers/add',                         [MailingListController::class, 'addSubscriber']);
         $router->post('/admin/mailout/lists/{id}/sync',                                    [MailingListController::class, 'syncList']);

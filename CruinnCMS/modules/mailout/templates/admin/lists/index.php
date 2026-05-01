@@ -416,6 +416,12 @@
             <div class="pl-detail-title">${escHtml(list.name)}</div>
             <div class="pl-detail-subtitle">${escHtml(list.slug)} · ${list.subscriber_count} subscribers</div>
 
+            <div style="margin:1rem 0">
+                <a href="/admin/mailout/lists/${list.id}/members" class="btn btn-sm btn-primary" style="width:100%;text-align:center">
+                    👥 Manage Members
+                </a>
+            </div>
+
             <form method="POST" action="/admin/mailout/lists/${list.id}">
                 <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
                 <div style="margin-bottom:.5rem">
