@@ -2106,6 +2106,222 @@ p {
     }
 }
 
+/* ============================================
+   PHPBB-style Hierarchical Forum Layout
+   ============================================ */
+
+.forum-index-phpbb {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xl);
+}
+
+.forum-category-section {
+    border: 1px solid var(--color-border);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    background: var(--color-bg-light);
+}
+
+.forum-category-header {
+    background: linear-gradient(to bottom, #f7f7f7, #ebebeb);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-md) var(--space-lg);
+}
+
+.forum-category-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.forum-category-header h2 a {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.forum-category-header h2 a:hover {
+    color: var(--color-primary);
+}
+
+.forum-category-desc {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+}
+
+.forum-category-forums {
+    background: var(--color-bg);
+}
+
+.forum-row {
+    display: grid;
+    grid-template-columns: 48px 1fr auto 180px;
+    gap: var(--space-md);
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.15s;
+}
+
+.forum-row:last-child {
+    border-bottom: none;
+}
+
+.forum-row:hover {
+    background: var(--color-bg-light);
+}
+
+.forum-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary-light);
+    flex-shrink: 0;
+}
+
+.forum-info {
+    min-width: 0;
+}
+
+.forum-title {
+    margin: 0 0 0.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.forum-title a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.forum-title a:hover {
+    text-decoration: underline;
+}
+
+.forum-desc {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+    line-height: 1.4;
+}
+
+.forum-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.forum-stat-item {
+    font-size: 0.8rem;
+    color: var(--color-text-light);
+}
+
+.forum-stat-item strong {
+    display: inline-block;
+    font-size: 0.95rem;
+    color: var(--color-text);
+    font-weight: 600;
+    min-width: 32px;
+}
+
+.forum-last-post {
+    text-align: right;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.last-post-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.last-post-thread {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.last-post-thread:hover {
+    text-decoration: underline;
+}
+
+.last-post-meta {
+    color: var(--color-text-light);
+    font-size: 0.75rem;
+    line-height: 1.3;
+}
+
+.no-posts {
+    color: var(--color-text-light);
+    font-style: italic;
+}
+
+/* Responsive adjustments for PHPBB layout */
+@media (max-width: 768px) {
+    .forum-row {
+        grid-template-columns: 36px 1fr;
+        grid-template-rows: auto auto;
+        gap: var(--space-sm);
+    }
+
+    .forum-stats,
+    .forum-last-post {
+        grid-column: 2;
+        display: flex;
+        flex-direction: row;
+        gap: var(--space-md);
+        text-align: left;
+        justify-content: space-between;
+    }
+
+    .forum-stats {
+        padding-top: var(--space-xs);
+    }
+
+    .forum-stat-item strong {
+        display: inline;
+        margin-right: 0.25em;
+    }
+
+    .last-post-thread {
+        white-space: normal;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .forum-row {
+        padding: var(--space-sm) var(--space-md);
+    }
+
+    .forum-category-header {
+        padding: var(--space-sm) var(--space-md);
+    }
+
+    .forum-icon {
+        display: none;
+    }
+
+    .forum-row {
+        grid-template-columns: 1fr;
+    }
+
+    .forum-stats,
+    .forum-last-post {
+        grid-column: 1;
+    }
+}
+
 .forum-breadcrumbs {
     font-size: 0.9rem;
     color: var(--color-text-light);

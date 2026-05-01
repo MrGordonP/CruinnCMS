@@ -6,6 +6,8 @@ interface ForumProviderInterface
 {
     public function listCategories(?string $viewerRole = null): array;
 
+    public function listCategoriesHierarchical(?string $viewerRole = null): array;
+
     public function getCategoryBySlug(string $slug, ?string $viewerRole = null): ?array;
 
     public function getSubcategories(int $parentId, ?string $viewerRole = null): array;

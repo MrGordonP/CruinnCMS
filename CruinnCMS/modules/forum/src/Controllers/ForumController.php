@@ -10,7 +10,7 @@ class ForumController extends BaseController
 {
     public function index(): void
     {
-        $categories = ForumManager::provider()->listCategories(Auth::role());
+        $categories = ForumManager::provider()->listCategoriesHierarchical(Auth::role());
 
         $this->render('public/forum/index', [
             'title' => 'Forum',

@@ -46,6 +46,59 @@ class NativeForumProvider implements ForumProviderInterface
         return $topLevel;
     }
 
+    /**
+     * Fetch all categories in hierarchical structure for PHPBB-style display.
+     * Returns array of parent categories with 'children' key containing sub-forums.
+     */
+    public function listCategoriesHierarchical(?string $viewerRole = null): array
+    {
+        $role = $viewerRole ?? Auth::role() ?? 'public';
+        $allowed = $this->allowedRolesForViewer($role);
+        $placeholders = implode(',', array_fill(0, count($allowed), '?'));
+
+        // Fetch ALL categories with stats
+        $all = $this->db->fetchAll(
+            "SELECT c.*,
+                    (SELECT COUNT(*) FROM forum_threads t WHERE t.category_id = c.id) AS thread_count,
+                    (SELECT COUNT(*) FROM forum_posts p
+                        JOIN forum_threads t2 ON t2.id = p.thread_id
+                        WHERE t2.category_id = c.id) AS post_count,
+                    (SELECT MAX(t3.last_post_at) FROM forum_threads t3 WHERE t3.category_id = c.id) AS last_post_at,
+                    (SELECT t.title FROM forum_threads t WHERE t.category_id = c.id ORDER BY t.last_post_at DESC LIMIT 1) AS last_thread_title,
+                    (SELECT t.id FROM forum_threads t WHERE t.category_id = c.id ORDER BY t.last_post_at DESC LIMIT 1) AS last_thread_id,
+                    (SELECT u.display_name FROM forum_threads t LEFT JOIN users u ON u.id = t.last_post_user_id WHERE t.category_id = c.id ORDER BY t.last_post_at DESC LIMIT 1) AS last_post_user_name
+             FROM forum_categories c
+             WHERE c.is_active = 1 AND c.access_role IN ({$placeholders})
+             ORDER BY c.sort_order ASC, c.title ASC",
+            $allowed
+        );
+
+        // Build hierarchical structure
+        $categoryMap = [];
+        $rootCategories = [];
+
+        // First pass: index all categories
+        foreach ($all as $cat) {
+            $cat['children'] = [];
+            $categoryMap[(int)$cat['id']] = $cat;
+        }
+
+        // Second pass: build hierarchy
+        foreach ($categoryMap as $id => $cat) {
+            $parentId = $cat['parent_id'] ? (int)$cat['parent_id'] : null;
+
+            if ($parentId === null) {
+                // Top-level category
+                $rootCategories[] = &$categoryMap[$id];
+            } elseif (isset($categoryMap[$parentId])) {
+                // Add as child of parent
+                $categoryMap[$parentId]['children'][] = &$categoryMap[$id];
+            }
+        }
+
+        return $rootCategories;
+    }
+
     public function getCategoryBySlug(string $slug, ?string $viewerRole = null): ?array
     {
         $category = $this->db->fetch('SELECT * FROM forum_categories WHERE slug = ? AND is_active = 1 LIMIT 1', [$slug]);
