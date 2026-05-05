@@ -1790,3 +1790,242 @@ a.sb-nav-item:hover,
     background: #f0f0f0;
     color: #111;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Structure Tab (3-panel page hierarchy view)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Flush panel layout inside .acp-panel */
+.acp-panel:has(#structure-layout) {
+    padding: 0;
+    border-radius: 0 0 6px 6px;
+    overflow: hidden;
+}
+#structure-layout {
+    border-radius: 0 0 6px 6px;
+    height: calc(100vh - 160px);
+}
+
+/* ── Left: page list rows ──────────────────────────────── */
+.st-list-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .32rem .75rem;
+    cursor: pointer;
+    font-size: .82rem;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background .1s;
+    min-width: 0;
+}
+.st-list-row:hover    { background: #f5f9f7; }
+.st-list-row.selected { background: #e6f7f2; font-weight: 600; }
+.st-list-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.st-status-dot {
+    width: .42rem;
+    height: .42rem;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+/* ── Filter tabs at top of left sidebar ───────────────── */
+.st-filter-bar {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+}
+.st-filter-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    border-right: 1px solid #e5e7eb;
+    padding: .32rem .2rem;
+    font-size: .7rem;
+    cursor: pointer;
+    color: #666;
+    line-height: 1.2;
+    transition: color .1s;
+}
+.st-filter-btn:last-child { border-right: none; }
+.st-filter-btn.active { color: #1d9e75; font-weight: 700; }
+
+/* ── Middle: tree rows ────────────────────────────────── */
+.st-tree-row {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .5rem .3rem 0;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background .1s;
+}
+.st-tree-row:hover    { background: #f5f9f7; }
+.st-tree-row.selected { background: #e6f7f2; }
+.st-tree-row.is-home  { background: #f0fdf8; }
+.st-tree-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: .68rem;
+    color: #bbb;
+    padding: 0;
+    width: 1rem;
+    text-align: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.st-tree-toggle:hover { color: #1d9e75; }
+.st-tree-label {
+    flex: 1;
+    font-size: .82rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.st-tree-slug {
+    font-size: .7rem;
+    color: #bbb;
+    font-family: monospace;
+    flex-shrink: 0;
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.st-tree-add-btn {
+    background: none;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    font-size: .67rem;
+    color: #999;
+    cursor: pointer;
+    padding: .1rem .35rem;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity .1s;
+    margin-right: .3rem;
+}
+.st-tree-row:hover .st-tree-add-btn { opacity: 1; }
+.st-tree-add-btn:hover { background: #1d9e75; color: #fff; border-color: #1d9e75; }
+
+/* ── Right: navigation section ───────────────────────── */
+.st-nav-menu-block {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    margin-bottom: .45rem;
+    overflow: hidden;
+}
+.st-nav-menu-header {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .38rem .6rem;
+    background: #f9fafb;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+.st-nav-menu-header:hover { background: #f0f0f0; }
+.st-nav-in-badge {
+    background: #1d9e75;
+    color: #fff;
+    font-size: .63rem;
+    font-weight: 700;
+    padding: .05rem .3rem;
+    border-radius: 10px;
+    margin-left: auto;
+}
+.st-nav-menu-body {
+    padding: .5rem .6rem;
+    border-top: 1px solid #e5e7eb;
+    display: none;
+}
+.st-nav-menu-body.open { display: block; }
+.st-nav-existing {
+    font-size: .75rem;
+    color: #444;
+    padding: .18rem 0;
+    border-bottom: 1px dashed #eee;
+    margin-bottom: .3rem;
+}
+.st-nav-form-row {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    margin-bottom: .3rem;
+}
+.st-nav-form-row label { font-size: .7rem; color: #888; }
+.st-nav-form-row input,
+.st-nav-form-row select {
+    font-size: .8rem;
+    padding: .28rem .4rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.st-nav-add-btn {
+    display: inline-block;
+    margin-top: .35rem;
+    background: #1d9e75;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: .78rem;
+    padding: .3rem .75rem;
+    cursor: pointer;
+}
+.st-nav-add-btn:hover { background: #178a64; }
+.st-nav-add-btn:disabled { opacity: .6; cursor: default; }
+
+/* ── Set as Home button in detail panel ──────────────── */
+.st-set-home-btn {
+    display: inline-block;
+    margin-top: .5rem;
+    background: none;
+    border: 1px solid #1d9e75;
+    color: #1d9e75;
+    border-radius: 4px;
+    font-size: .78rem;
+    padding: .28rem .75rem;
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+}
+.st-set-home-btn:hover { background: #1d9e75; color: #fff; }
+.st-set-home-btn:disabled { opacity: .6; cursor: default; }
+.st-set-home-btn.is-current-home {
+    background: #e6f7f2;
+    border-color: #1d9e75;
+    color: #1d9e75;
+    font-weight: 700;
+    cursor: default;
+}
+
+/* ── Drag-and-drop ───────────────────────────────── */
+.st-tree-row[draggable] { cursor: grab; }
+.st-tree-row.drag-over  { background: #d1fae5; outline: 2px dashed #1d9e75; outline-offset: -2px; }
+.st-tree-row.drag-source { opacity: .4; }
+.st-tree-drop-root {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: .4rem .75rem;
+    margin: .3rem .5rem;
+    border: 2px dashed #d1d5db;
+    border-radius: 4px;
+    font-size: .75rem;
+    color: #aaa;
+    cursor: default;
+    transition: background .1s, border-color .1s;
+}
+.st-tree-drop-root.drag-over { background: #d1fae5; border-color: #1d9e75; color: #1d9e75; }

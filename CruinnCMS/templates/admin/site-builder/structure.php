@@ -1,5 +1,6 @@
 <?php
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-site-builder.css');
 \Cruinn\Template::requireJs('structure.js');
 $GLOBALS['admin_flush_layout'] = true;
 
@@ -67,7 +68,9 @@ foreach ($menus as $mn) {
 include __DIR__ . '/_tabs.php';
 ?>
 
-<div class="panel-layout" id="structure-layout" data-menus='<?= e(json_encode($menusForJs, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
+<div class="panel-layout" id="structure-layout"
+     data-menus='<?= e(json_encode($menusForJs, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'
+     data-home-page-id='<?= (int)($homePageId ?? 0) ?>'>
 
     <!-- ══ LEFT: Page Inventory ══════════════════════════════════ -->
     <div class="pl-sidebar" id="pl-sidebar">
@@ -106,7 +109,7 @@ include __DIR__ . '/_tabs.php';
                  data-search="<?= e(strtolower($pg['title'] . ' ' . $pg['slug'])) ?>">
                 <span class="st-status-dot" style="background: <?= $statusClr ?>"></span>
                 <span class="st-list-title"><?= e($pg['title']) ?></span>
-                <?php if ($pg['slug'] === 'home'): ?><span style="font-size:.7rem">🏠</span><?php endif; ?>
+                <?php if ((int)$pg['id'] === (int)($homePageId ?? 0)): ?><span style="font-size:.7rem" title="Home page">🏠</span><?php endif; ?>
             </div>
             <?php endforeach; ?>
             </div>
@@ -158,13 +161,14 @@ include __DIR__ . '/_tabs.php';
                 'menuIds'    => $menuIds,
             ];
         ?>
-        <div class="st-tree-row"
+        <div class="st-tree-row<?= ((int)$pg['id'] === (int)($homePageId ?? 0)) ? ' is-home' : '' ?>"
              draggable="true"
              data-id="<?= (int)$pg['id'] ?>"
              data-slug="<?= e($pg['slug']) ?>"
              data-parent="<?= e($parentSlug) ?>"
              data-depth="<?= $depth ?>"
              data-is-parent="<?= $isParent ? '1' : '0' ?>"
+             data-is-home="<?= ((int)$pg['id'] === (int)($homePageId ?? 0)) ? '1' : '0' ?>"
              data-page='<?= e(json_encode($pageData)) ?>'
              style="padding-left: calc(.4rem + <?= $depth * 1.25 ?>rem)">
             <?php if ($isParent): ?>
@@ -178,7 +182,7 @@ include __DIR__ . '/_tabs.php';
                 <?php if ($status !== 'published'): ?>
                 <span class="badge" style="background:<?= $status === 'draft' ? '#d97706' : '#9ca3af' ?>;color:#fff;font-size:.62rem;margin-left:.2rem"><?= e($status) ?></span>
                 <?php endif; ?>
-                <?php if ($pg['slug'] === 'home'): ?><span style="font-size:.7rem;margin-left:.2rem">🏠</span><?php endif; ?>
+                <?php if ((int)$pg['id'] === (int)($homePageId ?? 0)): ?><span style="font-size:.7rem;margin-left:.2rem" title="Home page">🏠</span><?php endif; ?>
             </span>
             <span class="st-tree-slug">/<?= e($pg['slug']) ?></span>
             <button class="st-tree-add-btn" title="Add to menu">+ Menu</button>

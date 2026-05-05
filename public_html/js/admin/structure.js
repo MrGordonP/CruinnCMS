@@ -6,12 +6,22 @@
  */
 (function () {
     const csrfToken   = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-    const menus       = JSON.parse(document.getElementById('structure-layout').dataset.menus);
+    const layout      = document.getElementById('structure-layout');
+    const menus       = JSON.parse(layout.dataset.menus);
+    let   homePageId  = parseInt(layout.dataset.homePageId ?? '0', 10) || 0;
     const placeholder = document.getElementById('st-placeholder');
     const detailEl    = document.getElementById('st-detail-content');
     const searchInput = document.getElementById('st-search');
     const listEl      = document.getElementById('st-list');
     const treeEl      = document.getElementById('st-tree');
+
+    // ── Pin home row to top of tree ───────────────────────────────
+    (function pinHomeRow() {
+        if (!homePageId) return;
+        const homeRow = treeEl.querySelector(`.st-tree-row[data-is-home="1"]`);
+        const dropRoot = document.getElementById('st-drop-root');
+        if (homeRow && dropRoot) dropRoot.insertAdjacentElement('afterend', homeRow);
+    })();
 
     let activeListRow = null;
     let activeTreeRow = null;
@@ -145,6 +155,9 @@
                 <a href="${editUrl}" class="btn btn-primary btn-sm">Edit</a>
                 <a href="/${esc(p.slug)}" target="_blank" class="btn btn-outline btn-sm">View ↗</a>
             </div>
+            <button type="button" class="st-set-home-btn${p.id === homePageId ? ' is-current-home' : ''}" data-page-id="${p.id}">
+                ${p.id === homePageId ? '🏠 Current Home Page' : '🏠 Set as Home Page'}
+            </button>
             <table class="pl-meta">
                 <tr><th>Status</th><td>${badge(statusClr, p.status)}</td></tr>
                 <tr><th>Mode</th><td>${badge(modeClr, p.renderMode)}</td></tr>
@@ -175,6 +188,63 @@
         detailEl.querySelectorAll('.st-nav-form').forEach(form => {
             form.addEventListener('submit', handleNavAdd);
         });
+
+        // Set as Home button
+        const setHomeBtn = detailEl.querySelector('.st-set-home-btn');
+        if (setHomeBtn && !setHomeBtn.classList.contains('is-current-home')) {
+            setHomeBtn.addEventListener('click', () => handleSetHome(setHomeBtn, p.id));
+        }
+    }
+
+    async function handleSetHome(btn, pageId) {
+        btn.disabled = true;
+        btn.textContent = 'Setting…';
+        const fd = new FormData();
+        fd.append('csrf_token', csrfToken);
+        try {
+            const res  = await fetch(`/admin/site-builder/set-home/${pageId}`, { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.success) {
+                homePageId = pageId;
+                // Update all tree rows
+                treeEl.querySelectorAll('.st-tree-row').forEach(r => {
+                    const isHome = parseInt(r.dataset.id, 10) === pageId;
+                    r.classList.toggle('is-home', isHome);
+                    r.dataset.isHome = isHome ? '1' : '0';
+                });
+                // Pin new home row to top
+                const homeRow  = treeEl.querySelector('.st-tree-row[data-is-home="1"]');
+                const dropRoot = document.getElementById('st-drop-root');
+                if (homeRow && dropRoot) dropRoot.insertAdjacentElement('afterend', homeRow);
+                // Update list badges
+                listEl?.querySelectorAll('.st-list-row').forEach(r => {
+                    const badge = r.querySelector('.st-home-badge');
+                    if (parseInt(r.dataset.id, 10) === pageId) {
+                        if (!badge) {
+                            const s = document.createElement('span');
+                            s.className = 'st-home-badge';
+                            s.style.fontSize = '.7rem';
+                            s.title = 'Home page';
+                            s.textContent = '🏠';
+                            r.appendChild(s);
+                        }
+                    } else {
+                        badge?.remove();
+                    }
+                });
+                btn.classList.add('is-current-home');
+                btn.textContent = '🏠 Current Home Page';
+                btn.disabled = false;
+            } else {
+                btn.textContent = json.error || 'Error';
+                btn.style.background = '#dc2626';
+                btn.style.color = '#fff';
+                setTimeout(() => { btn.disabled = false; btn.textContent = '🏠 Set as Home Page'; btn.style.background = ''; btn.style.color = ''; }, 2500);
+            }
+        } catch {
+            btn.textContent = 'Request failed';
+            setTimeout(() => { btn.disabled = false; btn.textContent = '🏠 Set as Home Page'; }, 2500);
+        }
     }
 
     function buildNavHtml(p) {

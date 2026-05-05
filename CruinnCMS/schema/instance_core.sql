@@ -525,6 +525,7 @@ INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_pro
 INSERT INTO `settings` (`key`, `value`, `group`) VALUES
     ('site.name',                '', 'site'),
     ('site.tagline',             '', 'site'),
+    ('site.home_page_id',        '', 'site'),
     ('site.url',                 '', 'site'),
     ('site.timezone',            '', 'site'),
     ('site.logo',                '', 'site'),

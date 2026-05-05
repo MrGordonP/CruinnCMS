@@ -16,18 +16,21 @@ class PageController extends BaseController
 {
     /**
      * GET / — Homepage.
+     * The home page is designated via the site.home_page_id setting (set in Site Builder → Structure).
      */
     public function home(): void
     {
-        $page = $this->db->fetch(
-            'SELECT * FROM pages_index WHERE slug = ? AND status = ? LIMIT 1',
-            ['home', 'published']
-        );
+        $setting    = $this->db->fetch("SELECT value FROM settings WHERE `key` = 'site.home_page_id' LIMIT 1");
+        $homePageId = $setting ? (int)$setting['value'] : 0;
+
+        $page = $homePageId
+            ? $this->db->fetch('SELECT * FROM pages_index WHERE id = ? AND status = ? LIMIT 1', [$homePageId, 'published'])
+            : null;
 
         if (!$page) {
-            // No published homepage exists — send admins to Site Builder, everyone else gets 404.
+            // No home page designated — send admins to Site Builder, everyone else gets 404.
             if (Auth::hasRole('admin')) {
-                header('Location: ' . url('/admin/site-builder'));
+                header('Location: ' . url('/admin/site-builder/structure'));
                 exit;
             }
             http_response_code(404);

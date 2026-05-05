@@ -649,6 +649,9 @@ class SiteBuilderController extends BaseController
         // Templates with parsed settings (for header/footer/sidebar resolution)
         $templates = $this->db->fetchAll('SELECT slug, name, zones, settings FROM page_templates ORDER BY sort_order');
 
+        $homePageIdRow = $this->db->fetch("SELECT value FROM settings WHERE `key` = 'site.home_page_id' LIMIT 1");
+        $homePageId    = $homePageIdRow ? (int)$homePageIdRow['value'] : 0;
+
         $data = [
             'title'          => 'Site Structure',
             'section'        => 'builder',
@@ -659,8 +662,25 @@ class SiteBuilderController extends BaseController
             'menus'          => $menus,
             'menuItemsByMenu'=> $menuItemsByMenu,
             'templates'      => $templates,
+            'homePageId'     => $homePageId,
         ];
         $this->renderAdmin('admin/site-builder/structure', $data);
+    }
+
+    public function setHomePage(int $id): void
+    {
+        $page = $this->db->fetch('SELECT id FROM pages_index WHERE id = ? AND slug NOT LIKE \'\\_%\' LIMIT 1', [$id]);
+        if (!$page) {
+            $this->json(['success' => false, 'error' => 'Page not found']);
+            return;
+        }
+        $exists = $this->db->fetch("SELECT id FROM settings WHERE `key` = 'site.home_page_id' LIMIT 1");
+        if ($exists) {
+            $this->db->execute("UPDATE settings SET value = ? WHERE `key` = 'site.home_page_id'", [(string)$id]);
+        } else {
+            $this->db->execute("INSERT INTO settings (`key`, value, `group`) VALUES ('site.home_page_id', ?, 'site')", [(string)$id]);
+        }
+        $this->json(['success' => true]);
     }
 
     // ══════════════════════════════════════════════════════════════

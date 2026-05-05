@@ -298,6 +298,7 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/templates/{id}/delete',             [SiteBuilderController::class, 'builderDeleteTemplate']);
     $router->get('/admin/site-builder/menus',                 [SiteBuilderController::class, 'builderMenus']);
     $router->get('/admin/site-builder/structure',             [SiteBuilderController::class, 'builderStructure']);
+    $router->post('/admin/site-builder/set-home/{id}',        [SiteBuilderController::class, 'setHomePage']);
     $router->get('/admin/template-editor',                    [SiteBuilderController::class, 'templateEditorList']);
     $router->get('/admin/template-editor/edit',               [SiteBuilderController::class, 'templateEditorEdit']);
     $router->post('/admin/template-editor/edit',              [SiteBuilderController::class, 'templateEditorEdit']);
