@@ -8,6 +8,7 @@
 
 namespace Cruinn\Controllers;
 
+use Cruinn\Auth;
 use Cruinn\Template;
 use Cruinn\Services\CruinnRenderService;
 
@@ -24,12 +25,13 @@ class PageController extends BaseController
         );
 
         if (!$page) {
-            // Fallback: render a default homepage even if no page exists yet
-            $this->render('public/home', [
-                'title'  => 'My Site',
-                'page'   => null,
-                'blocks' => [],
-            ]);
+            // No published homepage exists — send admins to Site Builder, everyone else gets 404.
+            if (Auth::hasRole('admin')) {
+                header('Location: ' . url('/admin/site-builder'));
+                exit;
+            }
+            http_response_code(404);
+            $this->render('errors/404', ['title' => 'Page Not Found']);
             return;
         }
 
