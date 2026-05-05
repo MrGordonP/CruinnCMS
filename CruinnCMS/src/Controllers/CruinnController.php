@@ -634,6 +634,18 @@ class CruinnController extends BaseController
             ['page']
         );
 
+        $typographyPageId = (int) ($this->db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
+        $isThemePage = ($page['slug'] ?? '') === '_typography';
+        $themeVars   = [];
+        if ($isThemePage) {
+            $themeFile = \Cruinn\Admin\Controllers\ThemeController::themeFilePath(
+                \Cruinn\Admin\Controllers\ThemeController::activeTheme()
+            );
+            if (file_exists($themeFile)) {
+                $themeVars = \Cruinn\Admin\Controllers\ThemeController::parseVariables(file_get_contents($themeFile));
+            }
+        }
+
         $this->renderAdmin('admin/editor', [
             'title'             => 'Editor — ' . $page['title'],
             'page'              => $page,
