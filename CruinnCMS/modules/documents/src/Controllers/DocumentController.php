@@ -456,7 +456,7 @@ class DocumentController extends BaseController
 
         $filename  = date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
         $subdir    = 'documents/' . date('Y/m');
-        $uploadDir = dirname(__DIR__, 5) . '/public/uploads/' . $subdir;
+        $uploadDir = CRUINN_PUBLIC . '/storage/' . $subdir;
 
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -468,7 +468,7 @@ class DocumentController extends BaseController
 
         return [
             'success' => true,
-            'path'    => '/uploads/' . $subdir . '/' . $filename,
+            'path'    => '/storage/' . $subdir . '/' . $filename,
         ];
     }
 
@@ -477,7 +477,7 @@ class DocumentController extends BaseController
      */
     private function publicPath(string $relativePath): string
     {
-        return dirname(__DIR__, 5) . '/public' . $relativePath;
+        return CRUINN_PUBLIC . $relativePath;
     }
 
     /**
