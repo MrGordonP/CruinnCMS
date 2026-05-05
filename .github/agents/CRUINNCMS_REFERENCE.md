@@ -21,6 +21,7 @@ public_html/     ← Web root (matches cPanel structure)
   index.php      ← Front controller (defines CRUINN_ROOT)
   .htaccess      ← Apache rewrite rules + Options -Indexes
   css/           ← Per-page CSS (admin split into multiple files)
+    themes/      ← Per-theme CSS custom property files (default.css, …)
   brand/         ← Cruinn CMS production web assets (logo, favicon, wordmark)
   js/            ← editor.js, main.js, admin/ (block-editor/, block-types/)
   storage/       ← Writable; generated files
@@ -38,7 +39,8 @@ CruinnCMS/       ← Engine code (non-web)
       Controllers/ ← AcpSystemController, AcpInstanceController, SiteBuilderController,
                      AdminPageController, BlockController, MediaController,
                      UserAdminController, RoleAdminController, GroupController,
-                     AdminImportController, MaintenanceController
+                     AdminImportController, MaintenanceController,
+                     ThemeController
     BlockTypes/    ← BlockRegistry.php + {slug}/definition.php × 22
     Controllers/   ← AcpController, AdminController, AuthController, BaseController,
                      CruinnController, MenuController, PageController, SubjectController
@@ -118,6 +120,22 @@ Pages are composed of ordered blocks. Each block has a type, properties, and opt
 
 ---
 
+## Theme System
+
+Instance-level site theming via flat CSS custom property files.
+
+- **Theme files:** `public_html/css/themes/{name}.css` — each contains only a `:root {}` block of CSS custom properties. Loaded after `style.css` in `layout.php` so they override the base palette.
+- **Active theme:** `settings` table key `site.active_theme` (default: `'default'`). Seeded in `schema/instance_core.sql`.
+- **Theme Editor entry point:** A page with `slug = '_typography'` triggers `isThemePage=true` in `CruinnController::edit()`. The block editor canvas becomes a live preview; the right panel becomes Theme controls.
+- **ThemeController** (`CruinnCMS/src/Admin/Controllers/ThemeController.php`):
+  - `GET /admin/theme` → redirects to `_typography` page in block editor
+  - `POST /admin/theme` → writes edited CSS var values back into `{name}.css` via `applyVariables()`
+  - Static helpers: `activeTheme()`, `themeFilePath(string $theme)`, `parseVariables(string $css)`, `applyVariables(string $css, array $values)`
+- **Live preview:** JS updates `<style id="theme-preview-vars">` on every input event. Preview shows colour swatches, typography, buttons, card, spacing.
+- **Section headings:** `parseVariables()` uses `/* Comment */` lines above variable groups as section labels for accordion grouping.
+
+---
+
 ## Key Conventions
 
 - **Controllers** handle HTTP only — validate input, call Services, render template or redirect. No DB queries in controllers.
@@ -156,3 +174,4 @@ Apache: `public_html/.htaccess` handles rewrites + directory listing protection 
 - **v1.0.0-beta.4** — Editor overhaul: killed Editor 2 completely (deleted 11 files, stubbed `content_blocks` refs), removed council templates, platform editor CSS file editing via `?file=` handler with cPanel path resolution, code view toggle fix, code view CSS layout improvements (`:has(#editor-code-area)` rules), block tree + properties panel scroll constraints (in progress).
 - **v1.0.0-beta.5** — Editor UX: Properties panel accordions start collapsed (except Identity), code view shows clean publishable HTML (block→tag serialization via `blocksToHtml()`), CSS class persistence through `css_props._class`, Collapsed checkbox in Identity panel.
 - **v1.0.0-beta.6** — User profile (`/profile` GET/POST), cross-domain passthrough tokens (HMAC-signed, 60s validity), editor visible outlines + layout container min-sizes + resize handles, module migration renumbering to `001_*_core.sql`, ImportService fragment file support, MySQL 8 information_schema case fix.
+- **v1.0.0-beta.7** (`cf8fda1`) — Theme system: `public_html/css/themes/{name}.css`, `ThemeController`, Theme Editor integrated into block editor (canvas=live preview, right panel=controls), `site.active_theme` settings seed. Module path fixes (documents, drivespace). `setHomePage` UPSERT fix. Platform migrations re-run feature.
