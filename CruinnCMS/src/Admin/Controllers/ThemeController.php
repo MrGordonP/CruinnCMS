@@ -85,16 +85,9 @@ class ThemeController extends BaseController
      */
     public static function parseVariables(string $css): array
     {
-        // Strip block comments that appear before :root so that file-header
-        // comments containing ":root { }" cannot falsely match the regex.
-        // Comments inside the :root block itself are preserved for group headings.
-        $rootPos  = strpos($css, ':root');
-        $stripped = ($rootPos !== false)
-            ? preg_replace('!/\*.*?\*/!s', '', substr($css, 0, $rootPos)) . substr($css, $rootPos)
-            : preg_replace('!/\*.*?\*/!s', '', $css);
-
-        // Find the :root { … } block (first occurrence)
-        if (!preg_match('/\:root\s*\{([^}]+)\}/s', $stripped, $m)) {
+        // Match the :root block that contains at least one CSS custom property (--).
+        // This naturally skips any ":root { }" mentions in file-header comments.
+        if (!preg_match('/:root\s*\{([^}]*--[^}]+)\}/s', $css, $m)) {
             return [];
         }
 
