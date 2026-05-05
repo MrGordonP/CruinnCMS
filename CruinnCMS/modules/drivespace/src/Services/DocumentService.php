@@ -310,7 +310,7 @@ class DocumentService
 
         $this->pdfAdapter->fromHtml($fullHtml, $path);
 
-        return '/uploads/exports/' . date('Y/m') . '/' . $filename;
+        return '/storage/exports/' . date('Y/m') . '/' . $filename;
     }
 
     /**
@@ -325,7 +325,7 @@ class DocumentService
 
         $this->docxAdapter->fromHtml($html, $path);
 
-        return '/uploads/exports/' . date('Y/m') . '/' . $filename;
+        return '/storage/exports/' . date('Y/m') . '/' . $filename;
     }
 
     /**
@@ -341,7 +341,7 @@ class DocumentService
         $path = $this->getExportDir() . '/' . $filename;
         file_put_contents($path, $fullHtml);
 
-        return '/uploads/exports/' . date('Y/m') . '/' . $filename;
+        return '/storage/exports/' . date('Y/m') . '/' . $filename;
     }
 
     // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -432,7 +432,7 @@ class DocumentService
 
     private function getExportDir(): string
     {
-        $dir = dirname(__DIR__) . '/public/uploads/exports/' . date('Y/m');
+        $dir = CRUINN_PUBLIC . '/storage/exports/' . date('Y/m');
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }

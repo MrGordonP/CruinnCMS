@@ -280,7 +280,7 @@ class GoogleDriveController extends BaseController
 
             // Save to local uploads directory
             $subdir    = 'documents/' . date('Y/m');
-            $uploadDir = dirname(__DIR__) . '/public/uploads/' . $subdir;
+            $uploadDir = CRUINN_PUBLIC . '/storage/' . $subdir;
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0755, true);
             }
@@ -292,7 +292,7 @@ class GoogleDriveController extends BaseController
                 throw new \RuntimeException('Failed to save imported file to local storage.');
             }
 
-            $filePath = '/uploads/' . $subdir . '/' . $filename;
+            $filePath = '/storage/' . $subdir . '/' . $filename;
 
             // Parse content if supported
             $parsedContent = null;

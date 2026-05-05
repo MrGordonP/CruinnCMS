@@ -151,7 +151,7 @@ class DocxAdapter
         $ext = strtolower(pathinfo($source, PATHINFO_EXTENSION)) ?: 'png';
         $filename = date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
         $subdir = 'documents/' . date('Y/m');
-        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/' . $subdir;
+        $uploadDir = CRUINN_PUBLIC . '/storage/' . $subdir;
 
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -159,7 +159,7 @@ class DocxAdapter
 
         $dest = $uploadDir . '/' . $filename;
         if (copy($source, $dest)) {
-            return '/uploads/' . $subdir . '/' . $filename;
+            return '/storage/' . $subdir . '/' . $filename;
         }
         return null;
     }

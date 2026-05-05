@@ -218,7 +218,7 @@ class FileManagerController extends BaseController
         $ext = $result['ext'];
 
         if (DocumentService::isParseable($ext)) {
-            $fullPath = dirname(__DIR__) . '/public' . $result['path'];
+            $fullPath = CRUINN_PUBLIC . $result['path'];
             $parsed = $this->docService->parseFile($fullPath, $ext);
             $parsedContent = $parsed['html'];
             $metadata = $parsed['metadata'];
@@ -374,10 +374,10 @@ class FileManagerController extends BaseController
         if (!$file['file_path']) {
             // Composed document â€” export as HTML
             $path = $this->docService->exportToHtml($file['parsed_content'] ?? '', $file['title']);
-            $fullPath = dirname(__DIR__) . '/public' . $path;
+            $fullPath = CRUINN_PUBLIC . $path;
             $name = pathinfo($path, PATHINFO_BASENAME);
         } else {
-            $fullPath = dirname(__DIR__) . '/public' . $file['file_path'];
+            $fullPath = CRUINN_PUBLIC . $file['file_path'];
             $name = $file['original_name'] ?: basename($file['file_path']);
         }
 
@@ -421,7 +421,7 @@ class FileManagerController extends BaseController
         // Parse new version if parseable
         $parsedContent = null;
         if (DocumentService::isParseable($result['ext'])) {
-            $fullPath = dirname(__DIR__) . '/public' . $result['path'];
+            $fullPath = CRUINN_PUBLIC . $result['path'];
             $parsed = $this->docService->parseFile($fullPath, $result['ext']);
             $parsedContent = $parsed['html'];
         }
@@ -479,7 +479,7 @@ class FileManagerController extends BaseController
         $versions = $this->db->fetchAll('SELECT file_path FROM file_versions WHERE file_id = ?', [$id]);
         foreach ($versions as $v) {
             if ($v['file_path']) {
-                $path = dirname(__DIR__) . '/public' . $v['file_path'];
+                $path = CRUINN_PUBLIC . $v['file_path'];
                 if (file_exists($path)) {
                     unlink($path);
                 }
@@ -488,7 +488,7 @@ class FileManagerController extends BaseController
 
         // Delete main file if different
         if ($file['file_path']) {
-            $mainPath = dirname(__DIR__) . '/public' . $file['file_path'];
+            $mainPath = CRUINN_PUBLIC . $file['file_path'];
             if (file_exists($mainPath)) {
                 unlink($mainPath);
             }
@@ -1044,7 +1044,7 @@ class FileManagerController extends BaseController
 
         $filename = date('Ymd-His') . '-' . bin2hex(random_bytes(4)) . '.' . $ext;
         $subdir = 'documents/' . date('Y/m');
-        $uploadDir = dirname(__DIR__) . '/public/uploads/' . $subdir;
+        $uploadDir = CRUINN_PUBLIC . '/storage/' . $subdir;
 
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -1057,7 +1057,7 @@ class FileManagerController extends BaseController
 
         return [
             'success'   => true,
-            'path'      => '/uploads/' . $subdir . '/' . $filename,
+            'path'      => '/storage/' . $subdir . '/' . $filename,
             'ext'       => $ext,
             'real_mime' => $realMime,
         ];
@@ -1089,10 +1089,7 @@ class FileManagerController extends BaseController
             return;
         }
 
-        // Resolve local path — see SETUP.md cPanel note: CRUINN_PUBLIC is public_html/
-        $localPath = defined('CRUINN_PUBLIC')
-            ? CRUINN_PUBLIC . $row['file_path']
-            : dirname(__DIR__, 6) . '/public_html' . $row['file_path'];
+        $localPath = CRUINN_PUBLIC . $row['file_path'];
 
         if (!file_exists($localPath)) {
             $this->json(['success' => false, 'error' => 'Local file not found.']);
