@@ -352,7 +352,10 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <div class="editor-site-nav-group editor-site-nav-shortcuts">
                         <a href="<?= url('/admin/menus') ?>" class="editor-site-nav-link">Menus</a>
                         <a href="<?= url('/admin/site-builder/structure') ?>" class="editor-site-nav-link">Structure</a>
-                        <a href="<?= url('/admin/theme') ?>" class="editor-site-nav-link">Site Theme</a>
+                        <?php if (!empty($typographyPageId)): ?>
+                        <a href="<?= e($_editorPageHref((int)$typographyPageId)) ?>"
+                           class="editor-site-nav-link<?= $page && (int)($page['id'] ?? 0) === (int)$typographyPageId ? ' active' : '' ?>">Site Theme</a>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($navCssFiles)): ?>
@@ -467,6 +470,82 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 </div>
                 <?php else: ?>
                 <div class="editor-canvas-main">
+                    <?php if (!empty($isThemePage)): ?>
+                    <div id="theme-preview-root">
+                        <style id="theme-preview-vars"><?php
+                            if (!empty($themeVars)) {
+                                echo ':root{';
+                                foreach ($themeVars as $_tv) { echo e($_tv['name']) . ':' . e($_tv['value']) . ';'; }
+                                echo '}';
+                            }
+                        ?></style>
+
+                        <div class="theme-preview-section">
+                            <h3 class="theme-preview-label">Colours</h3>
+                            <div class="theme-preview-swatches">
+                                <?php foreach ([
+                                    '--color-primary'     => 'Primary',
+                                    '--color-primary-dark' => 'Primary Dark',
+                                    '--color-primary-light'=> 'Primary Light',
+                                    '--color-secondary'   => 'Secondary',
+                                    '--color-accent'      => 'Accent',
+                                    '--color-danger'      => 'Danger',
+                                    '--color-success'     => 'Success',
+                                    '--color-warning'     => 'Warning',
+                                    '--color-text'        => 'Text',
+                                    '--color-text-light'  => 'Text Light',
+                                    '--color-bg'          => 'BG',
+                                    '--color-bg-light'    => 'BG Light',
+                                    '--color-bg-dark'     => 'BG Dark',
+                                    '--color-border'      => 'Border',
+                                ] as $_prop => $_label): ?>
+                                <div class="theme-swatch">
+                                    <div class="theme-swatch-colour" style="background:var(<?= e($_prop) ?>)"></div>
+                                    <span class="theme-swatch-name"><?= e($_label) ?></span>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <div class="theme-preview-section">
+                            <h3 class="theme-preview-label">Typography</h3>
+                            <h1 style="font-family:var(--font-heading);color:var(--color-text)">Heading 1 — The quick brown fox</h1>
+                            <h2 style="font-family:var(--font-heading);color:var(--color-text)">Heading 2 — The quick brown fox</h2>
+                            <h3 style="font-family:var(--font-heading);color:var(--color-text)">Heading 3 — The quick brown fox</h3>
+                            <p style="font-family:var(--font-body);color:var(--color-text)">Body — Lorem ipsum dolor sit amet, consectetur adipiscing elit. Here is <a href="#" style="color:var(--color-primary)">a link</a> in body copy.</p>
+                            <p style="font-family:var(--font-body);color:var(--color-text-light);font-size:0.9em">Secondary text — lighter tone used for captions and metadata.</p>
+                            <code style="font-family:var(--font-mono);font-size:0.85em;display:block;padding:0.5rem;background:var(--color-bg-light);border-radius:4px;margin-top:0.5rem">monospace — const theme = 'default';</code>
+                        </div>
+
+                        <div class="theme-preview-section">
+                            <h3 class="theme-preview-label">Buttons</h3>
+                            <div class="theme-preview-row">
+                                <button class="btn btn-primary" type="button">Primary</button>
+                                <button class="btn btn-secondary" type="button">Secondary</button>
+                                <button class="btn btn-danger" type="button">Danger</button>
+                            </div>
+                        </div>
+
+                        <div class="theme-preview-section">
+                            <h3 class="theme-preview-label">Card</h3>
+                            <div style="border:var(--card-border);border-radius:var(--card-radius);box-shadow:var(--card-shadow);padding:var(--space-lg);background:var(--color-bg);max-width:320px">
+                                <h4 style="font-family:var(--font-heading);color:var(--color-text);margin:0 0 var(--space-sm)">Card Title</h4>
+                                <p style="font-family:var(--font-body);color:var(--color-text-light);font-size:0.9em;margin:0 0 var(--space-md)">Card body copy in a bordered, shadowed card element.</p>
+                                <a href="#" style="color:var(--color-primary);font-family:var(--font-body);font-size:0.9em">Read more &rarr;</a>
+                            </div>
+                        </div>
+
+                        <div class="theme-preview-section">
+                            <h3 class="theme-preview-label">Spacing</h3>
+                            <?php foreach (['--space-xs','--space-sm','--space-md','--space-lg','--space-xl','--space-2xl'] as $_sp): ?>
+                            <div class="theme-spacing-row">
+                                <span class="theme-spacing-name"><?= e($_sp) ?></span>
+                                <div class="theme-spacing-bar" style="width:var(<?= e($_sp) ?>);height:1rem;background:var(--color-primary);border-radius:2px"></div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div><!-- /#theme-preview-root -->
+                    <?php else: ?>
                     <div id="editor-canvas" class="editor-mode<?= !empty($isZonePage) ? ' zone-canvas' : '' ?>">
                         <?= $cruinnHtml ?>
                         <?php if (empty(trim($cruinnHtml))): ?>
@@ -474,6 +553,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <?php endif; ?>
                     </div>
                     <div id="cruinn-canvas-resize-handle" title="Drag to resize canvas height"></div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
@@ -521,9 +601,59 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
         <div id="editor-props" class="pl-panel pl-panel-right">
             <div class="pl-panel-header">
                 <button type="button" class="pl-panel-toggle" id="pl-panel-right-toggle" title="Collapse">&#x25B6;</button>
-                <span class="pl-panel-title">Properties</span>
+                <span class="pl-panel-title"><?= !empty($isThemePage) ? 'Theme' : 'Properties' ?></span>
             </div>
             <div class="pl-panel-body">
+            <?php if (!empty($isThemePage)): ?>
+            <form method="post" action="<?= url('/admin/theme') ?>" id="theme-vars-form">
+                <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
+                <?php
+                $__currentGroup = null;
+                foreach ($themeVars as $__var):
+                    if (!empty($__var['comment']) && $__var['comment'] !== $__currentGroup):
+                        if ($__currentGroup !== null): ?>
+                </div></div>
+                <?php endif;
+                    $__currentGroup = $__var['comment'];
+                ?>
+                <div class="editor-accordion">
+                    <button class="editor-accordion-toggle" type="button"><?= e($__currentGroup) ?></button>
+                    <div class="editor-accordion-body theme-vars-group">
+                <?php endif;
+                $__isColour = preg_match('/^#[0-9a-f]{3,8}$/i', trim($__var['value']))
+                           || preg_match('/^rgba?\s*\(/', trim($__var['value']));
+                $__safeId = 'thv_' . ltrim($__var['name'], '-');
+                ?>
+                        <div class="editor-prop-row theme-var-row">
+                            <label for="<?= e($__safeId) ?>" class="theme-var-label" title="<?= e($__var['name']) ?>"><?= e($__var['name']) ?></label>
+                            <?php if ($__isColour): ?>
+                            <div class="theme-colour-pair">
+                                <input type="color"
+                                       value="<?= e(preg_match('/^#[0-9a-f]{3,8}$/i', trim($__var['value'])) ? trim($__var['value']) : '#000000') ?>"
+                                       data-syncs="<?= e($__safeId) ?>">
+                                <input type="text" id="<?= e($__safeId) ?>"
+                                       name="vars[<?= e($__var['name']) ?>]"
+                                       value="<?= e($__var['value']) ?>"
+                                       data-var="<?= e($__var['name']) ?>"
+                                       class="editor-prop-input theme-var-input">
+                            </div>
+                            <?php else: ?>
+                            <input type="text" id="<?= e($__safeId) ?>"
+                                   name="vars[<?= e($__var['name']) ?>]"
+                                   value="<?= e($__var['value']) ?>"
+                                   data-var="<?= e($__var['name']) ?>"
+                                   class="editor-prop-input theme-var-input">
+                            <?php endif; ?>
+                        </div>
+                <?php endforeach;
+                if ($__currentGroup !== null): ?>
+                </div></div>
+                <?php endif; ?>
+                <div class="theme-vars-save">
+                    <button type="submit" class="btn btn-primary">Save Theme</button>
+                </div>
+            </form>
+            <?php else: ?>
             <div class="editor-props-empty">Select a block to edit its properties.</div>
 
             <!-- Template Layout Settings (template pages only) -->
@@ -1384,6 +1514,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     </div>
                 </div>
             </div>
+            <?php endif; ?><!-- /isThemePage else -->
             </div><!-- /.pl-panel-body -->
         </div><!-- /#editor-props -->
     </div><!-- /#editor-body -->
@@ -1413,3 +1544,55 @@ foreach ($btFiles as $btFile):
 <script src="/js/admin/panel-collapse.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/panel-collapse.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/panel-collapse.js') : 0 ?>"></script>
 <script src="/js/admin/editor-shell.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/editor-shell.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/editor-shell.js') : 0 ?>"></script>
 <script src="/js/editor.js?v=<?= file_exists(CRUINN_PUBLIC . '/js/editor.js') ? filemtime(CRUINN_PUBLIC . '/js/editor.js') : 0 ?>"></script>
+<?php if (!empty($isThemePage)): ?>
+<style>
+#theme-preview-root { padding: 1.5rem; overflow-y: auto; height: 100%; box-sizing: border-box; }
+.theme-preview-section { background: var(--color-bg, #fff); border: 1px solid var(--color-border, #e7e7e7); border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+.theme-preview-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-light, #777); font-weight: 600; margin: 0 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--color-border, #e7e7e7); }
+.theme-preview-swatches { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.theme-swatch { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.theme-swatch-colour { width: 3rem; height: 3rem; border-radius: 6px; border: 1px solid var(--color-border, #e7e7e7); }
+.theme-swatch-name { font-size: 0.68rem; color: var(--color-text-light, #777); text-align: center; }
+.theme-preview-section h1 { font-size: 1.8rem; margin: 0 0 0.4rem; }
+.theme-preview-section h2 { font-size: 1.4rem; margin: 0 0 0.4rem; }
+.theme-preview-section h3 { font-size: 1.1rem; margin: 0 0 0.4rem; }
+.theme-preview-section p { margin: 0.4rem 0; line-height: 1.6; }
+.theme-preview-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.theme-spacing-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.4rem; }
+.theme-spacing-name { font-family: var(--font-mono, monospace); font-size: 0.78rem; color: var(--color-text-light, #777); width: 90px; flex-shrink: 0; }
+/* Right panel theme controls */
+.theme-vars-group { display: grid; gap: 0.4rem; padding: 0.5rem 0.25rem; }
+.theme-var-row { display: grid; grid-template-columns: 1fr; gap: 0.2rem; }
+.theme-var-label { font-family: var(--font-mono, monospace); font-size: 0.72rem; color: var(--color-text-light, #777); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.theme-colour-pair { display: flex; align-items: center; gap: 0.4rem; }
+.theme-colour-pair input[type="color"] { width: 2rem; height: 1.75rem; border: 1px solid var(--color-border, #e7e7e7); border-radius: 4px; padding: 0.1rem; cursor: pointer; flex-shrink: 0; }
+.theme-colour-pair .theme-var-input { flex: 1; min-width: 0; }
+.theme-vars-save { padding: 0.75rem; border-top: 1px solid var(--color-border, #e7e7e7); margin-top: 0.5rem; }
+</style>
+<script>
+(function () {
+    var styleEl = document.getElementById('theme-preview-vars');
+    if (!styleEl) return;
+
+    function rebuildVars() {
+        var css = ':root{';
+        document.querySelectorAll('[data-var]').forEach(function (inp) {
+            css += inp.dataset.var + ':' + inp.value + ';';
+        });
+        styleEl.textContent = css + '}';
+    }
+
+    document.querySelectorAll('.theme-var-input').forEach(function (inp) {
+        inp.addEventListener('input', rebuildVars);
+    });
+
+    document.querySelectorAll('input[type="color"][data-syncs]').forEach(function (picker) {
+        picker.addEventListener('input', function () {
+            var target = document.getElementById(picker.dataset.syncs);
+            if (target) { target.value = picker.value; }
+            rebuildVars();
+        });
+    });
+}());
+</script>
+<?php endif; ?>

@@ -128,6 +128,8 @@ class CruinnController extends BaseController
         foreach ($phpGroups as &$g) { sort($g); }
         unset($g);
 
+        $typographyPageId = (int) ($this->db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
+
         try {
             $openEditorContentSets = $this->db->fetchAll('SELECT id, name, slug, fields FROM content_sets ORDER BY name ASC');
         } catch (\Exception $e) {
@@ -170,7 +172,8 @@ class CruinnController extends BaseController
             'navMenus'        => $navMenus,
             'navCssFiles'     => $cssFiles,
             'navPhpGroups'    => $phpGroups,
-            'headerZoneHtml'  => '',
+            'typographyPageId' => $typographyPageId ?: null,
+            'headerZoneHtml'  => '',,
             'headerZoneCss'   => '',
             'footerZoneHtml'  => '',
             'footerZoneCss'   => '',
@@ -655,6 +658,9 @@ class CruinnController extends BaseController
             'navMenus'             => $navMenus,
             'navCssFiles'          => $cssFiles,
             'navPhpGroups'         => $phpGroups,
+            'typographyPageId'     => $typographyPageId ?: null,
+            'isThemePage'          => $isThemePage,
+            'themeVars'            => $themeVars,
             'headerZoneHtml'    => $headerZoneHtml,
             'headerZoneCss'     => $headerZoneCss,
             'footerZoneHtml'      => $footerZoneHtml,

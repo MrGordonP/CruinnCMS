@@ -14,30 +14,17 @@ use Cruinn\Controllers\BaseController;
 class ThemeController extends BaseController
 {
     /**
-     * Display the theme editor.
+     * GET /admin/theme — redirect to the _typography page in the editor.
      */
     public function edit(): void
     {
         Auth::requireRole('admin');
 
-        $theme    = $this->activeTheme();
-        $filePath = $this->themeFilePath($theme);
-        $vars     = [];
-        $error    = null;
-
-        if (!file_exists($filePath)) {
-            $error = "Theme file not found: css/themes/{$theme}.css";
-        } else {
-            $vars = $this->parseVariables(file_get_contents($filePath));
-        }
-
-        $this->renderAdmin('admin/theme-editor', [
-            'title'    => 'Theme Editor',
-            'theme'    => $theme,
-            'vars'     => $vars,
-            'filePath' => "css/themes/{$theme}.css",
-            'error'    => $error,
-        ]);
+        $db   = \Cruinn\Database::getInstance();
+        $id   = (int) ($db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
+        $dest = $id ? url('/admin/editor/' . $id . '/edit') : url('/admin/dashboard');
+        header('Location: ' . $dest);
+        exit;
     }
 
     /**
@@ -48,8 +35,8 @@ class ThemeController extends BaseController
         Auth::requireRole('admin');
         \Cruinn\CSRF::verify();
 
-        $theme    = $this->activeTheme();
-        $filePath = $this->themeFilePath($theme);
+        $theme    = self::activeTheme();
+        $filePath = self::themeFilePath($theme);
 
         if (!file_exists($filePath)) {
             $_SESSION['flash_error'] = "Theme file not found: css/themes/{$theme}.css";
@@ -67,7 +54,7 @@ class ThemeController extends BaseController
         }
 
         $css     = file_get_contents($filePath);
-        $updated = $this->applyVariables($css, $cleaned);
+        $updated = self::applyVariables($css, $cleaned);
 
         if (file_put_contents($filePath, $updated) === false) {
             $_SESSION['flash_error'] = 'Could not write theme file. Check file permissions.';
@@ -81,14 +68,13 @@ class ThemeController extends BaseController
 
     // ── Helpers ──────────────────────────────────────────────────
 
-    private function activeTheme(): string
+    public static function activeTheme(): string
     {
-        $raw = $this->db->fetchColumn("SELECT `value` FROM `settings` WHERE `key` = 'site.active_theme'") ?: 'default';
-        // Restrict to safe filename characters
+        $raw = \Cruinn\Database::getInstance()->fetchColumn("SELECT `value` FROM `settings` WHERE `key` = 'site.active_theme'") ?: 'default';
         return preg_replace('/[^a-z0-9_-]/i', '', $raw) ?: 'default';
     }
 
-    private function themeFilePath(string $theme): string
+    public static function themeFilePath(string $theme): string
     {
         return CRUINN_PUBLIC . '/css/themes/' . $theme . '.css';
     }
@@ -97,7 +83,7 @@ class ThemeController extends BaseController
      * Extract --variable: value pairs from the :root {} block.
      * Returns an ordered array of ['name' => '--foo', 'value' => 'bar', 'comment' => '/* … *\/'].
      */
-    private function parseVariables(string $css): array
+    public static function parseVariables(string $css): array
     {
         // Find the :root { … } block (first occurrence)
         if (!preg_match('/\:root\s*\{([^}]+)\}/s', $css, $m)) {
@@ -133,7 +119,7 @@ class ThemeController extends BaseController
      * Write updated variable values back into the :root {} block of the CSS.
      * Lines not matching a submitted variable are left untouched.
      */
-    private function applyVariables(string $css, array $values): string
+    private static function applyVariables(string $css, array $values): string
     {
         return preg_replace_callback(
             '/(\:root\s*\{)([^}]+)(\})/s',
