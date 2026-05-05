@@ -638,9 +638,22 @@ class CruinnController extends BaseController
         $isThemePage   = ($page['slug'] ?? '') === '_typography';
         $editingTheme  = null;
         $themeVars     = [];
+        // Scan themes directory for available theme files
+        $themeFiles = [];
+        $themesDir  = CRUINN_PUBLIC . '/css/themes';
+        if (is_dir($themesDir)) {
+            foreach (glob($themesDir . '/*.css') ?: [] as $_tf) {
+                $themeFiles[] = basename($_tf, '.css');
+            }
+            sort($themeFiles);
+        }
         if ($isThemePage) {
-            $editingTheme = \Cruinn\Admin\Controllers\ThemeController::activeTheme();
-            $themeFile    = \Cruinn\Admin\Controllers\ThemeController::themeFilePath($editingTheme);
+            // Allow ?theme= to override which file is being edited
+            $requestedTheme = $_GET['theme'] ?? null;
+            $editingTheme   = ($requestedTheme && preg_match('/^[a-z0-9_-]+$/i', $requestedTheme))
+                ? $requestedTheme
+                : \Cruinn\Admin\Controllers\ThemeController::activeTheme();
+            $themeFile = \Cruinn\Admin\Controllers\ThemeController::themeFilePath($editingTheme);
             if (file_exists($themeFile)) {
                 $themeVars = \Cruinn\Admin\Controllers\ThemeController::parseVariables(file_get_contents($themeFile));
             }
@@ -676,6 +689,7 @@ class CruinnController extends BaseController
             'isThemePage'          => $isThemePage,
             'editingTheme'         => $editingTheme,
             'themeVars'            => $themeVars,
+            'themeFiles'           => $themeFiles,
             'headerZoneHtml'    => $headerZoneHtml,
             'headerZoneCss'     => $headerZoneCss,
             'footerZoneHtml'      => $footerZoneHtml,

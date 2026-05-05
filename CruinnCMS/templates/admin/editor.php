@@ -358,6 +358,19 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
+                    <?php if (!empty($themeFiles ?? [])): ?>
+                    <div class="editor-site-nav-group collapsed">
+                        <span class="editor-site-nav-label">🎨 Themes <span class="editor-group-chevron">▾</span></span>
+                        <div class="editor-site-nav-list">
+                            <?php foreach ($themeFiles as $_theme): ?>
+                            <a href="<?= e($_editorPageHref((int)$typographyPageId) . '&theme=' . rawurlencode($_theme)) ?>"
+                               class="editor-site-nav-link<?= !empty($isThemePage) && ($editingTheme ?? '') === $_theme ? ' active' : '' ?>">
+                                <?= e($_theme) ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($navCssFiles)): ?>
                     <div class="editor-site-nav-group collapsed">
                         <span class="editor-site-nav-label">🎨 CSS Files <span class="editor-group-chevron">▾</span></span>
