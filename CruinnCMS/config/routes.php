@@ -60,6 +60,7 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
     $router->get('/cms/migrations',                      [PlatformController::class, 'platformMigrations']);
     $router->post('/cms/migrations',                     [PlatformController::class, 'platformRunMigrations']);
+    $router->post('/cms/migrations/rerun',               [PlatformController::class, 'platformRerunMigration']);
     $router->get('/cms/database',                       [PlatformController::class, 'dbBrowse']);
     $router->get('/cms/database/browse/{table}',             [PlatformController::class, 'dbBrowseTable']);
     $router->get('/cms/database/browse/{table}/edit',        [PlatformController::class, 'dbEditRow']);

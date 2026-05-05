@@ -92,6 +92,12 @@
                     <input type="hidden" name="file" value="<?= htmlspecialchars($row['file'], ENT_QUOTES, 'UTF-8') ?>">
                     <button type="submit" class="migrations-apply-row" style="font-size:.75rem;padding:.25rem .6rem;background:var(--plat-accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">Apply</button>
                 </form>
+                <?php elseif ($row['applied']): ?>
+                <form method="post" action="/cms/migrations/rerun" style="margin:0;" onsubmit="return confirm('Re-run <?= htmlspecialchars($row['file'], ENT_QUOTES | ENT_HTML5, 'UTF-8') ?>? This will re-execute the SQL.');">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="file" value="<?= htmlspecialchars($row['file'], ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit" style="font-size:.75rem;padding:.25rem .6rem;background:transparent;color:var(--plat-text-muted);border:1px solid var(--plat-border);border-radius:4px;cursor:pointer;">Re-run</button>
+                </form>
                 <?php endif ?>
             </td>
         </tr>

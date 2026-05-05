@@ -2699,6 +2699,70 @@ class PlatformController
     }
 
     /**
+     * POST /cms/migrations/rerun
+     *
+     * Delete the tracking record for a single platform migration and re-execute it.
+     * Accepts $_POST['file'] — the bare filename (e.g. migrate_platform_github_paths.sql).
+     */
+    public function platformRerunMigration(): void
+    {
+        if (!PlatformAuth::check()) { header('Location: /cms/login'); exit; }
+
+        \Cruinn\CSRF::validate();
+
+        $file = basename(preg_replace('/[^a-zA-Z0-9_\-.]/', '', (string) ($_POST['file'] ?? '')));
+
+        if ($file === '') {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => 'Invalid migration filename.'];
+            header('Location: /cms/migrations');
+            exit;
+        }
+
+        [$pdo, $applied] = $this->platformMigrationState();
+        $rows            = $this->platformMigrationRows($pdo, $applied);
+
+        $target = null;
+        foreach ($rows as $row) {
+            if ($row['file'] === $file) { $target = $row; break; }
+        }
+
+        if (!$target) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Migration not found: {$file}"];
+            header('Location: /cms/migrations');
+            exit;
+        }
+
+        if (!file_exists($target['path'])) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Migration file missing on disk: {$file}"];
+            header('Location: /cms/migrations');
+            exit;
+        }
+
+        // Delete the tracking record so it will re-run
+        $stmt = $pdo->prepare('DELETE FROM platform_migrations WHERE filename = ?');
+        $stmt->execute([$file]);
+
+        $sql = file_get_contents($target['path']);
+        if ($sql === false || trim($sql) === '') {
+            $_SESSION['_platform_flash'] = ['type' => 'warning', 'message' => "Tracking record removed but file was empty — nothing executed."];
+            header('Location: /cms/migrations');
+            exit;
+        }
+
+        try {
+            $this->platformExecSql($pdo, $sql);
+            $stmt = $pdo->prepare('INSERT IGNORE INTO platform_migrations (filename) VALUES (?)');
+            $stmt->execute([$file]);
+            $_SESSION['_platform_flash'] = ['type' => 'success', 'message' => "Migration re-applied: {$file}"];
+        } catch (\Throwable $e) {
+            $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => "Rerun failed: " . $e->getMessage()];
+        }
+
+        header('Location: /cms/migrations');
+        exit;
+    }
+
+    /**
      * Connect to platform DB, ensure tracking table exists, return applied set.
      * Accepts an optional already-open PDO to avoid duplicate connections.
      *
