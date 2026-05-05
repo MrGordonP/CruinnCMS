@@ -674,12 +674,11 @@ class SiteBuilderController extends BaseController
             $this->json(['success' => false, 'error' => 'Page not found']);
             return;
         }
-        $exists = $this->db->fetch("SELECT id FROM settings WHERE `key` = 'site.home_page_id' LIMIT 1");
-        if ($exists) {
-            $this->db->execute("UPDATE settings SET value = ? WHERE `key` = 'site.home_page_id'", [(string)$id]);
-        } else {
-            $this->db->execute("INSERT INTO settings (`key`, value, `group`) VALUES ('site.home_page_id', ?, 'site')", [(string)$id]);
-        }
+        $this->db->execute(
+            "INSERT INTO settings (`key`, value, `group`) VALUES ('site.home_page_id', ?, 'site')
+             ON DUPLICATE KEY UPDATE value = VALUES(value)",
+            [(string)$id]
+        );
         $this->json(['success' => true]);
     }
 
