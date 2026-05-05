@@ -1594,4 +1594,19 @@ foreach ($btFiles as $btFile):
     });
 }());
 </script>
+<script>
+// Accordion behaviour for the theme properties panel.
+// editor.js IIFE does not run on the theme page (no #editor-canvas),
+// so accordion toggling is wired here instead.
+(function () {
+    var props = document.getElementById('editor-props');
+    if (!props) { return; }
+    props.addEventListener('click', function (e) {
+        var btn = e.target.closest('.editor-accordion-toggle');
+        if (!btn) { return; }
+        var acc = btn.closest('.editor-accordion');
+        if (acc) { acc.classList.toggle('collapsed'); }
+    });
+}());
+</script>
 <?php endif; ?>
