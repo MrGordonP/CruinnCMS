@@ -352,6 +352,10 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                     <div class="editor-site-nav-group editor-site-nav-shortcuts">
                         <a href="<?= url('/admin/menus') ?>" class="editor-site-nav-link">Menus</a>
                         <a href="<?= url('/admin/site-builder/structure') ?>" class="editor-site-nav-link">Structure</a>
+                        <?php if (!empty($typographyPageId)): ?>
+                        <a href="<?= e($_editorPageHref((int)$typographyPageId)) ?>"
+                           class="editor-site-nav-link<?= $page && (int)($page['id'] ?? 0) === (int)$typographyPageId ? ' active' : '' ?>">Site Theme</a>
+                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($navCssFiles)): ?>
