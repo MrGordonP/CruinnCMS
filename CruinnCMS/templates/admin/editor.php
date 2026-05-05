@@ -609,20 +609,20 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
                 <?php
                 $__currentGroup = null;
-                foreach ($themeVars as $__var):
-                    if (!empty($__var['comment']) && $__var['comment'] !== $__currentGroup):
-                        if ($__currentGroup !== null): ?>
-                </div></div>
-                <?php endif;
-                    $__currentGroup = $__var['comment'];
-                ?>
-                <div class="editor-accordion">
-                    <button class="editor-accordion-toggle" type="button"><?= e($__currentGroup) ?></button>
-                    <div class="editor-accordion-body theme-vars-group">
-                <?php endif;
-                $__isColour = preg_match('/^#[0-9a-f]{3,8}$/i', trim($__var['value']))
-                           || preg_match('/^rgba?\s*\(/', trim($__var['value']));
-                $__safeId = 'thv_' . ltrim($__var['name'], '-');
+                foreach ($themeVars as $__var) {
+                    $__isColour = preg_match('/^#[0-9a-f]{3,8}$/i', trim($__var['value']))
+                               || preg_match('/^rgba?\s*\(/', trim($__var['value']));
+                    $__safeId = 'thv_' . ltrim($__var['name'], '-');
+
+                    if (!empty($__var['comment']) && $__var['comment'] !== $__currentGroup) {
+                        if ($__currentGroup !== null) {
+                            echo '</div></div>'; // close prev group body + accordion
+                        }
+                        $__currentGroup = $__var['comment'];
+                        echo '<div class="editor-accordion">';
+                        echo '<button class="editor-accordion-toggle" type="button">' . e($__currentGroup) . '</button>';
+                        echo '<div class="editor-accordion-body theme-vars-group">';
+                    }
                 ?>
                         <div class="editor-prop-row theme-var-row">
                             <label for="<?= e($__safeId) ?>" class="theme-var-label" title="<?= e($__var['name']) ?>"><?= e($__var['name']) ?></label>
@@ -645,10 +645,9 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                                    class="editor-prop-input theme-var-input">
                             <?php endif; ?>
                         </div>
-                <?php endforeach;
-                if ($__currentGroup !== null): ?>
-                </div></div>
-                <?php endif; ?>
+                <?php } // end foreach
+                if ($__currentGroup !== null) { echo '</div></div>'; }
+                ?>
                 <div class="theme-vars-save">
                     <button type="submit" class="btn btn-primary">Save Theme</button>
                 </div>
