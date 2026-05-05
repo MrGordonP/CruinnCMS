@@ -1803,11 +1803,11 @@
     // ΓöÇΓöÇ Accordion behaviour ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     function bindAccordions() {
-        panel.querySelectorAll('.editor-accordion-toggle').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var acc = btn.closest('.editor-accordion');
-                if (acc) { acc.classList.toggle('collapsed'); }
-            });
+        panel.addEventListener('click', function (e) {
+            var btn = e.target.closest('.editor-accordion-toggle');
+            if (!btn) { return; }
+            var acc = btn.closest('.editor-accordion');
+            if (acc) { acc.classList.toggle('collapsed'); }
         });
     }
 
