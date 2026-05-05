@@ -38,6 +38,13 @@ $_pageContent = $content ?? '';
     <?php endif; ?>
 
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
+    <?php
+    $_activeTheme = \Cruinn\App::config('site.active_theme', 'default');
+    $_themeFile = CRUINN_PUBLIC . '/css/themes/' . preg_replace('/[^a-z0-9_-]/i', '', $_activeTheme) . '.css';
+    if (file_exists($_themeFile)):
+    ?>
+    <link rel="stylesheet" href="<?= url('/css/themes/' . e(preg_replace('/[^a-z0-9_-]/i', '', $_activeTheme)) . '.css') ?>">
+    <?php endif; ?>
     <?php if (!empty($cruinn_css)): ?>
     <style id="cruinn-page-styles"><?= $cruinn_css ?></style>
     <?php endif; ?>

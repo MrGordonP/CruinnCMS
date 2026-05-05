@@ -1,0 +1,51 @@
+/**
+ * CruinnCMS — Default Theme
+ *
+ * This file is managed by the Theme Editor (/admin/theme).
+ * Edit CSS custom properties here to customise the site appearance.
+ * Loaded after style.css — overrides are applied via :root { }.
+ */
+
+:root {
+    /* Colours */
+    --color-primary: #0066cc;
+    --color-primary-dark: #004c99;
+    --color-primary-light: #3388dd;
+    --color-secondary: #333333;
+    --color-accent: #ff4b33;
+    --color-danger: #c0392b;
+    --color-success: #27ae60;
+    --color-warning: #f39c12;
+    --color-text: #333333;
+    --color-text-light: #777777;
+    --color-bg: #ffffff;
+    --color-bg-light: #f1f1f1;
+    --color-bg-dark: #e7e7e7;
+    --color-border: #e7e7e7;
+
+    /* Typography */
+    --font-body: 'Arial', 'Helvetica Neue', sans-serif;
+    --font-heading: 'Arial', 'Helvetica Neue', sans-serif;
+    --font-mono: 'Consolas', 'Monaco', monospace;
+
+    /* Spacing */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+
+    /* Layout */
+    --container-max: 940px;
+    --content-max: 680px;
+    --content-wide: 900px;
+    --header-height: 4rem;
+
+    /* Card styling */
+    --card-radius: 12px;
+    --card-border: 1px solid var(--color-border);
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --card-gradient-start: #d9eef7;
+    --card-gradient-end: #ffffff;
+}

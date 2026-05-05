@@ -526,6 +526,7 @@ INSERT INTO `settings` (`key`, `value`, `group`) VALUES
     ('site.name',                '', 'site'),
     ('site.tagline',             '', 'site'),
     ('site.home_page_id',        '', 'site'),
+    ('site.active_theme',        'default', 'site'),
     ('site.url',                 '', 'site'),
     ('site.timezone',            '', 'site'),
     ('site.logo',                '', 'site'),

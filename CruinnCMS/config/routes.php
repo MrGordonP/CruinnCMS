@@ -25,6 +25,7 @@ use Cruinn\Admin\Controllers\BlockController;
 use Cruinn\Admin\Controllers\MediaController;
 use Cruinn\Admin\Controllers\UserAdminController;
 use Cruinn\Admin\Controllers\ContentSetController;
+use Cruinn\Admin\Controllers\ThemeController;
 use Cruinn\Platform\Controllers\PlatformController;
 
 return function (Cruinn\Router $router) {
@@ -155,6 +156,10 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/pages/{id}/export-html',  [AdminPageController::class, 'exportHtml']);
     $router->post('/admin/pages/{id}/convert-to-blocks', [AdminPageController::class, 'convertToBlocks']);
     $router->post('/admin/pages/{id}/reparent',     [AdminPageController::class, 'reparentPage']);
+
+    // Admin — Theme Editor
+    $router->get('/admin/theme',  [ThemeController::class, 'edit']);
+    $router->post('/admin/theme', [ThemeController::class, 'save']);
 
     // Admin — Content Sets (dynamic data)
     $router->get('/admin/content',                              [\Cruinn\Admin\Controllers\ContentSetController::class, 'index']);
