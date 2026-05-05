@@ -471,14 +471,9 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                 <?php else: ?>
                 <div class="editor-canvas-main">
                     <?php if (!empty($isThemePage)): ?>
+                    <link rel="stylesheet" href="<?= e(url('/css/themes/' . ($editingTheme ?? 'default') . '.css')) ?>">
                     <div id="theme-preview-root">
-                        <style id="theme-preview-vars"><?php
-                            if (!empty($themeVars)) {
-                                echo ':root{';
-                                foreach ($themeVars as $_tv) { echo e($_tv['name']) . ':' . e($_tv['value']) . ';'; }
-                                echo '}';
-                            }
-                        ?></style>
+                        <style id="theme-preview-vars"></style>
 
                         <div class="theme-preview-section">
                             <h3 class="theme-preview-label">Colours</h3>
@@ -1592,6 +1587,9 @@ foreach ($btFiles as $btFile):
             rebuildVars();
         });
     });
+
+    // Seed the live-edit override from initial panel values on load.
+    rebuildVars();
 }());
 </script>
 <script>

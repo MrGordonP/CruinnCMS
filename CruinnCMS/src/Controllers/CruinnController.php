@@ -635,12 +635,12 @@ class CruinnController extends BaseController
         );
 
         $typographyPageId = (int) ($this->db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
-        $isThemePage = ($page['slug'] ?? '') === '_typography';
-        $themeVars   = [];
+        $isThemePage   = ($page['slug'] ?? '') === '_typography';
+        $editingTheme  = null;
+        $themeVars     = [];
         if ($isThemePage) {
-            $themeFile = \Cruinn\Admin\Controllers\ThemeController::themeFilePath(
-                \Cruinn\Admin\Controllers\ThemeController::activeTheme()
-            );
+            $editingTheme = \Cruinn\Admin\Controllers\ThemeController::activeTheme();
+            $themeFile    = \Cruinn\Admin\Controllers\ThemeController::themeFilePath($editingTheme);
             if (file_exists($themeFile)) {
                 $themeVars = \Cruinn\Admin\Controllers\ThemeController::parseVariables(file_get_contents($themeFile));
             }
@@ -674,6 +674,7 @@ class CruinnController extends BaseController
             'navPhpGroups'         => $phpGroups,
             'typographyPageId'     => $typographyPageId ?: null,
             'isThemePage'          => $isThemePage,
+            'editingTheme'         => $editingTheme,
             'themeVars'            => $themeVars,
             'headerZoneHtml'    => $headerZoneHtml,
             'headerZoneCss'     => $headerZoneCss,
