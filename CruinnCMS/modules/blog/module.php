@@ -43,6 +43,7 @@ return [
         __DIR__ . '/migrations/001_articles_core.sql',
         __DIR__ . '/migrations/002_article_blocks.sql',
         __DIR__ . '/migrations/003_article_editor_tables.sql',
+        __DIR__ . '/migrations/004_fix_editor_state_schema.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
