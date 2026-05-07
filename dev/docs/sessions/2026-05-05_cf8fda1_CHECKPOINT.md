@@ -1,7 +1,7 @@
 # v1.0.0-beta.7 Checkpoint
 
 **Version:** v1.0.0-beta.7
-**HEAD:** 5ff8b7e
+**HEAD:** 4fc60e9
 **Date:** 2025-05-07
 
 ---
@@ -60,6 +60,12 @@
 - `/mail/{mailbox_id}/compose` was matching against `/{folder}` route, trying to IMAP SELECT "compose" folder
 - Moved `/compose` and `/search` routes before generic `/{folder}` route — specific routes must register first
 
+### 8. Organisation module document link fixes
+- Organisation dashboard + layout had hardcoded links to `/organisation/documents/upload` and `/organisation/documents/*`
+- Those routes don't exist — module.php comment states "Document management lives in the documents module"
+- Fixed all links to point to `/documents` module routes (`/documents/new`, `/documents/{id}`, etc.)
+- Note: `modules/organisation/templates/organisation/documents/` directory contains orphaned templates (no routes)
+
 ---
 
 ## Known Pending Issues
@@ -68,11 +74,13 @@
 - **Load Theme / theme switcher** — not yet built. Planned: dropdown of `.css` files in `public_html/css/themes/`, POST to `/admin/theme/activate`.
 
 ---
-5ff8b7e  fix(mailbox): reorder routes — /compose and /search before /{folder} to prevent misrouting [v1.0.0-beta.7]
 
 ## Commits in this session
 
 ```
+4fc60e9  fix(organisation): update document links to use /documents module routes instead of nonexistent /organisation/documents [v1.0.0-beta.7]
+115cd2b  docs: update checkpoint — mailbox route ordering fix [v1.0.0-beta.7]
+5ff8b7e  fix(mailbox): reorder routes — /compose and /search before /{folder} to prevent misrouting [v1.0.0-beta.7]
 cf8fda1  fix(editor): add missing isThemePage/themeVars detection block to edit() [v1.0.0-beta.7]
 b772fd2  fix(editor): rewrite theme vars loop with curly-brace syntax [v1.0.0-beta.7]
 12dbd85  fix(editor): fix double-comma parse error in openEditor render array [v1.0.0-beta.7]
