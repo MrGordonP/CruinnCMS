@@ -16,6 +16,7 @@ return [
     'migrations'   => [
         __DIR__ . '/migrations/schema.sql',
         __DIR__ . '/migrations/001_google_drive.sql',
+        __DIR__ . '/migrations/003_remove_duplicate_folders.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 

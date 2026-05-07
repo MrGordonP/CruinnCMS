@@ -31,7 +31,7 @@
             var href = link.getAttribute('href');
             return currentPath === href || currentPath.startsWith(href + '/');
         });
-        
+
         if (shouldOpen) {
             group.classList.add('open');
         }
