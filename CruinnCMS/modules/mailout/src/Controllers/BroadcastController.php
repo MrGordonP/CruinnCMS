@@ -245,7 +245,7 @@ class BroadcastController extends BaseController
                 'SELECT u.email, u.display_name, mls.unsubscribe_token
                  FROM mailing_list_subscriptions mls
                  JOIN users u ON u.id = mls.user_id
-                 WHERE mls.list_id = ? AND mls.status = 'active' AND u.active = 1',
+                 WHERE mls.list_id = ? AND mls.status = \'active\' AND u.active = 1',
                 [$broadcast['list_id']]
             );
         }
