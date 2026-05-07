@@ -39,7 +39,7 @@
                 <a href="<?= url('/logout') ?>">Logout</a>
             <?php else: ?>
                 <a href="<?= url('/organisation') ?>">Dashboard</a>
-                <a href="<?= url('/organisation/documents') ?>">Documents</a>
+                <a href="<?= url('/documents') ?>">Documents</a>
                 <a href="<?= url('/organisation/discussions') ?>">Discussions</a>
                 <a href="<?= url('/organisation/inbox') ?>">Inbox</a>
                 <div class="admin-nav-sep"></div>

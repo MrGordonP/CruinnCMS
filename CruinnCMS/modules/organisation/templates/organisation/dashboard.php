@@ -5,7 +5,7 @@
     <div class="pl-sidebar-header"><h3>Workspace</h3></div>
     <div class="pl-sidebar-scroll">
         <a class="pl-nav-item active" href="/organisation">🏠 Dashboard</a>
-        <a class="pl-nav-item" href="/organisation/documents">📄 Documents</a>
+        <a class="pl-nav-item" href="/documents">📄 Documents</a>
         <a class="pl-nav-item" href="/organisation/discussions">💬 Discussions
             <?php if (!empty($stats['discussions'])): ?>
             <span class="pl-nav-count"><?= (int)$stats['discussions'] ?></span>
@@ -35,12 +35,12 @@
         <div class="stat-card">
             <span class="stat-number"><?= (int)($stats['documents'] ?? 0) ?></span>
             <span class="stat-label">Documents</span>
-            <a href="/organisation/documents" class="stat-link">View All</a>
+            <a href="/documents" class="stat-link">View All</a>
         </div>
         <div class="stat-card stat-card-warning">
             <span class="stat-number"><?= (int)($stats['pending'] ?? 0) ?></span>
             <span class="stat-label">Pending Approval</span>
-            <a href="/organisation/documents?status=submitted" class="stat-link">Review</a>
+            <a href="/documents?status=submitted" class="stat-link">Review</a>
         </div>
         <div class="stat-card">
             <span class="stat-number"><?= (int)($stats['discussions'] ?? 0) ?></span>
@@ -56,13 +56,13 @@
     <!-- Recent Documents -->
     <h3 style="font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:#888;margin:1.25rem 0 .4rem">Recent Documents</h3>
     <?php if (empty($recentDocuments)): ?>
-        <p class="text-muted" style="font-size:.85rem">No documents yet. <a href="/organisation/documents/upload">Upload one.</a></p>
+        <p class="text-muted" style="font-size:.85rem">No documents yet. <a href="/documents/new">Upload one.</a></p>
     <?php else: ?>
         <table class="pl-table" style="margin-bottom:1.5rem">
             <thead><tr><th>Title</th><th>Category</th><th>Status</th><th>Updated</th></tr></thead>
             <tbody>
             <?php foreach ($recentDocuments as $doc): ?>
-            <tr onclick="location.href='/organisation/documents/<?= (int)$doc['id'] ?>'">
+            <tr onclick="location.href='/documents/<?= (int)$doc['id'] ?>'">
                 <td><?= e($doc['title']) ?></td>
                 <td><span class="badge badge-category"><?= e(ucfirst($doc['category'])) ?></span></td>
                 <td><span class="badge badge-doc-<?= e($doc['status']) ?>"><?= e(ucfirst($doc['status'])) ?></span></td>
@@ -114,13 +114,13 @@
         </table>
 
         <?php if ((int)($stats['pending'] ?? 0) > 0): ?>
-        <a href="/organisation/documents?status=submitted" class="btn btn-sm btn-primary" style="width:100%;text-align:center;margin-bottom:.75rem">
+        <a href="/documents?status=submitted" class="btn btn-sm btn-primary" style="width:100%;text-align:center;margin-bottom:.75rem">
             Review <?= (int)$stats['pending'] ?> Pending
         </a>
         <?php endif; ?>
 
         <div class="pl-detail-actions">
-            <a href="/organisation/documents/upload" class="btn btn-sm btn-outline">⬆ Upload Doc</a>
+            <a href="/documents/new" class="btn btn-sm btn-outline">⬆ Upload Doc</a>
             <a href="/organisation/discussions/new" class="btn btn-sm btn-outline">+ Discussion</a>
         </div>
     </div>
