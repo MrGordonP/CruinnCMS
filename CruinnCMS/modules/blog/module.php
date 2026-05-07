@@ -40,6 +40,9 @@ return [
 
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/001_articles_core.sql',
+        __DIR__ . '/migrations/002_article_blocks.sql',
+        __DIR__ . '/migrations/003_article_editor_tables.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
