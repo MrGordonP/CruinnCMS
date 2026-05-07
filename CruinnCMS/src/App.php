@@ -386,6 +386,25 @@ class App
             . "\n" . $e->getTraceAsString()
         );
 
+        // For AJAX requests, output JSON via HTTP 200 so server-level error-page
+        // interception (LiteSpeed, nginx custom_error_page, etc.) cannot suppress
+        // the body. The JS caller checks for `_exception` in the response.
+        $isAjax = !empty($_SERVER['HTTP_X_CSRF_TOKEN'])
+               || (isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json'));
+        if ($isAjax) {
+            while (ob_get_level() > 0) { ob_get_clean(); }
+            http_response_code(200);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                '_exception' => true,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+                'type'       => get_class($e),
+            ]);
+            exit;
+        }
+
         if (!headers_sent()) {
             http_response_code(500);
         }

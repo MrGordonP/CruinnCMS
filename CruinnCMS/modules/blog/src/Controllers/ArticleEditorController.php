@@ -56,9 +56,10 @@ class ArticleEditorController extends BaseController
             ];
         }
 
-        $pdo = $this->db->pdo();
-        $pdo->beginTransaction();
+        $pdo = null;
         try {
+            $pdo = $this->db->pdo();
+            $pdo->beginTransaction();
             $state = $this->db->fetch('SELECT * FROM article_edit_state WHERE article_id = ?', [$articleId]);
             if ($state) {
                 $newSeq = (int) $state['current_edit_seq'] + 1;
@@ -167,9 +168,14 @@ class ArticleEditorController extends BaseController
                            <  (int) ($updatedState['max_edit_seq'] ?? 0),
             ]);
         } catch (\Throwable $e) {
-            $pdo->rollBack();
+            if ($pdo && $pdo->inTransaction()) { $pdo->rollBack(); }
             error_log('ArticleEditorController::recordAction: ' . $e->getMessage());
-            $this->json(['error' => 'Failed to record action'], 500);
+            // TEMP DEBUG — remove after diagnosing
+            $this->json([
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ], 500);
         }
     }
 
