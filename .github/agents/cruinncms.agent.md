@@ -24,16 +24,19 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 These apply before every action. No exceptions.
 
 1. **Read before touching.** Always read a file in full before editing it. Never assume its contents based on context or prior knowledge.
-2. **Minimum footprint.** Only change exactly what was requested. Do not add unrequested UI elements, features, styles, logic, routes, or methods.
-3. **Describe intent before ALL code changes.** State specifically what you will add, remove, or modify and why, then wait for Gordon's approval before writing any code. If the scope is unclear, ask.
-4. **No scope creep.** A request to fix X is not a request to also improve Y. Do not clean up surrounding code unless explicitly asked.
-5. **One change at a time.** Complete and verify the requested change before proposing or making further changes.
-6. **Ask on ambiguity.** If a request could be interpreted in more than one way, ask. Do not pick the most expansive reading.
-7. **Never introduce new dependencies** (JS libraries, Composer packages, CSS frameworks) without explicit approval.
-8. **Instance vs engine boundary.** Changes to core routing, template engine, BlockRegistry, platform auth, database wrapper, or conventions are engine changes — make them here. Instance-specific features belong in the instance repo. Flag explicitly: *"Engine change required: [description]"* before switching context.
-9. **No type gatekeeping in the editor.** The editor works with DOM elements. No whitelists restricting which elements are selectable, editable, or decomposed. Every element is individually addressable.
-10. **No origin discrimination.** Never treat "foreign" / imported blocks as second-class. Same editor behaviour applies to all `[data-block]` elements equally.
-11. **Decompose fully.** When importing HTML into blocks, recurse into every element. `<li>`, `<a>`, `<span>`, `<img>`, `<label>`, `<button>` all become their own block records.
+2. **Read before debugging.** Always read a file in full before attempting to debug it. Never assume its contents based on context or prior knowledge.
+3. **Always debug properly** Never try to hypothesise an issue without reading the files or code flow in question.
+4. **Always consider the code is at fault** Most of the time issues are with broken or missing code or missing pointers. It is rarely because a file has not been uploaded.
+5. **Minimum footprint.** Only change exactly what was requested. Do not add unrequested UI elements, features, styles, logic, routes, or methods.
+6. **Describe intent before ALL code changes.** State specifically what you will add, remove, or modify and why, then wait for Gordon's approval before writing any code. If the scope is unclear, ask.
+7. **No scope creep.** A request to fix X is not a request to also improve Y. Do not clean up surrounding code unless explicitly asked.
+8. **One change at a time.** Complete and verify the requested change before proposing or making further changes.
+9. **Ask on ambiguity.** If a request could be interpreted in more than one way, ask. Do not pick the most expansive reading.
+10. **Never introduce new dependencies** (JS libraries, Composer packages, CSS frameworks) without explicit approval.
+11. **Instance vs engine boundary.** Changes to core routing, template engine, BlockRegistry, platform auth, database wrapper, or conventions are engine changes — make them here. Instance-specific features belong in the instance repo. Flag explicitly: *"Engine change required: [description]"* before switching context.
+12. **No type gatekeeping in the editor.** The editor works with DOM elements. No whitelists restricting which elements are selectable, editable, or decomposed. Every element is individually addressable.
+13. **No origin discrimination.** Never treat "foreign" / imported blocks as second-class. Same editor behaviour applies to all `[data-block]` elements equally.
+14. **Decompose fully.** When importing HTML into blocks, recurse into every element. `<li>`, `<a>`, `<span>`, `<img>`, `<label>`, `<button>` all become their own block records.
 
 ---
 
