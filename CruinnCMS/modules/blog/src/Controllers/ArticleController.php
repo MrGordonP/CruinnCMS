@@ -241,7 +241,7 @@ class ArticleController extends BaseController
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ?', [$id]);
         if (!$article) {
             Auth::flash('error', 'Blog post not found.');
-            $this->redirect('/admin/blog');
+            $this->redirect('/admin/articles');
         }
 
         $blocks   = $this->getArticleBlocks((int) $id);
@@ -268,7 +268,7 @@ class ArticleController extends BaseController
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ?', [$id]);
         if (!$article) {
             Auth::flash('error', 'Blog post not found.');
-            $this->redirect('/admin/blog');
+            $this->redirect('/admin/articles');
         }
 
         $errors = $this->validateRequired(['title' => 'Title']);
@@ -323,7 +323,7 @@ class ArticleController extends BaseController
 
         $this->logActivity('update', 'article', (int) $id, $this->input('title'));
         Auth::flash('success', 'Blog post updated.');
-        $this->redirect("/admin/blog/{$id}/edit");
+        $this->redirect("/admin/articles/{$id}/edit");
     }
 
     /**
@@ -334,7 +334,7 @@ class ArticleController extends BaseController
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ?', [$id]);
         if (!$article) {
             Auth::flash('error', 'Blog post not found.');
-            $this->redirect('/admin/blog');
+            $this->redirect('/admin/articles');
         }
 
         $this->db->transaction(function () use ($id, $article) {
@@ -344,7 +344,7 @@ class ArticleController extends BaseController
         });
 
         Auth::flash('success', 'Blog post deleted.');
-        $this->redirect('/admin/blog');
+        $this->redirect('/admin/articles');
     }
 
     // ── Helpers ───────────────────────────────────────────────

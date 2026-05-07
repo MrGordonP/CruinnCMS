@@ -1008,7 +1008,7 @@ class CruinnController extends BaseController
             'docHeadBlock'        => null,
             'docBodyBlock'        => null,
             'editorPageBase'      => null,
-            'apiBase'             => '/admin/article-editor/' . $articleId,
+            'apiBase'             => '/admin/article-editor',
         ]);
     }
 

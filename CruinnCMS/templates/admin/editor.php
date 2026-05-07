@@ -704,8 +704,8 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
             <?php endif; ?>
 
-            <!-- Page Settings group (regular pages only, not zones/templates) -->
-            <?php if ($page && empty($isZonePage) && empty($isTemplatePage)): ?>
+            <!-- Page Settings group (regular pages only, not zones/templates/articles) -->
+            <?php if ($page && empty($isZonePage) && empty($isTemplatePage) && empty($page['_is_article'])): ?>
             <div class="editor-accordion" data-group="page-settings" id="editor-page-settings">
                 <button class="editor-accordion-toggle">Page Settings</button>
                 <div class="editor-accordion-body">
