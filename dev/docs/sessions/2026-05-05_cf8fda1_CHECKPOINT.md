@@ -84,9 +84,11 @@
 
 ## Commits in this session
 
-`278bee  fix(organisation): update orphaned document templates to use /documents paths [v1.0.0-beta.7]
+```
+399dfb3  feat(documents): add upload feedback indicators to prevent confusion during file uploads [v1.0.0-beta.7]
+d625910  docs: update checkpoint — orphaned template fixes [v1.0.0-beta.7]
+4278bee  fix(organisation): update orphaned document templates to use /documents paths [v1.0.0-beta.7]
 fc0fdfe  docs: update checkpoint — organisation document link fixes [v1.0.0-beta.7]
-4``
 4fc60e9  fix(organisation): update document links to use /documents module routes instead of nonexistent /organisation/documents [v1.0.0-beta.7]
 115cd2b  docs: update checkpoint — mailbox route ordering fix [v1.0.0-beta.7]
 5ff8b7e  fix(mailbox): reorder routes — /compose and /search before /{folder} to prevent misrouting [v1.0.0-beta.7]
