@@ -489,10 +489,19 @@ class BroadcastController extends BaseController
             return [];
         }
         return $this->db->fetchAll(
-            'SELECT u.email, u.display_name, mls.unsubscribe_token
+            'SELECT mls.email,
+                    COALESCE(NULLIF(TRIM(mls.name), \'\'), u.display_name, mls.email) AS display_name,
+                    mls.unsubscribe_token
              FROM mailing_list_subscriptions mls
-             JOIN users u ON u.id = mls.user_id
-             WHERE mls.list_id = ? AND mls.status = \'active\' AND u.active = 1',
+             LEFT JOIN users u ON u.id = mls.user_id
+             WHERE mls.list_id = ?
+               AND mls.status = \'active\'
+               AND mls.email IS NOT NULL
+               AND mls.email != \'\'
+               AND NOT EXISTS (
+                   SELECT 1 FROM email_unsubscribes eu WHERE eu.email = mls.email
+               )
+             ORDER BY mls.email',
             [$broadcast['list_id']]
         );
     }
