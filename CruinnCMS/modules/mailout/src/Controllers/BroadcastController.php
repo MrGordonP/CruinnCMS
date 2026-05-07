@@ -296,7 +296,8 @@ class BroadcastController extends BaseController
             'recipient_count' => count($recipients),
             'started_at'      => date('Y-m-d H:i:s'),
             'updated_at'      => date('Y-m-d H:i:s'),
-        ], 'id = ?', [$id]);\n
+        ], 'id = ?', [$id]);
+
         // Discard any pending queue rows (in case this was previously queued)
         $this->db->execute(
             "UPDATE email_queue SET status = 'skipped' WHERE broadcast_id = ? AND status = 'pending'",
