@@ -48,3 +48,9 @@ The "Mailing List Subscribers" radio on `/admin/mailout/new` does show a named-l
 
 ### [PINNED] Mailout subject field — allow selection from Subjects list
 The Subject field on `/admin/mailout/new` (and edit) is free text only. It would be useful to allow selecting from the existing Subjects list (geology topics / subject registry) to pre-fill or constrain the subject line.
+
+### [PINNED] Mailout — additional import sources
+Currently only blog post import is supported. Desired additional sources: Word documents (.docx), platform Documents module pages, and other misc HTML sources.
+
+### [PINNED] Mailout — email attachments
+No attachment support on broadcasts. Users want to be able to attach files (PDFs etc.) to mailouts before sending.

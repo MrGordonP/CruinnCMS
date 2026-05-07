@@ -142,10 +142,31 @@
         </div>
 
         <div class="form-group">
-            <label for="body_html">HTML Body</label>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.25rem;">
+                <label for="body_html" style="margin-bottom:0;">HTML Body</label>
+                <button type="button" class="btn btn-small btn-outline" onclick="previewHtml()">Preview</button>
+            </div>
             <p class="form-help">Use <code>{{name}}</code> and <code>{{email}}</code> for personalisation. An unsubscribe footer is appended automatically.</p>
             <textarea id="body_html" name="body_html" rows="16" class="form-input form-textarea monospace"><?= e($broadcast['body_html'] ?? '') ?></textarea>
         </div>
+
+        <dialog id="html-preview-dialog" style="width:min(860px,95vw); max-height:90vh; padding:0; border:1px solid #ccc; border-radius:6px; overflow:hidden;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; border-bottom:1px solid #ddd; background:#f8f9fa;">
+                <strong>Email Preview</strong>
+                <button type="button" class="btn btn-small btn-outline" onclick="document.getElementById('html-preview-dialog').close()">Close</button>
+            </div>
+            <iframe id="html-preview-frame" style="width:100%; height:70vh; border:none; display:block;"></iframe>
+        </dialog>
+
+        <script>
+        function previewHtml() {
+            var html = document.getElementById('body_html').value;
+            var frame = document.getElementById('html-preview-frame');
+            var dialog = document.getElementById('html-preview-dialog');
+            frame.srcdoc = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:1rem 1.5rem;margin:0;line-height:1.6;}img{max-width:100%;}</style></head><body>' + html + '</body></html>';
+            dialog.showModal();
+        }
+        </script>
 
         <script>
         function importArticle() {
