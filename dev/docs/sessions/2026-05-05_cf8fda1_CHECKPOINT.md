@@ -1,8 +1,8 @@
 # v1.0.0-beta.7 Checkpoint
 
 **Version:** v1.0.0-beta.7
-**HEAD:** cf8fda1
-**Date:** 2025-07
+**HEAD:** 5ff8b7e
+**Date:** 2025-05-07
 
 ---
 
@@ -56,6 +56,10 @@
 - `editor.php` theme vars loop — alternative-syntax `foreach` caused parse error; replaced with curly-brace syntax
 - `CruinnController::edit()` — `$isThemePage`/`$themeVars` detection block missing; added explicitly
 
+### 7. Mailbox route ordering fix
+- `/mail/{mailbox_id}/compose` was matching against `/{folder}` route, trying to IMAP SELECT "compose" folder
+- Moved `/compose` and `/search` routes before generic `/{folder}` route — specific routes must register first
+
 ---
 
 ## Known Pending Issues
@@ -64,6 +68,7 @@
 - **Load Theme / theme switcher** — not yet built. Planned: dropdown of `.css` files in `public_html/css/themes/`, POST to `/admin/theme/activate`.
 
 ---
+5ff8b7e  fix(mailbox): reorder routes — /compose and /search before /{folder} to prevent misrouting [v1.0.0-beta.7]
 
 ## Commits in this session
 
