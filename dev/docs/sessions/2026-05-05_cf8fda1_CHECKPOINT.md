@@ -1,7 +1,7 @@
 # v1.0.0-beta.7 Checkpoint
 
 **Version:** v1.0.0-beta.7
-**HEAD:** 4278bee
+**HEAD:** 399dfb3
 **Date:** 2025-05-07
 
 ---
@@ -66,6 +66,12 @@
 - Fixed all links to point to `/documents` module routes (`/documents/new`, `/documents/{id}`, etc.)
 - Also updated orphaned templates in `modules/organisation/templates/organisation/documents/` (index.php, show.php, upload.php)
 - Note: Those templates have no routes and shouldn't be accessible, but updating prevents issues with cached pages or future route additions
+
+### 9. Document upload feedback indicators
+- Added JavaScript to upload form (`/documents/new`) to show "Uploading..." feedback when submitting
+- Added same feedback to version upload form on document detail page
+- Disables submit button, changes text to "Uploading..." with hourglass emoji, sets opacity/cursor to indicate processing
+- Prevents confusion when large files take time to upload
 
 ---
 
