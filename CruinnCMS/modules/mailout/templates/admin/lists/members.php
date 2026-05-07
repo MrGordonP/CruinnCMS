@@ -207,7 +207,7 @@
                     </div>
                 <?php endif; ?>
 
-                <?php if (in_array($source, ['users', 'members'], true)): ?>
+                <?php if ($source === 'members'): ?>
                     <div class="ml-filter-group">
                         <label for="status">Member Status</label>
                         <select name="status" id="status" onchange="this.form.submit()">
@@ -229,7 +229,9 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
+                <?php endif; ?>
 
+                <?php if ($source === 'users'): ?>
                     <div class="ml-filter-group">
                         <label for="active">Account Active</label>
                         <select name="active" id="active" onchange="this.form.submit()">

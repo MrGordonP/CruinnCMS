@@ -264,8 +264,8 @@ class MailingListController extends BaseController
                 [$filterGroupId]
             );
         } elseif ($source === 'members') {
-            // Members only - ALL members from members table regardless of user account status
-            $where  = ['1=1'];
+            // Members table only — no users join
+            $where  = ['m.email IS NOT NULL', "m.email != ''"];
             $params = [];
 
             if ($filterStatus !== '') {
@@ -281,41 +281,30 @@ class MailingListController extends BaseController
 
             $availableUsers = $this->db->fetchAll(
                 "SELECT CONCAT('m_', m.id) AS id,
-                        COALESCE(u.display_name, CONCAT(m.first_name, ' ', m.last_name)) AS display_name,
-                        m.email, u.active,
+                        CONCAT(COALESCE(m.first_name,''), ' ', COALESCE(m.last_name,'')) AS display_name,
+                        m.email,
                         m.status AS member_status, m.membership_year,
-                        m.id AS member_id, u.id AS user_id
+                        m.id AS member_id
                  FROM members m
-                 LEFT JOIN users u ON u.id = m.user_id
                  {$whereClause}
-                 ORDER BY display_name",
+                 ORDER BY m.last_name, m.first_name",
                 $params
             );
         } else {
-            // Users (all users, with optional member filters)
-            $where  = ['u.id IS NOT NULL'];
+            // Users table only — no members join
+            $where  = ["u.email IS NOT NULL", "u.email != ''"];
             $params = [];
 
             if ($filterActive !== '') {
                 $where[]  = 'u.active = ?';
                 $params[] = (int)$filterActive;
             }
-            if ($filterStatus !== '') {
-                $where[]  = 'm.status = ?';
-                $params[] = $filterStatus;
-            }
-            if ($filterYear !== '') {
-                $where[]  = 'm.membership_year = ?';
-                $params[] = (int)$filterYear;
-            }
 
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
             $availableUsers = $this->db->fetchAll(
-                "SELECT u.id, u.display_name, u.email, u.active,
-                        m.status AS member_status, m.membership_year
+                "SELECT u.id, u.display_name, u.email, u.active
                  FROM users u
-                 LEFT JOIN members m ON m.user_id = u.id
                  {$whereClause}
                  ORDER BY u.display_name",
                 $params
