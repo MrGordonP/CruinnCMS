@@ -59,7 +59,27 @@
     </div>
 
     <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Upload Document</button>
+        <button type="submit" class="btn btn-primary" id="upload-btn">Upload Document</button>
         <a href="/documents" class="btn btn-secondary">Cancel</a>
     </div>
 </form>
+
+<script>
+(function() {
+    const form = document.querySelector('form.admin-form');
+    const submitBtn = document.getElementById('upload-btn');
+    
+    if (form && submitBtn) {
+        form.addEventListener('submit', function(e) {
+            // Disable submit button to prevent double-clicks
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+            submitBtn.style.opacity = '0.6';
+            submitBtn.style.cursor = 'wait';
+            
+            // Optional: Add a spinner
+            submitBtn.innerHTML = '<span style="display:inline-block;margin-right:0.5rem">⏳</span> Uploading...';
+        });
+    }
+})();
+</script>

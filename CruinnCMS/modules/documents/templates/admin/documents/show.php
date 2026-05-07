@@ -152,3 +152,23 @@ use Cruinn\Module\Documents\Controllers\DocumentController;
         <button type="submit" class="btn btn-danger">Delete Document</button>
     </form>
 </section>
+
+<script>
+(function() {
+    const versionForm = document.querySelector('form.version-upload-form');
+    
+    if (versionForm) {
+        const submitBtn = versionForm.querySelector('button[type="submit"]');
+        
+        versionForm.addEventListener('submit', function(e) {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading...';
+                submitBtn.style.opacity = '0.6';
+                submitBtn.style.cursor = 'wait';
+                submitBtn.innerHTML = '<span style="display:inline-block;margin-right:0.5rem">⏳</span> Uploading...';
+            }
+        });
+    }
+})();
+</script>
