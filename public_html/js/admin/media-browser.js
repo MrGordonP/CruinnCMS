@@ -212,16 +212,21 @@
         uploadInput.addEventListener('change', function (e) {
             var file = e.target.files[0];
             if (!file) { return; }
+            var csrfToken = Cruinn.getCSRFToken();
             var fd = new FormData();
             fd.append('file', file);
-            fd.append('_csrf_token', Cruinn.getCSRFToken());
+            fd.append('_csrf_token', csrfToken);
             // Show progress state
             var prevText = selectBtn ? selectBtn.textContent : '';
             if (selectBtn) {
                 selectBtn.disabled = true;
                 selectBtn.textContent = 'Uploading…';
             }
-            fetch('/admin/upload', { method: 'POST', body: fd })
+            fetch('/admin/upload', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                body: fd
+            })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (selectBtn) { selectBtn.disabled = false; selectBtn.textContent = prevText; }
