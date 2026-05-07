@@ -34,7 +34,7 @@
                             <input type="text" id="slug" name="slug"
                                    value="<?= e($article['slug'] ?? '') ?>"
                                    class="form-input" pattern="[a-z0-9\-]+"
-                                   placeholder="auto-generated from title">
+                                   placeholder="auto-generated as YYYY-MM-DD-##">
                         </div>
                     </div>
                     <div class="form-group">

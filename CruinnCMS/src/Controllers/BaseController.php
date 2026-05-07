@@ -160,7 +160,7 @@ abstract class BaseController
     }
 
     /**
-     * Generate a date-based article slug: YYYYMMDD01, YYYYMMDD02, etc.
+     * Generate a date-based article slug: YYYY-MM-DD-01, YYYY-MM-DD-02, etc.
      * Checks the given $table for existing slugs with the same date prefix
      * and increments the counter.
      *
@@ -169,15 +169,11 @@ abstract class BaseController
      */
     protected function generateDateSlug(string $table, ?int $excludeId = null): string
     {
-        $prefix = date('Ymd');
-        $where  = "slug LIKE '" . $prefix . "%'";
-        if ($excludeId !== null) {
-            $where .= " AND id != " . $excludeId;
-        }
+        $prefix = date('Y-m-d');
         $count  = (int) $this->db->fetchColumn(
             "SELECT COUNT(*) FROM `{$table}` WHERE slug LIKE ?",
             [$prefix . '%']
         );
-        return $prefix . str_pad((string)($count + 1), 2, '0', STR_PAD_LEFT);
+        return $prefix . '-' . str_pad((string)($count + 1), 2, '0', STR_PAD_LEFT);
     }
 }
