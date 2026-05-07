@@ -43,6 +43,11 @@ class App
      */
     private function init(): void
     {
+        // Register exception/error handlers first so any crash during init
+        // can be caught and returned as JSON for AJAX callers.
+        set_error_handler([self::class, 'handleError']);
+        set_exception_handler([self::class, 'handleException']);
+
         // Load configuration
         self::loadConfig();
 
@@ -62,10 +67,8 @@ class App
             ini_set('log_errors', '1');
         }
 
-        // Centralized handlers — convert errors to exceptions and catch
-        // uncaught exceptions so nothing leaks to the browser in production.
-        set_error_handler([self::class, 'handleError']);
-        set_exception_handler([self::class, 'handleException']);
+        // Centralized handlers already registered at the top of init().
+        // (Kept here as a comment to mark where they originally lived.)
 
         // Start session
         Auth::startSession();
