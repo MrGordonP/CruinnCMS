@@ -38,6 +38,7 @@ return [
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
         __DIR__ . '/migrations/002_external_form_url.sql',
+        __DIR__ . '/migrations/003_related_article_id.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

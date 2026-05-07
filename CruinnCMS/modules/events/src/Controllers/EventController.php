@@ -92,6 +92,15 @@ class EventController extends BaseController
         // Can this event accept registrations?
         $canRegister = $this->canRegister($event, $spotsRemaining);
 
+        // Fetch related article if linked
+        $relatedArticle = null;
+        if (!empty($event['related_article_id'])) {
+            $relatedArticle = $this->db->fetch(
+                "SELECT id, title, slug FROM articles WHERE id = ? AND status = 'published' LIMIT 1",
+                [$event['related_article_id']]
+            ) ?: null;
+        }
+
         $siteUrl = \Cruinn\App::config('site.url', '');
         $defaultImg = $siteUrl . \Cruinn\App::config('social.default_image', '');
         $eventDesc = truncate(strip_tags($event['description'] ?? ''), 200);
@@ -103,6 +112,7 @@ class EventController extends BaseController
             'spotsRemaining'    => $spotsRemaining,
             'userRegistered'    => $userRegistered,
             'canRegister'       => $canRegister,
+            'relatedArticle'    => $relatedArticle,
             'meta_description'  => $eventDesc,
             'og_title'          => $event['title'],
             'og_type'           => 'event',
@@ -469,9 +479,11 @@ class EventController extends BaseController
      */
     public function adminNew(): void
     {
+        $articles = $this->fetchPublishedArticles();
         $this->renderAdmin('admin/events/edit', [
             'title'       => 'New Event',
             'event'       => null,
+            'articles'    => $articles,
             'breadcrumbs' => [['Admin', '/admin'], ['Events', '/admin/events'], ['New Event']],
         ]);
     }
@@ -517,6 +529,7 @@ class EventController extends BaseController
             'reg_deadline'      => $this->input('reg_deadline') ?: null,
             'registration_open' => $this->input('registration_open') ? 1 : 0,
             'external_form_url' => $this->input('external_form_url') ?: null,
+            'related_article_id' => $this->input('related_article_id') ? (int) $this->input('related_article_id') : null,
             'status'            => $this->input('status', 'draft'),
             'created_by'        => Auth::userId(),
             'created_at'        => date('Y-m-d H:i:s'),
@@ -539,9 +552,11 @@ class EventController extends BaseController
             $this->redirect('/admin/events');
         }
 
+        $articles = $this->fetchPublishedArticles();
         $this->renderAdmin('admin/events/edit', [
             'title'       => 'Edit: ' . $event['title'],
             'event'       => $event,
+            'articles'    => $articles,
             'breadcrumbs' => [['Admin', '/admin'], ['Events', '/admin/events'], [$event['title']]],
         ]);
     }
@@ -596,6 +611,7 @@ class EventController extends BaseController
             'reg_deadline'      => $this->input('reg_deadline') ?: null,
             'registration_open' => $this->input('registration_open') ? 1 : 0,
             'external_form_url' => $this->input('external_form_url') ?: null,
+            'related_article_id' => $this->input('related_article_id') ? (int) $this->input('related_article_id') : null,
             'status'            => $this->input('status', 'draft'),
             'updated_at'        => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);
@@ -766,6 +782,17 @@ class EventController extends BaseController
     // ══════════════════════════════════════════════════════════════
     // HELPERS
     // ══════════════════════════════════════════════════════════════
+
+    private function fetchPublishedArticles(): array
+    {
+        try {
+            return $this->db->fetchAll(
+                "SELECT id, title FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 200"
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
 
     private function canRegister(array $event, ?int $spotsRemaining): bool
     {

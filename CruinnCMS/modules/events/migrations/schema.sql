@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `events` (
     `reg_deadline`      DATETIME NULL,
     `registration_open` TINYINT(1) NOT NULL DEFAULT 1,
     `external_form_url` VARCHAR(500) NULL,
+    `related_article_id` INT UNSIGNED NULL,
     `status`            ENUM('draft','published','cancelled','completed') NOT NULL DEFAULT 'draft',
     `featured_image`    VARCHAR(500) NULL,
     `created_by`        INT UNSIGNED NULL,

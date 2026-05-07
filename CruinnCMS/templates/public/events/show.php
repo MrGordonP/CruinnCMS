@@ -62,6 +62,12 @@
         </aside>
 
         <?php include __DIR__ . '/../../components/share.php'; ?>
+
+        <?php if (!empty($relatedArticle)): ?>
+        <div class="event-related-article">
+            <a href="/articles/<?= e($relatedArticle['slug']) ?>">&rarr; Read more: <?= e($relatedArticle['title']) ?></a>
+        </div>
+        <?php endif; ?>
     </article>
 
     <p><a href="/events">&larr; Back to events</a></p>

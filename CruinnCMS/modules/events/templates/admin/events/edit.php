@@ -114,6 +114,17 @@
                     <input type="url" id="external_form_url" name="external_form_url" value="<?= e($event['external_form_url'] ?? '') ?>" placeholder="https://forms.google.com/...">
                     <small class="help-text">If set, this URL is used instead of the built-in registration system.</small>
                 </div>
+
+                <div class="form-group">
+                    <label for="related_article_id">Related Blog Post</label>
+                    <select id="related_article_id" name="related_article_id" class="form-input">
+                        <option value="">— None —</option>
+                        <?php foreach ($articles ?? [] as $a): ?>
+                            <option value="<?= (int)$a['id'] ?>" <?= (int)($event['related_article_id'] ?? 0) === (int)$a['id'] ? 'selected' : '' ?>><?= e($a['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="help-text">Shown on the public event page as a "Read more" link.</small>
+                </div>
             </div>
         </div>
 
