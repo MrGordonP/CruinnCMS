@@ -9,6 +9,7 @@
 namespace Cruinn\Admin\Controllers;
 
 use Cruinn\App;
+use Cruinn\Platform\PlatformAuth;
 
 class MediaController extends \Cruinn\Controllers\BaseController
 {
@@ -20,7 +21,7 @@ class MediaController extends \Cruinn\Controllers\BaseController
     private function storageSlug(): string
     {
         $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
-        if ($editorInstance !== null && $editorInstance !== '') {
+        if ($editorInstance !== null && $editorInstance !== '' && PlatformAuth::check()) {
             return basename($editorInstance);
         }
         $dir = App::instanceDir();
@@ -75,8 +76,11 @@ class MediaController extends \Cruinn\Controllers\BaseController
         $slug      = $this->storageSlug();
         $subdir    = date('Y/m');
         $uploadDir = CRUINN_PUBLIC . '/storage/' . $slug . '/' . $typeDir . '/' . $subdir;
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+            $this->json(['error' => 'Upload directory is not writable: ' . $uploadDir], 500);
+        }
+        if (!is_writable($uploadDir)) {
+            $this->json(['error' => 'Upload directory is not writable: ' . $uploadDir], 500);
         }
 
         $destination = $uploadDir . '/' . $filename;
