@@ -40,7 +40,7 @@ class BroadcastController extends BaseController
             'SELECT ml.*, COUNT(mls.id) AS subscriber_count
              FROM mailing_lists ml
              LEFT JOIN mailing_list_subscriptions mls
-                    ON mls.list_id = ml.id AND mls.subscribed = 1
+                    ON mls.list_id = ml.id AND mls.status = \'active\'
              WHERE ml.is_active = 1
              GROUP BY ml.id
              ORDER BY ml.name'
@@ -131,7 +131,7 @@ class BroadcastController extends BaseController
             'SELECT ml.*, COUNT(mls.id) AS subscriber_count
              FROM mailing_lists ml
              LEFT JOIN mailing_list_subscriptions mls
-                    ON mls.list_id = ml.id AND mls.subscribed = 1
+                    ON mls.list_id = ml.id AND mls.status = \'active\'
              WHERE ml.is_active = 1
              GROUP BY ml.id
              ORDER BY ml.name'
@@ -245,7 +245,7 @@ class BroadcastController extends BaseController
                 'SELECT u.email, u.display_name, mls.unsubscribe_token
                  FROM mailing_list_subscriptions mls
                  JOIN users u ON u.id = mls.user_id
-                 WHERE mls.list_id = ? AND mls.subscribed = 1 AND u.active = 1',
+                 WHERE mls.list_id = ? AND mls.status = 'active' AND u.active = 1',
                 [$broadcast['list_id']]
             );
         }
