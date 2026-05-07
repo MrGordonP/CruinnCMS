@@ -272,6 +272,10 @@ class MailingListController extends BaseController
                 $where[]  = 'm.status = ?';
                 $params[] = $filterStatus;
             }
+            if ($filterYear !== '') {
+                $where[]  = 'm.membership_year = ?';
+                $params[] = (int)$filterYear;
+            }
 
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
@@ -279,7 +283,7 @@ class MailingListController extends BaseController
                 "SELECT CONCAT('m_', m.id) AS id,
                         CONCAT(COALESCE(m.forenames,''), ' ', COALESCE(m.surnames,'')) AS display_name,
                         m.email,
-                        m.status AS member_status,
+                        m.status AS member_status, m.membership_year,
                         m.id AS member_id
                  FROM members m
                  {$whereClause}
@@ -313,6 +317,11 @@ class MailingListController extends BaseController
         // Fetch groups for group source selector
         $groups = $this->db->fetchAll('SELECT id, name FROM groups ORDER BY name');
 
+        // Distinct years for filter dropdown
+        $years = $this->db->fetchAll(
+            'SELECT DISTINCT membership_year FROM members WHERE membership_year IS NOT NULL ORDER BY membership_year DESC'
+        );
+
         $this->renderAdmin('admin/lists/members', [
             'title'          => 'Contacts: ' . $list['name'],
             'breadcrumbs'    => [
@@ -325,7 +334,7 @@ class MailingListController extends BaseController
             'pendingMembers' => $pendingMembers,
             'availableUsers' => $availableUsers,
             'groups'         => $groups,
-            'years'          => [],
+            'years'          => array_column($years, 'membership_year'),
             'source'         => $source,
             'filterStatus'   => $filterStatus,
             'filterYear'     => $filterYear,
