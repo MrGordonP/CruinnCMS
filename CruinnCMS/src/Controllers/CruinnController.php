@@ -685,6 +685,7 @@ class CruinnController extends BaseController
             'navMenus'             => $navMenus,
             'navCssFiles'          => $cssFiles,
             'navPhpGroups'         => $phpGroups,
+            'navArticles'          => (function() { try { return \Cruinn\Database::getInstance()->fetchAll('SELECT id, title, slug FROM articles ORDER BY updated_at DESC LIMIT 100'); } catch (\Throwable $e) { return []; } })(),
             'typographyPageId'     => $typographyPageId ?: null,
             'isThemePage'          => $isThemePage,
             'editingTheme'         => $editingTheme,
@@ -712,6 +713,302 @@ class CruinnController extends BaseController
             'docBodyBlock'      => $docBodyBlock,
             'editorPageBase'    => null,
             'apiBase'           => '/admin/editor',
+        ]);
+    }
+
+    /**
+     * GET /admin/editor/article/{id}/edit
+     * Open the shared Cruinn editor for a blog article.
+     * All editor JS AJAX calls are routed to /admin/article-editor/{id}/* by apiBase.
+     */
+    public function editArticle(string $id): void
+    {
+        Auth::requireRole('admin');
+        $articleId = (int) $id;
+
+        $article = $this->db->fetch('SELECT * FROM articles WHERE id = ? LIMIT 1', [$articleId]);
+        if (!$article) {
+            http_response_code(404);
+            $this->renderAdmin('errors/404', ['title' => 'Article Not Found']);
+            return;
+        }
+
+        // ── Load blocks (draft → published → seeded from body_html) ──
+        $state = $this->db->fetch('SELECT * FROM article_edit_state WHERE article_id = ?', [$articleId]);
+        $hasDraft = !empty($state) && (int) ($state['current_edit_seq'] ?? 0) > 0;
+
+        if ($state) {
+            $flat = $this->db->fetchAll(
+                'SELECT * FROM article_draft_blocks
+                  WHERE article_id = ? AND is_active = 1 AND is_deletion = 0
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$articleId]
+            );
+        } else {
+            $published = $this->db->fetchAll(
+                'SELECT * FROM article_blocks WHERE article_id = ? ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$articleId]
+            );
+            if (!empty($published)) {
+                // Seed draft from published blocks
+                $pdo = $this->db->pdo();
+                $pdo->beginTransaction();
+                try {
+                    $this->db->execute(
+                        'INSERT INTO article_edit_state (article_id, current_edit_seq, max_edit_seq, last_edited_at)
+                         VALUES (?, 1, 1, NOW())
+                         ON DUPLICATE KEY UPDATE current_edit_seq = 1, max_edit_seq = 1, last_edited_at = NOW()',
+                        [$articleId]
+                    );
+                    foreach ($published as $b) {
+                        $this->db->execute(
+                            'INSERT INTO article_draft_blocks
+                                 (article_id, edit_seq, block_id, block_type, inner_html,
+                                  css_props, block_config, sort_order, parent_block_id, is_active, is_deletion)
+                             VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1, 0)',
+                            [$articleId, $b['block_id'], $b['block_type'], $b['inner_html'],
+                             $b['css_props'] ?? null, $b['block_config'] ?? null,
+                             $b['sort_order'], $b['parent_block_id'] ?? null]
+                        );
+                    }
+                    $pdo->commit();
+                } catch (\Throwable $e) {
+                    $pdo->rollBack();
+                    throw $e;
+                }
+                $flat = $this->db->fetchAll(
+                    'SELECT * FROM article_draft_blocks
+                      WHERE article_id = ? AND is_active = 1 AND is_deletion = 0
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                    [$articleId]
+                );
+            } else {
+                // Seed from body_html import if present
+                $bodyHtml = $article['body_html'] ?? '';
+                if ($bodyHtml !== '') {
+                    $importSvc = new \Cruinn\Services\ImportService();
+                    $blocks    = $importSvc->parseFragment($bodyHtml, $articleId);
+                    if (!empty($blocks)) {
+                        $pdo = $this->db->pdo();
+                        $pdo->beginTransaction();
+                        try {
+                            $this->db->execute(
+                                'INSERT INTO article_edit_state (article_id, current_edit_seq, max_edit_seq, last_edited_at)
+                                 VALUES (?, 1, 1, NOW())
+                                 ON DUPLICATE KEY UPDATE current_edit_seq = 1, max_edit_seq = 1, last_edited_at = NOW()',
+                                [$articleId]
+                            );
+                            foreach ($blocks as $b) {
+                                $this->db->execute(
+                                    'INSERT INTO article_draft_blocks
+                                         (article_id, edit_seq, block_id, block_type, inner_html,
+                                          css_props, block_config, sort_order, parent_block_id, is_active, is_deletion)
+                                     VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1, 0)',
+                                    [$articleId, $b['block_id'], $b['block_type'], $b['inner_html'],
+                                     $b['css_props'] ?? null, $b['block_config'] ?? null,
+                                     $b['sort_order'], $b['parent_block_id'] ?? null]
+                                );
+                            }
+                            $pdo->commit();
+                        } catch (\Throwable $e) {
+                            $pdo->rollBack();
+                            throw $e;
+                        }
+                        $flat = $this->db->fetchAll(
+                            'SELECT * FROM article_draft_blocks
+                              WHERE article_id = ? AND is_active = 1 AND is_deletion = 0
+                              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                            [$articleId]
+                        );
+                    } else {
+                        $flat = [];
+                    }
+                } else {
+                    $flat = [];
+                }
+            }
+        }
+
+        // ── Build shared nav payload ──────────────────────────────
+        $headerPages = $this->db->fetchAll(
+            "SELECT p.id, p.title, p.slug, pt.name AS template_name
+             FROM page_templates pt
+             JOIN pages_index p ON p.id = pt.canvas_page_id
+             WHERE JSON_CONTAINS(pt.zones, '\"header\"')
+             ORDER BY pt.sort_order, pt.name"
+        );
+        $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
+        if ($hp0) {
+            array_unshift($headerPages, ['id' => (int) $hp0['id'], 'title' => 'Header Zone Page', 'slug' => '_header', 'template_name' => null]);
+        }
+        $footerPages = $this->db->fetchAll(
+            "SELECT p.id, p.title, p.slug, pt.name AS template_name
+             FROM page_templates pt
+             JOIN pages_index p ON p.id = pt.canvas_page_id
+             WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
+             ORDER BY pt.sort_order, pt.name"
+        );
+        $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
+        if ($fp0) {
+            array_unshift($footerPages, ['id' => (int) $fp0['id'], 'title' => 'Footer Zone Page', 'slug' => '_footer', 'template_name' => null]);
+        }
+
+        $sitePages = $this->db->fetchAll(
+            "SELECT id, title, slug, render_mode FROM pages_index WHERE slug NOT LIKE '\_%' ORDER BY title ASC"
+        );
+
+        $navTemplates = $this->db->fetchAll(
+            "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
+             FROM page_templates pt
+             LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
+             WHERE pt.slug NOT LIKE '\\_\\_%'
+             ORDER BY pt.sort_order, pt.name"
+        );
+
+        try {
+            $navMenus = $this->db->fetchAll('SELECT id, name, block_page_id FROM menus ORDER BY name ASC');
+        } catch (\Exception $e) {
+            $navMenus = $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC');
+        }
+
+        $cssDir   = CRUINN_PUBLIC . '/css';
+        $cssFiles = [];
+        foreach (glob($cssDir . '/*.css') as $f) { $cssFiles[] = basename($f); }
+        sort($cssFiles);
+
+        $tplBase    = dirname(__DIR__, 2) . '/templates';
+        $tplExclude = ['/admin/', '/platform/'];
+        $tplIter    = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($tplBase, \FilesystemIterator::SKIP_DOTS)
+        );
+        $phpGroups = [];
+        foreach ($tplIter as $tplFile) {
+            if ($tplFile->getExtension() !== 'php') continue;
+            $rel = str_replace('\\', '/', substr($tplFile->getPathname(), strlen($tplBase) + 1));
+            $skip = false;
+            foreach ($tplExclude as $ex) {
+                if (str_contains('/' . $rel, $ex)) { $skip = true; break; }
+            }
+            if ($skip) continue;
+            $parts = explode('/', $rel);
+            $group = count($parts) > 1 ? $parts[0] : 'root';
+            $phpGroups[$group][] = $rel;
+        }
+        ksort($phpGroups);
+        foreach ($phpGroups as &$g) { sort($g); }
+        unset($g);
+
+        $headerZoneHtml = '';
+        $headerZoneCss  = '';
+        $footerZoneHtml = '';
+        $footerZoneCss  = '';
+        try {
+            $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
+            $headerPageId = $hp0 ? (int) $hp0['id'] : null;
+            $footerPageId = $fp0 ? (int) $fp0['id'] : null;
+            if ($headerPageId && $cruinnSvc->hasPublished($headerPageId)) {
+                $headerZoneHtml = $cruinnSvc->buildHtml($headerPageId);
+                $headerZoneCss  = $cruinnSvc->buildCss($headerPageId);
+            }
+            if ($footerPageId && $cruinnSvc->hasPublished($footerPageId)) {
+                $footerZoneHtml = $cruinnSvc->buildHtml($footerPageId);
+                $footerZoneCss  = $cruinnSvc->buildCss($footerPageId);
+            }
+        } catch (\Throwable $e) {
+            error_log('CruinnController::editArticle zone render failed: ' . $e->getMessage());
+        }
+
+        try {
+            $menus = $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC');
+        } catch (\Exception $e) {
+            $menus = [];
+        }
+        try {
+            $contentSets = $this->db->fetchAll('SELECT id, name, slug, fields FROM content_sets ORDER BY name ASC');
+        } catch (\Exception $e) {
+            $contentSets = [];
+        }
+        try {
+            $contentTemplates = $this->db->fetchAll("SELECT id, name, slug FROM page_templates WHERE template_type = 'content' ORDER BY name ASC");
+        } catch (\Exception $e) {
+            $contentTemplates = [];
+        }
+        try {
+            $moduleWidgets = \Cruinn\Modules\ModuleRegistry::widgetCatalog();
+        } catch (\Throwable $e) {
+            $moduleWidgets = [];
+        }
+        try {
+            $navArticles = $this->db->fetchAll('SELECT id, title, slug FROM articles ORDER BY updated_at DESC LIMIT 100');
+        } catch (\Throwable $e) {
+            $navArticles = [];
+        }
+
+        $allTemplates     = $this->db->fetchAll('SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name', ['page']);
+        $typographyPageId = (int) ($this->db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
+
+        $this->renderAdmin('admin/editor', [
+            'title'               => 'Editor — ' . $article['title'],
+            'page'                => [
+                'id'          => $articleId,
+                'title'       => $article['title'],
+                'slug'        => $article['slug'],
+                'render_mode' => 'cruinn',
+                'status'      => $article['status'],
+                'template'    => 'none',
+                '_is_article' => true,
+            ],
+            'hasDraft'            => $hasDraft,
+            'state'               => $state,
+            'cruinnHtml'          => (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
+            'cruinnCss'           => (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
+            'menus'               => $menus,
+            'contentSets'         => $contentSets,
+            'contentTemplates'    => $contentTemplates,
+            'moduleWidgets'       => $moduleWidgets,
+            'templates'           => $allTemplates,
+            'isZonePage'          => false,
+            'zoneName'            => null,
+            'isTemplatePage'      => false,
+            'templateSlugName'    => null,
+            'templateId'          => null,
+            'headerPageId'        => null,
+            'footerPageId'        => null,
+            'headerPages'         => $headerPages,
+            'footerPages'         => $footerPages,
+            'sitePages'           => $sitePages,
+            'navTemplates'        => $navTemplates,
+            'navMenus'            => $navMenus,
+            'navCssFiles'         => $cssFiles,
+            'navPhpGroups'        => $phpGroups,
+            'navArticles'         => $navArticles,
+            'typographyPageId'    => $typographyPageId ?: null,
+            'isThemePage'         => false,
+            'editingTheme'        => null,
+            'themeVars'           => [],
+            'themeFiles'          => [],
+            'headerZoneHtml'      => $headerZoneHtml,
+            'headerZoneCss'       => $headerZoneCss,
+            'footerZoneHtml'      => $footerZoneHtml,
+            'footerZoneCss'       => $footerZoneCss,
+            'templateZones'       => [],
+            'templateCanvasPageId'=> null,
+            'templateCanvasHtml'  => '',
+            'templateCanvasCss'   => '',
+            'sidebarContextHtml'  => '',
+            'sidebarContextCss'   => '',
+            'sidebarContextPageId'=> null,
+            'sidebarContextLabel' => '',
+            'contextFields'       => [],
+            'templateLayoutSettings' => [],
+            'startInCodeView'     => false,
+            'htmlContent'         => null,
+            'isFileMode'          => false,
+            'docHtmlBlock'        => null,
+            'docHeadBlock'        => null,
+            'docBodyBlock'        => null,
+            'editorPageBase'      => null,
+            'apiBase'             => '/admin/article-editor/' . $articleId,
         ]);
     }
 

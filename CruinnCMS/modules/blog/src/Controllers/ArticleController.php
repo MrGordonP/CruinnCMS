@@ -230,7 +230,7 @@ class ArticleController extends BaseController
 
         $this->logActivity('create', 'article', (int) $id, $this->input('title'));
         Auth::flash('success', 'Blog post created. Now add some content blocks.');
-        $this->redirect('/admin/blog/' . $id . '/edit');
+        $this->redirect('/admin/article-editor/' . $id . '/edit');
     }
 
     /**

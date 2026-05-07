@@ -6,6 +6,7 @@
  */
 
 use Cruinn\Router;
+use Cruinn\Controllers\CruinnController;
 use Cruinn\Module\Blog\Controllers\ArticleController;
 use Cruinn\Module\Blog\Controllers\ArticleEditorController;
 
@@ -24,8 +25,8 @@ return [
         $router->post('/admin/articles/{id}',           [ArticleController::class, 'adminUpdate']);
         $router->post('/admin/articles/{id}/delete',    [ArticleController::class, 'adminDelete']);
 
-        // Admin article editor (full Cruinn editor for article content)
-        $router->get('/admin/article-editor/{id}/edit',     [ArticleEditorController::class, 'edit']);
+        // Admin article editor — UI opened by CruinnController; AJAX handled here
+        $router->get('/admin/article-editor/{id}/edit',     [CruinnController::class, 'editArticle']);
         $router->post('/admin/article-editor/{id}/action',  [ArticleEditorController::class, 'recordAction']);
         $router->post('/admin/article-editor/{id}/undo',    [ArticleEditorController::class, 'undo']);
         $router->post('/admin/article-editor/{id}/redo',    [ArticleEditorController::class, 'redo']);

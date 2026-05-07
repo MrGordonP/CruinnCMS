@@ -287,6 +287,20 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
                         </div>
                     </div>
                     <?php endif; ?>
+                    <?php if (!empty($navArticles ?? [])): ?>
+                    <div class="editor-site-nav-group collapsed">
+                        <span class="editor-site-nav-label">Blog Posts <span class="editor-group-chevron">▾</span></span>
+                        <div class="editor-site-nav-list">
+                            <?php foreach ($navArticles as $_art): ?>
+                            <a href="<?= e('/admin/article-editor/' . (int)$_art['id'] . '/edit') ?>"
+                               class="editor-site-nav-link<?= $page && isset($page['_is_article']) && (int)$_art['id'] === (int)$page['id'] ? ' active' : '' ?>">
+                                <?= e($_art['title']) ?>
+                            </a>
+                            <?php endforeach; ?>
+                            <a href="<?= url('/admin/articles') ?>" class="editor-site-nav-link editor-site-nav-manage">Manage posts →</a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                     <?php if (!empty($headerPages)): ?>
                     <div class="editor-site-nav-group collapsed">
                         <span class="editor-site-nav-label">Headers <span class="editor-group-chevron">▾</span></span>

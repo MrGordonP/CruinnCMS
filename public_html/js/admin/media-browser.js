@@ -215,14 +215,25 @@
             var fd = new FormData();
             fd.append('file', file);
             fd.append('_csrf_token', Cruinn.getCSRFToken());
+            // Show progress state
+            var prevText = selectBtn ? selectBtn.textContent : '';
+            if (selectBtn) {
+                selectBtn.disabled = true;
+                selectBtn.textContent = 'Uploading…';
+            }
             fetch('/admin/upload', { method: 'POST', body: fd })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
+                    if (selectBtn) { selectBtn.disabled = false; selectBtn.textContent = prevText; }
                     if (data.error) { alert('Upload failed: ' + data.error); loadMediaGrid(mediaCurrentFolder); return; }
                     var destFolder = data.url ? data.url.substring(0, data.url.lastIndexOf('/')) : mediaCurrentFolder;
                     loadMediaGrid(destFolder);
                 })
-                .catch(function () { alert('Upload request failed.'); loadMediaGrid(mediaCurrentFolder); });
+                .catch(function () {
+                    if (selectBtn) { selectBtn.disabled = false; selectBtn.textContent = prevText; }
+                    alert('Upload request failed.');
+                    loadMediaGrid(mediaCurrentFolder);
+                });
             e.target.value = '';
         });
 
