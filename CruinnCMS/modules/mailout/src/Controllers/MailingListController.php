@@ -423,7 +423,7 @@ class MailingListController extends BaseController
         }
 
         // Single email add (from AJAX form or manual entry)
-        if ($email && empty($userIds)) {
+        if ($email && empty($selectedIds)) {
             if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
                 // Check if AJAX
                 if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
