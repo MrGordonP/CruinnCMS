@@ -281,13 +281,13 @@ class MailingListController extends BaseController
 
             $availableUsers = $this->db->fetchAll(
                 "SELECT CONCAT('m_', m.id) AS id,
-                        CONCAT(COALESCE(m.first_name,''), ' ', COALESCE(m.last_name,'')) AS display_name,
+                        CONCAT(COALESCE(m.forenames,''), ' ', COALESCE(m.surnames,'')) AS display_name,
                         m.email,
                         m.status AS member_status, m.membership_year,
                         m.id AS member_id
                  FROM members m
                  {$whereClause}
-                 ORDER BY m.last_name, m.first_name",
+                 ORDER BY m.surnames, m.forenames",
                 $params
             );
         } else {
