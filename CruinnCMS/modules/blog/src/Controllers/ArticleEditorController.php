@@ -30,34 +30,35 @@ class ArticleEditorController extends BaseController
 
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-        $unsanitisedTypes = ['doc-html', 'doc-head', 'doc-body', 'php-code'];
-        $incomingBlocks   = [];
-
-        foreach ($body['blocks'] ?? [] as $b) {
-            $blockId = preg_replace('/[^a-z0-9\-]/', '', (string) ($b['block_id'] ?? ''));
-            if ($blockId === '') { continue; }
-            $bType = preg_replace('/[^a-z0-9\-]/', '', (string) ($b['block_type'] ?? 'text'));
-            $incomingBlocks[] = [
-                'block_id'        => $blockId,
-                'block_type'      => $bType,
-                'inner_html'      => isset($b['inner_html'])
-                    ? (in_array($bType, $unsanitisedTypes, true)
-                        ? (string) $b['inner_html']
-                        : $this->sanitiseHtml((string) $b['inner_html']))
-                    : null,
-                'css_props'       => !is_array($b['css_props'] ?? null)
-                    ? null
-                    : json_encode((object) $b['css_props']),
-                'block_config'    => is_array($b['block_config'] ?? null) ? json_encode($b['block_config']) : null,
-                'sort_order'      => max(0, (int) ($b['sort_order'] ?? 0)),
-                'parent_block_id' => !empty($b['parent_block_id'])
-                    ? preg_replace('/[^a-z0-9\-]/', '', (string) $b['parent_block_id'])
-                    : null,
-            ];
-        }
-
         $pdo = null;
         try {
+            // Build incoming block list inside the try so any sanitiseHtml()
+            // failure is caught and returned as a JSON error rather than a raw 500.
+            $unsanitisedTypes = ['doc-html', 'doc-head', 'doc-body', 'php-code'];
+            $incomingBlocks   = [];
+            foreach ($body['blocks'] ?? [] as $b) {
+                $blockId = preg_replace('/[^a-z0-9\-]/', '', (string) ($b['block_id'] ?? ''));
+                if ($blockId === '') { continue; }
+                $bType = preg_replace('/[^a-z0-9\-]/', '', (string) ($b['block_type'] ?? 'text'));
+                $incomingBlocks[] = [
+                    'block_id'        => $blockId,
+                    'block_type'      => $bType,
+                    'inner_html'      => isset($b['inner_html'])
+                        ? (in_array($bType, $unsanitisedTypes, true)
+                            ? (string) $b['inner_html']
+                            : $this->sanitiseHtml((string) $b['inner_html']))
+                        : null,
+                    'css_props'       => !is_array($b['css_props'] ?? null)
+                        ? null
+                        : json_encode((object) $b['css_props']),
+                    'block_config'    => is_array($b['block_config'] ?? null) ? json_encode($b['block_config']) : null,
+                    'sort_order'      => max(0, (int) ($b['sort_order'] ?? 0)),
+                    'parent_block_id' => !empty($b['parent_block_id'])
+                        ? preg_replace('/[^a-z0-9\-]/', '', (string) $b['parent_block_id'])
+                        : null,
+                ];
+            }
+
             $pdo = $this->db->pdo();
             $pdo->beginTransaction();
             $state = $this->db->fetch('SELECT * FROM article_edit_state WHERE article_id = ?', [$articleId]);
