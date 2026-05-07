@@ -115,6 +115,25 @@
         }
         </script>
 
+        <details class="acp-fieldset" style="margin-bottom:1.25rem;">
+            <summary style="cursor:pointer; font-weight:600; padding:0.5rem 0;">Import from Blog Post</summary>
+            <div style="padding:0.75rem 0 0.25rem;">
+                <div style="display:flex; gap:0.75rem; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label for="import_article_id" style="font-size:0.875rem;">Select article</label>
+                        <select id="import_article_id" class="form-input" style="margin-top:0.25rem;">
+                            <option value="">— Choose a published article —</option>
+                            <?php foreach ($articles as $a): ?>
+                                <option value="<?= (int)$a['id'] ?>"><?= e($a['title']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-outline" onclick="importArticle()">Import</button>
+                </div>
+                <p class="form-help" style="margin-top:0.5rem;">Copies the article title into Subject and its HTML content into the HTML Body. You can edit both after importing.</p>
+            </div>
+        </details>
+
         <div class="form-group">
             <label for="subject">Subject *</label>
             <input type="text" id="subject" name="subject" class="form-input" required
@@ -127,6 +146,21 @@
             <p class="form-help">Use <code>{{name}}</code> and <code>{{email}}</code> for personalisation. An unsubscribe footer is appended automatically.</p>
             <textarea id="body_html" name="body_html" rows="16" class="form-input form-textarea monospace"><?= e($broadcast['body_html'] ?? '') ?></textarea>
         </div>
+
+        <script>
+        function importArticle() {
+            const articleId = document.getElementById('import_article_id').value;
+            if (!articleId) { alert('Please select an article first.'); return; }
+            fetch('/admin/mailout/article-import?article_id=' + articleId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) { alert('Error: ' + data.error); return; }
+                    document.getElementById('subject').value = data.title;
+                    document.getElementById('body_html').value = data.html;
+                })
+                .catch(() => alert('Import failed. Please try again.'));
+        }
+        </script>
 
         <div class="form-group">
             <label for="body_text">Plain Text Body <span class="text-muted">(optional — auto-generated if blank)</span></label>

@@ -34,6 +34,29 @@ class BroadcastController extends BaseController
         ]);
     }
 
+    public function articleImport(): void
+    {
+        Auth::requireRole('admin');
+        $articleId = (int) $this->query('article_id', 0);
+        if (!$articleId) {
+            $this->json(['error' => 'No article_id provided'], 400);
+        }
+
+        $article = $this->db->fetch('SELECT id, title FROM articles WHERE id = ?', [$articleId]);
+        if (!$article) {
+            $this->json(['error' => 'Article not found'], 404);
+        }
+
+        $blocks = $this->db->fetchAll(
+            'SELECT inner_html FROM article_blocks WHERE article_id = ? ORDER BY sort_order ASC',
+            [$articleId]
+        );
+
+        $html = implode("\n", array_column($blocks, 'inner_html'));
+
+        $this->json(['title' => $article['title'], 'html' => $html]);
+    }
+
     public function newForm(): void
     {
         $lists = $this->db->fetchAll(
@@ -62,6 +85,10 @@ class BroadcastController extends BaseController
         );
         $yearOptions = range((int) date('Y'), (int) date('Y') - 9);
 
+        $articles = $this->db->fetchAll(
+            "SELECT id, title FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 100"
+        );
+
         $this->renderAdmin('admin/broadcasts/edit', [
             'title'                => 'New Mailout',
             'broadcast'            => null,
@@ -69,6 +96,7 @@ class BroadcastController extends BaseController
             'member_status_counts' => $memberStatusCounts,
             'portal_user_count'    => $portalUserCount,
             'year_options'         => $yearOptions,
+            'articles'             => $articles,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 ['New'],
@@ -153,6 +181,10 @@ class BroadcastController extends BaseController
         );
         $yearOptions = range((int) date('Y'), (int) date('Y') - 9);
 
+        $articles = $this->db->fetchAll(
+            "SELECT id, title FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 100"
+        );
+
         $this->renderAdmin('admin/broadcasts/edit', [
             'title'                => 'Edit Mailout',
             'broadcast'            => $broadcast,
@@ -160,6 +192,7 @@ class BroadcastController extends BaseController
             'member_status_counts' => $memberStatusCounts,
             'portal_user_count'    => $portalUserCount,
             'year_options'         => $yearOptions,
+            'articles'             => $articles,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 ['Edit'],
