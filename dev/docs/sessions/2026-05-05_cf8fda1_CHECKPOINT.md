@@ -1,7 +1,7 @@
 # v1.0.0-beta.7 Checkpoint
 
 **Version:** v1.0.0-beta.7
-**HEAD:** 4fc60e9
+**HEAD:** 4278bee
 **Date:** 2025-05-07
 
 ---
@@ -64,7 +64,8 @@
 - Organisation dashboard + layout had hardcoded links to `/organisation/documents/upload` and `/organisation/documents/*`
 - Those routes don't exist — module.php comment states "Document management lives in the documents module"
 - Fixed all links to point to `/documents` module routes (`/documents/new`, `/documents/{id}`, etc.)
-- Note: `modules/organisation/templates/organisation/documents/` directory contains orphaned templates (no routes)
+- Also updated orphaned templates in `modules/organisation/templates/organisation/documents/` (index.php, show.php, upload.php)
+- Note: Those templates have no routes and shouldn't be accessible, but updating prevents issues with cached pages or future route additions
 
 ---
 
@@ -77,7 +78,9 @@
 
 ## Commits in this session
 
-```
+`278bee  fix(organisation): update orphaned document templates to use /documents paths [v1.0.0-beta.7]
+fc0fdfe  docs: update checkpoint — organisation document link fixes [v1.0.0-beta.7]
+4``
 4fc60e9  fix(organisation): update document links to use /documents module routes instead of nonexistent /organisation/documents [v1.0.0-beta.7]
 115cd2b  docs: update checkpoint — mailbox route ordering fix [v1.0.0-beta.7]
 5ff8b7e  fix(mailbox): reorder routes — /compose and /search before /{folder} to prevent misrouting [v1.0.0-beta.7]
