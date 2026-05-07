@@ -107,17 +107,6 @@ CREATE TABLE IF NOT EXISTS `file_publications` (
     CONSTRAINT `fk_file_publications_user` FOREIGN KEY (`published_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ── Seed default root folders ────────────────────────────────
-INSERT INTO `folders` (`name`, `slug`, `description`, `owner_id`, `visibility`, `sort_order`) VALUES
-    ('Council Documents', 'council-documents', 'Official council documents, minutes, and reports', 1, 'role', 1),
-    ('Shared Resources',  'shared-resources',  'Resources available to all members',                1, 'members', 2),
-    ('Public Files',      'public-files',       'Publicly accessible documents and downloads',       1, 'public', 3);
-
-UPDATE `folders` SET `allowed_roles` = JSON_ARRAY(
-    (SELECT `id` FROM `roles` WHERE `slug` = 'admin'   LIMIT 1),
-    (SELECT `id` FROM `roles` WHERE `slug` = 'council' LIMIT 1)
-) WHERE `slug` = 'council-documents';
-
 -- ── User Quota Columns ───────────────────────────────────────
 ALTER TABLE `users`
     ADD COLUMN IF NOT EXISTS `drivespace_quota_bytes` BIGINT UNSIGNED NOT NULL DEFAULT 524288000 COMMENT '500 MB default quota',
