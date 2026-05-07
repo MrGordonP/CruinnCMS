@@ -1,11 +1,11 @@
 <div class="organisation-documents">
     <div class="page-header">
         <h1>Documents</h1>
-        <a href="/organisation/documents/new" class="btn btn-primary">Upload Document</a>
+        <a href="/documents/new" class="btn btn-primary">Upload Document</a>
     </div>
 
     <!-- Filters -->
-    <form class="filter-bar" method="get" action="/organisation/documents">
+    <form class="filter-bar" method="get" action="/documents">
         <div class="filter-group">
             <select name="category" class="form-select">
                 <option value="">All Categories</option>
@@ -27,7 +27,7 @@
         </div>
         <button type="submit" class="btn btn-secondary">Filter</button>
         <?php if ($category || $status || $search): ?>
-            <a href="/organisation/documents" class="btn btn-link">Clear</a>
+            <a href="/documents" class="btn btn-link">Clear</a>
         <?php endif; ?>
     </form>
 
@@ -51,7 +51,7 @@
                 <?php foreach ($documents as $doc): ?>
                 <tr>
                     <td>
-                        <a href="/organisation/documents/<?= (int)$doc['id'] ?>"><?= e($doc['title']) ?></a>
+                        <a href="/documents/<?= (int)$doc['id'] ?>"><?= e($doc['title']) ?></a>
                     </td>
                     <td><span class="badge badge-category"><?= e(ucfirst($doc['category'])) ?></span></td>
                     <td class="text-muted"><?= e(strtoupper($doc['file_type'] ?? '—')) ?></td>

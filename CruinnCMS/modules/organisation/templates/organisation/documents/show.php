@@ -4,7 +4,7 @@ use Cruinn\Module\Organisation\Controllers\OrganisationController;
 <div class="organisation-document-detail">
     <div class="page-header">
         <div>
-            <a href="/organisation/documents" class="back-link">&larr; All Documents</a>
+            <a href="/documents" class="back-link">&larr; All Documents</a>
             <h1><?= e($document['title']) ?></h1>
         </div>
     </div>
@@ -65,24 +65,24 @@ use Cruinn\Module\Organisation\Controllers\OrganisationController;
 
         <!-- Action Buttons -->
         <div class="document-actions">
-            <a href="/organisation/documents/<?= (int)$document['id'] ?>/download" class="btn btn-primary">Download Current Version</a>
+            <a href="/documents/<?= (int)$document['id'] ?>/download" class="btn btn-primary">Download Current Version</a>
 
             <?php if ($document['status'] === 'draft'): ?>
-                <form method="post" action="/organisation/documents/<?= (int)$document['id'] ?>/submit" class="inline-form">
+                <form method="post" action="/documents/<?= (int)$document['id'] ?>/submit" class="inline-form">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-secondary">Submit for Approval</button>
                 </form>
             <?php endif; ?>
 
             <?php if ($document['status'] === 'submitted'): ?>
-                <form method="post" action="/organisation/documents/<?= (int)$document['id'] ?>/approve" class="inline-form">
+                <form method="post" action="/documents/<?= (int)$document['id'] ?>/approve" class="inline-form">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-success">Approve</button>
                 </form>
             <?php endif; ?>
 
             <?php if ($document['status'] !== 'archived'): ?>
-                <form method="post" action="/organisation/documents/<?= (int)$document['id'] ?>/archive" class="inline-form">
+                <form method="post" action="/documents/<?= (int)$document['id'] ?>/archive" class="inline-form">
                     <?= csrf_field() ?>
                     <button type="submit" class="btn btn-secondary">Archive</button>
                 </form>
@@ -93,7 +93,7 @@ use Cruinn\Module\Organisation\Controllers\OrganisationController;
     <!-- Upload New Version -->
     <section class="document-section">
         <h2>Upload New Version</h2>
-        <form method="post" action="/organisation/documents/<?= (int)$document['id'] ?>/version" enctype="multipart/form-data" class="version-upload-form">
+        <form method="post" action="/documents/<?= (int)$document['id'] ?>/version" enctype="multipart/form-data" class="version-upload-form">
             <?= csrf_field() ?>
             <div class="form-row">
                 <div class="form-group">
@@ -135,7 +135,7 @@ use Cruinn\Module\Organisation\Controllers\OrganisationController;
                     <td><?= e($v['notes'] ?? '—') ?></td>
                     <td><time datetime="<?= e($v['created_at']) ?>"><?= format_date($v['created_at'], 'j M Y H:i') ?></time></td>
                     <td>
-                        <a href="/organisation/documents/<?= (int)$document['id'] ?>/versions/<?= (int)$v['id'] ?>/download" class="btn btn-sm btn-secondary">Download</a>
+                        <a href="/documents/<?= (int)$document['id'] ?>/versions/<?= (int)$v['id'] ?>/download" class="btn btn-sm btn-secondary">Download</a>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -148,7 +148,7 @@ use Cruinn\Module\Organisation\Controllers\OrganisationController;
     <section class="danger-zone">
         <h3>Danger Zone</h3>
         <p>Permanently delete this document and all versions. This cannot be undone.</p>
-        <form method="post" action="/organisation/documents/<?= (int)$document['id'] ?>/delete" onsubmit="return confirm('Delete this document permanently?')">
+        <form method="post" action="/documents/<?= (int)$document['id'] ?>/delete" onsubmit="return confirm('Delete this document permanently?')">
             <?= csrf_field() ?>
             <button type="submit" class="btn btn-danger">Delete Document</button>
         </form>

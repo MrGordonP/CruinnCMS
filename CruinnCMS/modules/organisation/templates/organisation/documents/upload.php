@@ -1,6 +1,6 @@
 <div class="organisation-document-upload">
     <div class="page-header">
-        <a href="/organisation/documents" class="back-link">&larr; All Documents</a>
+        <a href="/documents" class="back-link">&larr; All Documents</a>
         <h1>Upload Document</h1>
     </div>
 
@@ -14,7 +14,7 @@
     </div>
     <?php endif; ?>
 
-    <form method="post" action="/organisation/documents" enctype="multipart/form-data" class="organisation-form">
+    <form method="post" action="/documents" enctype="multipart/form-data" class="organisation-form">
         <?= csrf_field() ?>
 
         <div class="form-group">
@@ -61,7 +61,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Upload Document</button>
-            <a href="/organisation/documents" class="btn btn-secondary">Cancel</a>
+            <a href="/documents" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>
