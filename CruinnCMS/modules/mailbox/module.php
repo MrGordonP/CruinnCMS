@@ -47,6 +47,13 @@ return [
         // Folder list for a mailbox (mailbox identified by officer id)
         $router->get('/mail/{mailbox_id}', [MailboxController::class, 'folders']);
 
+        // Compose new message (MUST be before /{folder} route to avoid matching compose as folder)
+        $router->get('/mail/{mailbox_id}/compose',  [MailboxController::class, 'compose']);
+        $router->post('/mail/{mailbox_id}/compose', [MailboxController::class, 'send']);
+
+        // Search (MUST be before /{folder} route)
+        $router->get('/mail/{mailbox_id}/search', [MailboxController::class, 'search']);
+
         // Message list for a folder
         $router->get('/mail/{mailbox_id}/{folder}', [MailboxController::class, 'messages']);
 
@@ -66,10 +73,6 @@ return [
         // Delete (move to Trash)
         $router->post('/mail/{mailbox_id}/{folder}/{uid}/delete', [MailboxController::class, 'delete']);
 
-        // Compose new message
-        $router->get('/mail/{mailbox_id}/compose',  [MailboxController::class, 'compose']);
-        $router->post('/mail/{mailbox_id}/compose', [MailboxController::class, 'send']);
-
         // Reply / forward
         $router->get('/mail/{mailbox_id}/{folder}/{uid}/reply',   [MailboxController::class, 'reply']);
         $router->post('/mail/{mailbox_id}/{folder}/{uid}/reply',  [MailboxController::class, 'sendReply']);
@@ -79,9 +82,6 @@ return [
         // Tags (JSON endpoints)
         $router->post('/mail/{mailbox_id}/{folder}/{uid}/tag',   [MailboxController::class, 'addTag']);
         $router->post('/mail/{mailbox_id}/{folder}/{uid}/untag', [MailboxController::class, 'removeTag']);
-
-        // Search
-        $router->get('/mail/{mailbox_id}/search', [MailboxController::class, 'search']);
 
         // --- Admin routes ---
 
