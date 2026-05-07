@@ -126,27 +126,13 @@
             </thead>
             <tbody>
                 <?php foreach ($registrations as $reg): ?>
-                <?php
-                    $regName  = $reg['member_id']
-                        ? trim(($reg['forenames'] ?? '') . ' ' . ($reg['surnames'] ?? ''))
-                        : ($reg['guest_name'] ?? '—');
-                    $regEmail = $reg['member_id']
-                        ? ($reg['member_email'] ?? '')
-                        : ($reg['guest_email'] ?? '');
-                    $regType  = $reg['member_id'] ? 'Member' : 'Guest';
-                ?>
                 <tr class="<?= $reg['status'] === 'cancelled' ? 'row-cancelled' : '' ?>">
                     <td><?= (int) $reg['id'] ?></td>
-                    <td>
-                        <?= e($regName) ?>
-                        <?php if ($reg['member_id']): ?>
-                            <a href="/admin/members/<?= (int) $reg['member_id'] ?>" class="btn-link" title="View member">&nearr;</a>
-                        <?php endif; ?>
-                    </td>
-                    <td><?= e($regEmail) ?></td>
-                    <td><span class="badge badge-<?= strtolower($regType) ?>"><?= $regType ?></span></td>
-                    <td><?= e($reg['dietary_notes'] ?? '—') ?></td>
-                    <td><?= e($reg['access_notes'] ?? '—') ?></td>
+                    <td><?= e($reg['name']) ?></td>
+                    <td><?= e($reg['email']) ?></td>
+                    <td><span class="badge badge-guest">Guest</span></td>
+                    <td><?= e($reg['notes'] ?? '—') ?></td>
+                    <td>—</td>
                     <?php if ($event['price'] > 0): ?>
                     <td><span class="badge badge-<?= e($reg['payment_status'] ?? 'pending') ?>"><?= e(ucfirst($reg['payment_status'] ?? 'pending')) ?></span>
                         <?php if ($reg['amount_paid'] > 0): ?>

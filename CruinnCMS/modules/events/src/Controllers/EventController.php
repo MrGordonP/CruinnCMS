@@ -428,9 +428,8 @@ class EventController extends BaseController
         }
 
         $registrations = $this->db->fetchAll(
-            'SELECT r.*, m.forenames, m.surnames, m.email as member_email
+            'SELECT r.*
              FROM event_registrations r
-             LEFT JOIN members m ON m.user_id = r.user_id
              WHERE r.event_id = ?
              ORDER BY r.created_at DESC',
             [$id]
