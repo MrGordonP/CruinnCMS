@@ -1,9 +1,3 @@
--- Fix article_edit_state and article_draft_blocks schemas.
--- schema.sql created these tables with the old column layout; 003 was a no-op
--- because of CREATE TABLE IF NOT EXISTS. This migration drops and recreates
--- them with the correct schema matching the ArticleEditorController.
--- Published article content (articles, article_blocks) is not touched.
-
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS article_draft_blocks;
