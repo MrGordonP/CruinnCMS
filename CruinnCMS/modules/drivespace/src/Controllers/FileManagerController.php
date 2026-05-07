@@ -470,7 +470,7 @@ class FileManagerController extends BaseController
         }
 
         $folder = $file['folder_id'] ? $this->db->fetch('SELECT * FROM folders WHERE id = ?', [$file['folder_id']]) : null;
-        if (!$this->canEditFile($file, $folder) && Auth::role() !== 'admin') {
+        if (!$this->canEditFile($file, $folder) && !Auth::hasRole('admin')) {
             Auth::flash('error', 'Access denied.');
             $this->redirect('/drivespace/' . $id);
         }
@@ -646,7 +646,7 @@ class FileManagerController extends BaseController
             $this->redirect('/drivespace');
         }
 
-        if ($folder['owner_id'] !== Auth::userId() && Auth::role() !== 'admin') {
+        if ($folder['owner_id'] !== Auth::userId() && !Auth::hasRole('admin')) {
             Auth::flash('error', 'Access denied.');
             $this->redirect('/drivespace?folder=' . $id);
         }
@@ -689,7 +689,7 @@ class FileManagerController extends BaseController
             $this->redirect('/drivespace');
         }
 
-        if ($folder['owner_id'] !== Auth::userId() && Auth::role() !== 'admin') {
+        if ($folder['owner_id'] !== Auth::userId() && !Auth::hasRole('admin')) {
             Auth::flash('error', 'Access denied.');
             $this->redirect('/drivespace');
         }
@@ -746,7 +746,7 @@ class FileManagerController extends BaseController
             [$id]
         );
 
-        $canEdit = Auth::role() === 'admin' || (int)$folder['owner_id'] === Auth::userId();
+        $canEdit = Auth::hasRole('admin') || (int)$folder['owner_id'] === Auth::userId();
 
         $this->json([
             'folder'   => $folder,
@@ -814,7 +814,7 @@ class FileManagerController extends BaseController
     private function canAccessFolder(array $folder): bool
     {
         // Admin can access everything
-        if (Auth::role() === 'admin') {
+        if (Auth::hasRole('admin')) {
             return true;
         }
 
@@ -838,7 +838,7 @@ class FileManagerController extends BaseController
             return true; // Root level â€” logged-in users can add
         }
 
-        if (Auth::role() === 'admin' || $folder['owner_id'] === Auth::userId()) {
+        if (Auth::hasRole('admin') || $folder['owner_id'] === Auth::userId()) {
             return true;
         }
 
@@ -856,7 +856,7 @@ class FileManagerController extends BaseController
 
     private function canAccessFile(array $file, ?array $folder): bool
     {
-        if (Auth::role() === 'admin') {
+        if (Auth::hasRole('admin')) {
             return true;
         }
         if ($file['owner_id'] === Auth::userId()) {
@@ -874,7 +874,7 @@ class FileManagerController extends BaseController
 
     private function canEditFile(array $file, ?array $folder): bool
     {
-        if (Auth::role() === 'admin') {
+        if (Auth::hasRole('admin')) {
             return true;
         }
         if ($file['owner_id'] === Auth::userId()) {

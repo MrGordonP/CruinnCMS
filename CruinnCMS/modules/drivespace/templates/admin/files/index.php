@@ -420,7 +420,7 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
             </div>
         </form>
 
-        <?php if ($currentFolder['owner_id'] == \Cruinn\Auth::userId() || \Cruinn\Auth::role() === 'admin'): ?>
+        <?php if ($currentFolder['owner_id'] == \Cruinn\Auth::userId() || \Cruinn\Auth::hasRole('admin')): ?>
         <form method="post"
               action="/drivespace/folders/<?= (int)$currentFolder['id'] ?>/delete"
               style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border,#ccd9d3)"
