@@ -5,5 +5,5 @@
 -- ============================================================
 
 ALTER TABLE `events`
-    ADD COLUMN `external_form_url` VARCHAR(500) NULL
+    ADD COLUMN IF NOT EXISTS `external_form_url` VARCHAR(500) NULL
     AFTER `registration_open`;
