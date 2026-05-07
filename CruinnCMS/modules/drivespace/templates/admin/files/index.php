@@ -415,19 +415,20 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Save Changes</button>
-                <?php if ($currentFolder['owner_id'] == \Cruinn\Auth::userId() || \Cruinn\Auth::role() === 'admin'): ?>
-                <form method="post"
-                      action="/drivespace/folders/<?= (int)$currentFolder['id'] ?>/delete"
-                      style="display:inline"
-                      onsubmit="return confirm('Delete this folder? Contents will be moved to the parent.')">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-danger">Delete Folder</button>
-                </form>
-                <?php endif; ?>
                 <button type="button" class="btn btn-secondary"
                         onclick="this.closest('.modal-overlay').style.display='none'">Cancel</button>
             </div>
         </form>
+
+        <?php if ($currentFolder['owner_id'] == \Cruinn\Auth::userId() || \Cruinn\Auth::role() === 'admin'): ?>
+        <form method="post"
+              action="/drivespace/folders/<?= (int)$currentFolder['id'] ?>/delete"
+              style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border,#ccd9d3)"
+              onsubmit="return confirm('Delete this folder? Contents will be moved to the parent.')">
+            <?= csrf_field() ?>
+            <button type="submit" class="btn btn-danger btn-block">Delete Folder</button>
+        </form>
+        <?php endif; ?>
     </div>
 </div>
 <?php endif; ?>
