@@ -56,12 +56,20 @@
 
                 <div class="form-group">
                     <label for="featured_image">Featured Image URL</label>
-                    <input type="text" id="featured_image" name="featured_image"
-                           value="<?= e($article['featured_image'] ?? '') ?>"
-                           class="form-input" placeholder="/uploads/images/article-hero.jpg">
+                    <div class="media-input-row">
+                        <input type="text" id="featured_image" name="featured_image"
+                               value="<?= e($article['featured_image'] ?? '') ?>"
+                               class="form-input" placeholder="/uploads/images/article-hero.jpg">
+                        <button type="button" class="btn btn-small" data-media-input="featured_image" data-media-preview="featured_image_preview">Browse…</button>
+                    </div>
                     <?php if (!empty($article['featured_image'])): ?>
                         <img src="<?= e($article['featured_image']) ?>" alt="Featured image preview"
-                             style="max-width:300px; margin-top:0.5rem; border-radius:4px;">
+                             id="featured_image_preview"
+                             style="max-width:300px; margin-top:0.5rem; border-radius:4px; display:block;">
+                    <?php else: ?>
+                        <img src="" alt="Featured image preview"
+                             id="featured_image_preview"
+                             style="max-width:300px; margin-top:0.5rem; border-radius:4px; display:none;">
                     <?php endif; ?>
                 </div>
             </div>
