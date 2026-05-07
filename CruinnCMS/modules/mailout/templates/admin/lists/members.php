@@ -217,18 +217,6 @@
                             <?php endforeach; ?>
                         </select>
                     </div>
-
-                    <div class="ml-filter-group">
-                        <label for="year">Membership Year</label>
-                        <select name="year" id="year" onchange="this.form.submit()">
-                            <option value="">All years</option>
-                            <?php foreach ($years as $yr): ?>
-                                <option value="<?= (int)$yr ?>" <?= (string)$filterYear === (string)$yr ? 'selected' : '' ?>>
-                                    <?= (int)$yr ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
                 <?php endif; ?>
 
                 <?php if ($source === 'users'): ?>
