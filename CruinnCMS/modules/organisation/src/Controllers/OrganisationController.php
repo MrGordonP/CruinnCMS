@@ -28,6 +28,15 @@ class OrganisationController extends BaseController
     {
         $roleId = Auth::roleId();
 
+        // Always gather stats for "At a Glance"
+        $stats = [
+            'documents'   => $this->db->fetchColumn('SELECT COUNT(*) FROM documents'),
+            'pending'     => $this->db->fetchColumn("SELECT COUNT(*) FROM documents WHERE status = 'submitted'"),
+            'discussions' => $this->db->fetchColumn('SELECT COUNT(*) FROM discussions'),
+            'posts'       => $this->db->fetchColumn('SELECT COUNT(*) FROM discussion_posts'),
+        ];
+
+        // Role-based widget dashboard
         if ($roleId) {
             $dashService = new DashboardService();
             $widgets = $dashService->buildDashboard($roleId);
@@ -37,12 +46,13 @@ class OrganisationController extends BaseController
                     'title'          => 'Organisation Workspace',
                     'dashboardTitle' => 'Organisation Workspace',
                     'widgets'        => $widgets,
+                    'stats'          => $stats,
                 ]);
                 return;
             }
         }
 
-        // Legacy fallback
+        // Legacy fallback with recent items
         $recentDocuments = $this->db->fetchAll(
             'SELECT d.*, u.display_name AS uploader_name
              FROM documents d
@@ -58,13 +68,6 @@ class OrganisationController extends BaseController
              ORDER BY d.pinned DESC, d.last_post_at DESC, d.created_at DESC
              LIMIT 5'
         );
-
-        $stats = [
-            'documents'   => $this->db->fetchColumn('SELECT COUNT(*) FROM documents'),
-            'pending'     => $this->db->fetchColumn("SELECT COUNT(*) FROM documents WHERE status = 'submitted'"),
-            'discussions' => $this->db->fetchColumn('SELECT COUNT(*) FROM discussions'),
-            'posts'       => $this->db->fetchColumn('SELECT COUNT(*) FROM discussion_posts'),
-        ];
 
         $this->renderOrganisation('organisation/dashboard', [
             'title'             => 'Organisation Workspace',
