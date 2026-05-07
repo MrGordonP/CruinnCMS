@@ -34,6 +34,7 @@ return [
         $router->post('/admin/mailout/{id}',                   [BroadcastController::class, 'update']);
         $router->post('/admin/mailout/{id}/queue',             [BroadcastController::class, 'queue']);
         $router->post('/admin/mailout/{id}/send-now',          [BroadcastController::class, 'sendNow']);
+        $router->post('/admin/mailout/{id}/reopen',            [BroadcastController::class, 'reopen']);
         $router->post('/admin/mailout/{id}/cancel',            [BroadcastController::class, 'cancel']);
         $router->post('/admin/mailout/{id}/delete',            [BroadcastController::class, 'delete']);
     },

@@ -371,6 +371,35 @@ class BroadcastController extends BaseController
         $this->redirect('/admin/mailout/' . $id);
     }
 
+    public function reopen(int $id): void
+    {
+        $broadcast = $this->findOrFail($id);
+
+        if (!in_array($broadcast['status'], ['sent', 'failed'], true)) {
+            Auth::flash('error', 'Only sent or failed mailouts can be reopened.');
+            $this->redirect('/admin/mailout/' . $id);
+        }
+
+        $this->db->transaction(function () use ($id) {
+            $this->db->execute('DELETE FROM email_queue WHERE broadcast_id = ?', [$id]);
+
+            $this->db->update('email_broadcasts', [
+                'status'          => 'draft',
+                'recipient_count' => 0,
+                'sent_count'      => 0,
+                'scheduled_at'    => null,
+                'started_at'      => null,
+                'completed_at'    => null,
+                'updated_at'      => date('Y-m-d H:i:s'),
+            ], 'id = ?', [$id]);
+        });
+
+        $this->logActivity('reopen', 'email_broadcast', $id, "Reopened draft: {$broadcast['subject']}");
+
+        Auth::flash('success', 'Mailout reopened as draft. You can now edit and resend it.');
+        $this->redirect('/admin/mailout/' . $id . '/edit');
+    }
+
     public function delete(int $id): void
     {
         $broadcast = $this->findOrFail($id);

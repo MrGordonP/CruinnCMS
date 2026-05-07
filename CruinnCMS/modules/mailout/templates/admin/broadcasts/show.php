@@ -9,6 +9,13 @@
             <?php if ($broadcast['status'] === 'draft'): ?>
                 <a href="<?= url('/admin/mailout/' . $broadcast['id'] . '/edit') ?>" class="btn btn-primary">Edit</a>
             <?php endif; ?>
+            <?php if (in_array($broadcast['status'], ['sent', 'failed'], true)): ?>
+                <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/reopen') ?>"
+                      onsubmit="return confirm('Reopen this mailout as a draft so it can be edited and resent?')">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-primary">Reopen as Draft</button>
+                </form>
+            <?php endif; ?>
             <?php if (in_array($broadcast['status'], ['queued', 'sending'], true)): ?>
                 <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/cancel') ?>"
                       onsubmit="return confirm('Cancel this mailout and move pending emails back to draft?')">
