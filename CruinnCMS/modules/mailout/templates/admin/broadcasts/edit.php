@@ -214,15 +214,26 @@
                 <p>This mailout will be sent to all active subscribers of the selected mailing list.</p>
             <?php endif; ?>
             <p class="text-muted" style="font-size:0.875rem;">
-                Emails are dispatched by the queue processor. Use the
-                <a href="<?= url('/admin/settings/database') ?>">Database page</a>
-                to run it manually if cron is not yet configured.
+                Addresses in the unsubscribe list are automatically excluded.
             </p>
-            <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/queue') ?>"
-                  onsubmit="return confirm('Queue this mailout for sending?')">
-                <?= csrf_field() ?>
-                <button type="submit" class="btn btn-success">Queue for Sending</button>
-            </form>
+            <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end; margin-top:0.75rem;">
+                <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/send-now') ?>"
+                      onsubmit="return confirm('Send this mailout now to all recipients?')">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-success">Send Now</button>
+                </form>
+                <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/queue') ?>"
+                      onsubmit="return confirm('Queue this mailout for sending?')"
+                      style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
+                    <?= csrf_field() ?>
+                    <div>
+                        <label for="scheduled_at" style="font-size:0.8rem; display:block; margin-bottom:0.2rem;">Schedule for (optional)</label>
+                        <input type="datetime-local" id="scheduled_at" name="scheduled_at"
+                               style="padding:0.35rem 0.5rem; border:1px solid var(--color-border,#ccc); border-radius:4px;">
+                    </div>
+                    <button type="submit" class="btn btn-outline">Queue for Sending</button>
+                </form>
+            </div>
         </div>
     <?php endif; ?>
 </div>

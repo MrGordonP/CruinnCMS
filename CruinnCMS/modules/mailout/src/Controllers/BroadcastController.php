@@ -229,58 +229,11 @@ class BroadcastController extends BaseController
 
         $targetType = $broadcast['target_type'] ?? 'members';
 
-        if ($targetType === 'members') {
-            $config   = json_decode($broadcast['target_config'] ?? '{}', true) ?: [];
-            $statuses = $config['member_status'] ?? ['active', 'honorary'];
-            $year     = !empty($config['membership_year']) ? (int) $config['membership_year'] : null;
+        $recipients = $this->resolveRecipients($broadcast);
 
-            $placeholders = implode(',', array_fill(0, count($statuses), '?'));
-            $params       = $statuses;
-            $yearClause   = '';
-            if ($year !== null) {
-                $yearClause = ' AND m.membership_year = ?';
-                $params[]   = $year;
-            }
-
-            $recipients = $this->db->fetchAll(
-                "SELECT m.email,
-                        TRIM(CONCAT(COALESCE(m.forenames,''), ' ', COALESCE(m.surnames,''))) AS display_name,
-                        NULL AS unsubscribe_token
-                 FROM members m
-                 WHERE m.status IN ({$placeholders})
-                   AND m.email IS NOT NULL AND m.email != ''
-                   {$yearClause}
-                   AND NOT EXISTS (
-                       SELECT 1 FROM email_unsubscribes eu WHERE eu.email = m.email
-                   )
-                 ORDER BY m.surnames, m.forenames",
-                $params
-            );
-        } elseif ($targetType === 'portal_users') {
-            $recipients = $this->db->fetchAll(
-                "SELECT u.email, u.display_name, NULL AS unsubscribe_token
-                 FROM users u
-                 WHERE u.active = 1
-                   AND u.email IS NOT NULL AND u.email != ''
-                   AND NOT EXISTS (
-                       SELECT 1 FROM email_unsubscribes eu WHERE eu.email = u.email
-                   )
-                 ORDER BY u.display_name"
-            );
-        } else {
-            // list — mailing list subscribers
-            if (empty($broadcast['list_id'])) {
-                Auth::flash('error', 'A mailing list must be assigned before queuing.');
-                $this->redirect('/admin/mailout/' . $id . '/edit');
-            }
-
-            $recipients = $this->db->fetchAll(
-                'SELECT u.email, u.display_name, mls.unsubscribe_token
-                 FROM mailing_list_subscriptions mls
-                 JOIN users u ON u.id = mls.user_id
-                 WHERE mls.list_id = ? AND mls.status = \'active\' AND u.active = 1',
-                [$broadcast['list_id']]
-            );
+        if ($targetType === 'list' && empty($broadcast['list_id'])) {
+            Auth::flash('error', 'A mailing list must be assigned before queuing.');
+            $this->redirect('/admin/mailout/' . $id . '/edit');
         }
 
         if (empty($recipients)) {
@@ -296,20 +249,96 @@ class BroadcastController extends BaseController
                     'recipient_name'    => trim($sub['display_name'] ?? ''),
                     'unsubscribe_token' => $sub['unsubscribe_token'] ?? null,
                     'status'            => 'pending',
+                    'next_retry_at'     => $this->input('scheduled_at') ?: null,
                 ]);
             }
 
             $this->db->update('email_broadcasts', [
                 'status'          => 'queued',
                 'recipient_count' => count($recipients),
+                'scheduled_at'    => $this->input('scheduled_at') ?: null,
                 'updated_at'      => date('Y-m-d H:i:s'),
             ], 'id = ?', [$id]);
         });
 
         $count = count($recipients);
+        $scheduleNote = $this->input('scheduled_at') ? ' scheduled for ' . $this->input('scheduled_at') : '';
         $this->logActivity('queue', 'email_broadcast', $id,
-            "Queued broadcast \"{$broadcast['subject']}\" to {$count} recipients");
-        Auth::flash('success', "Mailout queued for {$count} recipients. Run the email queue processor to send.");
+            "Queued broadcast \"{$broadcast['subject']}\" to {$count} recipients{$scheduleNote}");
+        $scheduleMsg = $this->input('scheduled_at') ? ' Scheduled for ' . $this->input('scheduled_at') . '.' : ' Run the email queue processor to send.';
+        Auth::flash('success', "Mailout queued for {$count} recipients.{$scheduleMsg}");
+        $this->redirect('/admin/mailout/' . $id);
+    }
+
+    public function sendNow(int $id): void
+    {
+        $broadcast = $this->findOrFail($id);
+
+        if ($broadcast['status'] !== 'draft') {
+            Auth::flash('error', 'Only draft mailouts can be sent.');
+            $this->redirect('/admin/mailout/' . $id);
+        }
+
+        $recipients = $this->resolveRecipients($broadcast);
+
+        if (empty($recipients)) {
+            Auth::flash('warning', 'No eligible recipients found for this mailout.');
+            $this->redirect('/admin/mailout/' . $id);
+        }
+
+        $siteUrl = \Cruinn\App::config('site.url', '');
+        $appName = \Cruinn\App::config('site.name', 'CruinnCMS');
+        $sent    = 0;
+        $failed  = 0;
+
+        $this->db->update('email_broadcasts', [
+            'status'          => 'sending',
+            'recipient_count' => count($recipients),
+            'started_at'      => date('Y-m-d H:i:s'),
+            'updated_at'      => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$id]);
+
+        foreach ($recipients as $recipient) {
+            $name  = trim($recipient['display_name'] ?? '');
+            $email = $recipient['email'];
+
+            $html = str_replace(['{{name}}', '{{email}}'],
+                [htmlspecialchars($name, ENT_QUOTES | ENT_HTML5), htmlspecialchars($email, ENT_QUOTES | ENT_HTML5)],
+                $broadcast['body_html']);
+            $text = str_replace(['{{name}}', '{{email}}'], [$name, $email], $broadcast['body_text']);
+
+            if (!empty($recipient['unsubscribe_token'])) {
+                $unsubUrl  = rtrim($siteUrl, '/') . '/mailing-lists/unsubscribe/' . $recipient['unsubscribe_token'];
+                $html .= '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">'
+                       . '<p style="font-size:12px;color:#6b7280;">You are receiving this email as a subscriber of '
+                       . htmlspecialchars($appName, ENT_QUOTES | ENT_HTML5) . '. '
+                       . '<a href="' . htmlspecialchars($unsubUrl, ENT_QUOTES | ENT_HTML5) . '" style="color:#6b7280;">Unsubscribe</a>.</p>';
+                $text .= "\n---\nUnsubscribe: {$unsubUrl}\n";
+            }
+
+            try {
+                \Cruinn\Mailer::send($email, $broadcast['subject'], $html, $text);
+                $sent++;
+                $this->db->execute(
+                    'UPDATE email_broadcasts SET sent_count = sent_count + 1 WHERE id = ?', [$id]
+                );
+            } catch (\Throwable $e) {
+                $failed++;
+            }
+        }
+
+        $this->db->update('email_broadcasts', [
+            'status'       => $failed === count($recipients) ? 'failed' : 'sent',
+            'completed_at' => date('Y-m-d H:i:s'),
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$id]);
+
+        $this->logActivity('send', 'email_broadcast', $id,
+            "Sent broadcast \"{$broadcast['subject']}\" — {$sent} sent, {$failed} failed");
+
+        $msg = "Sent to {$sent} recipient" . ($sent !== 1 ? 's' : '');
+        if ($failed > 0) $msg .= ", {$failed} failed";
+        Auth::flash($failed > 0 ? 'warning' : 'success', $msg);
         $this->redirect('/admin/mailout/' . $id);
     }
 
@@ -401,6 +430,65 @@ class BroadcastController extends BaseController
             'body_html'     => $bodyHtml,
             'body_text'     => $bodyText,
         ];
+    }
+
+    private function resolveRecipients(array $broadcast): array
+    {
+        $targetType = $broadcast['target_type'] ?? 'members';
+
+        if ($targetType === 'members') {
+            $config   = json_decode($broadcast['target_config'] ?? '{}', true) ?: [];
+            $statuses = $config['member_status'] ?? ['active', 'honorary'];
+            $year     = !empty($config['membership_year']) ? (int) $config['membership_year'] : null;
+
+            $placeholders = implode(',', array_fill(0, count($statuses), '?'));
+            $params       = $statuses;
+            $yearClause   = '';
+            if ($year !== null) {
+                $yearClause = ' AND m.membership_year = ?';
+                $params[]   = $year;
+            }
+
+            return $this->db->fetchAll(
+                "SELECT m.email,
+                        TRIM(CONCAT(COALESCE(m.forenames,''), ' ', COALESCE(m.surnames,''))) AS display_name,
+                        NULL AS unsubscribe_token
+                 FROM members m
+                 WHERE m.status IN ({$placeholders})
+                   AND m.email IS NOT NULL AND m.email != ''
+                   {$yearClause}
+                   AND NOT EXISTS (
+                       SELECT 1 FROM email_unsubscribes eu WHERE eu.email = m.email
+                   )
+                 ORDER BY m.surnames, m.forenames",
+                $params
+            );
+        }
+
+        if ($targetType === 'portal_users') {
+            return $this->db->fetchAll(
+                "SELECT u.email, u.display_name, NULL AS unsubscribe_token
+                 FROM users u
+                 WHERE u.active = 1
+                   AND u.email IS NOT NULL AND u.email != ''
+                   AND NOT EXISTS (
+                       SELECT 1 FROM email_unsubscribes eu WHERE eu.email = u.email
+                   )
+                 ORDER BY u.display_name"
+            );
+        }
+
+        // list
+        if (empty($broadcast['list_id'])) {
+            return [];
+        }
+        return $this->db->fetchAll(
+            'SELECT u.email, u.display_name, mls.unsubscribe_token
+             FROM mailing_list_subscriptions mls
+             JOIN users u ON u.id = mls.user_id
+             WHERE mls.list_id = ? AND mls.status = \'active\' AND u.active = 1',
+            [$broadcast['list_id']]
+        );
     }
 
     private function findOrFail(int $id): array
