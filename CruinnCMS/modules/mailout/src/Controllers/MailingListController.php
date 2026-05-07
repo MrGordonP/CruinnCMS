@@ -373,7 +373,7 @@ class MailingListController extends BaseController
                 // Member-only record
                 $memberId = (int)substr($selectedId, 2);
                 $member = $this->db->fetch(
-                    'SELECT m.email, CONCAT(m.first_name, " ", m.last_name) AS name, u.id AS user_id
+                    'SELECT m.email, CONCAT(m.forenames, " ", m.surnames) AS name, u.id AS user_id
                      FROM members m
                      LEFT JOIN users u ON u.id = m.user_id
                      WHERE m.id = ?',
