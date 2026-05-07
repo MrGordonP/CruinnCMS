@@ -120,8 +120,8 @@
         <?php endif; ?>
 
         <div class="pl-detail-actions">
-            <a href="/documents/new" class="btn btn-sm btn-outline">⬆ Upload Doc</a>
-            <a href="/organisation/discussions/new" class="btn btn-sm btn-outline">+ Discussion</a>
+            <a href="/documents/new" class="btn btn-sm btn-outline">📄 New Document</a>
+            <a href="/organisation/discussions/new" class="btn btn-sm btn-outline">💬 New Discussion</a>
         </div>
     </div>
 </div>

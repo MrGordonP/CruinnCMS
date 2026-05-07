@@ -156,10 +156,10 @@ use Cruinn\Module\Documents\Controllers\DocumentController;
 <script>
 (function() {
     const versionForm = document.querySelector('form.version-upload-form');
-    
+
     if (versionForm) {
         const submitBtn = versionForm.querySelector('button[type="submit"]');
-        
+
         versionForm.addEventListener('submit', function(e) {
             if (submitBtn) {
                 submitBtn.disabled = true;

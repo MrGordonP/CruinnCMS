@@ -68,7 +68,7 @@
 (function() {
     const form = document.querySelector('form.admin-form');
     const submitBtn = document.getElementById('upload-btn');
-    
+
     if (form && submitBtn) {
         form.addEventListener('submit', function(e) {
             // Disable submit button to prevent double-clicks
@@ -76,7 +76,7 @@
             submitBtn.textContent = 'Uploading...';
             submitBtn.style.opacity = '0.6';
             submitBtn.style.cursor = 'wait';
-            
+
             // Optional: Add a spinner
             submitBtn.innerHTML = '<span style="display:inline-block;margin-right:0.5rem">⏳</span> Uploading...';
         });
