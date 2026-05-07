@@ -25,7 +25,14 @@
         var parent = group.querySelector('.admin-sidebar-parent');
         if (!flyout || !parent) return;
 
-        if (flyout.querySelector('a[href="' + currentPath + '"]')) {
+        // Check if any link in the flyout matches or is a prefix of current path
+        var links = flyout.querySelectorAll('a[href]');
+        var shouldOpen = Array.from(links).some(function (link) {
+            var href = link.getAttribute('href');
+            return currentPath === href || currentPath.startsWith(href + '/');
+        });
+        
+        if (shouldOpen) {
             group.classList.add('open');
         }
 
