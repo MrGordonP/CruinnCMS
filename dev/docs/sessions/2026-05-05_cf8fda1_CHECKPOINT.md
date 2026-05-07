@@ -1,7 +1,7 @@
 # v1.0.0-beta.7 Checkpoint
 
 **Version:** v1.0.0-beta.7
-**HEAD:** 399dfb3
+**HEAD:** 3abe4a5
 **Date:** 2025-05-07
 
 ---
@@ -73,6 +73,11 @@
 - Disables submit button, changes text to "Uploading..." with hourglass emoji, sets opacity/cursor to indicate processing
 - Prevents confusion when large files take time to upload
 
+### 10. Organisation dashboard action button clarity
+- Changed "⬆ Upload Doc" to "📄 New Document" for clarity
+- Changed "+ Discussion" to "💬 New Discussion" for consistency
+- Makes it clearer that the Document button creates a new document (via /documents module)
+
 ---
 
 ## Known Pending Issues
@@ -80,7 +85,10 @@
 - **Save Theme 404** — POST `/admin/theme` route is registered and middleware does not produce a 404. Routes, CSRF, and middleware all check out in static analysis. Needs live testing.
 - **Load Theme / theme switcher** — not yet built. Planned: dropdown of `.css` files in `public_html/css/themes/`, POST to `/admin/theme/activate`.
 
----
+-abe4a5  fix(organisation): clarify action button labels on dashboard [v1.0.0-beta.7]
+9b4b326  docs: fix checkpoint commits section [v1.0.0-beta.7]
+183fa76  docs: update checkpoint — upload feedback indicators [v1.0.0-beta.7]
+3--
 
 ## Commits in this session
 
