@@ -46,7 +46,9 @@
             </div>
             <?php endif; ?>
 
-            <?php if (!empty($userRegistered)): ?>
+            <?php if (!empty($event['external_form_url'])): ?>
+            <a href="<?= e($event['external_form_url']) ?>" class="btn btn-primary btn-block" target="_blank" rel="noopener">Register</a>
+            <?php elseif (!empty($userRegistered)): ?>
             <div class="event-registered-notice">
                 <strong>&#10003; You are registered</strong>
             </div>
