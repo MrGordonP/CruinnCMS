@@ -37,10 +37,13 @@
         }
 
         parent.addEventListener('click', function (event) {
-            // Caret toggles the flyout; link text navigates normally
+            // Caret toggles the flyout only; link text navigates AND expands
             if (event.target.closest('.sidebar-caret')) {
                 event.preventDefault();
                 group.classList.toggle('open');
+            } else {
+                // Clicking the text: expand menu (link will navigate normally)
+                group.classList.add('open');
             }
         });
     });
