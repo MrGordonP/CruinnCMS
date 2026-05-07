@@ -141,7 +141,7 @@ class BroadcastController extends BaseController
             'stats'      => $queueStats,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
-                ['label' => $broadcast['subject']],
+                [$broadcast['subject']],
             ],
         ]);
     }

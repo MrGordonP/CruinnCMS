@@ -148,18 +148,17 @@
                     <td><?= e($reg['dietary_notes'] ?? '—') ?></td>
                     <td><?= e($reg['access_notes'] ?? '—') ?></td>
                     <?php if ($event['price'] > 0): ?>
-                    <td>
-                        <span class="badge badge-<?= e($reg['payment_status']) ?>"><?= e(ucfirst($reg['payment_status'])) ?></span>
+                    <td><span class="badge badge-<?= e($reg['payment_status'] ?? 'pending') ?>"><?= e(ucfirst($reg['payment_status'] ?? 'pending')) ?></span>
                         <?php if ($reg['amount_paid'] > 0): ?>
                             <br><small>&euro;<?= number_format((float) $reg['amount_paid'], 2) ?></small>
                         <?php endif; ?>
                     </td>
                     <?php endif; ?>
                     <td><span class="badge badge-<?= e($reg['status']) ?>"><?= e(ucfirst($reg['status'])) ?></span></td>
-                    <td><time datetime="<?= e($reg['registered_at']) ?>"><?= format_date($reg['registered_at'], 'j M H:i') ?></time></td>
+                    <td><time datetime="<?= e($reg['created_at']) ?>"><?= format_date($reg['created_at'], 'j M H:i') ?></time></td>
                     <td class="actions-cell">
                         <?php if ($reg['status'] === 'confirmed'): ?>
-                            <?php if ($event['price'] > 0 && $reg['payment_status'] === 'pending'): ?>
+                            <?php if ($event['price'] > 0 && ($reg['payment_status'] ?? '') === 'pending'): ?>
                             <form method="post" action="/admin/events/<?= (int) $event['id'] ?>/registrations/<?= (int) $reg['id'] ?>/payment" class="inline-form">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn-small btn-success" onclick="return confirm('Mark as paid?')">Mark Paid</button>
