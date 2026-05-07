@@ -169,13 +169,8 @@ class ArticleEditorController extends BaseController
             ]);
         } catch (\Throwable $e) {
             if ($pdo && $pdo->inTransaction()) { $pdo->rollBack(); }
-            error_log('ArticleEditorController::recordAction: ' . $e->getMessage());
-            // TEMP DEBUG — remove after diagnosing
-            $this->json([
-                'error' => $e->getMessage(),
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine(),
-            ], 500);
+            error_log('ArticleEditorController::recordAction: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            $this->json(['success' => false, 'error' => $e->getMessage()], 200);
         }
     }
 
