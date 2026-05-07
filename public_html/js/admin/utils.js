@@ -41,7 +41,8 @@
      * Read the CSRF token from the DOM.
      */
     Cruinn.getCSRFToken = function () {
-        var el = document.querySelector('input[name="_csrf_token"]');
+        var el = document.querySelector('input[name="_csrf_token"]')
+            || document.querySelector('input[name="csrf_token"]');
         return el ? el.value : '';
     };
 
