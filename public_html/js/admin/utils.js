@@ -43,7 +43,15 @@
     Cruinn.getCSRFToken = function () {
         var el = document.querySelector('input[name="_csrf_token"]')
             || document.querySelector('input[name="csrf_token"]');
-        return el ? el.value : '';
+        if (el) { return el.value; }
+
+        var editorWrap = document.getElementById('editor-wrap');
+        if (editorWrap && editorWrap.dataset && editorWrap.dataset.csrf) {
+            return editorWrap.dataset.csrf;
+        }
+
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.content : '';
     };
 
     /**
