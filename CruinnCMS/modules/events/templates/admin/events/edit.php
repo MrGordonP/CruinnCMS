@@ -108,6 +108,12 @@
                     <input type="datetime-local" id="reg_deadline" name="reg_deadline" value="<?= e($event && !empty($event['reg_deadline']) ? date('Y-m-d\TH:i', strtotime($event['reg_deadline'])) : '') ?>">
                     <small class="help-text">Leave blank for no deadline.</small>
                 </div>
+
+                <div class="form-group">
+                    <label for="external_form_url">External Registration Form URL</label>
+                    <input type="url" id="external_form_url" name="external_form_url" value="<?= e($event['external_form_url'] ?? '') ?>" placeholder="https://forms.google.com/...">
+                    <small class="help-text">If set, this URL is used instead of the built-in registration system.</small>
+                </div>
             </div>
         </div>
 

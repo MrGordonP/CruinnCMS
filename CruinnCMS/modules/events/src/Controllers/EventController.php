@@ -517,6 +517,7 @@ class EventController extends BaseController
             'currency'          => $this->input('currency', 'EUR'),
             'reg_deadline'      => $this->input('reg_deadline') ?: null,
             'registration_open' => $this->input('registration_open') ? 1 : 0,
+            'external_form_url' => $this->input('external_form_url') ?: null,
             'status'            => $this->input('status', 'draft'),
             'created_by'        => Auth::userId(),
             'created_at'        => date('Y-m-d H:i:s'),
@@ -595,6 +596,7 @@ class EventController extends BaseController
             'currency'          => $this->input('currency', 'EUR'),
             'reg_deadline'      => $this->input('reg_deadline') ?: null,
             'registration_open' => $this->input('registration_open') ? 1 : 0,
+            'external_form_url' => $this->input('external_form_url') ?: null,
             'status'            => $this->input('status', 'draft'),
             'updated_at'        => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);

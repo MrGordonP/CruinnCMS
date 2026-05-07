@@ -38,3 +38,13 @@ Uploading a hero image via the media browser modal showed no feedback — the bu
 ## Platform / General
 
 *(none currently logged)*
+
+---
+
+## Mailout Module
+
+### [PINNED] Mailing list audience option — UX not obvious
+The "Mailing List Subscribers" radio on `/admin/mailout/new` does show a named-list dropdown, but it is not clear to the user that selecting the radio then choosing from the dropdown is how it works. Consider a helper label or inline description under the dropdown once selected.
+
+### [PINNED] Mailout subject field — allow selection from Subjects list
+The Subject field on `/admin/mailout/new` (and edit) is free text only. It would be useful to allow selecting from the existing Subjects list (geology topics / subject registry) to pre-fill or constrain the subject line.
