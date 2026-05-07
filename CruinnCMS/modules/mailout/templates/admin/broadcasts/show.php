@@ -67,15 +67,32 @@
         </div>
     </div>
 
-    <?php if ($broadcast['status'] === 'draft'): ?>
+    <?php if (in_array($broadcast['status'], ['draft', 'queued'], true)): ?>
         <div class="broadcast-queue-section">
-            <h2>Ready to send?</h2>
-            <p>Queue this mailout to all active subscribers of <strong><?= e($broadcast['list_name'] ?? 'the selected list') ?></strong>.</p>
-            <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/queue') ?>"
-                  onsubmit="return confirm('Queue this mailout for sending?')">
-                <?= csrf_field() ?>
-                <button type="submit" class="btn btn-success">Queue for Sending</button>
-            </form>
+            <h2>Send</h2>
+            <?php if ($broadcast['status'] === 'queued'): ?>
+                <p class="text-muted" style="font-size:0.875rem;">This mailout is queued. You can send it immediately or leave it for the queue processor.</p>
+            <?php endif; ?>
+            <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:flex-end;">
+                <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/send-now') ?>"
+                      onsubmit="return confirm('Send this mailout now to all recipients?')">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-success">Send Now</button>
+                </form>
+                <?php if ($broadcast['status'] === 'draft'): ?>
+                <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/queue') ?>"
+                      onsubmit="return confirm('Queue this mailout for sending?')"
+                      style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
+                    <?= csrf_field() ?>
+                    <div>
+                        <label for="scheduled_at" style="font-size:0.8rem; display:block; margin-bottom:0.2rem;">Schedule for (optional)</label>
+                        <input type="datetime-local" id="scheduled_at" name="scheduled_at"
+                               style="padding:0.35rem 0.5rem; border:1px solid var(--color-border,#ccc); border-radius:4px;">
+                    </div>
+                    <button type="submit" class="btn btn-outline">Queue for Sending</button>
+                </form>
+                <?php endif; ?>
+            </div>
         </div>
     <?php endif; ?>
 </div>

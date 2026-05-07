@@ -191,6 +191,7 @@
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save Draft</button>
             <a href="<?= url('/admin/mailout') ?>" class="btn btn-outline">Cancel</a>
+            <span class="text-muted" style="font-size:0.8rem; margin-left:0.5rem;">Save before sending &mdash; audience and content must be saved first.</span>
         </div>
     </form>
 

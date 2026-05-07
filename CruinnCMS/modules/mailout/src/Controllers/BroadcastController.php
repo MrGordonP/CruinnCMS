@@ -274,8 +274,8 @@ class BroadcastController extends BaseController
     {
         $broadcast = $this->findOrFail($id);
 
-        if ($broadcast['status'] !== 'draft') {
-            Auth::flash('error', 'Only draft mailouts can be sent.');
+        if (!in_array($broadcast['status'], ['draft', 'queued'], true)) {
+            Auth::flash('error', 'Only draft or queued mailouts can be sent.');
             $this->redirect('/admin/mailout/' . $id);
         }
 
@@ -296,7 +296,12 @@ class BroadcastController extends BaseController
             'recipient_count' => count($recipients),
             'started_at'      => date('Y-m-d H:i:s'),
             'updated_at'      => date('Y-m-d H:i:s'),
-        ], 'id = ?', [$id]);
+        ], 'id = ?', [$id]);\n
+        // Discard any pending queue rows (in case this was previously queued)
+        $this->db->execute(
+            "UPDATE email_queue SET status = 'skipped' WHERE broadcast_id = ? AND status = 'pending'",
+            [$id]
+        );
 
         foreach ($recipients as $recipient) {
             $name  = trim($recipient['display_name'] ?? '');
