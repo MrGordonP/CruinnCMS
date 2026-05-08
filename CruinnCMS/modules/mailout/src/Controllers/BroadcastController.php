@@ -3,7 +3,7 @@
  * CruinnCMS - Mailout Controller
  *
  * Admin UI for composing and sending email campaigns to mailing lists.
- * Mailouts are queued in email_queue and processed by modules/mailout/tools/process-email-queue.php.
+ * Mailouts can be queued (email_queue table) or sent immediately.
  */
 
 namespace Cruinn\Module\Mailout\Controllers;
@@ -444,6 +444,112 @@ class BroadcastController extends BaseController
 
         Auth::flash('success', 'Mailout reopened as draft. You can now edit and resend it.');
         $this->redirect('/admin/mailout/' . $id . '/edit');
+    }
+
+    public function processQueue(int $limit = 200): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT q.*, b.subject, b.body_html, b.body_text, b.id AS broadcast_id
+             FROM email_queue q
+             JOIN email_broadcasts b ON b.id = q.broadcast_id
+             WHERE q.status = \'pending\'
+               AND b.status IN (\'queued\', \'sending\')
+               AND (q.next_retry_at IS NULL OR q.next_retry_at <= NOW())
+             ORDER BY q.id ASC
+             LIMIT ?',
+            [$limit]
+        );
+
+        if (empty($rows)) {
+            return ['sent' => 0, 'failed' => 0];
+        }
+
+        $siteUrl = \Cruinn\App::config('site.url', '');
+        $appName = \Cruinn\App::config('site.name', 'CruinnCMS');
+        $sent = 0;
+        $failed = 0;
+
+        // Mark broadcasts as "sending" on first batch
+        $broadcastIds = array_unique(array_column($rows, 'broadcast_id'));
+        foreach ($broadcastIds as $bid) {
+            $this->db->execute(
+                'UPDATE email_broadcasts SET status = \'sending\', started_at = COALESCE(started_at, NOW()) WHERE id = ? AND status = \'queued\'',
+                [$bid]
+            );
+        }
+
+        foreach ($rows as $row) {
+            $recipientEmail = $row['recipient_email'];
+            $recipientName  = $row['recipient_name'] ?? '';
+
+            $html = str_replace(['{{name}}', '{{email}}'],
+                [htmlspecialchars($recipientName, ENT_QUOTES | ENT_HTML5), htmlspecialchars($recipientEmail, ENT_QUOTES | ENT_HTML5)],
+                $row['body_html']);
+            $text = str_replace(['{{name}}', '{{email}}'], [$recipientName, $recipientEmail], $row['body_text']);
+
+            // Convert relative URLs to absolute
+            $html = preg_replace_callback(
+                '/(src|href)=["\'](\/)([^"\']+)["\']/i',
+                function($matches) use ($siteUrl) {
+                    return $matches[1] . '="' . rtrim($siteUrl, '/') . '/' . $matches[3] . '"';
+                },
+                $html
+            );
+
+            if (!empty($row['unsubscribe_token'])) {
+                $unsubUrl = rtrim($siteUrl, '/') . '/mailing-lists/unsubscribe/' . $row['unsubscribe_token'];
+                $html .= '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">'
+                       . '<p style="font-size:12px;color:#6b7280;">You are receiving this email as a subscriber of '
+                       . htmlspecialchars($appName, ENT_QUOTES | ENT_HTML5) . '. '
+                       . '<a href="' . htmlspecialchars($unsubUrl, ENT_QUOTES | ENT_HTML5) . '" style="color:#6b7280;">Unsubscribe</a>.</p>';
+                $text .= "\n---\nUnsubscribe: {$unsubUrl}\n";
+            }
+
+            try {
+                \Cruinn\Mailer::send($recipientEmail, $row['subject'], $html, $text);
+                $this->db->update('email_queue', [
+                    'status'       => 'sent',
+                    'attempts'     => $row['attempts'] + 1,
+                    'last_error'   => null,
+                    'processed_at' => date('Y-m-d H:i:s'),
+                ], 'id = ?', [(int)$row['id']]);
+                $this->db->execute(
+                    'UPDATE email_broadcasts SET sent_count = sent_count + 1, updated_at = NOW() WHERE id = ?',
+                    [$row['broadcast_id']]
+                );
+                $sent++;
+            } catch (\Throwable $e) {
+                $attempts = $row['attempts'] + 1;
+                $maxAttempts = 3;
+                $newStatus = $attempts >= $maxAttempts ? 'failed' : 'pending';
+                $nextRetry = $attempts >= $maxAttempts ? null : date('Y-m-d H:i:s', time() + (60 * $attempts * 5));
+
+                $this->db->update('email_queue', [
+                    'status'        => $newStatus,
+                    'attempts'      => $attempts,
+                    'last_error'    => $e->getMessage(),
+                    'next_retry_at' => $nextRetry,
+                    'processed_at'  => date('Y-m-d H:i:s'),
+                ], 'id = ?', [(int)$row['id']]);
+                $failed++;
+            }
+        }
+
+        // Mark fully-sent broadcasts as complete
+        foreach ($broadcastIds as $bid) {
+            $remaining = (int)$this->db->fetchColumn(
+                'SELECT COUNT(*) FROM email_queue WHERE broadcast_id = ? AND status = \'pending\'',
+                [$bid]
+            );
+            if ($remaining === 0) {
+                $this->db->execute(
+                    'UPDATE email_broadcasts SET status = \'sent\', completed_at = NOW(), updated_at = NOW() WHERE id = ? AND status = \'sending\'',
+                    [$bid]
+                );
+            }
+        }
+
+        return ['sent' => $sent, 'failed' => $failed];
     }
 
     public function duplicate(int $id): void

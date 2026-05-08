@@ -290,22 +290,19 @@ class AcpSystemController extends BaseController
 
     public function runQueue(): void
     {
-        $script = dirname(__DIR__, 3) . '/modules/mailout/tools/process-email-queue.php';
-        if (!file_exists($script)) {
-            Auth::flash('error', 'Queue processor script not found.');
-            $this->redirect('/admin/settings/database');
-        }
+        // Call the mailout module's queue processor
+        $controller = new \Cruinn\Module\Mailout\Controllers\BroadcastController();
+        $result = $controller->processQueue(200);
 
-        $php = PHP_BINARY;
-        $cmd = escapeshellarg($php) . ' ' . escapeshellarg($script) . ' --limit 200 2>&1';
-        $output = [];
-        exec($cmd, $output, $code);
+        $sent = $result['sent'];
+        $failed = $result['failed'];
 
-        $summary = implode('\n', array_filter($output));
-        if ($code === 0) {
-            Auth::flash('success', 'Queue processed. ' . htmlspecialchars($summary, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($sent > 0 || $failed > 0) {
+            $msg = "Processed {$sent} emails.";
+            if ($failed > 0) $msg .= " {$failed} failed.";
+            Auth::flash($failed > 0 ? 'warning' : 'success', $msg);
         } else {
-            Auth::flash('warning', 'Queue processor finished with warnings. ' . htmlspecialchars($summary, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            Auth::flash('info', 'No pending emails in queue.');
         }
 
         $this->redirect('/admin/settings/database');
