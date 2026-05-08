@@ -57,6 +57,29 @@ class BroadcastController extends BaseController
         $this->json(['title' => $article['title'], 'html' => $html]);
     }
 
+    public function broadcastImport(): void
+    {
+        Auth::requireRole('admin');
+        $broadcastId = (int) $this->query('broadcast_id', 0);
+        if (!$broadcastId) {
+            $this->json(['error' => 'No broadcast_id provided'], 400);
+        }
+
+        $broadcast = $this->db->fetch(
+            'SELECT subject, body_html, body_text FROM email_broadcasts WHERE id = ?',
+            [$broadcastId]
+        );
+        if (!$broadcast) {
+            $this->json(['error' => 'Mailout not found'], 404);
+        }
+
+        $this->json([
+            'subject'   => $broadcast['subject'],
+            'body_html' => $broadcast['body_html'],
+            'body_text' => $broadcast['body_text'],
+        ]);
+    }
+
     public function newForm(): void
     {
         $lists = $this->db->fetchAll(
@@ -89,6 +112,10 @@ class BroadcastController extends BaseController
             "SELECT id, title FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 100"
         );
 
+        $previousBroadcasts = $this->db->fetchAll(
+            "SELECT id, subject, created_at FROM email_broadcasts ORDER BY created_at DESC LIMIT 50"
+        );
+
         $this->renderAdmin('admin/broadcasts/edit', [
             'title'                => 'New Mailout',
             'broadcast'            => null,
@@ -97,6 +124,7 @@ class BroadcastController extends BaseController
             'portal_user_count'    => $portalUserCount,
             'year_options'         => $yearOptions,
             'articles'             => $articles,
+            'previous_broadcasts'  => $previousBroadcasts,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 ['New'],
@@ -135,10 +163,19 @@ class BroadcastController extends BaseController
             [$id]
         );
 
+        $recipients = $this->db->fetchAll(
+            "SELECT recipient_email, recipient_name, status, sent_at, error
+             FROM email_queue
+             WHERE broadcast_id = ?
+             ORDER BY status DESC, recipient_email ASC",
+            [$id]
+        );
+
         $this->renderAdmin('admin/broadcasts/show', [
-            'title'      => $broadcast['subject'],
-            'broadcast'  => $broadcast,
-            'stats'      => $queueStats,
+            'title'       => $broadcast['subject'],
+            'broadcast'   => $broadcast,
+            'stats'       => $queueStats,
+            'recipients'  => $recipients,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 [$broadcast['subject']],
@@ -185,6 +222,11 @@ class BroadcastController extends BaseController
             "SELECT id, title FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 100"
         );
 
+        $previousBroadcasts = $this->db->fetchAll(
+            "SELECT id, subject, created_at FROM email_broadcasts WHERE id != ? ORDER BY created_at DESC LIMIT 50",
+            [$id]
+        );
+
         $this->renderAdmin('admin/broadcasts/edit', [
             'title'                => 'Edit Mailout',
             'broadcast'            => $broadcast,
@@ -193,6 +235,7 @@ class BroadcastController extends BaseController
             'portal_user_count'    => $portalUserCount,
             'year_options'         => $yearOptions,
             'articles'             => $articles,
+            'previous_broadcasts'  => $previousBroadcasts,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 ['Edit'],
@@ -390,6 +433,29 @@ class BroadcastController extends BaseController
 
         Auth::flash('success', 'Mailout reopened as draft. You can now edit and resend it.');
         $this->redirect('/admin/mailout/' . $id . '/edit');
+    }
+
+    public function duplicate(int $id): void
+    {
+        $source = $this->findOrFail($id);
+
+        $newId = $this->db->insert('email_broadcasts', [
+            'target_type'   => $source['target_type'],
+            'list_id'       => $source['list_id'],
+            'target_config' => $source['target_config'],
+            'subject'       => $source['subject'] . ' (Copy)',
+            'body_html'     => $source['body_html'],
+            'body_text'     => $source['body_text'],
+            'status'        => 'draft',
+            'created_by'    => Auth::userId(),
+            'created_at'    => date('Y-m-d H:i:s'),
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->logActivity('duplicate', 'email_broadcast', (int) $newId, "Duplicated from: {$source['subject']}");
+
+        Auth::flash('success', 'Mailout duplicated successfully. You can now edit it.');
+        $this->redirect('/admin/mailout/' . $newId . '/edit');
     }
 
     public function delete(int $id): void

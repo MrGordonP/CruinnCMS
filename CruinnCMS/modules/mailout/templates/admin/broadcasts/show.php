@@ -9,6 +9,7 @@
             <?php if ($broadcast['status'] === 'draft'): ?>
                 <a href="<?= url('/admin/mailout/' . $broadcast['id'] . '/edit') ?>" class="btn btn-primary">Edit</a>
             <?php endif; ?>
+            <a href="<?= url('/admin/mailout/' . $broadcast['id'] . '/duplicate') ?>" class="btn btn-outline">Duplicate</a>
             <?php if (in_array($broadcast['status'], ['sent', 'failed'], true)): ?>
                 <form method="post" action="<?= url('/admin/mailout/' . $broadcast['id'] . '/reopen') ?>"
                       onsubmit="return confirm('Reopen this mailout as a draft so it can be edited and resent?')">
@@ -58,6 +59,46 @@
                 <div class="stat-box stat-danger"><span class="stat-num"><?= (int)$stats['failed'] ?></span><span class="stat-label">Failed</span></div>
                 <div class="stat-box stat-muted"><span class="stat-num"><?= (int)$stats['skipped'] ?></span><span class="stat-label">Skipped</span></div>
             </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if (!empty($recipients)): ?>
+        <div class="broadcast-recipients">
+            <h2>Recipients (<?= count($recipients) ?>)</h2>
+            <table class="admin-table" style="font-size:0.875rem;">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Sent At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($recipients as $r): ?>
+                        <tr>
+                            <td><?= e($r['recipient_email']) ?></td>
+                            <td><?= e($r['recipient_name'] ?: '—') ?></td>
+                            <td>
+                                <?php
+                                $statusBadges = [
+                                    'sent'    => 'badge-success',
+                                    'pending' => 'badge-warning',
+                                    'failed'  => 'badge-danger',
+                                    'skipped' => 'badge-secondary'
+                                ];
+                                $badge = $statusBadges[$r['status']] ?? 'badge-secondary';
+                                ?>
+                                <span class="badge <?= $badge ?>"><?= e(ucfirst($r['status'])) ?></span>
+                                <?php if ($r['status'] === 'failed' && !empty($r['error'])): ?>
+                                    <span class="text-muted" style="font-size:0.75rem;" title="<?= e($r['error']) ?>">⚠</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= $r['sent_at'] ? e(date('d M Y H:i', strtotime($r['sent_at']))) : '—' ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     <?php endif; ?>
 

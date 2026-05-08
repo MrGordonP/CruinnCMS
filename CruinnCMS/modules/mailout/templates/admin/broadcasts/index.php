@@ -40,6 +40,7 @@
                             <?php else: ?>
                                 <a href="<?= url('/admin/mailout/' . $b['id']) ?>" class="btn btn-outline btn-tiny">View</a>
                             <?php endif; ?>
+                            <a href="<?= url('/admin/mailout/' . $b['id'] . '/duplicate') ?>" class="btn btn-outline btn-tiny" title="Create a new draft from this mailout">Use as Template</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

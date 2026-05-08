@@ -27,9 +27,11 @@ return [
         $router->post('/admin/mailout/lists/{id}/subscribers/{subId}/remove',              [MailingListController::class, 'removeSubscriber']);
         $router->get('/admin/mailout',                         [BroadcastController::class, 'index']);
         $router->get('/admin/mailout/article-import',          [BroadcastController::class, 'articleImport']);
+        $router->get('/admin/mailout/broadcast-import',        [BroadcastController::class, 'broadcastImport']);
         $router->get('/admin/mailout/new',                     [BroadcastController::class, 'newForm']);
         $router->post('/admin/mailout',                        [BroadcastController::class, 'create']);
         $router->get('/admin/mailout/{id}',                    [BroadcastController::class, 'show']);
+        $router->get('/admin/mailout/{id}/duplicate',          [BroadcastController::class, 'duplicate']);
         $router->get('/admin/mailout/{id}/edit',               [BroadcastController::class, 'editForm']);
         $router->post('/admin/mailout/{id}',                   [BroadcastController::class, 'update']);
         $router->post('/admin/mailout/{id}/queue',             [BroadcastController::class, 'queue']);
