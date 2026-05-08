@@ -377,11 +377,14 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
                 $stmt = substr($stmt, 0, strlen($stmt) - strlen($delimiter));
                 $stmt = trim($stmt);
                 if ($stmt !== '') {
-                    // Use query() + closeCursor() instead of exec() to properly handle
-                    // implicit result sets from IF NOT EXISTS checks
-                    $result = $pdo->query($stmt);
-                    if ($result !== false) {
-                        $result->closeCursor();
+                    try {
+                        $pdo->exec($stmt);
+                    } catch (\PDOException $e) {
+                        // Ignore duplicate column/key/table errors (idempotent migrations)
+                        $code = (int)($e->errorInfo[1] ?? 0);
+                        if (!in_array($code, [1060, 1061, 1050], true)) {
+                            throw $e;
+                        }
                     }
                 }
                 $buffer = '';
@@ -391,9 +394,14 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
         // Execute any remaining buffered SQL
         $stmt = trim($buffer);
         if ($stmt !== '' && $stmt !== $delimiter) {
-            $result = $pdo->query($stmt);
-            if ($result !== false) {
-                $result->closeCursor();
+            try {
+                $pdo->exec($stmt);
+            } catch (\PDOException $e) {
+                // Ignore duplicate column/key/table errors (idempotent migrations)
+                $code = (int)($e->errorInfo[1] ?? 0);
+                if (!in_array($code, [1060, 1061, 1050], true)) {
+                    throw $e;
+                }
             }
         }
     }
