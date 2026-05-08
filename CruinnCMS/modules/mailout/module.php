@@ -43,6 +43,9 @@ return [
 
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/001_mailout_core.sql',
+        __DIR__ . '/migrations/002_subscription_modes.sql',
+        __DIR__ . '/migrations/002_dynamic_mailing_lists.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
