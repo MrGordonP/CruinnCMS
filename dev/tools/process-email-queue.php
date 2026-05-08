@@ -110,6 +110,18 @@ do {
             $row['body_text']
         );
 
+        // Convert relative URLs to absolute for email compatibility
+        // Images, links, and CSS with relative paths won't work in most email clients
+        $html = preg_replace_callback(
+            '/(src|href)=["\'](\/)([^"\']+)["\']/i',
+            function($matches) use ($siteUrl) {
+                $attr = $matches[1];  // 'src' or 'href'
+                $path = $matches[3];  // path without leading slash
+                return $attr . '="' . $siteUrl . '/' . $path . '"';
+            },
+            $html
+        );
+
         // Append unsubscribe footer
         if (!empty($row['unsubscribe_token'])) {
             $unsubUrl     = $siteUrl . '/mailing-lists/unsubscribe/' . $row['unsubscribe_token'];
