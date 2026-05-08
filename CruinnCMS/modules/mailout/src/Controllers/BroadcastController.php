@@ -3,7 +3,7 @@
  * CruinnCMS - Mailout Controller
  *
  * Admin UI for composing and sending email campaigns to mailing lists.
- * Mailouts are queued in email_queue and processed by tools/process-email-queue.php.
+ * Mailouts are queued in email_queue and processed by modules/mailout/tools/process-email-queue.php.
  */
 
 namespace Cruinn\Module\Mailout\Controllers;

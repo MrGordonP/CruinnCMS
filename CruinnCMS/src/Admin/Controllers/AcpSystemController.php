@@ -290,7 +290,7 @@ class AcpSystemController extends BaseController
 
     public function runQueue(): void
     {
-        $script = dirname(__DIR__, 3) . '/tools/process-email-queue.php';
+        $script = dirname(__DIR__, 3) . '/modules/mailout/tools/process-email-queue.php';
         if (!file_exists($script)) {
             Auth::flash('error', 'Queue processor script not found.');
             $this->redirect('/admin/settings/database');
