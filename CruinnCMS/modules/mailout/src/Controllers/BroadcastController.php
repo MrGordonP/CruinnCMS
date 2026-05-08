@@ -164,7 +164,7 @@ class BroadcastController extends BaseController
         );
 
         $recipients = $this->db->fetchAll(
-            "SELECT recipient_email, recipient_name, status, sent_at, error
+            "SELECT recipient_email, recipient_name, status, processed_at AS sent_at, last_error AS error
              FROM email_queue
              WHERE broadcast_id = ?
              ORDER BY status DESC, recipient_email ASC",
