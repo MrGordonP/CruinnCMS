@@ -356,6 +356,17 @@ class BroadcastController extends BaseController
                 $broadcast['body_html']);
             $text = str_replace(['{{name}}', '{{email}}'], [$name, $email], $broadcast['body_text']);
 
+            // Convert relative URLs to absolute for email compatibility
+            $html = preg_replace_callback(
+                '/(src|href)=["\'](\/)([^"\']+)["\']/i',
+                function($matches) use ($siteUrl) {
+                    $attr = $matches[1];  // 'src' or 'href'
+                    $path = $matches[3];  // path without leading slash
+                    return $attr . '="' . rtrim($siteUrl, '/') . '/' . $path . '"';
+                },
+                $html
+            );
+
             if (!empty($recipient['unsubscribe_token'])) {
                 $unsubUrl  = rtrim($siteUrl, '/') . '/mailing-lists/unsubscribe/' . $recipient['unsubscribe_token'];
                 $html .= '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">'
