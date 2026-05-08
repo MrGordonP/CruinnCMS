@@ -377,7 +377,12 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
                 $stmt = substr($stmt, 0, strlen($stmt) - strlen($delimiter));
                 $stmt = trim($stmt);
                 if ($stmt !== '') {
-                    $pdo->exec($stmt);
+                    // Use query() + closeCursor() instead of exec() to properly handle
+                    // implicit result sets from IF NOT EXISTS checks
+                    $result = $pdo->query($stmt);
+                    if ($result !== false) {
+                        $result->closeCursor();
+                    }
                 }
                 $buffer = '';
             }
@@ -386,7 +391,10 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
         // Execute any remaining buffered SQL
         $stmt = trim($buffer);
         if ($stmt !== '' && $stmt !== $delimiter) {
-            $pdo->exec($stmt);
+            $result = $pdo->query($stmt);
+            if ($result !== false) {
+                $result->closeCursor();
+            }
         }
     }
 
