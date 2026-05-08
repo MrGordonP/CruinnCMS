@@ -261,7 +261,22 @@
                 <?php endif; ?>
                 <span class="badge badge-muted"><?= count($availableUsers) ?></span>
             </span>
-            <div>
+            <div style="display: flex; gap: var(--space-sm); align-items: center;">
+                <?php if ($source !== 'manual'): ?>
+                    <select id="sort-select" onchange="applySorting()" style="padding: 4px 8px; font-size: 0.85rem; border: 1px solid var(--color-border); border-radius: 4px;">
+                        <option value="name" <?= $sortBy === 'name' ? 'selected' : '' ?>>Sort: Name</option>
+                        <option value="email" <?= $sortBy === 'email' ? 'selected' : '' ?>>Sort: Email</option>
+                        <?php if ($source === 'members' || ($source === 'groups' && $filterGroupId)): ?>
+                            <option value="status" <?= $sortBy === 'status' ? 'selected' : '' ?>>Sort: Status</option>
+                            <option value="year" <?= $sortBy === 'year' ? 'selected' : '' ?>>Sort: Year</option>
+                        <?php elseif ($source === 'users'): ?>
+                            <option value="active" <?= $sortBy === 'active' ? 'selected' : '' ?>>Sort: Active</option>
+                        <?php endif; ?>
+                    </select>
+                    <button onclick="toggleSortDirection()" class="btn btn-small btn-outline" style="padding: 4px 8px; font-size: 0.85rem;" title="Toggle sort direction">
+                        <?= $sortDir === 'ASC' ? '↑' : '↓' ?>
+                    </button>
+                <?php endif; ?>
                 <span class="badge badge-info" id="selected-count-badge">0 selected</span>
             </div>
         </div>
@@ -426,5 +441,20 @@ function addSelectedUsers() {
     if (confirm(`Add ${checked} user(s) to the mailing list?`)) {
         form.submit();
     }
+}
+
+function applySorting() {
+    const sortBy = document.getElementById('sort-select').value;
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('sort', sortBy);
+    window.location.href = currentUrl.toString();
+}
+
+function toggleSortDirection() {
+    const currentUrl = new URL(window.location.href);
+    const currentDir = currentUrl.searchParams.get('dir') || 'asc';
+    const newDir = currentDir.toLowerCase() === 'asc' ? 'desc' : 'asc';
+    currentUrl.searchParams.set('dir', newDir);
+    window.location.href = currentUrl.toString();
 }
 </script>

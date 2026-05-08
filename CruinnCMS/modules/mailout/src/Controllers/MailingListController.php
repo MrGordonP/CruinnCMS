@@ -244,6 +244,11 @@ class MailingListController extends BaseController
         $filterYear    = $this->query('year', '');
         $filterActive  = $this->query('active', '');
         $filterGroupId = (int) $this->query('group_id', 0);
+        $sortBy        = $this->query('sort', 'name');
+        $sortDir       = $this->query('dir', 'asc');
+
+        // Validate sort direction
+        $sortDir = strtolower($sortDir) === 'desc' ? 'DESC' : 'ASC';
 
         $availableUsers = [];
 
@@ -253,6 +258,12 @@ class MailingListController extends BaseController
             $availableUsers = [];
         } elseif ($source === 'groups' && $filterGroupId > 0) {
             // Get users from selected group
+            $orderCol = match($sortBy) {
+                'email' => 'u.email',
+                'status' => 'member_status',
+                'year' => 'm.membership_year',
+                default => 'u.display_name',
+            };
             $availableUsers = $this->db->fetchAll(
                 "SELECT DISTINCT u.id, u.display_name, u.email, u.active,
                         m.status AS member_status, m.membership_year
@@ -260,7 +271,7 @@ class MailingListController extends BaseController
                  INNER JOIN group_members gm ON gm.user_id = u.id
                  LEFT JOIN members m ON m.user_id = u.id
                  WHERE gm.group_id = ?
-                 ORDER BY u.display_name",
+                 ORDER BY {$orderCol} {$sortDir}",
                 [$filterGroupId]
             );
         } elseif ($source === 'members') {
@@ -279,6 +290,13 @@ class MailingListController extends BaseController
 
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
+            $orderCol = match($sortBy) {
+                'email' => 'm.email',
+                'status' => 'm.status',
+                'year' => 'm.membership_year',
+                default => 'm.surnames, m.forenames',
+            };
+
             $availableUsers = $this->db->fetchAll(
                 "SELECT CONCAT('m_', m.id) AS id,
                         CONCAT(COALESCE(m.forenames,''), ' ', COALESCE(m.surnames,'')) AS display_name,
@@ -287,7 +305,7 @@ class MailingListController extends BaseController
                         m.id AS member_id
                  FROM members m
                  {$whereClause}
-                 ORDER BY m.surnames, m.forenames",
+                 ORDER BY {$orderCol} {$sortDir}",
                 $params
             );
         } else {
@@ -302,11 +320,17 @@ class MailingListController extends BaseController
 
             $whereClause = 'WHERE ' . implode(' AND ', $where);
 
+            $orderCol = match($sortBy) {
+                'email' => 'u.email',
+                'active' => 'u.active',
+                default => 'u.display_name',
+            };
+
             $availableUsers = $this->db->fetchAll(
                 "SELECT u.id, u.display_name, u.email, u.active
                  FROM users u
                  {$whereClause}
-                 ORDER BY u.display_name",
+                 ORDER BY {$orderCol} {$sortDir}",
                 $params
             );
         }
@@ -340,6 +364,8 @@ class MailingListController extends BaseController
             'filterYear'     => $filterYear,
             'filterActive'   => $filterActive,
             'filterGroupId'  => $filterGroupId,
+            'sortBy'         => $sortBy,
+            'sortDir'        => $sortDir,
         ]);
     }
 
