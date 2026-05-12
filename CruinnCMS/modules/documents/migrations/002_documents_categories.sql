@@ -43,19 +43,7 @@ INNER JOIN `document_categories` c ON c.slug = d.category
 SET d.category_id = c.id
 WHERE d.category_id IS NULL;
 
--- 5. Add FK constraint if it doesn't exist yet
-SET @fk_exists = (
-    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
-    WHERE CONSTRAINT_SCHEMA = DATABASE()
-      AND TABLE_NAME         = 'documents'
-      AND CONSTRAINT_NAME    = 'fk_documents_category_id'
-      AND CONSTRAINT_TYPE    = 'FOREIGN KEY'
-);
-SET @sql = IF(@fk_exists = 0,
-    'ALTER TABLE `documents` ADD CONSTRAINT `fk_documents_category_id`
-     FOREIGN KEY (`category_id`) REFERENCES `document_categories` (`id`) ON DELETE SET NULL',
-    'SELECT 1'
-);
-PREPARE stmt FROM @sql;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+-- 5. Add FK constraint (drop first to make idempotent)
+ALTER TABLE `documents` DROP FOREIGN KEY IF EXISTS `fk_documents_category_id`;
+ALTER TABLE `documents` ADD CONSTRAINT `fk_documents_category_id`
+    FOREIGN KEY (`category_id`) REFERENCES `document_categories` (`id`) ON DELETE SET NULL;

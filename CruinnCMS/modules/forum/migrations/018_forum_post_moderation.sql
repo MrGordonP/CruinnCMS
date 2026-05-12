@@ -18,9 +18,8 @@ ALTER TABLE `forum_posts`
 
 ALTER TABLE `forum_posts` ADD KEY IF NOT EXISTS `idx_forum_posts_deleted` (`is_deleted`);
 
-SET @fk3 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'forum_posts' AND CONSTRAINT_NAME = 'fk_forum_posts_deleted_by');
-SET @sql3 = IF(@fk3 = 0, 'ALTER TABLE `forum_posts` ADD CONSTRAINT `fk_forum_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL', 'SELECT 1');
-PREPARE stmt3 FROM @sql3; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;
+ALTER TABLE `forum_posts` DROP FOREIGN KEY IF EXISTS `fk_forum_posts_deleted_by`;
+ALTER TABLE `forum_posts` ADD CONSTRAINT `fk_forum_posts_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 -- Thread soft-delete
 ALTER TABLE `forum_threads`
@@ -30,9 +29,8 @@ ALTER TABLE `forum_threads`
 
 ALTER TABLE `forum_threads` ADD KEY IF NOT EXISTS `idx_forum_threads_deleted` (`is_deleted`);
 
-SET @fk4 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'forum_threads' AND CONSTRAINT_NAME = 'fk_forum_threads_deleted_by');
-SET @sql4 = IF(@fk4 = 0, 'ALTER TABLE `forum_threads` ADD CONSTRAINT `fk_forum_threads_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL', 'SELECT 1');
-PREPARE stmt4 FROM @sql4; EXECUTE stmt4; DEALLOCATE PREPARE stmt4;
+ALTER TABLE `forum_threads` DROP FOREIGN KEY IF EXISTS `fk_forum_threads_deleted_by`;
+ALTER TABLE `forum_threads` ADD CONSTRAINT `fk_forum_threads_deleted_by` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 -- Post reports
 CREATE TABLE IF NOT EXISTS `forum_post_reports` (
