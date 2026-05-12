@@ -103,6 +103,7 @@ if ($sqlMode) {
         $fh = fopen($filepath, 'r');
         fgetcsv($fh);
         while (($row = fgetcsv($fh)) !== false) {
+            $row = csv_to_utf8($row);
             if (empty(array_filter($row, fn($v) => trim($v) !== ''))) continue;
             $data = normalize_row($year, $row);
             if (!$data) continue;
@@ -164,6 +165,7 @@ if ($sqlMode) {
         fgetcsv($fh);
 
         while (($row = fgetcsv($fh)) !== false) {
+            $row = csv_to_utf8($row);
             if (empty(array_filter($row, fn($v) => trim($v) !== ''))) continue;
             $data = normalize_row($year, $row);
             if (!$data) continue;
@@ -177,6 +179,11 @@ if ($sqlMode) {
 
             $payMethod = parse_payment_method($data['payment_method']);
             $txId      = trim($data['transaction_id']) ?: null;
+            if ($txId !== null) {
+                // Strip non-UTF-8 bytes (e.g. Windows-1252 encoded chars from CSV)
+                $txId = mb_convert_encoding($txId, 'UTF-8', 'UTF-8');
+                $txId = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $txId) ?: null;
+            }
             $geoLevel  = parse_geologist_level($data['geologist_level']);
             $memType   = str_contains(strtolower($data['is_renewal']), 'renewal') ? 'renewal' : 'new';
             $verified  = ($txId && $payMethod === 'bank_transfer') ? 'verified' : 'unverified';
@@ -274,6 +281,7 @@ foreach ($csvFiles as $year => $filepath) {
 
     while (($row = fgetcsv($fh)) !== false) {
         $rowNum++;
+        $row = csv_to_utf8($row);
         if (empty(array_filter($row, fn($v) => trim($v) !== ''))) continue;
 
         $data = normalize_row($year, $row);
@@ -337,6 +345,10 @@ foreach ($csvFiles as $year => $filepath) {
 
         $payMethod = parse_payment_method($data['payment_method']);
         $txId      = trim($data['transaction_id']) ?: null;
+        if ($txId !== null) {
+            $txId = mb_convert_encoding($txId, 'UTF-8', 'UTF-8');
+            $txId = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $txId) ?: null;
+        }
         $geoLevel  = parse_geologist_level($data['geologist_level']);
         $memType   = str_contains(strtolower($data['is_renewal']), 'renewal') ? 'renewal' : 'new';
         $verified  = ($txId && $payMethod === 'bank_transfer') ? 'verified' : 'unverified';
@@ -401,6 +413,22 @@ function log_line(string $msg): void
 function sql_write($fh, string $sql): void
 {
     fwrite($fh, $sql . "\n");
+}
+
+/**
+ * Convert a raw CSV row (possibly Windows-1252 encoded) to clean UTF-8.
+ * Fields that are already valid UTF-8 pass through unchanged.
+ */
+function csv_to_utf8(array $row): array
+{
+    return array_map(function (string $cell): string {
+        // If the cell is already valid UTF-8, leave it alone.
+        if (mb_check_encoding($cell, 'UTF-8')) {
+            return $cell;
+        }
+        // Otherwise assume Windows-1252 and convert.
+        return mb_convert_encoding($cell, 'UTF-8', 'Windows-1252');
+    }, $row);
 }
 
 /** Quote a value for SQL output. NULL stays NULL, strings are escaped. */

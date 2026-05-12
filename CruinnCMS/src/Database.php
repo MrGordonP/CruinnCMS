@@ -46,6 +46,40 @@ class Database
     }
 
     /**
+     * Create a dedicated, disposable PDO connection for running migration SQL.
+     * Uses the same credentials as getInstance() would, but is never stored
+     * in the singleton — callers discard it after use.
+     * ATTR_EMULATE_PREPARES is left at the driver default so that exec()
+     * result sets do not leave the connection in an unbuffered state.
+     */
+    public static function createMigrationPdo(): PDO
+    {
+        $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
+        if ($editorInstance === '__platform__'
+            && class_exists(\Cruinn\Platform\PlatformAuth::class)
+        ) {
+            $config = \Cruinn\Platform\PlatformAuth::dbConfig();
+        } elseif ($editorInstance !== null && $editorInstance !== '') {
+            $config = self::loadInstanceDbConfig($editorInstance);
+        } else {
+            $config = App::config('db');
+        }
+
+        $dsn = sprintf(
+            'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+            $config['host'],
+            $config['port'],
+            $config['name'],
+            $config['charset']
+        );
+        return new PDO($dsn, $config['user'], $config['password'], [
+            PDO::ATTR_ERRMODE                  => PDO::ERRMODE_EXCEPTION,
+            PDO::MYSQL_ATTR_INIT_COMMAND       => "SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci'",
+            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+        ]);
+    }
+
+    /**
      * Get the singleton database instance.
      * When a platform editor instance slug is set in the session, connects
      * to the appropriate DB: '__platform__' → platform DB, otherwise the

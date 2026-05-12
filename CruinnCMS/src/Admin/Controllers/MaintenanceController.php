@@ -318,7 +318,11 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             }
 
             try {
-                $this->execSqlWithDelimiters($db->pdo(), $sql);
+                // Use a dedicated throwaway PDO for migration SQL so the singleton
+                // connection is never left in an unbuffered state between statements.
+                $migPdo = Database::createMigrationPdo();
+                $this->execSqlWithDelimiters($migPdo, $sql);
+                unset($migPdo);
                 $db->execute(
                     "INSERT IGNORE INTO module_migrations (module, filename) VALUES (?, ?)",
                     [$m['module'], $m['file']]
@@ -330,7 +334,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             }
         }
 
-        // Re-collect for updated status
+        // Re-collect for updated status.
         [$all, $applied,] = $this->collectMigrationState();
         $rows = [];
         foreach ($all as $m) {
