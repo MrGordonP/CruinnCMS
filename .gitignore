@@ -38,6 +38,9 @@ CruinnCMS/vendor/
 # Release packages
 release/
 
+# Generated import SQL files (instance-specific data, distribute manually)
+dev/tools/*_import.sql
+
 # OS
 .DS_Store
 Thumbs.db
