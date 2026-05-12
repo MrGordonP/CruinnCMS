@@ -407,7 +407,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
 
         // Ensure tracking table exists
         try {
-            $db->execute("SELECT 1 FROM module_migrations LIMIT 1");
+            $db->fetchAll("SELECT 1 FROM module_migrations LIMIT 1");
         } catch (\Throwable) {
             $db->execute("
                 CREATE TABLE IF NOT EXISTS module_migrations (
