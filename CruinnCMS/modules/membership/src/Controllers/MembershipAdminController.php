@@ -21,9 +21,7 @@ class MembershipAdminController extends BaseController
         Auth::requireRole('admin');
 
         $filters = [
-            'status'  => $this->query('status', ''),
-            'plan_id' => $this->query('plan_id', ''),
-            'q'       => trim((string) $this->query('q', '')),
+            'q' => trim((string) $this->query('q', '')),
         ];
 
         $memberId      = (int) $this->query('member', 0);
@@ -120,7 +118,7 @@ class MembershipAdminController extends BaseController
         $errors = $this->validateMemberPayload($data, $id);
 
         if ($errors) {
-            $filters = ['status' => '', 'plan_id' => '', 'q' => ''];
+            $filters = ['q' => ''];
             $this->renderAdmin('admin/membership/members/index', [
                 'title'         => 'Membership',
                 'members'       => $this->membership->listMembers($filters),
@@ -154,21 +152,24 @@ class MembershipAdminController extends BaseController
         }
 
         $data = [
-            'plan_id'           => $this->input('plan_id', ''),
-            'period_label'      => $this->input('period_label', ''),
-            'period_start'      => $this->input('period_start', ''),
-            'period_end'        => $this->input('period_end', ''),
-            'amount'            => (float) $this->input('amount', 0),
-            'currency'          => strtoupper((string) $this->input('currency', 'EUR')),
-            'status'            => $this->input('status', 'pending'),
-            'due_date'          => $this->input('due_date', ''),
-            'paid_at'           => $this->input('paid_at', ''),
-            'payment_reference' => $this->input('payment_reference', ''),
-            'notes'             => $this->input('notes', ''),
+            'plan_id'             => $this->input('plan_id', ''),
+            'period_start'        => $this->input('period_start', ''),
+            'period_end'          => $this->input('period_end', ''),
+            'member_type'         => $this->input('member_type', 'new'),
+            'geologist_level'     => $this->input('geologist_level', ''),
+            'institution'         => $this->input('institution', ''),
+            'position'            => $this->input('position', ''),
+            'student_level'       => $this->input('student_level', ''),
+            'amount'              => (float) $this->input('amount', 0),
+            'currency'            => strtoupper((string) $this->input('currency', 'EUR')),
+            'payment_method'      => $this->input('payment_method', 'bank_transfer'),
+            'transaction_id'      => $this->input('transaction_id', ''),
+            'verification_status' => $this->input('verification_status', 'unverified'),
+            'notes'               => $this->input('notes', ''),
         ];
 
-        if ($data['period_label'] === '' || $data['period_start'] === '' || $data['period_end'] === '') {
-            Auth::flash('error', 'Period label/start/end are required to create a subscription.');
+        if ($data['period_start'] === '' || $data['period_end'] === '') {
+            Auth::flash('error', 'Period start and end dates are required to create a subscription.');
             $this->redirect('/admin/membership/members/' . $id);
         }
 
@@ -182,15 +183,15 @@ class MembershipAdminController extends BaseController
     {
         Auth::requireRole('admin');
 
-        $status = (string) $this->input('status', 'pending');
-        $allowed = ['pending', 'paid', 'overdue', 'waived', 'refunded', 'cancelled'];
+        $status = (string) $this->input('status', 'unverified');
+        $allowed = ['unverified', 'verified', 'disputed', 'waived'];
         if (!in_array($status, $allowed, true)) {
-            Auth::flash('error', 'Invalid subscription status.');
+            Auth::flash('error', 'Invalid verification status.');
             $this->redirect('/admin/membership');
         }
 
-        $this->membership->updateSubscriptionStatus($id, $status);
-        $this->logActivity('update', 'membership_subscription', $id, 'Subscription status set to ' . $status . '.');
+        $this->membership->updateVerificationStatus($id, $status);
+        $this->logActivity('update', 'membership_subscription', $id, 'Subscription verification status set to ' . $status . '.');
         Auth::flash('success', 'Subscription status updated.');
 
         $memberId = (int) $this->input('member_id', 0);
@@ -206,13 +207,12 @@ class MembershipAdminController extends BaseController
         Auth::requireRole('admin');
 
         $data = [
-            'amount'    => (float) $this->input('amount', 0),
-            'currency'  => strtoupper((string) $this->input('currency', 'EUR')),
-            'method'    => $this->input('method', ''),
-            'reference' => $this->input('reference', ''),
-            'status'    => (string) $this->input('status', 'completed'),
-            'paid_at'   => (string) $this->input('paid_at', date('Y-m-d H:i:s')),
-            'notes'     => $this->input('notes', ''),
+            'transaction_id' => $this->input('transaction_id', ''),
+            'gateway'        => $this->input('gateway', ''),
+            'amount'         => (float) $this->input('amount', 0),
+            'currency'       => strtoupper((string) $this->input('currency', 'EUR')),
+            'paid_at'        => (string) $this->input('paid_at', date('Y-m-d H:i:s')),
+            'notes'          => $this->input('notes', ''),
         ];
 
         if ($data['amount'] <= 0) {
@@ -573,7 +573,7 @@ class MembershipAdminController extends BaseController
         }
         $like = '%' . $q . '%';
         $rows = $this->db->fetchAll(
-            'SELECT id, forenames, surnames, email, membership_number, status
+            'SELECT id, forenames, surnames, email, membership_number
              FROM members
              WHERE forenames LIKE ? OR surnames LIKE ? OR email LIKE ? OR membership_number LIKE ?
              ORDER BY surnames ASC, forenames ASC LIMIT 10',
@@ -584,7 +584,6 @@ class MembershipAdminController extends BaseController
             'display_name'      => trim($r['forenames'] . ' ' . $r['surnames']),
             'email'             => $r['email'],
             'membership_number' => $r['membership_number'] ?? '',
-            'status'            => $r['status'],
         ], $rows)));
     }
 
@@ -657,13 +656,7 @@ class MembershipAdminController extends BaseController
             'forenames'         => $this->input('forenames', ''),
             'surnames'          => $this->input('surnames', ''),
             'email'             => $this->input('email', ''),
-            'phone'             => $this->input('phone', ''),
             'organisation'      => $this->input('organisation', ''),
-            'status'            => $this->input('status', 'applicant'),
-            'plan_id'           => $this->input('plan_id', ''),
-            'joined_at'         => $this->input('joined_at', ''),
-            'lapsed_at'         => $this->input('lapsed_at', ''),
-            'notes'             => $this->input('notes', ''),
         ];
     }
 
@@ -681,11 +674,6 @@ class MembershipAdminController extends BaseController
             $errors['email'] = 'Email is required.';
         } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             $errors['email'] = 'Email format is invalid.';
-        }
-
-        $allowed = ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
-        if (!in_array($data['status'], $allowed, true)) {
-            $errors['status'] = 'Invalid status selected.';
         }
 
         $existing = $this->membership->findByEmail(strtolower($data['email']));

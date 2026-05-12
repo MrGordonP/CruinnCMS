@@ -42,6 +42,8 @@ class MembershipService
             'price'          => $data['price'],
             'currency'       => strtoupper($data['currency'] ?: 'EUR'),
             'is_active'      => !empty($data['is_active']) ? 1 : 0,
+            'is_group'       => !empty($data['is_group']) ? 1 : 0,
+            'max_members'    => !empty($data['max_members']) ? (int) $data['max_members'] : null,
         ]);
     }
 
@@ -55,36 +57,37 @@ class MembershipService
             'price'          => $data['price'],
             'currency'       => strtoupper($data['currency'] ?: 'EUR'),
             'is_active'      => !empty($data['is_active']) ? 1 : 0,
+            'is_group'       => !empty($data['is_group']) ? 1 : 0,
+            'max_members'    => !empty($data['max_members']) ? (int) $data['max_members'] : null,
         ], 'id = ?', [$id]);
     }
 
     public function listMembers(array $filters = []): array
     {
-        $where = [];
+        $where  = [];
         $params = [];
-
-        if (!empty($filters['status'])) {
-            $where[] = 'm.status = ?';
-            $params[] = $filters['status'];
-        }
-
-        if (!empty($filters['plan_id'])) {
-            $where[] = 'm.plan_id = ?';
-            $params[] = (int) $filters['plan_id'];
-        }
 
         if (!empty($filters['q'])) {
             $where[] = '(m.forenames LIKE ? OR m.surnames LIKE ? OR m.email LIKE ? OR m.membership_number LIKE ?)';
             $like = '%' . $filters['q'] . '%';
-            $params[] = $like;
-            $params[] = $like;
-            $params[] = $like;
-            $params[] = $like;
+            $params = array_merge($params, [$like, $like, $like, $like]);
         }
 
-        $sql = 'SELECT m.*, p.name AS plan_name
+        $sql = 'SELECT m.*,
+                    s.id                 AS latest_sub_id,
+                    s.period_start       AS latest_period_start,
+                    s.period_end         AS latest_period_end,
+                    s.verification_status,
+                    p.name               AS plan_name
                 FROM members m
-                LEFT JOIN membership_plans p ON p.id = m.plan_id';
+                LEFT JOIN membership_subscriptions s
+                    ON s.id = (
+                        SELECT id FROM membership_subscriptions
+                        WHERE member_id = m.id
+                        ORDER BY period_end DESC, id DESC
+                        LIMIT 1
+                    )
+                LEFT JOIN membership_plans p ON p.id = s.plan_id';
 
         if ($where) {
             $sql .= ' WHERE ' . implode(' AND ', $where);
@@ -97,69 +100,67 @@ class MembershipService
 
     public function countByStatus(): array
     {
-        $rows = $this->db->fetchAll(
-            'SELECT status, COUNT(*) AS cnt FROM members GROUP BY status'
+        $total = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM members');
+
+        $active = (int) $this->db->fetchColumn(
+            "SELECT COUNT(DISTINCT member_id) FROM membership_subscriptions
+             WHERE period_end >= CURDATE()
+             AND verification_status IN ('verified','waived')"
         );
 
-        $out = [];
-        foreach ($rows as $row) {
-            $out[$row['status']] = (int) $row['cnt'];
-        }
+        $unverified = (int) $this->db->fetchColumn(
+            "SELECT COUNT(DISTINCT member_id) FROM membership_subscriptions
+             WHERE period_end >= CURDATE()
+             AND verification_status = 'unverified'"
+        );
 
-        return $out;
+        return [
+            'total'      => $total,
+            'active'     => $active,
+            'unverified' => $unverified,
+            'lapsed'     => max(0, $total - $active - $unverified),
+        ];
     }
 
     public static function dashboardSummary(array $settings): array
     {
-        $db = Database::getInstance();
+        $db    = Database::getInstance();
         $limit = max(1, (int) ($settings['limit'] ?? 5));
 
-        $statusRows = $db->fetchAll(
-            'SELECT status, COUNT(*) AS cnt FROM members GROUP BY status'
+        $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM members');
+
+        $active = (int) $db->fetchColumn(
+            "SELECT COUNT(DISTINCT member_id) FROM membership_subscriptions
+             WHERE period_end >= CURDATE()
+             AND verification_status IN ('verified','waived')"
         );
 
-        $statusCounts = [];
-        foreach ($statusRows as $row) {
-            $statusCounts[$row['status']] = (int) $row['cnt'];
-        }
+        $pending = (int) $db->fetchColumn(
+            "SELECT COUNT(DISTINCT member_id) FROM membership_subscriptions
+             WHERE period_end >= CURDATE()
+             AND verification_status = 'unverified'"
+        );
 
         $recentMembers = $db->fetchAll(
-            'SELECT id, forenames, surnames, status, membership_number, updated_at
+            'SELECT id, forenames, surnames, membership_number, updated_at
              FROM members
              ORDER BY updated_at DESC, id DESC
              LIMIT ' . $limit
         );
 
-        $dueSoon = (int) $db->fetchColumn(
-            "SELECT COUNT(*) FROM membership_subscriptions WHERE status = 'due'"
-        );
-
-        $paidCurrent = (int) $db->fetchColumn(
-            "SELECT COUNT(*) FROM membership_subscriptions WHERE status = 'paid' AND period_end >= CURDATE()"
-        );
-
         return [
-            'total_members' => (int) $db->fetchColumn('SELECT COUNT(*) FROM members'),
-            'active_members' => (int) ($statusCounts['active'] ?? 0),
-            'pending_members' => (int) ($statusCounts['pending'] ?? 0),
-            'lapsed_members' => (int) ($statusCounts['lapsed'] ?? 0),
-            'due_subscriptions' => $dueSoon,
-            'paid_subscriptions' => $paidCurrent,
-            'recent_members' => $recentMembers,
+            'total_members'   => $total,
+            'active_members'  => $active,
+            'pending_members' => $pending,
+            'lapsed_members'  => max(0, $total - $active - $pending),
+            'recent_members'  => $recentMembers,
         ];
     }
 
     public function findById(int $id): ?array
     {
-        $member = $this->db->fetch(
-            'SELECT m.*, p.name AS plan_name
-             FROM members m
-             LEFT JOIN membership_plans p ON p.id = m.plan_id
-             WHERE m.id = ?',
-            [$id]
-        );
-
-        return $member ?: null;
+        $row = $this->db->fetch('SELECT * FROM members WHERE id = ?', [$id]);
+        return $row ?: null;
     }
 
     public function findByEmail(string $email): ?array
@@ -177,23 +178,26 @@ class MembershipService
     public function hasActiveMembership(int $memberId): bool
     {
         $count = $this->db->fetchColumn(
-            "SELECT COUNT(*) FROM membership_subscriptions WHERE member_id = ? AND status = 'paid' AND period_end >= CURDATE()",
+            "SELECT COUNT(*) FROM membership_subscriptions
+             WHERE member_id = ?
+             AND period_end >= CURDATE()
+             AND verification_status IN ('verified','waived')",
             [$memberId]
         );
-
         return (int) $count > 0;
     }
 
     public function currentSubscription(int $memberId): ?array
     {
         $row = $this->db->fetch(
-            'SELECT * FROM membership_subscriptions
-             WHERE member_id = ?
-             ORDER BY period_end DESC, id DESC
+            'SELECT s.*, p.name AS plan_name
+             FROM membership_subscriptions s
+             LEFT JOIN membership_plans p ON p.id = s.plan_id
+             WHERE s.member_id = ?
+             ORDER BY s.period_end DESC, s.id DESC
              LIMIT 1',
             [$memberId]
         );
-
         return $row ?: null;
     }
 
@@ -212,7 +216,11 @@ class MembershipService
     public function paymentsForMember(int $memberId): array
     {
         return $this->db->fetchAll(
-            'SELECT * FROM membership_payments WHERE member_id = ? ORDER BY paid_at DESC, id DESC',
+            'SELECT py.*
+             FROM payments py
+             INNER JOIN membership_subscriptions s ON s.id = py.subscription_id
+             WHERE s.member_id = ?
+             ORDER BY py.paid_at DESC, py.id DESC',
             [$memberId]
         );
     }
@@ -225,13 +233,7 @@ class MembershipService
             'forenames'         => $data['forenames'],
             'surnames'          => $data['surnames'],
             'email'             => strtolower($data['email']),
-            'phone'             => $data['phone'] ?: null,
             'organisation'      => $data['organisation'] ?: null,
-            'status'            => $data['status'],
-            'plan_id'           => $data['plan_id'] !== '' ? (int) $data['plan_id'] : null,
-            'joined_at'         => $data['joined_at'] ?: null,
-            'lapsed_at'         => $data['lapsed_at'] ?: null,
-            'notes'             => $data['notes'] ?: null,
         ]);
     }
 
@@ -243,48 +245,40 @@ class MembershipService
             'forenames'         => $data['forenames'],
             'surnames'          => $data['surnames'],
             'email'             => strtolower($data['email']),
-            'phone'             => $data['phone'] ?: null,
             'organisation'      => $data['organisation'] ?: null,
-            'status'            => $data['status'],
-            'plan_id'           => $data['plan_id'] !== '' ? (int) $data['plan_id'] : null,
-            'joined_at'         => $data['joined_at'] ?: null,
-            'lapsed_at'         => $data['lapsed_at'] ?: null,
-            'notes'             => $data['notes'] ?: null,
         ], 'id = ?', [$id]);
-    }
-
-    public function setStatus(int $memberId, string $status): void
-    {
-        $payload = ['status' => $status];
-        if ($status === 'lapsed') {
-            $payload['lapsed_at'] = date('Y-m-d H:i:s');
-        }
-        $this->db->update('members', $payload, 'id = ?', [$memberId]);
     }
 
     public function createSubscription(int $memberId, array $data): int
     {
         return (int) $this->db->insert('membership_subscriptions', [
-            'member_id'          => $memberId,
-            'plan_id'            => $data['plan_id'] !== '' ? (int) $data['plan_id'] : null,
-            'period_label'       => $data['period_label'],
-            'period_start'       => $data['period_start'],
-            'period_end'         => $data['period_end'],
-            'amount'             => $data['amount'],
-            'currency'           => strtoupper($data['currency'] ?: 'EUR'),
-            'status'             => $data['status'],
-            'due_date'           => $data['due_date'] ?: null,
-            'paid_at'            => $data['paid_at'] ?: null,
-            'payment_reference'  => $data['payment_reference'] ?: null,
-            'notes'              => $data['notes'] ?: null,
+            'member_id'           => $memberId,
+            'plan_id'             => $data['plan_id'] !== '' ? (int) $data['plan_id'] : null,
+            'period_start'        => $data['period_start'],
+            'period_end'          => $data['period_end'],
+            'member_type'         => $data['member_type'] ?? 'new',
+            'geologist_level'     => $data['geologist_level'] ?: null,
+            'institution'         => $data['institution'] ?: null,
+            'position'            => $data['position'] ?: null,
+            'student_level'       => $data['student_level'] ?: null,
+            'amount'              => $data['amount'],
+            'currency'            => strtoupper($data['currency'] ?: 'EUR'),
+            'payment_method'      => $data['payment_method'] ?? 'bank_transfer',
+            'transaction_id'      => $data['transaction_id'] ?: null,
+            'verification_status' => $data['verification_status'] ?? 'unverified',
+            'notes'               => $data['notes'] ?: null,
         ]);
     }
 
-    public function updateSubscriptionStatus(int $subscriptionId, string $status): void
+    public function updateVerificationStatus(int $subscriptionId, string $status): void
     {
-        $payload = ['status' => $status];
-        if ($status === 'paid') {
-            $payload['paid_at'] = date('Y-m-d H:i:s');
+        $allowed = ['unverified', 'verified', 'disputed', 'waived'];
+        if (!in_array($status, $allowed, true)) {
+            throw new \InvalidArgumentException('Invalid verification status: ' . $status);
+        }
+        $payload = ['verification_status' => $status];
+        if ($status === 'verified') {
+            $payload['verified_at'] = date('Y-m-d H:i:s');
         }
         $this->db->update('membership_subscriptions', $payload, 'id = ?', [$subscriptionId]);
     }
@@ -295,35 +289,27 @@ class MembershipService
             'SELECT id, member_id FROM membership_subscriptions WHERE id = ?',
             [$subscriptionId]
         );
-
         if (!$subscription) {
             throw new \RuntimeException('Subscription not found.');
         }
 
-        $paymentId = (int) $this->db->insert('membership_payments', [
+        $paymentId = (int) $this->db->insert('payments', [
             'subscription_id' => $subscriptionId,
-            'member_id'       => (int) $subscription['member_id'],
+            'transaction_id'  => $data['transaction_id'] ?: ('manual-' . date('YmdHis')),
+            'gateway'         => $data['gateway'] ?: null,
             'amount'          => $data['amount'],
             'currency'        => strtoupper($data['currency'] ?: 'EUR'),
-            'method'          => $data['method'] ?: null,
-            'reference'       => $data['reference'] ?: null,
-            'status'          => $data['status'],
-            'paid_at'         => $data['paid_at'],
+            'status'          => 'completed',
+            'paid_at'         => $data['paid_at'] ?: date('Y-m-d H:i:s'),
             'notes'           => $data['notes'] ?: null,
         ]);
 
-        if ($data['status'] === 'completed') {
-            $this->db->update('membership_subscriptions', [
-                'status'      => 'paid',
-                'paid_at'     => $data['paid_at'],
-                'payment_reference' => $data['reference'] ?: null,
-            ], 'id = ?', [$subscriptionId]);
-
-            $this->db->update('members', [
-                'status' => 'active',
-                'lapsed_at' => null,
-            ], 'id = ?', [(int) $subscription['member_id']]);
-        }
+        $this->db->update('membership_subscriptions', [
+            'payment_id'          => $paymentId,
+            'verification_status' => 'verified',
+            'verified_at'         => date('Y-m-d H:i:s'),
+            'transaction_id'      => $data['transaction_id'] ?: null,
+        ], 'id = ?', [$subscriptionId]);
 
         return $paymentId;
     }
@@ -338,40 +324,17 @@ class MembershipService
         $this->db->update('members', ['user_id' => null], 'id = ?', [$memberId]);
     }
 
-    public function markPaid(int $subscriptionId, ?string $reference = null): void
+    public function markPaid(int $subscriptionId, ?string $transactionId = null): void
     {
         $this->db->update('membership_subscriptions', [
-            'status' => 'paid',
-            'paid_at' => date('Y-m-d H:i:s'),
-            'payment_reference' => $reference,
+            'verification_status' => 'verified',
+            'verified_at'         => date('Y-m-d H:i:s'),
+            'transaction_id'      => $transactionId,
         ], 'id = ?', [$subscriptionId]);
     }
 
-    /**
-     * Import an array of normalised rows (keyed by lowercased CSV header names).
-     *
-     * Recognised column names (case-insensitive in the CSV header):
-     *   forenames, surnames, email, phone, organisation, membership_number,
-     *   status, plan_id, plan, joined_at, lapsed_at, notes, membership_year,
-     *   address_line_1 / line_1, address_line_2 / line_2, city, county, postcode, country
-     *
-     * @param array  $rows         Rows from the CSV (each row is an associative array keyed by header)
-     * @param string $onDuplicate  'skip' | 'update' — what to do when email already exists
-     * @param string $defaultStatus  Status to apply when CSV row has no status column
-     * @return array{created:int, updated:int, skipped:int, errors:array}
-     */
     public function importMembers(array $rows, string $onDuplicate = 'skip', string $defaultStatus = 'applicant'): array
     {
-        $allowedStatuses = ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
-
-        // Build a plan slug→id map for resolving plan names
-        $plansBySlug = [];
-        $plansByName = [];
-        foreach ($this->allPlans() as $plan) {
-            $plansBySlug[strtolower($plan['slug'])] = (int) $plan['id'];
-            $plansByName[strtolower($plan['name'])] = (int) $plan['id'];
-        }
-
         $created = 0;
         $updated = 0;
         $skipped = 0;
@@ -403,111 +366,49 @@ class MembershipService
                 continue;
             }
             if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = "Row {$line}: valid email is required (got: " . htmlspecialchars($email) . ").";
+                $errors[] = "Row {$line}: valid email is required.";
                 continue;
             }
 
-            // Resolve plan
-            $planRaw = $get($row, 'plan', 'plan_id', 'plan_slug', 'plan_name');
-            $planId  = null;
-            if ($planRaw !== '') {
-                if (ctype_digit($planRaw)) {
-                    $planId = (int) $planRaw;
-                } else {
-                    $planId = $plansBySlug[strtolower($planRaw)]
-                           ?? $plansByName[strtolower($planRaw)]
-                           ?? null;
-                }
-            }
-
-            // Resolve status
-            $statusRaw = strtolower($get($row, 'status'));
-            $status    = in_array($statusRaw, $allowedStatuses, true) ? $statusRaw : $defaultStatus;
-
-            // Dates
-            $joinedAt = $get($row, 'joined_at', 'joined', 'join_date');
-            $joinedAt = $joinedAt !== '' ? $joinedAt : null;
-
-            $lapsedAt = $get($row, 'lapsed_at', 'lapsed');
-            $lapsedAt = $lapsedAt !== '' ? $lapsedAt : null;
-
             $membershipNumber = $get($row, 'membership_number', 'membership_no', 'member_number', 'member_no', 'number');
-            $membershipYear   = $get($row, 'membership_year', 'year');
-            $phone            = $get($row, 'phone', 'telephone', 'mobile');
             $organisation     = $get($row, 'organisation', 'organization', 'org', 'company');
-            $notes            = $get($row, 'notes', 'note', 'comments');
 
-            // Address fields
-            $addrLine1  = $get($row, 'address_line_1', 'line_1', 'address1', 'address');
-            $addrLine2  = $get($row, 'address_line_2', 'line_2', 'address2');
-            $addrCity   = $get($row, 'city', 'town');
-            $addrCounty = $get($row, 'county', 'state', 'region', 'province');
-            $addrPost   = $get($row, 'postcode', 'postal_code', 'zip');
+            $addrLine1   = $get($row, 'address_line_1', 'line_1', 'address1', 'address');
+            $addrLine2   = $get($row, 'address_line_2', 'line_2', 'address2');
+            $addrCity    = $get($row, 'city', 'town');
+            $addrCounty  = $get($row, 'county', 'state', 'region', 'province');
+            $addrPost    = $get($row, 'postcode', 'postal_code', 'zip');
             $addrCountry = $get($row, 'country');
-
-            $hasAddress = ($addrLine1 !== '' || $addrCity !== '' || $addrPost !== '');
+            $hasAddress  = ($addrLine1 !== '' || $addrCity !== '' || $addrPost !== '');
 
             $existing = $this->findByEmail($email);
 
             if ($existing) {
-                if ($onDuplicate === 'skip') {
-                    $skipped++;
-                    continue;
-                }
+                if ($onDuplicate === 'skip') { $skipped++; continue; }
 
-                // Update
-                $payload = [
+                $this->db->update('members', [
                     'forenames'         => $forenames,
                     'surnames'          => $surnames,
-                    'phone'             => $phone ?: null,
                     'organisation'      => $organisation ?: null,
-                    'status'            => $status,
-                    'plan_id'           => $planId,
-                    'joined_at'         => $joinedAt,
-                    'lapsed_at'         => $lapsedAt,
-                    'notes'             => $notes ?: null,
-                ];
-
-                if ($membershipNumber !== '') {
-                    $payload['membership_number'] = $membershipNumber;
-                }
-                if ($membershipYear !== '') {
-                    $payload['membership_year'] = (int) $membershipYear;
-                }
-
-                $this->db->update('members', $payload, 'id = ?', [(int) $existing['id']]);
+                    'membership_number' => $membershipNumber ?: null,
+                ], 'id = ?', [(int) $existing['id']]);
 
                 if ($hasAddress) {
                     $this->upsertAddress((int) $existing['id'], $addrLine1, $addrLine2, $addrCity, $addrCounty, $addrPost, $addrCountry);
                 }
-
                 $updated++;
             } else {
-                // Create
-                $memberPayload = [
+                $memberId = (int) $this->db->insert('members', [
                     'forenames'         => $forenames,
                     'surnames'          => $surnames,
                     'email'             => $email,
-                    'phone'             => $phone ?: null,
                     'organisation'      => $organisation ?: null,
-                    'status'            => $status,
-                    'plan_id'           => $planId,
-                    'joined_at'         => $joinedAt,
-                    'lapsed_at'         => $lapsedAt,
-                    'notes'             => $notes ?: null,
                     'membership_number' => $membershipNumber ?: null,
-                ];
-
-                if ($membershipYear !== '') {
-                    $memberPayload['membership_year'] = (int) $membershipYear;
-                }
-
-                $memberId = (int) $this->db->insert('members', $memberPayload);
+                ]);
 
                 if ($hasAddress) {
                     $this->upsertAddress($memberId, $addrLine1, $addrLine2, $addrCity, $addrCounty, $addrPost, $addrCountry);
                 }
-
                 $created++;
             }
         }
