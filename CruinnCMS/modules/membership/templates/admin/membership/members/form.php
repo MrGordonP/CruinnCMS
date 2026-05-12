@@ -1,7 +1,6 @@
 <?php \Cruinn\Template::requireCss('admin-acp.css'); ?>
 <?php
 $isEdit = !empty($member['id']);
-$statuses = ['applicant','active','lapsed','suspended','resigned','archived'];
 ?>
 
 <h1><?= $isEdit ? 'Edit Member' : 'New Member' ?></h1>
@@ -28,10 +27,6 @@ $statuses = ['applicant','active','lapsed','suspended','resigned','archived'];
             <input class="form-input" id="email" name="email" type="email" value="<?= e($member['email'] ?? '') ?>">
             <?php if (!empty($errors['email'])): ?><small class="text-danger"><?= e($errors['email']) ?></small><?php endif; ?>
         </div>
-        <div>
-            <label class="form-label" for="phone">Phone</label>
-            <input class="form-input" id="phone" name="phone" type="text" value="<?= e($member['phone'] ?? '') ?>">
-        </div>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;">
@@ -50,40 +45,6 @@ $statuses = ['applicant','active','lapsed','suspended','resigned','archived'];
             <label class="form-label" for="organisation">Organisation</label>
             <input class="form-input" id="organisation" name="organisation" type="text" value="<?= e($member['organisation'] ?? '') ?>">
         </div>
-        <div>
-            <label class="form-label" for="plan_id">Plan</label>
-            <select class="form-input" id="plan_id" name="plan_id">
-                <option value="">No plan</option>
-                <?php foreach ($plans as $plan): ?>
-                <option value="<?= (int) $plan['id'] ?>"<?= (string) ($member['plan_id'] ?? '') === (string) $plan['id'] ? ' selected' : '' ?>><?= e($plan['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;">
-        <div>
-            <label class="form-label" for="status">Status</label>
-            <select class="form-input" id="status" name="status">
-                <?php foreach ($statuses as $status): ?>
-                <option value="<?= e($status) ?>"<?= ($member['status'] ?? 'applicant') === $status ? ' selected' : '' ?>><?= e(ucfirst($status)) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div>
-            <label class="form-label" for="joined_at">Joined At</label>
-            <input class="form-input" id="joined_at" name="joined_at" type="datetime-local" value="<?= !empty($member['joined_at']) ? e(date('Y-m-d\TH:i', strtotime($member['joined_at']))) : '' ?>">
-        </div>
-    </div>
-
-    <div>
-        <label class="form-label" for="lapsed_at">Lapsed At</label>
-        <input class="form-input" id="lapsed_at" name="lapsed_at" type="datetime-local" value="<?= !empty($member['lapsed_at']) ? e(date('Y-m-d\TH:i', strtotime($member['lapsed_at']))) : '' ?>">
-    </div>
-
-    <div>
-        <label class="form-label" for="notes">Notes</label>
-        <textarea class="form-input" id="notes" name="notes" rows="4"><?= e($member['notes'] ?? '') ?></textarea>
     </div>
 
     <div style="display:flex;gap:0.5rem;">

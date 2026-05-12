@@ -14,9 +14,7 @@
 
 <div class="card" style="margin-top:1rem;padding:1rem;border:1px solid #e5e7eb;border-radius:8px;background:#fff;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;">
     <div><strong>Email:</strong> <?= e($member['email']) ?></div>
-    <div><strong>Phone:</strong> <?= e($member['phone'] ?: '—') ?></div>
     <div><strong>Organisation:</strong> <?= e($member['organisation'] ?: '—') ?></div>
-    <div><strong>Status:</strong> <span style="text-transform:capitalize;"><?= e($member['status']) ?></span></div>
     <div><strong>Plan:</strong> <?= e($member['plan_name'] ?: '—') ?></div>
     <div><strong>Linked User:</strong> <?= !empty($member['user_id']) ? (int) $member['user_id'] : '—' ?></div>
 </div>
@@ -40,17 +38,17 @@
             <tbody>
                 <?php foreach ($subscriptions as $sub): ?>
                 <tr>
-                    <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;"><?= e($sub['period_label']) ?></td>
+                    <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;"><?= e(($sub['period_start'] ?? '') . ' – ' . ($sub['period_end'] ?? '')) ?></td>
                     <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;"><?= e($sub['plan_name'] ?: '—') ?></td>
                     <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;"><?= e($sub['currency']) ?> <?= number_format((float) $sub['amount'], 2) ?></td>
-                    <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;"><?= e($sub['status']) ?></td>
+                    <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;"><?= e($sub['verification_status'] ?? 'unverified') ?></td>
                     <td style="padding:0.5rem;border-bottom:1px solid #f1f5f9;">
                         <form method="post" action="<?= url('/admin/membership/subscriptions/' . (int) $sub['id'] . '/status') ?>" style="display:flex;gap:0.3rem;align-items:center;">
                             <?= csrf_field() ?>
                             <input type="hidden" name="member_id" value="<?= (int) $member['id'] ?>">
                             <select name="status" class="form-input" style="max-width:10rem;">
-                                <?php foreach (['pending','paid','overdue','waived','refunded','cancelled'] as $status): ?>
-                                <option value="<?= e($status) ?>"<?= $sub['status'] === $status ? ' selected' : '' ?>><?= e($status) ?></option>
+                                <?php foreach (['unverified','verified','disputed','waived'] as $status): ?>
+                                <option value="<?= e($status) ?>"<?= ($sub['verification_status'] ?? 'unverified') === $status ? ' selected' : '' ?>><?= e($status) ?></option>
                                 <?php endforeach; ?>
                             </select>
                             <button class="btn btn-outline btn-small" type="submit">Set</button>
@@ -65,25 +63,31 @@
         <h3 style="margin-top:1.25rem;">Add Subscription</h3>
         <form method="post" action="<?= url('/admin/membership/members/' . (int) $member['id'] . '/subscriptions') ?>" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0.5rem;">
             <?= csrf_field() ?>
-            <input class="form-input" type="text" name="period_label" placeholder="Period label (e.g. 2026)" required>
-            <input class="form-input" type="date" name="period_start" required>
-            <input class="form-input" type="date" name="period_end" required>
+            <input class="form-input" type="date" name="period_start" placeholder="Start" required>
+            <input class="form-input" type="date" name="period_end" placeholder="End" required>
             <input class="form-input" type="number" step="0.01" min="0" name="amount" placeholder="Amount" required>
             <input class="form-input" type="text" name="currency" value="EUR" maxlength="3" required>
             <select class="form-input" name="plan_id">
                 <option value="">No plan</option>
                 <?php foreach ($plans as $plan): ?>
-                <option value="<?= (int) $plan['id'] ?>"<?= (string) $member['plan_id'] === (string) $plan['id'] ? ' selected' : '' ?>><?= e($plan['name']) ?></option>
+                <option value="<?= (int) $plan['id'] ?>"><?= e($plan['name']) ?></option>
                 <?php endforeach; ?>
             </select>
-            <select class="form-input" name="status">
-                <?php foreach (['pending','paid','overdue','waived','refunded','cancelled'] as $status): ?>
+            <select class="form-input" name="member_type">
+                <option value="new">New member</option>
+                <option value="renewal">Renewal</option>
+            </select>
+            <select class="form-input" name="payment_method">
+                <option value="bank_transfer">Bank transfer</option>
+                <option value="cash">Cash</option>
+                <option value="online">Online</option>
+                <option value="waived">Waived</option>
+            </select>
+            <select class="form-input" name="verification_status">
+                <?php foreach (['unverified','verified','disputed','waived'] as $status): ?>
                 <option value="<?= e($status) ?>"><?= e($status) ?></option>
                 <?php endforeach; ?>
             </select>
-            <input class="form-input" type="date" name="due_date" placeholder="Due date">
-            <input class="form-input" type="datetime-local" name="paid_at" placeholder="Paid at">
-            <input class="form-input" type="text" name="payment_reference" placeholder="Reference">
             <input class="form-input" type="text" name="notes" placeholder="Notes">
             <button class="btn btn-primary" type="submit">Add Subscription</button>
         </form>
@@ -97,18 +101,13 @@
             <label class="form-label" for="subscription_id">Subscription</label>
             <select class="form-input" id="subscription_id" name="subscription_id" onchange="this.form.action='<?= url('/admin/membership/subscriptions') ?>/' + this.value + '/payments';">
                 <?php foreach ($subscriptions as $sub): ?>
-                <option value="<?= (int) $sub['id'] ?>">#<?= (int) $sub['id'] ?> — <?= e($sub['period_label']) ?> (<?= e($sub['status']) ?>)</option>
+                <option value="<?= (int) $sub['id'] ?>">#<?= (int) $sub['id'] ?> — <?= e(($sub['period_start'] ?? '') . ' – ' . ($sub['period_end'] ?? '')) ?> (<?= e($sub['verification_status'] ?? 'unverified') ?>)</option>
                 <?php endforeach; ?>
             </select>
             <input class="form-input" type="number" step="0.01" min="0" name="amount" placeholder="Amount" required>
             <input class="form-input" type="text" name="currency" value="EUR" maxlength="3" required>
-            <input class="form-input" type="text" name="method" placeholder="Method (card, transfer, cash)">
-            <input class="form-input" type="text" name="reference" placeholder="Reference">
-            <select class="form-input" name="status">
-                <?php foreach (['completed','pending','failed','refunded'] as $status): ?>
-                <option value="<?= e($status) ?>"><?= e($status) ?></option>
-                <?php endforeach; ?>
-            </select>
+            <input class="form-input" type="text" name="transaction_id" placeholder="Transaction ID">
+            <input class="form-input" type="text" name="gateway" placeholder="Gateway (e.g. stripe)">
             <input class="form-input" type="datetime-local" name="paid_at" value="<?= e(date('Y-m-d\TH:i')) ?>">
             <textarea class="form-input" name="notes" rows="3" placeholder="Notes"></textarea>
             <button class="btn btn-primary" type="submit"<?= empty($subscriptions) ? ' disabled' : '' ?>>Record Payment</button>
@@ -122,8 +121,8 @@
             <?php foreach ($payments as $p): ?>
             <li>
                 <strong><?= e($p['currency']) ?> <?= number_format((float) $p['amount'], 2) ?></strong>
-                — <?= e($p['status']) ?>
-                <div class="text-muted" style="font-size:0.85rem;"><?= e($p['paid_at']) ?><?= !empty($p['reference']) ? ' • ' . e($p['reference']) : '' ?></div>
+                <?= !empty($p['gateway']) ? '— ' . e($p['gateway']) : '' ?>
+                <div class="text-muted" style="font-size:0.85rem;"><?= e($p['status'] ?? '') ?><?= !empty($p['paid_at']) ? ' · ' . e(substr((string)$p['paid_at'], 0, 10)) : '' ?></div>
             </li>
             <?php endforeach; ?>
         </ul>

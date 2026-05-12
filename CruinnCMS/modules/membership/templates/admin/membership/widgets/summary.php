@@ -52,7 +52,7 @@ $recentMembers = $data['recent_members'] ?? [];
                 </a>
             </td>
             <td><?= e($member['membership_number'] ?: '—') ?></td>
-            <td><?= e(ucfirst((string) ($member['status'] ?? 'unknown'))) ?></td>
+            <td><?= e(ucfirst((string) ($member['verification_status'] ?? 'unverified'))) ?></td>
             <td><time datetime="<?= e($member['updated_at']) ?>"><?= format_date($member['updated_at'], 'j M Y') ?></time></td>
         </tr>
         <?php endforeach; ?>

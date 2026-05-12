@@ -3,7 +3,7 @@
 \Cruinn\Template::requireCss('admin-panel-layout.css');
 $GLOBALS['admin_flush_layout'] = true;
 $selectedId = $memberId ?? 0;
-$statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
+$verificationStatuses = ['unverified','verified','disputed','waived'];
 ?>
 
 <div class="panel-layout" id="membership-layout">
@@ -18,26 +18,24 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
 
             <!-- Status summary chips -->
             <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
-                <?php foreach ($statuses as $s): ?>
-                <a href="<?= url('/admin/membership?status=' . $s) ?>"
-                   style="font-size:0.7rem;padding:1px 6px;border-radius:3px;border:1px solid #ccc;text-decoration:none;
-                          background:<?= ($filters['status'] ?? '') === $s ? '#1d9e75' : '#f8f8f8' ?>;
-                          color:<?= ($filters['status'] ?? '') === $s ? '#fff' : '#555' ?>">
-                    <?= e(ucfirst($s)) ?> <?= (int)($statusCount[$s] ?? 0) ?>
-                </a>
-                <?php endforeach; ?>
-                <?php if ($filters['status'] ?? ''): ?>
-                <a href="<?= url('/admin/membership') ?>" style="font-size:0.7rem;padding:1px 6px;border-radius:3px;border:1px solid #ccc;text-decoration:none;background:#f8f8f8;color:#555">All</a>
-                <?php endif; ?>
+                <span style="font-size:0.7rem;padding:1px 6px;border-radius:3px;border:1px solid #ccc;background:#f8f8f8;color:#555">
+                    Total <?= (int)($statusCount['total'] ?? 0) ?>
+                </span>
+                <span style="font-size:0.7rem;padding:1px 6px;border-radius:3px;border:1px solid #1d9e75;background:#e8f5ef;color:#1d9e75">
+                    Active <?= (int)($statusCount['active'] ?? 0) ?>
+                </span>
+                <span style="font-size:0.7rem;padding:1px 6px;border-radius:3px;border:1px solid #f59e0b;background:#fef3c7;color:#92400e">
+                    Unverified <?= (int)($statusCount['unverified'] ?? 0) ?>
+                </span>
+                <span style="font-size:0.7rem;padding:1px 6px;border-radius:3px;border:1px solid #ccc;background:#f8f8f8;color:#555">
+                    Lapsed <?= (int)($statusCount['lapsed'] ?? 0) ?>
+                </span>
             </div>
 
-            <!-- Search / plan filter -->
+            <!-- Search -->
             <form method="get" action="<?= url('/admin/membership') ?>" style="display:flex;gap:0.3rem">
                 <input class="form-input" type="text" name="q" value="<?= e($filters['q'] ?? '') ?>"
                        placeholder="Search…" style="flex:1;font-size:0.8rem;padding:0.3rem 0.5rem">
-                <?php if ($filters['status'] ?? ''): ?>
-                <input type="hidden" name="status" value="<?= e($filters['status']) ?>">
-                <?php endif; ?>
                 <button class="btn btn-secondary btn-small" type="submit">Go</button>
             </form>
         </div>
@@ -47,8 +45,13 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
             <p class="text-muted" style="font-size:0.85rem;padding:0.75rem">No members found.</p>
             <?php else: ?>
             <?php foreach ($members as $m): ?>
-            <?php $mName = trim(($m['forenames'] ?? '') . ' ' . ($m['surnames'] ?? '')); ?>
-            <a href="<?= url('/admin/membership?member=' . (int)$m['id'] . ($filters['status'] ? '&status=' . urlencode($filters['status']) : '') . ($filters['q'] ? '&q=' . urlencode($filters['q']) : '')) ?>"
+            <?php
+                $mName = trim(($m['forenames'] ?? '') . ' ' . ($m['surnames'] ?? ''));
+                $vs = $m['verification_status'] ?? null;
+                $vsBg = $vs === 'verified' ? '#e8f5ef' : ($vs === 'waived' ? '#e8f5ef' : ($vs === 'disputed' ? '#fee2e2' : '#fef3c7'));
+                $vsColor = $vs === 'verified' ? '#1d9e75' : ($vs === 'waived' ? '#1d9e75' : ($vs === 'disputed' ? '#b91c1c' : '#92400e'));
+            ?>
+            <a href="<?= url('/admin/membership?member=' . (int)$m['id'] . ($filters['q'] ? '&q=' . urlencode($filters['q']) : '')) ?>"
                class="pl-sidebar-item<?= $m['id'] == $selectedId ? ' active' : '' ?>">
                 <span style="flex:1">
                     <?= e($mName ?: '(unnamed)') ?>
@@ -56,7 +59,9 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                     <small style="color:var(--color-text-muted);font-size:0.7rem;display:block">#<?= e($m['membership_number']) ?></small>
                     <?php endif; ?>
                 </span>
-                <span style="font-size:0.7rem;padding:1px 5px;border-radius:3px;background:#e5e7eb;color:#555;text-transform:capitalize"><?= e($m['status']) ?></span>
+                <?php if ($vs): ?>
+                <span style="font-size:0.7rem;padding:1px 5px;border-radius:3px;background:<?= $vsBg ?>;color:<?= $vsColor ?>;text-transform:capitalize"><?= e($vs) ?></span>
+                <?php endif; ?>
             </a>
             <?php endforeach; ?>
             <?php endif; ?>
@@ -76,9 +81,6 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
         ?>
         <div class="pl-main-toolbar">
             <span class="pl-main-title"><?= e($mName) ?></span>
-            <div class="pl-main-toolbar-actions">
-                <span style="font-size:0.8rem;padding:2px 8px;border-radius:3px;background:#e5e7eb;text-transform:capitalize"><?= e($member['status'] ?? '') ?></span>
-            </div>
         </div>
         <div class="pl-main-body">
 
@@ -105,10 +107,6 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                             <input class="form-input" type="email" name="email" value="<?= e($member['email'] ?? '') ?>">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Phone</label>
-                            <input class="form-input" type="text" name="phone" value="<?= e($member['phone'] ?? '') ?>">
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">Membership Number</label>
                             <input class="form-input" type="text" name="membership_number" value="<?= e($member['membership_number'] ?? '') ?>">
                         </div>
@@ -117,35 +115,6 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                             <label class="form-label">Organisation</label>
                             <input class="form-input" type="text" name="organisation" value="<?= e($member['organisation'] ?? '') ?>">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Plan</label>
-                            <select class="form-input" name="plan_id">
-                                <option value="">No plan</option>
-                                <?php foreach ($plans as $plan): ?>
-                                <option value="<?= (int)$plan['id'] ?>"<?= (string)($member['plan_id'] ?? '') === (string)$plan['id'] ? ' selected' : '' ?>><?= e($plan['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Status</label>
-                            <select class="form-input" name="status">
-                                <?php foreach ($statuses as $s): ?>
-                                <option value="<?= e($s) ?>"<?= ($member['status'] ?? 'applicant') === $s ? ' selected' : '' ?>><?= e(ucfirst($s)) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Joined At</label>
-                            <input class="form-input" type="datetime-local" name="joined_at" value="<?= !empty($member['joined_at']) ? e(date('Y-m-d\TH:i', strtotime($member['joined_at']))) : '' ?>">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Lapsed At</label>
-                            <input class="form-input" type="datetime-local" name="lapsed_at" value="<?= !empty($member['lapsed_at']) ? e(date('Y-m-d\TH:i', strtotime($member['lapsed_at']))) : '' ?>">
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top:0.75rem">
-                        <label class="form-label">Notes</label>
-                        <textarea class="form-input" name="notes" rows="3"><?= e($member['notes'] ?? '') ?></textarea>
                     </div>
                 </div>
 
@@ -261,18 +230,22 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
             <!-- Subscription list -->
             <?php if (!empty($subscriptions)): ?>
             <?php foreach ($subscriptions as $sub): ?>
+            <?php
+                $subLabel = e(($sub['period_start'] ?? '') . ' – ' . ($sub['period_end'] ?? ''));
+                $subVs = $sub['verification_status'] ?? 'unverified';
+            ?>
             <div class="detail-card" style="margin-bottom:0.75rem;padding:0.6rem">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
                     <div>
-                        <strong style="font-size:0.85rem"><?= e($sub['period_label']) ?></strong>
+                        <strong style="font-size:0.85rem"><?= $subLabel ?></strong>
                         <small style="display:block;color:var(--color-text-muted)"><?= e($sub['plan_name'] ?? '—') ?> · <?= e($sub['currency']) ?> <?= number_format((float)$sub['amount'], 2) ?></small>
                     </div>
                     <form method="post" action="<?= url('/admin/membership/subscriptions/' . (int)$sub['id'] . '/status') ?>" style="display:flex;gap:0.3rem;align-items:center">
                         <?= csrf_field() ?>
                         <input type="hidden" name="member_id" value="<?= (int)$member['id'] ?>">
                         <select name="status" class="form-input" style="font-size:0.75rem;padding:1px 4px">
-                            <?php foreach (['pending','paid','overdue','waived','refunded','cancelled'] as $s): ?>
-                            <option value="<?= e($s) ?>"<?= $sub['status'] === $s ? ' selected' : '' ?>><?= e($s) ?></option>
+                            <?php foreach ($verificationStatuses as $s): ?>
+                            <option value="<?= e($s) ?>"<?= $subVs === $s ? ' selected' : '' ?>><?= e($s) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <button class="btn btn-outline btn-small" type="submit">Set</button>
@@ -289,10 +262,9 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                 <h4 style="margin:0 0 0.5rem;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em">Add Subscription</h4>
                 <form method="post" action="<?= url('/admin/membership/members/' . (int)$member['id'] . '/subscriptions') ?>" style="display:grid;gap:0.4rem">
                     <?= csrf_field() ?>
-                    <input class="form-input" style="font-size:0.82rem" type="text" name="period_label" placeholder="Period label (e.g. 2026)" required>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem">
-                        <input class="form-input" style="font-size:0.82rem" type="date" name="period_start" required>
-                        <input class="form-input" style="font-size:0.82rem" type="date" name="period_end" required>
+                        <input class="form-input" style="font-size:0.82rem" type="date" name="period_start" placeholder="Start" required>
+                        <input class="form-input" style="font-size:0.82rem" type="date" name="period_end" placeholder="End" required>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 80px;gap:0.4rem">
                         <input class="form-input" style="font-size:0.82rem" type="number" step="0.01" min="0" name="amount" placeholder="Amount" required>
@@ -301,15 +273,24 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                     <select class="form-input" style="font-size:0.82rem" name="plan_id">
                         <option value="">No plan</option>
                         <?php foreach ($plans as $plan): ?>
-                        <option value="<?= (int)$plan['id'] ?>"<?= (string)($member['plan_id'] ?? '') === (string)$plan['id'] ? ' selected' : '' ?>><?= e($plan['name']) ?></option>
+                        <option value="<?= (int)$plan['id'] ?>"><?= e($plan['name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <select class="form-input" style="font-size:0.82rem" name="status">
-                        <?php foreach (['pending','paid','overdue','waived','refunded','cancelled'] as $s): ?>
+                    <select class="form-input" style="font-size:0.82rem" name="member_type">
+                        <option value="new">New member</option>
+                        <option value="renewal">Renewal</option>
+                    </select>
+                    <select class="form-input" style="font-size:0.82rem" name="payment_method">
+                        <option value="bank_transfer">Bank transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="online">Online</option>
+                        <option value="waived">Waived</option>
+                    </select>
+                    <select class="form-input" style="font-size:0.82rem" name="verification_status">
+                        <?php foreach ($verificationStatuses as $s): ?>
                         <option value="<?= e($s) ?>"><?= e($s) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <input class="form-input" style="font-size:0.82rem" type="date" name="due_date" placeholder="Due date">
                     <input class="form-input" style="font-size:0.82rem" type="text" name="notes" placeholder="Notes">
                     <button class="btn btn-primary btn-small" type="submit">Add Subscription</button>
                 </form>
@@ -325,20 +306,15 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                     <select class="form-input" style="font-size:0.82rem" name="subscription_id"
                             onchange="this.form.action='<?= url('/admin/membership/subscriptions') ?>/' + this.value + '/payments';">
                         <?php foreach ($subscriptions as $sub): ?>
-                        <option value="<?= (int)$sub['id'] ?>">#<?= (int)$sub['id'] ?> — <?= e($sub['period_label']) ?> (<?= e($sub['status']) ?>)</option>
+                        <option value="<?= (int)$sub['id'] ?>">#<?= (int)$sub['id'] ?> — <?= e(($sub['period_start'] ?? '') . ' – ' . ($sub['period_end'] ?? '')) ?> (<?= e($sub['verification_status'] ?? 'unverified') ?>)</option>
                         <?php endforeach; ?>
                     </select>
                     <div style="display:grid;grid-template-columns:1fr 80px;gap:0.4rem">
                         <input class="form-input" style="font-size:0.82rem" type="number" step="0.01" min="0.01" name="amount" placeholder="Amount" required>
                         <input class="form-input" style="font-size:0.82rem" type="text" name="currency" value="EUR" maxlength="3" required>
                     </div>
-                    <input class="form-input" style="font-size:0.82rem" type="text" name="method" placeholder="Method (e.g. bank transfer)">
-                    <input class="form-input" style="font-size:0.82rem" type="text" name="reference" placeholder="Reference">
-                    <select class="form-input" style="font-size:0.82rem" name="status">
-                        <?php foreach (['completed','pending','failed','refunded'] as $s): ?>
-                        <option value="<?= e($s) ?>"><?= e($s) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <input class="form-input" style="font-size:0.82rem" type="text" name="transaction_id" placeholder="Transaction ID">
+                    <input class="form-input" style="font-size:0.82rem" type="text" name="gateway" placeholder="Gateway (e.g. stripe)">
                     <input class="form-input" style="font-size:0.82rem" type="datetime-local" name="paid_at" value="<?= e(date('Y-m-d\TH:i')) ?>">
                     <input class="form-input" style="font-size:0.82rem" type="text" name="notes" placeholder="Notes">
                     <button class="btn btn-primary btn-small" type="submit">Record Payment</button>
@@ -352,8 +328,8 @@ $statuses   = ['applicant','active','lapsed','suspended','resigned','archived'];
                 <h4 style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;margin:0 0 0.5rem">Payment History</h4>
                 <?php foreach ($payments as $p): ?>
                 <div style="font-size:0.8rem;padding:0.4rem 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between">
-                    <span><?= e($p['currency']) ?> <?= number_format((float)$p['amount'], 2) ?> — <?= e($p['method'] ?? '—') ?></span>
-                    <span style="color:var(--color-text-muted)"><?= e($p['status']) ?> · <?= e(substr((string)($p['paid_at'] ?? ''), 0, 10)) ?></span>
+                    <span><?= e($p['currency']) ?> <?= number_format((float)$p['amount'], 2) ?><?= !empty($p['gateway']) ? ' — ' . e($p['gateway']) : '' ?></span>
+                    <span style="color:var(--color-text-muted)"><?= e($p['status'] ?? '') ?> · <?= e(substr((string)($p['paid_at'] ?? ''), 0, 10)) ?></span>
                 </div>
                 <?php endforeach; ?>
             </div>
