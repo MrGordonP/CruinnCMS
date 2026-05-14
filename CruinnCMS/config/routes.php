@@ -301,6 +301,8 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/templates/{id}',                    [SiteBuilderController::class, 'builderUpdateTemplate']);
     $router->post('/admin/templates/{id}/zone-settings',      [SiteBuilderController::class, 'builderUpdateZoneSettings']);
     $router->post('/admin/templates/{id}/canvas',             [SiteBuilderController::class, 'builderEnsureCanvas']);
+    $router->post('/admin/templates/{id}/zone-canvas',        [SiteBuilderController::class, 'builderEnsureZoneCanvas']);
+    $router->post('/admin/templates/{id}/zone-canvases',      [SiteBuilderController::class, 'builderSaveZoneCanvases']);
     $router->post('/admin/templates/{id}/delete',             [SiteBuilderController::class, 'builderDeleteTemplate']);
     $router->get('/admin/site-builder/menus',                 [SiteBuilderController::class, 'builderMenus']);
     $router->get('/admin/site-builder/structure',             [SiteBuilderController::class, 'builderStructure']);

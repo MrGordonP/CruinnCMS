@@ -21,7 +21,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             "SELECT p.*, u.display_name as author_name
              FROM pages_index p
              LEFT JOIN users u ON p.created_by = u.id
-             WHERE p.slug NOT LIKE '\_%'
+             WHERE p.canvas_type = 'content' OR (p.canvas_type IS NULL AND p.slug NOT LIKE '\_%')
              ORDER BY p.updated_at DESC"
         );
 
@@ -97,6 +97,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             'status'           => $this->input('status', 'draft'),
             'template'         => $templateSlug,
             'page_zone'        => $pageZone,
+            'zone_overrides'   => $this->sanitizeZoneOverrides($this->input('zone_overrides', '')),
             'meta_description' => $this->input('meta_description', ''),
             'render_mode'      => $renderMode,
             'created_by'       => Auth::userId(),
@@ -149,6 +150,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             'status'           => $this->input('status', 'draft'),
             'template'         => $templateSlug,
             'page_zone'        => $pageZone,
+            'zone_overrides'   => $this->sanitizeZoneOverrides($this->input('zone_overrides', '')),
             'meta_description' => $this->input('meta_description', ''),
             'render_mode'      => $renderMode,
             'updated_at'       => date('Y-m-d H:i:s'),
@@ -387,6 +389,28 @@ HTML;
 
         $this->logActivity('reparent', 'page', (int) $id, "{$oldSlug} → {$newSlug}");
         $this->json(['success' => true, 'old_slug' => $oldSlug, 'new_slug' => $newSlug]);
+    }
+
+    /**
+     * Validate and normalise a zone_overrides JSON string from form input.
+     * Returns a clean JSON string (object mapping zone names to page IDs) or null.
+     */
+    private function sanitizeZoneOverrides(string $raw): ?string
+    {
+        if ($raw === '' || $raw === 'null') {
+            return null;
+        }
+        $parsed = json_decode($raw, true);
+        if (!is_array($parsed)) {
+            return null;
+        }
+        $clean = [];
+        foreach ($parsed as $zone => $pageId) {
+            if ($pageId !== null && $pageId !== '' && (int) $pageId > 0) {
+                $clean[preg_replace('/[^a-z0-9_-]/', '', (string) $zone)] = (int) $pageId;
+            }
+        }
+        return empty($clean) ? null : json_encode($clean);
     }
 
     private function resolvePageZoneForTemplate(string $templateSlug, string $requestedZone): string

@@ -11,13 +11,7 @@ if (!$page) {
     $templateZoneMap = [];
     foreach (($templates ?? []) as $tpl) {
         $zones = $tpl['zones'] ?? ['main'];
-        $contentZones = [];
-        foreach ($zones as $z) {
-            if (in_array($z, ['header', 'footer'], true)) {
-                continue;
-            }
-            $contentZones[] = $z;
-        }
+        $contentZones = array_values(array_filter($zones, fn($z) => is_string($z) && preg_match('/^[a-z0-9_\-]+$/', trim($z))));
         if (empty($contentZones)) {
             $contentZones = ['main'];
         }
@@ -87,13 +81,7 @@ if (!$page) {
     $templateZoneMap = [];
     foreach (($templates ?? []) as $tpl) {
         $zones = $tpl['zones'] ?? ['main'];
-        $contentZones = [];
-        foreach ($zones as $z) {
-            if (in_array($z, ['header', 'footer'], true)) {
-                continue;
-            }
-            $contentZones[] = $z;
-        }
+        $contentZones = array_values(array_filter($zones, fn($z) => is_string($z) && preg_match('/^[a-z0-9_\-]+$/', trim($z))));
         if (empty($contentZones)) {
             $contentZones = ['main'];
         }

@@ -113,33 +113,88 @@ class CruinnRenderService
     }
 
     /**
-     * Build the full page HTML from published pages.
-     * Dynamic blocks have their content server-rendered here.
+     * Resolve and render a named zone canvas.
+     *
+     * Resolution order (most specific wins):
+     *   1. Page-level zone_overrides JSON   — page wants a specific canvas for this zone
+     *   2. Template zone_canvases JSON      — template default for this zone
+     *   3. Global zone canvas               — pages_index WHERE canvas_type='zone' AND zone_name=?
+     *   4. Legacy slug fallback             — pages_index WHERE slug='_'.$zone (backward compat)
+     *
+     * @param string   $zone       Zone name, e.g. 'header', 'footer', 'sidebar'
+     * @param int|null $templateId page_templates.id of the active template (optional)
+     * @param int|null $pageId     pages_index.id of the current page (optional)
      */
-    public function buildZone(string $zone): ?array
+    public function buildZone(string $zone, ?int $templateId = null, ?int $pageId = null): ?array
     {
+        // Build a cache key that incorporates context so different pages/templates
+        // don't share the same cached result.
+        $cacheKey = $zone . ':' . ($templateId ?? 0) . ':' . ($pageId ?? 0);
         static $cache = [];
-        if (array_key_exists($zone, $cache)) {
-            return $cache[$zone];
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
         }
 
-        $page = $this->db->fetch(
-            'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',
-            ['_' . $zone]
-        );
-        if (!$page) {
-            return $cache[$zone] = null;
+        $canvasPageId = null;
+
+        // 1. Page-level override
+        if ($pageId !== null) {
+            $row = $this->db->fetch(
+                'SELECT zone_overrides FROM pages_index WHERE id = ? LIMIT 1',
+                [$pageId]
+            );
+            if ($row && !empty($row['zone_overrides'])) {
+                $overrides = json_decode($row['zone_overrides'], true) ?: [];
+                if (!empty($overrides[$zone])) {
+                    $canvasPageId = (int) $overrides[$zone];
+                }
+            }
         }
 
-        $pageId = (int) $page['id'];
-        if (!$this->hasPublished($pageId)) {
-            return $cache[$zone] = null;
+        // 2. Template zone_canvases
+        if ($canvasPageId === null && $templateId !== null) {
+            $row = $this->db->fetch(
+                'SELECT zone_canvases FROM page_templates WHERE id = ? LIMIT 1',
+                [$templateId]
+            );
+            if ($row && !empty($row['zone_canvases'])) {
+                $canvases = json_decode($row['zone_canvases'], true) ?: [];
+                if (!empty($canvases[$zone])) {
+                    $canvasPageId = (int) $canvases[$zone];
+                }
+            }
         }
 
-        return $cache[$zone] = [
-            'page_id' => $pageId,
-            'html'    => $this->buildHtml($pageId),
-            'css'     => $this->buildCss($pageId),
+        // 3. Global zone canvas by canvas_type
+        if ($canvasPageId === null) {
+            $row = $this->db->fetch(
+                "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
+                [$zone]
+            );
+            if ($row) {
+                $canvasPageId = (int) $row['id'];
+            }
+        }
+
+        // 4. Legacy slug fallback (_header, _footer, etc.)
+        if ($canvasPageId === null) {
+            $row = $this->db->fetch(
+                'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',
+                ['_' . $zone]
+            );
+            if ($row) {
+                $canvasPageId = (int) $row['id'];
+            }
+        }
+
+        if ($canvasPageId === null || !$this->hasPublished($canvasPageId)) {
+            return $cache[$cacheKey] = null;
+        }
+
+        return $cache[$cacheKey] = [
+            'page_id' => $canvasPageId,
+            'html'    => $this->buildHtml($canvasPageId),
+            'css'     => $this->buildCss($canvasPageId),
         ];
     }
 

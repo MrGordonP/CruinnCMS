@@ -310,11 +310,13 @@ class CruinnController extends BaseController
             $moduleWidgets = [];
         }
 
-        // Detect global zone pages and template canvas pages (slug starts with '_')
-        $isZonePage       = str_starts_with($page['slug'] ?? '', '_');
-        $zoneName         = $isZonePage ? ltrim($page['slug'], '_') : null;
-        $isTemplatePage   = str_starts_with($page['slug'] ?? '', '_tpl_');
-        $templateSlugName = $isTemplatePage ? substr($page['slug'], 5) : null;
+        // Detect zone and template-shell canvas pages via canvas_type column.
+        // Fall back to slug prefix convention for instances that haven't run migration 011 yet.
+        $canvasType       = $page['canvas_type'] ?? null;
+        $isZonePage       = ($canvasType === 'zone') || ($canvasType === null && str_starts_with($page['slug'] ?? '', '_') && !str_starts_with($page['slug'] ?? '', '_tpl_'));
+        $zoneName         = $isZonePage ? ($page['zone_name'] ?? ltrim($page['slug'], '_')) : null;
+        $isTemplatePage   = ($canvasType === 'template-shell') || ($canvasType === null && str_starts_with($page['slug'] ?? '', '_tpl_'));
+        $templateSlugName = $isTemplatePage ? ($canvasType === 'template-shell' ? null : substr($page['slug'], 5)) : null;
 
         // For template canvas pages: look up which template owns this canvas
         $templateId      = null;

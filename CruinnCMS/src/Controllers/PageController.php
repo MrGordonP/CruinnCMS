@@ -44,6 +44,7 @@ class PageController extends BaseController
         // Cruinn CMS: if published Cruinn blocks exist, hand off to Cruinn renderer
         $cruinn = new CruinnRenderService();
         $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        $this->setZoneGlobals($cruinn, $tpl, (int) $page['id']);
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
         Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
@@ -102,6 +103,7 @@ class PageController extends BaseController
         $tpl = $this->getTemplate($page['template'] ?? 'default');
         $cruinn = new CruinnRenderService();
         $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        $this->setZoneGlobals($cruinn, $tpl, (int) $page['id']);
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
         Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
@@ -153,6 +155,22 @@ class PageController extends BaseController
             'blocks'           => $blocks,
             'page_tpl'         => $tpl,
         ]);
+    }
+
+    /**
+     * Override the zone globals (tpl_header/footer_html/css) that were set
+     * by the global middleware, using template + page context for proper resolution.
+     * Called by home() and show() once the template and page are known.
+     */
+    private function setZoneGlobals(CruinnRenderService $cruinn, array $tpl, int $pageId): void
+    {
+        $templateId = isset($tpl['id']) ? (int) $tpl['id'] : null;
+        $header = $cruinn->buildZone('header', $templateId, $pageId);
+        $footer = $cruinn->buildZone('footer', $templateId, $pageId);
+        Template::addGlobal('tpl_header_html', $header ? $header['html'] : '');
+        Template::addGlobal('tpl_header_css',  $header ? $header['css']  : '');
+        Template::addGlobal('tpl_footer_html', $footer ? $footer['html'] : '');
+        Template::addGlobal('tpl_footer_css',  $footer ? $footer['css']  : '');
     }
 
     /**
