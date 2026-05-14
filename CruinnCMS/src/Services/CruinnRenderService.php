@@ -139,41 +139,47 @@ class CruinnRenderService
 
         // 1. Page-level override
         if ($pageId !== null) {
-            $row = $this->db->fetch(
-                'SELECT zone_overrides FROM pages_index WHERE id = ? LIMIT 1',
-                [$pageId]
-            );
-            if ($row && !empty($row['zone_overrides'])) {
-                $overrides = json_decode($row['zone_overrides'], true) ?: [];
-                if (!empty($overrides[$zone])) {
-                    $canvasPageId = (int) $overrides[$zone];
+            try {
+                $row = $this->db->fetch(
+                    'SELECT zone_overrides FROM pages_index WHERE id = ? LIMIT 1',
+                    [$pageId]
+                );
+                if ($row && !empty($row['zone_overrides'])) {
+                    $overrides = json_decode($row['zone_overrides'], true) ?: [];
+                    if (!empty($overrides[$zone])) {
+                        $canvasPageId = (int) $overrides[$zone];
+                    }
                 }
-            }
+            } catch (\Throwable $e) { /* column may not exist yet */ }
         }
 
         // 2. Template zone_canvases
         if ($canvasPageId === null && $templateId !== null) {
-            $row = $this->db->fetch(
-                'SELECT zone_canvases FROM page_templates WHERE id = ? LIMIT 1',
-                [$templateId]
-            );
-            if ($row && !empty($row['zone_canvases'])) {
-                $canvases = json_decode($row['zone_canvases'], true) ?: [];
-                if (!empty($canvases[$zone])) {
-                    $canvasPageId = (int) $canvases[$zone];
+            try {
+                $row = $this->db->fetch(
+                    'SELECT zone_canvases FROM page_templates WHERE id = ? LIMIT 1',
+                    [$templateId]
+                );
+                if ($row && !empty($row['zone_canvases'])) {
+                    $canvases = json_decode($row['zone_canvases'], true) ?: [];
+                    if (!empty($canvases[$zone])) {
+                        $canvasPageId = (int) $canvases[$zone];
+                    }
                 }
-            }
+            } catch (\Throwable $e) { /* column may not exist yet */ }
         }
 
         // 3. Global zone canvas by canvas_type
         if ($canvasPageId === null) {
-            $row = $this->db->fetch(
-                "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
-                [$zone]
-            );
-            if ($row) {
-                $canvasPageId = (int) $row['id'];
-            }
+            try {
+                $row = $this->db->fetch(
+                    "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
+                    [$zone]
+                );
+                if ($row) {
+                    $canvasPageId = (int) $row['id'];
+                }
+            } catch (\Throwable $e) { /* column may not exist yet */ }
         }
 
         // 4. Legacy slug fallback (_header, _footer, etc.)

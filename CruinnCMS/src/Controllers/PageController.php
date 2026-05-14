@@ -165,12 +165,22 @@ class PageController extends BaseController
     private function setZoneGlobals(CruinnRenderService $cruinn, array $tpl, int $pageId): void
     {
         $templateId = isset($tpl['id']) ? (int) $tpl['id'] : null;
-        $header = $cruinn->buildZone('header', $templateId, $pageId);
-        $footer = $cruinn->buildZone('footer', $templateId, $pageId);
-        Template::addGlobal('tpl_header_html', $header ? $header['html'] : '');
-        Template::addGlobal('tpl_header_css',  $header ? $header['css']  : '');
-        Template::addGlobal('tpl_footer_html', $footer ? $footer['html'] : '');
-        Template::addGlobal('tpl_footer_css',  $footer ? $footer['css']  : '');
+        try {
+            $header = $cruinn->buildZone('header', $templateId, $pageId);
+            $footer = $cruinn->buildZone('footer', $templateId, $pageId);
+        } catch (\Throwable $e) {
+            return; // Leave middleware-set fallback globals intact
+        }
+        // Only override if a more-specific canvas was resolved; otherwise leave the
+        // global middleware's fallback value (legacy _header / _footer slug lookup) intact.
+        if ($header !== null) {
+            Template::addGlobal('tpl_header_html', $header['html']);
+            Template::addGlobal('tpl_header_css',  $header['css']);
+        }
+        if ($footer !== null) {
+            Template::addGlobal('tpl_footer_html', $footer['html']);
+            Template::addGlobal('tpl_footer_css',  $footer['css']);
+        }
     }
 
     /**
