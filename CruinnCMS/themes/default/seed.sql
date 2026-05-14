@@ -33,12 +33,37 @@ VALUES
 INSERT IGNORE INTO `page_templates`
     (`slug`, `name`, `description`, `zones`, `css_class`, `is_system`, `sort_order`, `settings`)
 VALUES
-    ('default',       'Default',       'Standard reading-width page',        '["main"]',           'layout-default',       1, 1, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}'),
-    ('full-width',    'Full Width',    'Full container width',               '["main"]',           'layout-full-width',    1, 2, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"full","title_align":"left"}'),
-    ('landing',       'Landing Page',  'Full-width hero, no title heading',  '["main"]',           'layout-landing',       1, 3, '{"show_title":false,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"full","title_align":"center"}'),
-    ('blank',         'Blank',         'Raw block output, no chrome',        '["main"]',           'layout-blank',         1, 4, '{"show_title":false,"show_header":false,"show_footer":false,"show_breadcrumbs":false,"content_width":"full","title_align":"left"}'),
-    ('sidebar-right', 'Sidebar Right', 'Content with right sidebar',         '["main","sidebar"]', 'layout-sidebar-right', 1, 5, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}'),
-    ('sidebar-left',  'Sidebar Left',  'Content with left sidebar',          '["sidebar","main"]', 'layout-sidebar-left',  1, 6, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}');
+    ('default',       'Default',                   'Standard reading-width page',              '["header","main","footer"]',           'layout-default',       1, 1, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}'),
+    ('full-width',    'Full Width',                'Full container width',                     '["header","main","footer"]',           'layout-full-width',    1, 2, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"full","title_align":"left"}'),
+    ('landing',       'Landing Page',              'Full-width hero, no title heading',        '["header","main","footer"]',           'layout-landing',       1, 3, '{"show_title":false,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"full","title_align":"center"}'),
+    ('blank',         'Blank',                     'Raw block output, no chrome',              '["main"]',                             'layout-blank',         1, 4, '{"show_title":false,"show_header":false,"show_footer":false,"show_breadcrumbs":false,"content_width":"full","title_align":"left"}'),
+    ('sidebar-right', 'Page + Sidebar (Right)',    'Content with right-side zone panel',       '["header","main","sidebar","footer"]', 'layout-sidebar-right', 1, 5, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}'),
+    ('sidebar-left',  'Page + Sidebar (Left)',     'Content with left-side zone panel',        '["header","sidebar","main","footer"]', 'layout-sidebar-left',  1, 6, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}');
+
+-- ── Patch existing template zone arrays on live instances ─────
+-- Adds header/footer to templates that were seeded before this correction.
+-- Only updates rows that still have the old zone-less arrays.
+
+UPDATE `page_templates` SET `zones` = '["header","main","footer"]'
+WHERE `slug` = 'default'      AND `zones` IN ('["main"]', '["header","main"]', '["main","footer"]');
+
+UPDATE `page_templates` SET `zones` = '["header","main","footer"]'
+WHERE `slug` = 'full-width'   AND `zones` IN ('["main"]', '["header","main"]', '["main","footer"]');
+
+UPDATE `page_templates` SET `zones` = '["header","main","footer"]'
+WHERE `slug` = 'landing'      AND `zones` IN ('["main"]', '["header","main"]', '["main","footer"]');
+
+UPDATE `page_templates`
+SET `zones` = '["header","main","sidebar","footer"]',
+    `name`  = 'Page + Sidebar (Right)',
+    `description` = 'Content with right-side zone panel'
+WHERE `slug` = 'sidebar-right' AND `zones` IN ('["main","sidebar"]', '["header","main","sidebar"]', '["main","sidebar","footer"]');
+
+UPDATE `page_templates`
+SET `zones` = '["header","sidebar","main","footer"]',
+    `name`  = 'Page + Sidebar (Left)',
+    `description` = 'Content with left-side zone panel'
+WHERE `slug` = 'sidebar-left'  AND `zones` IN ('["sidebar","main"]', '["header","sidebar","main"]', '["sidebar","main","footer"]');
 
 -- ── Link template canvas pages to their templates ─────────────
 -- Only update where canvas_page_id is not already set (don't clobber
