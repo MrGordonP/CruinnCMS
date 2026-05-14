@@ -358,6 +358,7 @@ class CruinnController extends BaseController
         $sidebarContextCss   = '';
         $sidebarContextPageId = null;
         $sidebarContextLabel = '';
+        $zoneSuggestions     = $this->db->fetchColumn("SELECT value FROM settings WHERE `key` = 'editor.zone_suggestions' LIMIT 1") ?: 'main,header,footer,sidebar';
 
         if (!$isZonePage || $isTemplatePage) {
             $hp = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
@@ -695,6 +696,7 @@ class CruinnController extends BaseController
             'headerZoneCss'     => $headerZoneCss,
             'footerZoneHtml'      => $footerZoneHtml,
             'footerZoneCss'       => $footerZoneCss,
+            'zoneSuggestions'      => $zoneSuggestions,
             'templateZones'       => $templateZones,
             'templateCanvasPageId' => $templateCanvasPageId,
             'templateCanvasHtml'  => $templateCanvasHtml,

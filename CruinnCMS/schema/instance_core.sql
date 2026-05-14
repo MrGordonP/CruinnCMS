@@ -483,44 +483,6 @@ INSERT INTO `menu_items` (`menu_id`, `label`, `link_type`, `route`, `sort_order`
     (@topbar, 'Login',  'route', '/login',  1, 'logged_out'),
     (@topbar, 'Logout', 'route', '/logout', 2, 'logged_in');
 
--- ── Default Page Templates ────────────────────────────────────
-INSERT INTO `page_templates` (`slug`, `name`, `description`, `zones`, `css_class`, `is_system`, `sort_order`, `settings`) VALUES
-    ('default',       'Default',       'Standard reading-width page',       '["main"]',           'layout-default',       1, 1, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}'),
-    ('full-width',    'Full Width',     'Full container width',              '["main"]',           'layout-full-width',    1, 2, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"full","title_align":"left"}'),
-    ('landing',       'Landing Page',  'Full-width hero, no title heading',  '["main"]',           'layout-landing',       1, 3, '{"show_title":false,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"full","title_align":"center"}'),
-    ('blank',         'Blank',         'Raw block output, no chrome',        '["main"]',           'layout-blank',         1, 4, '{"show_title":false,"show_header":false,"show_footer":false,"show_breadcrumbs":false,"content_width":"full","title_align":"left"}'),
-    ('sidebar-right', 'Sidebar Right', 'Content with right sidebar',         '["main","sidebar"]', 'layout-sidebar-right', 1, 5, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}'),
-    ('sidebar-left',  'Sidebar Left',  'Content with left sidebar',          '["sidebar","main"]', 'layout-sidebar-left',  1, 6, '{"show_title":true,"show_header":true,"show_footer":true,"show_breadcrumbs":false,"content_width":"default","title_align":"left"}');
-
--- ── System Zone Pages ─────────────────────────────────────────
--- Slug prefix '_' marks system pages (excluded from page lists)
-INSERT INTO `pages_index` (`title`, `slug`, `status`, `template`, `editor_mode`, `render_mode`) VALUES
-    ('Site Header',            '_header',             'published', 'none', 'freeform',   'block'),
-    ('Site Footer',            '_footer',             'published', 'none', 'freeform',   'block'),
-    ('Global Header Template', '_tpl__global_header', 'published', 'none', 'freeform',   'block'),
-    ('Default Template',       '_tpl_default',        'published', 'none', 'structured', 'block'),
-    ('Typography & Styles',    '_typography',         'published', 'none', 'freeform',   'block');
-
--- ── Seed default header blocks ────────────────────────────────
-SET @hdr_page    = (SELECT `id` FROM `pages_index` WHERE `slug` = '_header' LIMIT 1);
-SET @menu_main   = (SELECT `id` FROM `menus` WHERE `location` = 'main'   LIMIT 1);
-SET @menu_topbar = (SELECT `id` FROM `menus` WHERE `location` = 'topbar' LIMIT 1);
-
-INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_props`, `block_config`, `sort_order`, `parent_block_id`) VALUES
-    ('seed_hdr_section', @hdr_page, 'section',    NULL, '{"_class":"site-header"}', '{}',                                        0, NULL),
-    ('seed_hdr_title',   @hdr_page, 'site-title', NULL, '{}',                       '{}',                                        0, 'seed_hdr_section'),
-    ('seed_hdr_main',    @hdr_page, 'nav-menu',   NULL, '{"_class":"site-nav-bar"}', JSON_OBJECT('menu_id', @menu_main),          1, 'seed_hdr_section'),
-    ('seed_hdr_topbar',  @hdr_page, 'nav-menu',   NULL, '{"_class":"utility-bar"}',  JSON_OBJECT('menu_id', @menu_topbar),        2, 'seed_hdr_section');
-
--- ── Seed default footer blocks ────────────────────────────────
-SET @ftr_page    = (SELECT `id` FROM `pages_index` WHERE `slug` = '_footer' LIMIT 1);
-SET @menu_footer = (SELECT `id` FROM `menus` WHERE `location` = 'footer' LIMIT 1);
-
-INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `inner_html`, `css_props`, `block_config`, `sort_order`, `parent_block_id`) VALUES
-    ('seed_ftr_section', @ftr_page, 'section',  NULL, '{"_class":"site-footer"}', '{}',                                          0, NULL),
-    ('seed_ftr_copy',    @ftr_page, 'text',      NULL, '{}',                      '{}',                                          0, 'seed_ftr_section'),
-    ('seed_ftr_nav',     @ftr_page, 'nav-menu',  NULL, '{"_class":"footer-nav"}', JSON_OBJECT('menu_id', @menu_footer),          1, 'seed_ftr_section');
-
 -- ── Settings ─────────────────────────────────────────────────
 INSERT INTO `settings` (`key`, `value`, `group`) VALUES
     ('site.name',                '', 'site'),
@@ -547,7 +509,8 @@ INSERT INTO `settings` (`key`, `value`, `group`) VALUES
     ('auth.reset_token_expiry',  '3600', 'auth'),
     ('uploads.max_size',         '', 'security'),
     ('uploads.allowed',          '', 'security'),
-    ('uploads.image_types',      '', 'security')
+    ('uploads.image_types',      '', 'security'),
+    ('editor.zone_suggestions',  'main,header,footer,sidebar', 'editor')
 ON DUPLICATE KEY UPDATE `key` = VALUES(`key`);
 
 -- ── Mark this schema as applied ──────────────────────────────

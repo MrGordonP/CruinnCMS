@@ -427,7 +427,8 @@
             names.push(n);
         }
 
-        ['main', 'header', 'footer', 'sidebar'].forEach(pushName);
+        var zoneSuggestions = (wrap.dataset.zoneSuggestions || 'main').split(',');
+        zoneSuggestions.forEach(pushName);
         TEMPLATE_ZONES.forEach(pushName);
 
         canvas.querySelectorAll('[data-block-type="zone"]').forEach(function (zoneEl) {
@@ -1989,8 +1990,6 @@
             zoneSelect.innerHTML = '';
 
             zones.forEach(function (zone) {
-                // Skip header/footer zones - they're for template layout, not page content
-                if (zone === 'header' || zone === 'footer') { return; }
                 var opt = document.createElement('option');
                 opt.value = zone;
                 opt.textContent = zone.replace(/[-_]/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });

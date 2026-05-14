@@ -44,9 +44,15 @@ class PageController extends BaseController
         // Cruinn CMS: if published Cruinn blocks exist, hand off to Cruinn renderer
         $cruinn = new CruinnRenderService();
         $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        $header  = $this->resolveZoneRender('header', $cruinn);
+        $footer  = $this->resolveZoneRender('footer', $cruinn);
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
         Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
+        Template::addGlobal('tpl_header_html', $header['html']);
+        Template::addGlobal('tpl_header_css', $header['css']);
+        Template::addGlobal('tpl_footer_html', $footer['html']);
+        Template::addGlobal('tpl_footer_css', $footer['css']);
 
         if ($cruinn->hasPublished((int) $page['id'])) {
             Template::addGlobal('cruinn_css', $cruinn->buildCss((int) $page['id']));
@@ -102,9 +108,15 @@ class PageController extends BaseController
         $tpl = $this->getTemplate($page['template'] ?? 'default');
         $cruinn = new CruinnRenderService();
         $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
+        $header  = $this->resolveZoneRender('header', $cruinn);
+        $footer  = $this->resolveZoneRender('footer', $cruinn);
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
         Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
+        Template::addGlobal('tpl_header_html', $header['html']);
+        Template::addGlobal('tpl_header_css', $header['css']);
+        Template::addGlobal('tpl_footer_html', $footer['html']);
+        Template::addGlobal('tpl_footer_css', $footer['css']);
 
         // ── HTML mode: raw HTML body stored in DB, wrapped in site layout ───
         if ($renderMode === 'html') {
@@ -146,36 +158,6 @@ class PageController extends BaseController
             return;
         }
 
-        // Load template-level blocks for header/footer rendering
-        $templateBlocks = $this->getTemplateBlocks($tpl);
-
-        // Decide which header blocks to use based on header_source setting.
-        // 'default' = load from the shared _global_header template (if built);
-        // 'custom'  = use this template's own header zone blocks;
-        // any other value = a named header template slug.
-        $headerSource = ($tpl['settings']['header_source'] ?? 'default');
-        if ($headerSource === 'custom') {
-            Template::addGlobal('tpl_header_blocks', $templateBlocks['header'] ?? []);
-        } else {
-            // 'default' resolves to '_global_header'; any other value is an explicit template slug.
-            $headerTplSlug = ($headerSource === 'default') ? '_global_header' : $headerSource;
-            $headerTpl = $this->db->fetch(
-                'SELECT * FROM page_templates WHERE slug = ? LIMIT 1',
-                [$headerTplSlug]
-            );
-            if ($headerTpl) {
-                $headerTpl['zones']    = json_decode($headerTpl['zones'],    true) ?? ['main'];
-                $headerTpl['settings'] = json_decode($headerTpl['settings'] ?? '{}', true) ?: [];
-                $namedBlocks = $this->getTemplateBlocks($headerTpl);
-                Template::addGlobal('tpl_header_blocks', $namedBlocks['header'] ?? []);
-            } else {
-                Template::addGlobal('tpl_header_blocks', []); // falls back to PHP header in layout.php
-            }
-        }
-
-        // Set template-level globals so layout.php can use them
-        Template::addGlobal('tpl_footer_blocks', $templateBlocks['footer'] ?? []);
-
         $this->render('public/page', [
             'title'            => $page['title'],
             'meta_description' => $page['meta_description'] ?? '',
@@ -183,6 +165,19 @@ class PageController extends BaseController
             'blocks'           => $blocks,
             'page_tpl'         => $tpl,
         ]);
+    }
+
+    /**
+     * Resolve a named zone (e.g. header, footer) to its rendered HTML and CSS.
+     * Uses CruinnRenderService::buildZone() which looks up the zone canvas page by slug convention (_zoneName).
+     * Stage 2 will replace the slug convention with an explicit zone-canvas mapping.
+     */
+    private function resolveZoneRender(string $zoneName, CruinnRenderService $cruinn): array
+    {
+        $result = $cruinn->buildZone($zoneName);
+        return $result
+            ? ['html' => $result['html'], 'css' => $result['css']]
+            : ['html' => '', 'css' => ''];
     }
 
     private function resolveSidebarRender(array $tpl, CruinnRenderService $cruinn): array
@@ -240,20 +235,6 @@ class PageController extends BaseController
     /**
      * Load a page template definition by slug.
      */
-    private function getGlobalHeaderTemplate(): ?array
-    {
-        $tpl = $this->db->fetch(
-            'SELECT * FROM page_templates WHERE slug = ? LIMIT 1',
-            ['_global_header']
-        );
-        if (!$tpl) {
-            return null;
-        }
-        $tpl['zones'] = json_decode($tpl['zones'], true) ?? ['main'];
-        $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
-        return $tpl;
-    }
-
     private function getTemplate(string $slug): array
     {
         $tpl = $this->db->fetch(
@@ -277,14 +258,5 @@ class PageController extends BaseController
         return $tpl;
     }
 
-    /**
-     * Load template-level blocks (header/footer zones) for a template.
-     * Returns blocks grouped by zone, each zone as a nested tree.
-     */
-    private function getTemplateBlocks(array $tpl): array
-    {
-        // Legacy content_blocks zone system — table no longer exists.
-        // Template zones now resolved via canvas_page_id on page_templates.
-        return ['header' => [], 'footer' => []];
-    }
 }
+

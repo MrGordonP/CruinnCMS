@@ -4,6 +4,28 @@ Reference documentation for the CruinnCMS platform engine. This file is for cont
 
 ---
 
+## Core Engine Principles
+
+These are non-negotiable constraints. Any engine code that violates them is a bug, not a feature.
+
+### No Structural Assumptions
+The CruinnCMS engine makes zero assumptions about the structure, layout, or content of any instance. No zones, templates, pages, headers, footers, or any structural element may be hardcoded in the engine layer. The engine provides the *mechanism* to define and render these things; what they are is always instance- or theme-defined. Any engine code that references a specific slug, zone name, page structure, or layout arrangement — except as a configurable default with a clear override path — is a violation of this principle.
+
+**Corollary:** When something is difficult to edit through the proper mechanism, the correct fix is to fix the mechanism — not to hardcode the thing as a workaround. Workarounds of this kind poison the engine's core concept and compound over time.
+
+### Canvas Agnosticism
+The editor makes no assumptions about what kind of content a canvas holds. A canvas is a named collection of blocks. Whether that canvas is page content, a header zone, a footer zone, a sidebar, a widget, or a template shell is a labelling and routing concern — not an editor concern. The editor must treat all canvases identically.
+
+### Zone / Page / Template Model
+- **Block:** A `div` (or element) with a unique ID, CSS properties stored against that ID, a parent/child relationship, and optional inner content.
+- **Page:** A named, ordered collection of block IDs. Stored in `pages` / `pages_draft` under a `pages_index` row.
+- **Zone:** A named slot within a template. Zones define *where* content lives, not *what* it contains. Zone content is a canvas (block collection) assigned to that slot.
+- **Template:** A block structure defining the layout shell. Certain blocks within it are zone markers. A page declares which template it uses and which zone its blocks are injected into (`page_zone`).
+- **Header / Footer / Sidebar:** These are zones — named slots in a template. Their content is a canvas like any other. They are not special-cased in the engine.
+- **Install state:** A fresh install has no zones, templates, pages, headers, or footers. These are always provided by a theme or created by the user. The engine seeds nothing structural.
+
+---
+
 ## Architecture
 
 - **No frameworks.** Custom PHP, custom router (~200 lines), PDO + MySQL 8, no ORM.

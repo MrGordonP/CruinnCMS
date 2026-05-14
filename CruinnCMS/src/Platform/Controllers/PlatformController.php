@@ -797,6 +797,7 @@ class PlatformController
         $templateCanvasCss     = '';
         $startInCodeView       = false;
         $htmlContent           = null;
+        $zoneSuggestions       = $db->fetchColumn("SELECT value FROM settings WHERE `key` = 'editor.zone_suggestions' LIMIT 1") ?: 'main,header,footer,sidebar';
 
         try {
             $contentSets = $db->fetchAll('SELECT id, name, slug, fields FROM content_sets ORDER BY name ASC');
@@ -999,6 +1000,7 @@ class PlatformController
             'headerZoneCss'        => $headerZoneCss,
             'footerZoneHtml'       => $footerZoneHtml,
             'footerZoneCss'        => $footerZoneCss,
+            'zoneSuggestions'       => $zoneSuggestions,
             'templateZones'        => $templateZones,
             'templateCanvasPageId' => $templateCanvasPageId,
             'templateCanvasHtml'   => $templateCanvasHtml,

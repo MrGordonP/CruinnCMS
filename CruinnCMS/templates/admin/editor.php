@@ -34,6 +34,7 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
      data-api-base="<?= htmlspecialchars($apiBase ?? '/admin/editor', ENT_QUOTES, 'UTF-8') ?>"
      data-has-draft="<?= $hasDraft ? '1' : '0' ?>"
      data-template-zones="<?= htmlspecialchars(json_encode($templateZones ?? []), ENT_QUOTES, 'UTF-8') ?>"
+     data-zone-suggestions="<?= htmlspecialchars($zoneSuggestions ?? 'main', ENT_QUOTES, 'UTF-8') ?>"
      data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-widgets="<?= htmlspecialchars(json_encode($moduleWidgets ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {

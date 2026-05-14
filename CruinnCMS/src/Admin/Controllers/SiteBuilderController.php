@@ -30,22 +30,6 @@ class SiteBuilderController extends BaseController
              ORDER BY p.updated_at DESC"
         );
 
-        // Zone pages
-        $headerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM pages_index p
-             LEFT JOIN page_templates pt ON pt.canvas_page_id = p.id
-             WHERE p.slug = '_header'
-             LIMIT 5"
-        );
-        $footerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM pages_index p
-             LEFT JOIN page_templates pt ON pt.canvas_page_id = p.id
-             WHERE p.slug = '_footer'
-             LIMIT 5"
-        );
-
         $templateCount = (int) ($this->db->fetch('SELECT COUNT(*) AS cnt FROM page_templates')['cnt'] ?? 0);
         $menuCount     = (int) ($this->db->fetch('SELECT COUNT(*) AS cnt FROM menus')['cnt'] ?? 0);
 
@@ -57,8 +41,6 @@ class SiteBuilderController extends BaseController
             'section'       => 'builder',
             'tab'           => 'pages',
             'contentPages'  => $contentPages,
-            'headerPages'   => $headerPages,
-            'footerPages'   => $footerPages,
             'templateCount' => $templateCount,
             'menuCount'     => $menuCount,
             'homePageId'    => $homePageId,

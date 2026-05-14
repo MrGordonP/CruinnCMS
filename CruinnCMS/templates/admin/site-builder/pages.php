@@ -17,32 +17,6 @@
         </span>
     </a>
 
-    <div class="sb-hub-card">
-        <span class="sb-hub-icon">🔝</span>
-        <span class="sb-hub-label">Headers</span>
-        <span class="sb-hub-count"><?= count($headerPages) ?></span>
-        <span class="sb-hub-links">
-            <?php foreach ($headerPages as $_hp): ?>
-            <a href="<?= url('/admin/editor/' . (int)$_hp['id'] . '/edit') ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?> →</a>
-            <?php endforeach; ?>
-            <?php if (empty($headerPages)): ?>
-            <a href="<?= url('/admin/site-builder/global-header') ?>">Create global header →</a>
-            <?php endif; ?>
-        </span>
-    </div>
-
-    <div class="sb-hub-card">
-        <span class="sb-hub-icon">🔚</span>
-        <span class="sb-hub-label">Footers</span>
-        <span class="sb-hub-count"><?= count($footerPages) ?></span>
-        <span class="sb-hub-links">
-            <?php foreach ($footerPages as $_fp): ?>
-            <a href="<?= url('/admin/editor/' . (int)$_fp['id'] . '/edit') ?>"><?= e($_fp['template_name'] ?? $_fp['title']) ?> →</a>
-            <?php endforeach; ?>
-            <?php if (empty($footerPages)): ?><span class="text-muted">None configured</span><?php endif; ?>
-        </span>
-    </div>
-
     <a href="<?= url('/admin/templates') ?>" class="sb-hub-card">
         <span class="sb-hub-icon">📐</span>
         <span class="sb-hub-label">Templates</span>
