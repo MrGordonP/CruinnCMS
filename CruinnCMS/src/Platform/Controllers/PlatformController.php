@@ -2021,7 +2021,26 @@ class PlatformController
             if (!empty($groups['PHP — src'])) { ksort($groups['PHP — src']); }
         }
 
-        // 11. Modules (php + templates, grouped per module slug)
+        // 11. Themes (sql, css, json, md per theme slug)
+        $themesBase = $rcRoot . '/themes';
+        if (is_dir($themesBase)) {
+            foreach (glob($themesBase . '/*/') ?: [] as $themeDir) {
+                $slug  = basename($themeDir);
+                $label = 'Theme — ' . $slug;
+                $allowedThemeExt = ['sql', 'css', 'json', 'md', 'php'];
+                $iter = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($themeDir, \FilesystemIterator::SKIP_DOTS)
+                );
+                foreach ($iter as $file) {
+                    if (!in_array($file->getExtension(), $allowedThemeExt, true)) { continue; }
+                    $rel = 'themes/' . $slug . '/' . str_replace('\\', '/', $iter->getSubPathname());
+                    $groups[$label][$rel] = $iter->getSubPathname();
+                }
+                if (!empty($groups[$label])) { ksort($groups[$label]); }
+            }
+        }
+
+        // 12. Modules (php + templates, grouped per module slug)
         $modulesBase = $rcRoot . '/modules';
         if (is_dir($modulesBase)) {
             foreach (glob($modulesBase . '/*/') ?: [] as $modDir) {
@@ -2066,6 +2085,7 @@ class PlatformController
             ['abs' => $root . '/config',     'rel' => 'config'],
             ['abs' => $root . '/schema',     'rel' => 'schema'],
             ['abs' => $root . '/migrations', 'rel' => 'migrations'],
+            ['abs' => $root . '/themes',     'rel' => 'themes'],
             ['abs' => $publicRoot,           'rel' => 'public'],
             ['abs' => $root . '/modules',    'rel' => 'modules'],
         ];
