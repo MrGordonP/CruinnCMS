@@ -20,12 +20,11 @@ $_editorPageHref = function (int $id) use ($editorPageBase): string {
 $_editorBackHref  = $editorPageBase ?? '/admin/site-builder/pages';
 $_editorPagesHref = $editorPageBase ?? '/admin/pages';
 ?>
-<?php if (!empty($headerZoneCss) || !empty($footerZoneCss) || !empty($templateCanvasCss)): ?>
-<style id="editor-zone-context-styles">
-<?= $headerZoneCss ?? '' ?>
-<?= $footerZoneCss ?? '' ?>
-<?= $templateCanvasCss ?? '' ?>
-</style>
+<?php
+$_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($templateCanvasCss ?? '');
+?>
+<?php if (!empty($_contextCss)): ?>
+<style id="editor-zone-context-styles"><?= $_contextCss ?></style>
 <?php endif; ?>
 <div id="editor-wrap"
      data-page-id="<?= $page ? (int) $page['id'] : '' ?>"
@@ -455,32 +454,16 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </style>
             <?php endif; ?>
 
-            <?php if ((empty($isZonePage) || !empty($isTemplatePage)) && isset($headerPageId)): ?>
-            <?php if (!empty($headerPages) && count($headerPages) > 1): ?>
-            <div class="editor-zone-preview editor-zone--header zone-picker">
-                <?php if (!empty($headerZoneHtml)): ?>
-                <div class="editor-zone-inner"><?= $headerZoneHtml ?></div>
+            <?php foreach (array_filter($contextCanvases ?? [], fn($cc) => $cc['position'] === 'before') as $_cc): ?>
+            <a href="<?= e($_editorPageHref((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
+                <?php if (!empty($_cc['html'])): ?>
+                <div class="editor-zone-inner"><?= $_cc['html'] ?></div>
                 <?php else: ?>
-                <div class="editor-zone-inner editor-zone-empty">Header zone — not yet published.</div>
+                <div class="editor-zone-inner editor-zone-empty"><?= e(ucfirst($_cc['zone'])) ?> zone — not yet published.</div>
                 <?php endif; ?>
-                <button type="button" class="editor-zone-edit-link">Choose header to edit ▾</button>
-                <div class="zone-picker-menu">
-                    <?php foreach ($headerPages as $_hp): ?>
-                    <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?></a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-            <?php else: ?>
-            <a href="<?= e($_editorPageHref((int)$headerPageId)) ?>" class="editor-zone-preview editor-zone--header">
-                <?php if (!empty($headerZoneHtml)): ?>
-                <div class="editor-zone-inner"><?= $headerZoneHtml ?></div>
-                <?php else: ?>
-                <div class="editor-zone-inner editor-zone-empty">Header zone — not yet published.</div>
-                <?php endif; ?>
-                <span class="editor-zone-edit-link">Click to edit header</span>
+                <span class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></span>
             </a>
-            <?php endif; ?>
-            <?php endif; ?>
+            <?php endforeach; ?>
 
             <div class="editor-canvas-shell<?= $hasSidebarContext ? ' has-sidebar' : '' ?>">
                 <?php if (!$page): ?>
@@ -607,16 +590,16 @@ $_editorPagesHref = $editorPageBase ?? '/admin/pages';
             </div>
             <?php endif; ?>
 
-            <?php if ((empty($isZonePage) || !empty($isTemplatePage)) && isset($footerPageId)): ?>
-            <a href="<?= e($_editorPageHref((int)$footerPageId)) ?>" class="editor-zone-preview editor-zone--footer">
-                <?php if (!empty($footerZoneHtml)): ?>
-                <div class="editor-zone-inner"><?= $footerZoneHtml ?></div>
+            <?php foreach (array_filter($contextCanvases ?? [], fn($cc) => $cc['position'] === 'after') as $_cc): ?>
+            <a href="<?= e($_editorPageHref((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
+                <?php if (!empty($_cc['html'])): ?>
+                <div class="editor-zone-inner"><?= $_cc['html'] ?></div>
                 <?php else: ?>
-                <div class="editor-zone-inner editor-zone-empty">Footer zone — not yet published.</div>
+                <div class="editor-zone-inner editor-zone-empty"><?= e(ucfirst($_cc['zone'])) ?> zone — not yet published.</div>
                 <?php endif; ?>
-                <span class="editor-zone-edit-link">Click to edit footer</span>
+                <span class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></span>
             </a>
-            <?php endif; ?>
+            <?php endforeach; ?>
 
         </div>
 

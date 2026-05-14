@@ -179,6 +179,7 @@ class CruinnController extends BaseController
             'headerZoneCss'   => '',
             'footerZoneHtml'  => '',
             'footerZoneCss'   => '',
+            'contextCanvases' => [],
             'templateZones'   => [],
             'templateCanvasPageId' => null,
             'templateCanvasHtml'   => '',
@@ -343,15 +344,14 @@ class CruinnController extends BaseController
             }
         }
 
-        // For body pages: load the zone pages' IDs and their published preview HTML/CSS
-        $headerPageId   = null;
-        $footerPageId   = null;
-        $headerZoneHtml = '';
-        $headerZoneCss  = '';
-        $footerZoneHtml = '';
-        $footerZoneCss  = '';
-
         // Template canvas info for regular content pages
+        $contextCanvases     = [];   // [{zone, pageId, label, html, css, position}]
+        $headerPageId        = null;
+        $footerPageId        = null;
+        $headerZoneHtml      = '';
+        $headerZoneCss       = '';
+        $footerZoneHtml      = '';
+        $footerZoneCss       = '';
         $templateZones       = [];
         $templateCanvasPageId = null;
         $templateCanvasHtml  = '';
@@ -362,32 +362,15 @@ class CruinnController extends BaseController
         $sidebarContextLabel = '';
         $zoneSuggestions     = $this->db->fetchColumn("SELECT value FROM settings WHERE `key` = 'editor.zone_suggestions' LIMIT 1") ?: 'main,header,footer,sidebar';
 
+        $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
+
         if (!$isZonePage || $isTemplatePage) {
-            $hp = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
-            $fp = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
-            $headerPageId = $hp ? (int) $hp['id'] : null;
-            $footerPageId = $fp ? (int) $fp['id'] : null;
-
-            $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
-            try {
-                if ($headerPageId && $cruinnSvc->hasPublished($headerPageId)) {
-                    $headerZoneHtml = $cruinnSvc->buildHtml($headerPageId);
-                    $headerZoneCss  = $cruinnSvc->buildCss($headerPageId);
-                }
-                if ($footerPageId && $cruinnSvc->hasPublished($footerPageId)) {
-                    $footerZoneHtml = $cruinnSvc->buildHtml($footerPageId);
-                    $footerZoneCss  = $cruinnSvc->buildCss($footerPageId);
-                }
-            } catch (\Throwable $e) {
-                error_log('CruinnController::edit zone render failed: ' . $e->getMessage());
-            }
-
             // For non-template-canvas pages: look up the template canvas and extract zones
             if (!$isTemplatePage) {
                 $pageTemplateSlug = $page['template'] ?? 'default';
                 if ($pageTemplateSlug && $pageTemplateSlug !== 'none') {
                     $tplRow = $this->db->fetch(
-                        'SELECT id, slug, name, canvas_page_id, zones, settings FROM page_templates WHERE slug = ? LIMIT 1',
+                        'SELECT id, slug, name, canvas_page_id, zones, zone_canvases, settings FROM page_templates WHERE slug = ? LIMIT 1',
                         [$pageTemplateSlug]
                     );
                     if ($tplRow && !empty($tplRow['canvas_page_id'])) {
@@ -449,7 +432,79 @@ class CruinnController extends BaseController
                             }
                         }
                     }
+
+                    // Build context canvases — for each zone on the template except
+                    // the page's own injection zone and 'sidebar' (handled separately above).
+                    if ($tplRow) {
+                        $allZones      = json_decode($tplRow['zones'] ?? '[]', true) ?: [];
+                        $zoneCanvasMap = json_decode($tplRow['zone_canvases'] ?? '{}', true) ?: [];
+                        $zoneOverrides = json_decode($page['zone_overrides'] ?? '{}', true) ?: [];
+                        $pageZone      = $page['page_zone'] ?? 'main';
+                        $mainIdx       = array_search($pageZone, $allZones);
+                        if ($mainIdx === false) { $mainIdx = count($allZones); }
+
+                        foreach ($allZones as $idx => $zone) {
+                            if ($zone === $pageZone || $zone === 'sidebar') { continue; }
+
+                            // Resolve canvas page ID: zone_overrides → zone_canvases → global zone page → legacy slug
+                            $canvasPageId = null;
+                            if (!empty($zoneOverrides[$zone])) {
+                                $canvasPageId = (int) $zoneOverrides[$zone];
+                            } elseif (!empty($zoneCanvasMap[$zone])) {
+                                $canvasPageId = (int) $zoneCanvasMap[$zone];
+                            } else {
+                                try {
+                                    $gz = $this->db->fetch(
+                                        "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
+                                        [$zone]
+                                    );
+                                } catch (\Throwable $e) { $gz = false; }
+                                if (!$gz) {
+                                    $gz = $this->db->fetch(
+                                        "SELECT id FROM pages_index WHERE slug = ? LIMIT 1",
+                                        ['_' . $zone]
+                                    );
+                                }
+                                if ($gz) { $canvasPageId = (int) $gz['id']; }
+                            }
+
+                            if (!$canvasPageId) { continue; }
+
+                            $ctxHtml = '';
+                            $ctxCss  = '';
+                            try {
+                                if ($cruinnSvc->hasPublished($canvasPageId)) {
+                                    $ctxHtml = $cruinnSvc->buildHtml($canvasPageId);
+                                    $ctxCss  = $cruinnSvc->buildCss($canvasPageId);
+                                }
+                            } catch (\Throwable $e) {
+                                error_log('CruinnController::edit context zone render failed: ' . $e->getMessage());
+                            }
+
+                            $contextCanvases[] = [
+                                'zone'     => $zone,
+                                'pageId'   => $canvasPageId,
+                                'label'    => ucfirst($zone),
+                                'html'     => $ctxHtml,
+                                'css'      => $ctxCss,
+                                'position' => $idx < $mainIdx ? 'before' : 'after',
+                            ];
+                        }
+                    }
                 }
+            }
+        }
+
+        // Backward-compat: populate header/footer vars from contextCanvases
+        foreach ($contextCanvases as $cc) {
+            if ($cc['zone'] === 'header') {
+                $headerPageId   = $cc['pageId'];
+                $headerZoneHtml = $cc['html'];
+                $headerZoneCss  = $cc['css'];
+            } elseif ($cc['zone'] === 'footer') {
+                $footerPageId   = $cc['pageId'];
+                $footerZoneHtml = $cc['html'];
+                $footerZoneCss  = $cc['css'];
             }
         }
 
@@ -698,6 +753,7 @@ class CruinnController extends BaseController
             'headerZoneCss'     => $headerZoneCss,
             'footerZoneHtml'      => $footerZoneHtml,
             'footerZoneCss'       => $footerZoneCss,
+            'contextCanvases'     => $contextCanvases,
             'zoneSuggestions'      => $zoneSuggestions,
             'templateZones'       => $templateZones,
             'templateCanvasPageId' => $templateCanvasPageId,
@@ -995,6 +1051,7 @@ class CruinnController extends BaseController
             'headerZoneCss'       => $headerZoneCss,
             'footerZoneHtml'      => $footerZoneHtml,
             'footerZoneCss'       => $footerZoneCss,
+            'contextCanvases'     => [],
             'templateZones'       => [],
             'templateCanvasPageId'=> null,
             'templateCanvasHtml'  => '',
