@@ -68,6 +68,129 @@ class ThemeController extends BaseController
 
     // ── Helpers ──────────────────────────────────────────────────
 
+    /**
+     * GET /admin/theme/seeds — List available theme seeds and their apply status.
+     */
+    public function listSeeds(): void
+    {
+        Auth::requireRole('admin');
+
+        $themesDir = CRUINN_ROOT . '/themes';
+        $seeds = [];
+
+        if (is_dir($themesDir)) {
+            foreach (glob($themesDir . '/*/seed.sql') ?: [] as $file) {
+                $slug = basename(dirname($file));
+                $appliedKey = 'theme_seed.' . $slug . '.applied';
+                $applied = (bool) (\Cruinn\Database::getInstance()->fetchColumn(
+                    "SELECT value FROM settings WHERE `key` = ? LIMIT 1",
+                    [$appliedKey]
+                ));
+                $seeds[] = [
+                    'slug'    => $slug,
+                    'file'    => $file,
+                    'applied' => $applied,
+                ];
+            }
+        }
+
+        $this->renderAdmin('admin/theme/seeds', [
+            'title' => 'Theme Seeds',
+            'section' => 'theme',
+            'seeds' => $seeds,
+        ]);
+    }
+
+    /**
+     * POST /admin/theme/apply-seed — Apply a theme seed SQL file to the instance DB.
+     * The seed is idempotent (INSERT IGNORE) — safe to run multiple times.
+     */
+    public function applySeed(): void
+    {
+        Auth::requireRole('admin');
+        \Cruinn\CSRF::verify();
+
+        $slug = preg_replace('/[^a-z0-9_-]/i', '', $this->input('theme', 'default'));
+        if (!$slug) {
+            Auth::flash('error', 'Invalid theme slug.');
+            $this->redirect('/admin/theme/seeds');
+        }
+
+        $seedFile = CRUINN_ROOT . '/themes/' . $slug . '/seed.sql';
+        if (!file_exists($seedFile)) {
+            Auth::flash('error', 'Seed file not found for theme: ' . $slug);
+            $this->redirect('/admin/theme/seeds');
+        }
+
+        $sql = file_get_contents($seedFile);
+        if ($sql === false || trim($sql) === '') {
+            Auth::flash('error', 'Seed file is empty or unreadable.');
+            $this->redirect('/admin/theme/seeds');
+        }
+
+        try {
+            $pdo = \Cruinn\Database::createMigrationPdo();
+            $this->execSqlWithDelimiters($pdo, $sql);
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Seed failed: ' . $e->getMessage());
+            $this->redirect('/admin/theme/seeds');
+        }
+
+        // Record that this seed has been applied
+        $db = \Cruinn\Database::getInstance();
+        $appliedKey = 'theme_seed.' . $slug . '.applied';
+        $db->execute(
+            "INSERT INTO settings (`key`, `value`, `group`) VALUES (?, '1', 'theme')
+             ON DUPLICATE KEY UPDATE `value` = '1'",
+            [$appliedKey]
+        );
+
+        Auth::flash('success', 'Theme seed "' . $slug . '" applied successfully.');
+        $this->redirect('/admin/theme/seeds');
+    }
+
+    /**
+     * Execute SQL that may contain DELIMITER directives (e.g. stored procedures).
+     * Mirrors MaintenanceController::execSqlWithDelimiters().
+     */
+    private function execSqlWithDelimiters(\PDO $pdo, string $sql): void
+    {
+        $delimiter = ';';
+        $buffer    = '';
+
+        foreach (explode("\n", $sql) as $line) {
+            $trimmed = rtrim($line);
+
+            if (preg_match('/^\s*DELIMITER\s+(\S+)\s*$/i', $trimmed, $m)) {
+                $delimiter = $m[1];
+                continue;
+            }
+
+            $buffer .= $line . "\n";
+
+            if (str_ends_with(rtrim($buffer), $delimiter)) {
+                $stmt = rtrim($buffer);
+                $stmt = substr($stmt, 0, strlen($stmt) - strlen($delimiter));
+                $stmt = trim($stmt);
+                if ($stmt !== '') {
+                    $result = $pdo->query($stmt);
+                    if ($result !== false) {
+                        $result->closeCursor();
+                    }
+                }
+                $buffer = '';
+            }
+        }
+
+        $stmt = trim($buffer);
+        if ($stmt !== '' && $stmt !== $delimiter) {
+            $result = $pdo->query($stmt);
+            if ($result !== false) {
+                $result->closeCursor();
+            }
+        }
+    }
+
     public static function activeTheme(): string
     {
         $raw = \Cruinn\Database::getInstance()->fetchColumn("SELECT `value` FROM `settings` WHERE `key` = 'site.active_theme'") ?: 'default';

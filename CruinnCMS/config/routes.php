@@ -158,8 +158,10 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/pages/{id}/reparent',     [AdminPageController::class, 'reparentPage']);
 
     // Admin — Theme Editor
-    $router->get('/admin/theme',  [ThemeController::class, 'edit']);
-    $router->post('/admin/theme', [ThemeController::class, 'save']);
+    $router->get('/admin/theme',             [ThemeController::class, 'edit']);
+    $router->post('/admin/theme',            [ThemeController::class, 'save']);
+    $router->get('/admin/theme/seeds',       [ThemeController::class, 'listSeeds']);
+    $router->post('/admin/theme/apply-seed', [ThemeController::class, 'applySeed']);
 
     // Admin — Content Sets (dynamic data)
     $router->get('/admin/content',                              [\Cruinn\Admin\Controllers\ContentSetController::class, 'index']);
