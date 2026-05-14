@@ -44,15 +44,9 @@ class PageController extends BaseController
         // Cruinn CMS: if published Cruinn blocks exist, hand off to Cruinn renderer
         $cruinn = new CruinnRenderService();
         $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
-        $header  = $this->resolveZoneRender('header', $cruinn);
-        $footer  = $this->resolveZoneRender('footer', $cruinn);
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
         Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
-        Template::addGlobal('tpl_header_html', $header['html']);
-        Template::addGlobal('tpl_header_css', $header['css']);
-        Template::addGlobal('tpl_footer_html', $footer['html']);
-        Template::addGlobal('tpl_footer_css', $footer['css']);
 
         if ($cruinn->hasPublished((int) $page['id'])) {
             Template::addGlobal('cruinn_css', $cruinn->buildCss((int) $page['id']));
@@ -108,15 +102,9 @@ class PageController extends BaseController
         $tpl = $this->getTemplate($page['template'] ?? 'default');
         $cruinn = new CruinnRenderService();
         $sidebar = $this->resolveSidebarRender($tpl, $cruinn);
-        $header  = $this->resolveZoneRender('header', $cruinn);
-        $footer  = $this->resolveZoneRender('footer', $cruinn);
         Template::addGlobal('page_tpl', $tpl);
         Template::addGlobal('tpl_sidebar_html', $sidebar['html']);
         Template::addGlobal('tpl_sidebar_css', $sidebar['css']);
-        Template::addGlobal('tpl_header_html', $header['html']);
-        Template::addGlobal('tpl_header_css', $header['css']);
-        Template::addGlobal('tpl_footer_html', $footer['html']);
-        Template::addGlobal('tpl_footer_css', $footer['css']);
 
         // ── HTML mode: raw HTML body stored in DB, wrapped in site layout ───
         if ($renderMode === 'html') {

@@ -114,6 +114,29 @@ class App
         // Global middleware
         $this->router->addGlobalMiddleware([CSRF::class, 'middleware']);
 
+        // Zone globals middleware — sets tpl_header/footer html/css for all public routes
+        // so layout.php can render header and footer regardless of which controller runs.
+        $this->router->addGlobalMiddleware(function (string $uri) {
+            if (str_starts_with($uri, '/admin') || str_starts_with($uri, '/cms')) {
+                return null;
+            }
+            try {
+                $cruinn = new Services\CruinnRenderService();
+                $header = $cruinn->buildZone('header');
+                $footer = $cruinn->buildZone('footer');
+                Template::addGlobal('tpl_header_html', $header ? $header['html'] : '');
+                Template::addGlobal('tpl_header_css',  $header ? $header['css']  : '');
+                Template::addGlobal('tpl_footer_html', $footer ? $footer['html'] : '');
+                Template::addGlobal('tpl_footer_css',  $footer ? $footer['css']  : '');
+            } catch (\Throwable $e) {
+                Template::addGlobal('tpl_header_html', '');
+                Template::addGlobal('tpl_header_css',  '');
+                Template::addGlobal('tpl_footer_html', '');
+                Template::addGlobal('tpl_footer_css',  '');
+            }
+            return null;
+        });
+
         // Platform routes require platform login (file-based credential, /cms/login exempt)
         $this->router->addPrefixMiddleware('/cms', [\Cruinn\Platform\PlatformAuth::class, 'middleware']);
 
