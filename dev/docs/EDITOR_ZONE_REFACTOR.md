@@ -49,14 +49,14 @@ This document tracks the agreed remediation work across all four stages.
 - [x] **2. `editor.js` — hardcoded zone name suggestions**  
   Already done — `editor.zone_suggestions` seeded in `instance_core.sql`; editor reads `wrap.dataset.zoneSuggestions`.
 
-- [ ] **3. `PageController.php` — Collapse two-path header resolution**  
+- [x] **3. `PageController.php` — Collapse two-path header resolution**  
   Remove the `header_source` / `_global_header` branching and the `tpl_header_blocks` / `_header` fallback.  
   Header is a zone — resolve it the same way `resolveSidebarRender()` works today.  
   Unify into a single `resolveZoneRender(string $zoneName, array $tpl, CruinnRenderService $cruinn): array` method.  
   Remove `tpl_header_blocks` and `tpl_footer_blocks` as Template globals.  
   _Note: `tpl_header_blocks`/`tpl_footer_blocks` removed from `SiteBuilderController::builderPreviewTemplate()` (dead code — table gone). Full PageController collapse deferred to Stage 4b._
 
-- [ ] **4. `layout.php` — Reduce to HTML document shell**  
+- [x] **4. `layout.php` — Reduce to HTML document shell**  
   Remove all structural content from layout.php: `<header>`, `<aside>`, `<footer>` wrappers, `$_headerHtml`, `$_footerHtml`, `$_sidebarHtml`, `show_header`/`show_footer` flags, `site-body-wrap`, `<main id="main-content">`.  
   layout.php becomes: `<!DOCTYPE html><html><head>…</head><body><?= $pageHtml ?></body></html>` plus scripts, CSS links, flash messages.  
   All structural content is produced by `buildWithTemplate()` in Stage 4 (items 13–15). This item is a **cleanup** that lands after Stage 4 is complete.
@@ -107,7 +107,7 @@ This document tracks the agreed remediation work across all four stages.
 
 #### 4b — Render service: full-pass zone assembly
 
-- [ ] **13. `CruinnRenderService::buildWithTemplate()` — accept and inject all zones**  
+- [x] **13. `CruinnRenderService::buildWithTemplate()` — accept and inject all zones**  
   Extend signature to accept a zone canvas map (`array<zoneName, canvasPageId>`).  
   When walking the template block tree and hitting a zone slot block:  
   - `zone_name === $page->page_zone` → inject the page's own blocks (existing behaviour)  
@@ -115,12 +115,12 @@ This document tracks the agreed remediation work across all four stages.
   Fetch template layout blocks via `template_id` directly (not via `canvas_page_id → pages_index`).  
   Returns one complete HTML string — no further structural assembly needed.
 
-- [ ] **14. `PageController` — single render call**  
+- [x] **14. `PageController` — single render call**  
   Replace the parallel pipelines (separate `buildZone('header')`, `buildZone('footer')`, `resolveSidebarRender()`, `Template::addGlobal('tpl_header_html', ...)`) with a single `buildWithTemplate()` call that receives the full zone canvas map resolved from the 4-level priority chain.  
   Remove `tpl_header_html`, `tpl_footer_html`, `tpl_sidebar_html`, `tpl_header_css`, `tpl_footer_css`, `tpl_sidebar_css` as Template globals.  
   Remove `setZoneGlobals()`, `resolveZoneRender()`, `resolveSidebarRender()` from PageController.
 
-- [ ] **15. `layout.php` cleanup (depends on 13–14)**  
+- [x] **15. `layout.php` cleanup (depends on 13–14)**  
   Apply item 4 above once PageController emits a single `$pageHtml` string. layout.php is now a document shell only.
 
 #### 4c — Editor context rendering

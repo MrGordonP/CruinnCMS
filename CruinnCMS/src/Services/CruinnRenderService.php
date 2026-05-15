@@ -43,6 +43,18 @@ class CruinnRenderService
     }
 
     /**
+     * Check whether a template has published layout blocks (via template_id).
+     */
+    public function hasPublishedTemplate(int $templateId): bool
+    {
+        $count = (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM pages WHERE template_id = ?',
+            [$templateId]
+        );
+        return $count > 0;
+    }
+
+    /**
      * Build the full page HTML from published pages.
      * Dynamic blocks have their content server-rendered here.
      */
@@ -113,28 +125,17 @@ class CruinnRenderService
     }
 
     /**
-     * Resolve and render a named zone canvas.
+     * Resolve a zone canvas page ID using the 4-level priority chain.
+     * Returns null if no canvas is found for this zone.
      *
      * Resolution order (most specific wins):
-     *   1. Page-level zone_overrides JSON   — page wants a specific canvas for this zone
-     *   2. Template zone_canvases JSON      — template default for this zone
-     *   3. Global zone canvas               — pages_index WHERE canvas_type='zone' AND zone_name=?
-     *   4. Legacy slug fallback             — pages_index WHERE slug='_'.$zone (backward compat)
-     *
-     * @param string   $zone       Zone name, e.g. 'header', 'footer', 'sidebar'
-     * @param int|null $templateId page_templates.id of the active template (optional)
-     * @param int|null $pageId     pages_index.id of the current page (optional)
+     *   1. Page-level zone_overrides JSON
+     *   2. Template zone_canvases JSON
+     *   3. Global zone canvas (canvas_type='zone' AND zone_name=?)
+     *   4. Legacy slug fallback (_zoneName) — deprecated, kept for pre-seed instances
      */
-    public function buildZone(string $zone, ?int $templateId = null, ?int $pageId = null): ?array
+    public function resolveZoneCanvasId(string $zone, ?int $templateId = null, ?int $pageId = null): ?int
     {
-        // Build a cache key that incorporates context so different pages/templates
-        // don't share the same cached result.
-        $cacheKey = $zone . ':' . ($templateId ?? 0) . ':' . ($pageId ?? 0);
-        static $cache = [];
-        if (array_key_exists($cacheKey, $cache)) {
-            return $cache[$cacheKey];
-        }
-
         $canvasPageId = null;
 
         // 1. Page-level override
@@ -182,10 +183,7 @@ class CruinnRenderService
             } catch (\Throwable $e) { /* column may not exist yet */ }
         }
 
-        // 4. Legacy slug fallback (_header, _footer, etc.)
-        // Deprecated: canvas_type='zone' + zone_name (level 3) is the authoritative lookup.
-        // This fallback supports instances that pre-date the theme seed migration.
-        // Will be removed once all instances have been seeded via themes/{slug}/seed.sql.
+        // 4. Legacy slug fallback
         if ($canvasPageId === null) {
             $row = $this->db->fetch(
                 'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',
@@ -196,6 +194,27 @@ class CruinnRenderService
             }
         }
 
+        return $canvasPageId;
+    }
+
+    /**
+     * Resolve and render a named zone canvas.
+     * Uses resolveZoneCanvasId() for the 4-level lookup, then renders.
+     *
+     * @param string   $zone       Zone name, e.g. 'header', 'footer', 'sidebar'
+     * @param int|null $templateId page_templates.id of the active template (optional)
+     * @param int|null $pageId     pages_index.id of the current page (optional)
+     */
+    public function buildZone(string $zone, ?int $templateId = null, ?int $pageId = null): ?array
+    {
+        $cacheKey = $zone . ':' . ($templateId ?? 0) . ':' . ($pageId ?? 0);
+        static $cache = [];
+        if (array_key_exists($cacheKey, $cache)) {
+            return $cache[$cacheKey];
+        }
+
+        $canvasPageId = $this->resolveZoneCanvasId($zone, $templateId, $pageId);
+
         if ($canvasPageId === null || !$this->hasPublished($canvasPageId)) {
             return $cache[$cacheKey] = null;
         }
@@ -205,6 +224,30 @@ class CruinnRenderService
             'html'    => $this->buildHtml($canvasPageId),
             'css'     => $this->buildCss($canvasPageId),
         ];
+    }
+
+    /**
+     * Build the CSS stylesheet for template layout blocks (queries by template_id).
+     */
+    public function buildCssForTemplate(int $templateId): string
+    {
+        $flat = $this->db->fetchAll(
+            'SELECT block_id, block_type, css_props, css_props_tablet, css_props_mobile, block_config
+               FROM pages WHERE template_id = ?',
+            [$templateId]
+        );
+        if (empty($flat)) {
+            // Migration safety: fall back to canvas_page_id
+            $tpl = $this->db->fetch('SELECT canvas_page_id FROM page_templates WHERE id = ? LIMIT 1', [$templateId]);
+            $cpid = $tpl ? (int)($tpl['canvas_page_id'] ?? 0) : 0;
+            if ($cpid > 0) {
+                return $this->buildCss($cpid);
+            }
+            return '';
+        }
+        // Reuse buildCss logic by swapping the fetched flat data.
+        // We build a temporary anonymous page object using the same rendering path.
+        return $this->buildCssFromFlat($flat);
     }
 
     /**
@@ -219,8 +262,12 @@ class CruinnRenderService
                FROM pages WHERE page_id = ?',
             [$pageId]
         );
+        return $this->buildCssFromFlat($flat);
+    }
 
-        $css        = '';
+    private function buildCssFromFlat(array $flat): string
+    {
+        $css         = '';
         $tabletRules = '';
         $mobileRules = '';
 
@@ -379,33 +426,54 @@ class CruinnRenderService
     }
 
     /**
-     * Merge a template canvas with a page's own Cruinn blocks.
+     * Merge a template's layout with a page's content and all zone canvases.
      *
-     * Zone blocks in the template are replaced by the page blocks whose
-     * block_config.zone_name matches (defaulting to 'main').
-     * The zone block element itself becomes the container — so its CSS
-     * (padding, background, etc.) wraps the injected content.
-     * Returns ['html' => ..., 'css' => ...].
+     * Template layout blocks are fetched via template_id (direct ownership).
+     * Falls back to canvas_page_id if no template_id blocks exist (pre-012 instances).
+     *
+     * Zone injection:
+     *   - Zone slot whose zone_name === $pageZone → inject page content ($pageId blocks
+     *     or raw $injectHtml for html-mode pages)
+     *   - All other zone slots → inject canvas blocks from $zoneCanvasMap[zoneName]
+     *
+     * @param int         $templateId    page_templates.id
+     * @param string      $pageZone      Zone slot to inject the page content into
+     * @param array       $zoneCanvasMap [zoneName => canvasPageId] for non-page zones
+     * @param int|null    $pageId        pages_index.id for block-mode pages
+     * @param string|null $injectHtml    Raw HTML for html-mode pages (used when $pageId is null)
+     * @return array ['html' => string, 'css' => string]
      */
-    public function buildWithTemplate(int $pageId, int $canvasPageId, string $defaultZone = 'main'): array
-    {
-        // Template canvas blocks
+    public function buildWithTemplate(
+        int     $templateId,
+        string  $pageZone      = 'main',
+        array   $zoneCanvasMap = [],
+        ?int    $pageId        = null,
+        ?string $injectHtml    = null
+    ): array {
+        // ── Fetch template layout blocks ─────────────────────────────
         $tplFlat = $this->db->fetchAll(
             'SELECT * FROM pages
-              WHERE page_id = ?
+              WHERE template_id = ?
               ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-            [$canvasPageId]
+            [$templateId]
         );
 
-        // Page content blocks
-        $pageFlat = $this->db->fetchAll(
-            'SELECT * FROM pages
-              WHERE page_id = ?
-              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-            [$pageId]
-        );
+        // Migration safety: if no template_id blocks, fall back to canvas_page_id
+        $canvasCssPageId = null;
+        if (empty($tplFlat)) {
+            $tpl = $this->db->fetch('SELECT canvas_page_id FROM page_templates WHERE id = ? LIMIT 1', [$templateId]);
+            $cpid = $tpl ? (int)($tpl['canvas_page_id'] ?? 0) : 0;
+            if ($cpid > 0) {
+                $tplFlat = $this->db->fetchAll(
+                    'SELECT * FROM pages
+                      WHERE page_id = ?
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                    [$cpid]
+                );
+                $canvasCssPageId = $cpid;
+            }
+        }
 
-        // Index template blocks
         $tplById       = [];
         $tplChildrenOf = [];
         foreach ($tplFlat as $row) {
@@ -414,43 +482,98 @@ class CruinnRenderService
             $tplChildrenOf[$pid ?? '__root'][] = $row['block_id'];
         }
 
-        // Index page blocks
+        // ── Fetch and index page content blocks (block mode) ─────────
         $pageById       = [];
         $pageChildrenOf = [];
-        $pageByZone     = [];   // top-level page blocks grouped by zone_name
-        foreach ($pageFlat as $row) {
-            $pageById[$row['block_id']] = $row;
-            $pid = $row['parent_block_id'] ?? null;
-            $pageChildrenOf[$pid ?? '__root'][] = $row['block_id'];
-            // Only index root-level page blocks by zone
-            if ($pid === null) {
-                $cfg      = json_decode($row['block_config'] ?? '{}', true) ?: [];
-                $zoneName = $cfg['zone_name'] ?? $defaultZone;
-                $pageByZone[$zoneName][] = $row;
+        $pageByZone     = [];
+
+        if ($pageId !== null) {
+            $pageFlat = $this->db->fetchAll(
+                'SELECT * FROM pages
+                  WHERE page_id = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$pageId]
+            );
+            foreach ($pageFlat as $row) {
+                $pageById[$row['block_id']] = $row;
+                $pid = $row['parent_block_id'] ?? null;
+                $pageChildrenOf[$pid ?? '__root'][] = $row['block_id'];
+                if ($pid === null) {
+                    $cfg  = json_decode($row['block_config'] ?? '{}', true) ?: [];
+                    $zone = $cfg['zone_name'] ?? $pageZone;
+                    $pageByZone[$zone][] = $row;
+                }
             }
         }
 
+        // ── Fetch and index zone canvas blocks ───────────────────────
+        $zoneCanvasBlocks = [];  // [zoneName => ['byId' => [...], 'childrenOf' => [...]]]
+        foreach ($zoneCanvasMap as $zoneName => $canvasId) {
+            $canvasId = (int) $canvasId;
+            if ($canvasId <= 0) {
+                continue;
+            }
+            $flat    = $this->db->fetchAll(
+                'SELECT * FROM pages
+                  WHERE page_id = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$canvasId]
+            );
+            $byId        = [];
+            $childrenOf  = [];
+            foreach ($flat as $row) {
+                $byId[$row['block_id']] = $row;
+                $pid = $row['parent_block_id'] ?? null;
+                $childrenOf[$pid ?? '__root'][] = $row['block_id'];
+            }
+            $zoneCanvasBlocks[(string) $zoneName] = ['byId' => $byId, 'childrenOf' => $childrenOf];
+        }
+
+        // ── Render merged tree ───────────────────────────────────────
         $html = $this->renderTemplateTree(
             '__root',
             $tplById, $tplChildrenOf,
-            $pageById, $pageChildrenOf, $pageByZone
+            $pageById, $pageChildrenOf, $pageByZone,
+            $zoneCanvasBlocks,
+            $pageZone,
+            $injectHtml
         );
 
-        // Emit CSS for both the template canvas blocks and the page blocks
-        $css = $this->buildCss($canvasPageId) . $this->buildCss($pageId);
+        // ── Merge CSS from all sources ───────────────────────────────
+        $css = $canvasCssPageId !== null
+            ? $this->buildCss($canvasCssPageId)      // fallback path
+            : $this->buildCssForTemplate($templateId); // normal path
+
+        if ($pageId !== null) {
+            $css .= $this->buildCss($pageId);
+        }
+        foreach ($zoneCanvasMap as $canvasId) {
+            $canvasId = (int) $canvasId;
+            if ($canvasId > 0) {
+                $css .= $this->buildCss($canvasId);
+            }
+        }
 
         return ['html' => $html, 'css' => $css];
     }
 
     /**
-     * Render the template canvas tree.
-     * Zone blocks are expanded: the zone element becomes the wrapper and the
-     * matching page content fills the inside.
+     * Render the merged template + page + zone canvas tree.
+     *
+     * When a zone block is encountered:
+     *   - zone_name === $pageZone → inject page content blocks (or $injectHtml for html-mode)
+     *   - any other zone_name     → inject from $zoneCanvasBlocks[zoneName] if present
      */
     private function renderTemplateTree(
-        string $parentKey,
-        array $tplById, array $tplChildrenOf,
-        array $pageById, array $pageChildrenOf, array $pageByZone
+        string  $parentKey,
+        array   $tplById,
+        array   $tplChildrenOf,
+        array   $pageById,
+        array   $pageChildrenOf,
+        array   $pageByZone,
+        array   $zoneCanvasBlocks = [],   // [zoneName => ['byId' => [...], 'childrenOf' => [...]]]
+        string  $pageZone         = 'main',
+        ?string $injectHtml       = null
     ): string {
         if (empty($tplChildrenOf[$parentKey])) {
             return '';
@@ -465,30 +588,44 @@ class CruinnRenderService
             $type = htmlspecialchars($row['block_type'], ENT_QUOTES, 'UTF-8');
 
             if ($row['block_type'] === 'zone') {
-                // Zone block: render as a container, filled with matching page content
-                $zoneName = htmlspecialchars($tCfg['zone_name'] ?? 'main', ENT_QUOTES, 'UTF-8');
+                $rawZone  = $tCfg['zone_name'] ?? 'main';
+                $zoneName = htmlspecialchars($rawZone, ENT_QUOTES, 'UTF-8');
                 $inner    = '';
-                foreach ($pageByZone[$tCfg['zone_name'] ?? 'main'] ?? [] as $pb) {
-                    $pbCfg    = json_decode($pb['block_config'] ?? '{}', true) ?: [];
-                    $pbTag    = $pbCfg['_tag'] ?? $this->tagForType($pb['block_type']);
-                    $pbType   = htmlspecialchars($pb['block_type'], ENT_QUOTES, 'UTF-8');
-                    $pbId     = htmlspecialchars($pb['block_id'], ENT_QUOTES, 'UTF-8');
-                    $pbAttrs  = '';
-                    $pbCollapse = (string) ($pbCfg['ui_collapse'] ?? '');
-                    if ($pbCollapse === 'tablet' || $pbCollapse === 'mobile') {
-                        $pbAttrs .= ' data-ui-collapse="' . $pbCollapse . '"';
+
+                if ($rawZone === $pageZone) {
+                    // ── Page zone: inject the page's own content ──
+                    if ($injectHtml !== null) {
+                        // html-mode: inject raw HTML directly
+                        $inner = $injectHtml;
+                    } else {
+                        foreach ($pageByZone[$rawZone] ?? [] as $pb) {
+                            $pbCfg      = json_decode($pb['block_config'] ?? '{}', true) ?: [];
+                            $pbTag      = $pbCfg['_tag'] ?? $this->tagForType($pb['block_type']);
+                            $pbType     = htmlspecialchars($pb['block_type'], ENT_QUOTES, 'UTF-8');
+                            $pbId       = htmlspecialchars($pb['block_id'], ENT_QUOTES, 'UTF-8');
+                            $pbAttrs    = '';
+                            $pbCollapse = (string) ($pbCfg['ui_collapse'] ?? '');
+                            if ($pbCollapse === 'tablet' || $pbCollapse === 'mobile') {
+                                $pbAttrs .= ' data-ui-collapse="' . $pbCollapse . '"';
+                            }
+                            $pbInner  = $this->isDynamicType($pb['block_type'])
+                                ? $this->renderDynamicBlock($pb)
+                                : ($pb['inner_html'] ?? '');
+                            $pbInner .= $this->renderTree($pb['block_id'], $pageById, $pageChildrenOf);
+                            $inner   .= "<{$pbTag} id=\"{$pbId}\" data-block data-block-type=\"{$pbType}\"{$pbAttrs}>{$pbInner}</{$pbTag}>\n";
+                        }
                     }
-                    $pbInner  = $this->isDynamicType($pb['block_type'])
-                        ? $this->renderDynamicBlock($pb)
-                        : ($pb['inner_html'] ?? '');
-                    $pbInner .= $this->renderTree($pb['block_id'], $pageById, $pageChildrenOf);
-                    $inner   .= "<{$pbTag} id=\"{$pbId}\" data-block data-block-type=\"{$pbType}\"{$pbAttrs}>{$pbInner}</{$pbTag}>\n";
+                } elseif (isset($zoneCanvasBlocks[$rawZone])) {
+                    // ── Non-page zone: inject zone canvas blocks ──
+                    $zc = $zoneCanvasBlocks[$rawZone];
+                    $inner = $this->renderTree('__root', $zc['byId'], $zc['childrenOf']);
                 }
+
                 $html .= "<{$tag} id=\"{$id}\" data-block data-block-type=\"{$type}\" data-zone-name=\"{$zoneName}\">";
                 $html .= $inner;
                 $html .= "</{$tag}>\n";
             } else {
-                // Regular template block — render with its template children
+                // Regular template block
                 $extraAttrs = '';
                 foreach ($tCfg['_attrs'] ?? [] as $k => $v) {
                     if ($k === 'id') { continue; }
@@ -509,7 +646,8 @@ class CruinnRenderService
                 $inner .= $this->renderTemplateTree(
                     $blockId,
                     $tplById, $tplChildrenOf,
-                    $pageById, $pageChildrenOf, $pageByZone
+                    $pageById, $pageChildrenOf, $pageByZone,
+                    $zoneCanvasBlocks, $pageZone, $injectHtml
                 );
                 $html .= "<{$tag} id=\"{$id}\" data-block data-block-type=\"{$type}\"{$extraAttrs}>";
                 $html .= $inner;
@@ -533,19 +671,41 @@ class CruinnRenderService
 
     /**
      * Same as buildWithContext but using a named template slug.
-     * Looks up the page_templates record, finds its canvas_page_id, renders it.
-     * Returns null if no such template or no canvas page.
+     * Looks up the page_templates record, fetches blocks via template_id,
+     * falls back to canvas_page_id for pre-012 instances.
+     * Returns null if no such template or no blocks found.
      */
     public function buildContentTemplate(string $slug, array $context): ?string
     {
         $tpl = $this->db->fetch(
-            "SELECT pt.canvas_page_id FROM page_templates pt WHERE pt.slug = ? AND pt.template_type = 'content' LIMIT 1",
+            "SELECT id, canvas_page_id FROM page_templates pt WHERE pt.slug = ? AND pt.template_type = 'content' LIMIT 1",
             [$slug]
         );
-        if (!$tpl || !$tpl['canvas_page_id']) {
+        if (!$tpl) {
             return null;
         }
-        return $this->buildWithContext((int) $tpl['canvas_page_id'], $context);
+        $templateId = (int) $tpl['id'];
+        if ($this->hasPublishedTemplate($templateId)) {
+            $this->context = $context;
+            $flat = $this->db->fetchAll(
+                'SELECT * FROM pages WHERE template_id = ? ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$templateId]
+            );
+            $byId = [];
+            $childrenOf = [];
+            foreach ($flat as $row) {
+                $byId[$row['block_id']] = $row;
+                $pid = $row['parent_block_id'] ?? null;
+                $childrenOf[$pid ?? '__root'][] = $row['block_id'];
+            }
+            return $this->renderTree('__root', $byId, $childrenOf);
+        }
+        // Fallback: canvas_page_id (pre-012 instances)
+        $cpid = (int)($tpl['canvas_page_id'] ?? 0);
+        if ($cpid > 0) {
+            return $this->buildWithContext($cpid, $context);
+        }
+        return null;
     }
 
     /**
