@@ -373,24 +373,17 @@ class CruinnController extends BaseController
                         'SELECT id, slug, name, canvas_page_id, zones, zone_canvases, settings FROM page_templates WHERE slug = ? LIMIT 1',
                         [$pageTemplateSlug]
                     );
-                    if ($tplRow && !empty($tplRow['canvas_page_id'])) {
-                        $templateCanvasPageId = (int) $tplRow['canvas_page_id'];
-                        if ($cruinnSvc->hasPublished($templateCanvasPageId)) {
-                            $templateCanvasHtml = $cruinnSvc->buildHtml($templateCanvasPageId);
-                            $templateCanvasCss  = $cruinnSvc->buildCss($templateCanvasPageId);
-                            // Extract distinct zone names from root-level zone blocks
-                            $zoneRows = $this->db->fetchAll(
-                                "SELECT block_config FROM pages
-                                  WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL",
-                                [$templateCanvasPageId]
-                            );
-                            foreach ($zoneRows as $zr) {
-                                $cfg  = json_decode($zr['block_config'] ?? '{}', true) ?: [];
-                                $zn   = $cfg['zone_name'] ?? 'main';
-                                if (!in_array($zn, $templateZones, true)) {
-                                    $templateZones[] = $zn;
-                                }
-                            }
+                    if ($tplRow) {
+                        // templateZones: read from template's zones JSON (authoritative after migration 013)
+                        $templateZones = json_decode($tplRow['zones'] ?? '[]', true) ?: ['main'];
+
+                        // templateCanvasHtml: use template_id path (blocks migrated from canvas_page_id in 012)
+                        $templateCanvasPageId = !empty($tplRow['canvas_page_id']) ? (int) $tplRow['canvas_page_id'] : null;
+                        $tplIdForCanvas = (int) $tplRow['id'];
+                        if ($tplIdForCanvas > 0 && $cruinnSvc->hasPublishedTemplate($tplIdForCanvas)) {
+                            $tplResult          = $cruinnSvc->buildWithTemplate($tplIdForCanvas, 'main', []);
+                            $templateCanvasHtml = $tplResult['html'];
+                            $templateCanvasCss  = $tplResult['css'];
                         }
                     }
 
