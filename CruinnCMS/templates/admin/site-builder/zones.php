@@ -56,9 +56,9 @@ include __DIR__ . '/_tabs.php';
             <tbody>
             <?php foreach ($zones as $z): ?>
             <tr>
-                <td><?= $this->escape($z['title']) ?></td>
-                <td><code><?= $this->escape($z['zone_name']) ?></code></td>
-                <td><?= $this->escape($z['status'] ?? '—') ?></td>
+                <td><?= e($z['title']) ?></td>
+                <td><code><?= e($z['zone_name']) ?></code></td>
+                <td><?= e($z['status'] ?? '—') ?></td>
                 <td style="white-space: nowrap; color: #6b7280; font-size: .85em"><?= format_date($z['updated_at'], 'j M Y') ?></td>
                 <td style="text-align: right">
                     <a href="<?= url('/admin/editor/' . (int)$z['id'] . '/edit') ?>" class="btn btn-sm btn-secondary">Edit Canvas</a>
