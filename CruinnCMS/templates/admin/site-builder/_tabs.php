@@ -9,6 +9,7 @@
 $tabs = [
     'pages'         => ['label' => 'Pages',         'url' => '/admin/site-builder/pages', 'icon' => '📄'],
     'templates'     => ['label' => 'Templates',     'url' => '/admin/templates',          'icon' => '📐'],
+    'zones'         => ['label' => 'Zones',         'url' => '/admin/site-builder/zones', 'icon' => '⬜'],
     'menus'         => ['label' => 'Menus',         'url' => '/admin/menus',              'icon' => '☰'],
     'structure'     => ['label' => 'Structure',     'url' => '/admin/site-builder/structure', 'icon' => '🗺️'],
     'php-templates' => ['label' => 'PHP Templates', 'url' => '/admin/template-editor',    'icon' => '🧩'],

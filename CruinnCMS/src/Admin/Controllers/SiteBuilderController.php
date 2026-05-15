@@ -735,6 +735,57 @@ class SiteBuilderController extends BaseController
         $this->renderAdmin('admin/site-builder/structure', $data);
     }
 
+    public function builderZones(): void
+    {
+        Auth::requireRole('admin');
+        $zones = $this->db->fetchAll(
+            "SELECT id, title, zone_name, status, updated_at
+               FROM pages_index
+              WHERE canvas_type = 'zone'
+              ORDER BY zone_name"
+        );
+        $this->renderAdmin('admin/site-builder/zones', [
+            'title'  => 'Zone Canvases',
+            'section'=> 'builder',
+            'tab'    => 'zones',
+            'zones'  => $zones,
+        ]);
+    }
+
+    public function builderNewZone(): void
+    {
+        Auth::requireRole('admin');
+        CSRF::verify();
+
+        $title    = trim($this->input('title', ''));
+        $zoneName = trim(strtolower($this->input('zone_name', '')));
+
+        if ($title === '' || !preg_match('/^[a-z0-9_-]+$/', $zoneName)) {
+            Auth::flash('error', 'Zone name must be lowercase letters, numbers, hyphens or underscores. Title is required.');
+            $this->redirect('/admin/site-builder/zones');
+        }
+
+        // Check for duplicate zone_name
+        $existing = $this->db->fetch(
+            "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
+            [$zoneName]
+        );
+        if ($existing) {
+            Auth::flash('error', 'A zone canvas with that zone name already exists.');
+            $this->redirect('/admin/site-builder/zones');
+        }
+
+        $slug = '_zone_' . $zoneName;
+        $this->db->execute(
+            "INSERT INTO pages_index (title, slug, status, template, editor_mode, canvas_type, zone_name)
+             VALUES (?, ?, 'published', 'none', 'freeform', 'zone', ?)",
+            [$title, $slug, $zoneName]
+        );
+        $newId = (int) $this->db->pdo()->lastInsertId();
+
+        $this->redirect('/admin/editor/' . $newId . '/edit');
+    }
+
     public function setHomePage(int $id): void
     {
         $page = $this->db->fetch('SELECT id FROM pages_index WHERE id = ? AND slug NOT LIKE \'\\_%\' LIMIT 1', [$id]);
