@@ -47,11 +47,15 @@ class CruinnRenderService
      */
     public function hasPublishedTemplate(int $templateId): bool
     {
-        $count = (int) $this->db->fetchColumn(
-            'SELECT COUNT(*) FROM pages WHERE template_id = ?',
-            [$templateId]
-        );
-        return $count > 0;
+        try {
+            $count = (int) $this->db->fetchColumn(
+                'SELECT COUNT(*) FROM pages WHERE template_id = ?',
+                [$templateId]
+            );
+            return $count > 0;
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**
@@ -231,11 +235,15 @@ class CruinnRenderService
      */
     public function buildCssForTemplate(int $templateId): string
     {
-        $flat = $this->db->fetchAll(
-            'SELECT block_id, block_type, css_props, css_props_tablet, css_props_mobile, block_config
-               FROM pages WHERE template_id = ?',
-            [$templateId]
-        );
+        try {
+            $flat = $this->db->fetchAll(
+                'SELECT block_id, block_type, css_props, css_props_tablet, css_props_mobile, block_config
+                   FROM pages WHERE template_id = ?',
+                [$templateId]
+            );
+        } catch (\Throwable $e) {
+            $flat = [];
+        }
         if (empty($flat)) {
             // Migration safety: fall back to canvas_page_id
             $tpl = $this->db->fetch('SELECT canvas_page_id FROM page_templates WHERE id = ? LIMIT 1', [$templateId]);
@@ -451,12 +459,17 @@ class CruinnRenderService
         ?string $injectHtml    = null
     ): array {
         // ── Fetch template layout blocks ─────────────────────────────
-        $tplFlat = $this->db->fetchAll(
-            'SELECT * FROM pages
-              WHERE template_id = ?
-              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-            [$templateId]
-        );
+        $tplFlat = [];
+        try {
+            $tplFlat = $this->db->fetchAll(
+                'SELECT * FROM pages
+                  WHERE template_id = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$templateId]
+            );
+        } catch (\Throwable $e) {
+            // Column doesn't exist yet (migration 012 not applied) — fall through to canvas_page_id
+        }
 
         // Migration safety: if no template_id blocks, fall back to canvas_page_id
         $canvasCssPageId = null;
