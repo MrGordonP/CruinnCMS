@@ -62,6 +62,13 @@ BEGIN
     ) THEN
         ALTER TABLE `pages` DROP FOREIGN KEY `fk_pages_page_id`;
     END IF;
+
+    -- Null out any orphaned page_id values (no matching pages_index row) before re-adding FK
+    UPDATE `pages` p
+        LEFT JOIN `pages_index` pi ON pi.id = p.page_id
+    SET p.page_id = NULL
+    WHERE p.page_id IS NOT NULL AND pi.id IS NULL;
+
     ALTER TABLE `pages`
         ADD CONSTRAINT `fk_pages_page_id`
             FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE;
@@ -127,6 +134,13 @@ BEGIN
     ) THEN
         ALTER TABLE `pages_draft` DROP FOREIGN KEY `fk_pages_draft_page`;
     END IF;
+
+    -- Null out any orphaned page_id values in pages_draft before re-adding FK
+    UPDATE `pages_draft` pd
+        LEFT JOIN `pages_index` pi ON pi.id = pd.page_id
+    SET pd.page_id = NULL
+    WHERE pd.page_id IS NOT NULL AND pi.id IS NULL;
+
     ALTER TABLE `pages_draft`
         ADD CONSTRAINT `fk_pages_draft_page`
             FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE;
