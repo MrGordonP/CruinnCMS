@@ -1,6 +1,6 @@
 # CruinnCMS — Editor & Zone Architecture Refactor
 
-**Status:** Planning complete. Ready for implementation.  
+**Status:** In progress. Stage 4 extended with render pipeline unification.  
 **Version target:** v1.0.0-beta.8  
 **Agreed:** May 2026
 
@@ -22,17 +22,20 @@ This document tracks the agreed remediation work across all four stages.
 
 ---
 
-## Data Model (correct as-is, for reference)
+## Data Model (agreed target)
 
 | Concept | Storage | Notes |
 |---|---|---|
 | Block | `pages` / `pages_draft` rows | `block_id`, `parent_block_id`, `sort_order`, `css_props` JSON, `inner_html` |
-| Page | `pages_index` row + child `pages` rows | `template` slug, `page_zone` (which zone slot content injects into) |
-| Template | `page_templates` row | `zones` JSON array, optional `canvas_page_id` pointing to a block canvas defining the shell |
-| Zone content | A `pages_index` canvas assigned to a zone slot | No special type — just a canvas |
-| Header/Footer/Sidebar | Same as zone content above | Currently disguised as system pages with `_` slug prefix |
+| Page | `pages_index` row + child `pages` rows (`page_id`) | `template` slug, `page_zone` (which zone slot content injects into) |
+| Template layout blocks | `pages` rows with `template_id` set (not `page_id`) | Direct ownership — no `pages_index` proxy row needed |
+| Template | `page_templates` row | `zones` JSON array, `zone_canvases` JSON, `settings` JSON. `canvas_page_id` **deprecated** — template blocks now live via `template_id` in `pages` |
+| Zone canvas content | `pages_index` row with `canvas_type='zone'` + child `pages` rows | Independently editable shared content (header, footer, sidebar etc.) |
+| Header/Footer/Sidebar | Zone canvas content above | Currently disguised as system pages with `_` slug prefix — to be cleaned up in Stage 1 |
 
 `page_zone` on `pages_index` is **intentionally correct** — it answers "which template zone slot does this page's block tree inject into." The column stays; it just needs to be surfaced properly in admin UI.
+
+**Key principle:** `pages_index` is the page registry only — it records what template a page uses and which zone its blocks inject into. Template layout structure belongs directly on the template, not via a proxy `pages_index` record.
 
 ---
 
@@ -62,10 +65,10 @@ This document tracks the agreed remediation work across all four stages.
   Unify into a single `resolveZoneRender(string $zoneName, array $tpl, CruinnRenderService $cruinn): array` method.  
   Remove `tpl_header_blocks` and `tpl_footer_blocks` as Template globals.
 
-- [ ] **4. `layout.php` — Remove hardcoded zone HTML**  
-  Remove the hardcoded `<header class="site-header ...">` and `<footer class="site-footer ...">` output blocks (currently two parallel if/else branches each).  
-  Zone rendering should be generic: iterate the template's zone definitions and render each one into its declared position.  
-  The template's `zones` array + `settings` JSON (which already has `show_header`, `show_footer` etc.) drives what renders and where.
+- [ ] **4. `layout.php` — Reduce to HTML document shell**  
+  Remove all structural content from layout.php: `<header>`, `<aside>`, `<footer>` wrappers, `$_headerHtml`, `$_footerHtml`, `$_sidebarHtml`, `show_header`/`show_footer` flags, `site-body-wrap`, `<main id="main-content">`.  
+  layout.php becomes: `<!DOCTYPE html><html><head>…</head><body><?= $pageHtml ?></body></html>` plus scripts, CSS links, flash messages.  
+  All structural content is produced by `buildWithTemplate()` in Stage 4 (items 13–15). This item is a **cleanup** that lands after Stage 4 is complete.
 
 - [ ] **5. `instance_core.sql` — Strip structural seeds**  
   Remove from the seeded INSERTs:  
@@ -111,18 +114,47 @@ This document tracks the agreed remediation work across all four stages.
 
 ---
 
-### Stage 4 — Editor in-situ context rendering (largest piece, depends on 1–8)
+### Stage 4 — Render pipeline unification + editor context rendering (depends on 1–8)
 
-- [ ] **11. Editor context rendering**  
+#### 4a — Schema: template blocks ownership
+
+- [ ] **11. `pages` table — add `template_id` column**  
+  Add nullable `template_id INT` column to `pages` and `pages_draft`. Mutually exclusive with `page_id` at the application level (one or the other set, not both).  
+  Write migration: `migrations/core/NNN_template_id_on_pages.sql`.
+
+- [ ] **12. Migrate existing template canvas blocks**  
+  For each `page_templates` row with a `canvas_page_id`: move its `pages` rows from `page_id = canvas_page_id` to `template_id = page_templates.id`, clearing `page_id`. Write as part of the same migration.  
+  After migration, `canvas_page_id` on `page_templates` is unused — deprecate column (keep nullable for one release, then drop).
+
+#### 4b — Render service: full-pass zone assembly
+
+- [ ] **13. `CruinnRenderService::buildWithTemplate()` — accept and inject all zones**  
+  Extend signature to accept a zone canvas map (`array<zoneName, canvasPageId>`).  
+  When walking the template block tree and hitting a zone slot block:  
+  - `zone_name === $page->page_zone` → inject the page's own blocks (existing behaviour)  
+  - any other zone name → fetch blocks for that zone's canvas page and inject them  
+  Fetch template layout blocks via `template_id` directly (not via `canvas_page_id → pages_index`).  
+  Returns one complete HTML string — no further structural assembly needed.
+
+- [ ] **14. `PageController` — single render call**  
+  Replace the parallel pipelines (separate `buildZone('header')`, `buildZone('footer')`, `resolveSidebarRender()`, `Template::addGlobal('tpl_header_html', ...)`) with a single `buildWithTemplate()` call that receives the full zone canvas map resolved from the 4-level priority chain.  
+  Remove `tpl_header_html`, `tpl_footer_html`, `tpl_sidebar_html`, `tpl_header_css`, `tpl_footer_css`, `tpl_sidebar_css` as Template globals.  
+  Remove `setZoneGlobals()`, `resolveZoneRender()`, `resolveSidebarRender()` from PageController.
+
+- [ ] **15. `layout.php` cleanup (depends on 13–14)**  
+  Apply item 4 above once PageController emits a single `$pageHtml` string. layout.php is now a document shell only.
+
+#### 4c — Editor context rendering
+
+- [ ] **16. Editor context rendering**  
   When opening a page for editing, load the template's zone canvases (header, footer, sidebar etc.) and render them as non-editable chrome surrounding the primary canvas.  
   - Server side: editor endpoint passes `contextCanvases` (array of `{zone, pageId, html, css}`) alongside primary `pageId`  
-  - JS: renders context zones as `[data-context-zone]` elements, positioned above/below/beside `#editor-canvas`  
+  - CSS: zone preview containers render inline HTML with a scoped editor CSS override neutralising `position:fixed`/`sticky` to `relative` so content flows in place within the preview  
   - Context zones are locked (no selection, no drag, no properties panel trigger)  
-  - Visually distinct: dimmed or labelled ("Header — click to edit")
+  - Visually distinct: dimmed, labelled, click navigates to that zone's canvas
 
-- [ ] **12. Canvas switching from context zones**  
-  Clicking a locked context zone shows a "Edit [zone name]" affordance.  
-  Activating it navigates the editor to that zone's canvas page ID (same editor route, different `pageId`).  
+- [ ] **17. Canvas switching from context zones**  
+  Clicking a context zone navigates the editor to that zone's canvas (page or template-owned).  
   Back button / breadcrumb returns to the original page canvas.
 
 ---
@@ -131,16 +163,18 @@ This document tracks the agreed remediation work across all four stages.
 
 | File | Stage | Nature of change |
 |---|---|---|
-| `public_html/js/editor.js` | 1, 4 | Remove hardcoding; add context zone rendering |
-| `CruinnCMS/src/Controllers/PageController.php` | 1 | Collapse two-path header resolution |
-| `CruinnCMS/templates/layout.php` | 1 | Remove hardcoded zone HTML; generic zone iteration |
+| `public_html/js/editor.js` | 1, 4c | Remove hardcoding; add context zone rendering |
+| `CruinnCMS/src/Controllers/PageController.php` | 1, 4b | Collapse zone resolution; single render call |
+| `CruinnCMS/templates/layout.php` | 4b | Reduce to HTML document shell |
 | `CruinnCMS/schema/instance_core.sql` | 1 | Remove structural seeds |
 | `CruinnCMS/migrations/core/NNN_remove_structural_seeds.sql` | 1 | New migration for existing instances |
+| `CruinnCMS/migrations/core/NNN_template_id_on_pages.sql` | 4a | Add `template_id` column; migrate canvas blocks |
 | `CruinnCMS/src/Admin/Controllers/SiteBuilderController.php` | 1 | Remove hardcoded `_header` slug query |
-| `CruinnCMS/src/Services/CruinnRenderService.php` | 2 | Replace slug-convention zone lookup |
+| `CruinnCMS/src/Services/CruinnRenderService.php` | 2, 4b | Replace slug-convention zone lookup; full-pass zone assembly |
 | `CruinnCMS/themes/default/seed.sql` | 3 | New file — moved structural defaults |
 | `CruinnCMS/src/Admin/Controllers/ThemeController.php` | 3 | Add seed apply action |
-| `CruinnCMS/src/Admin/Controllers/AdminPageController.php` | 4 | Pass context canvases to editor |
+| `CruinnCMS/src/Admin/Controllers/AdminPageController.php` | 4c | Pass context canvases to editor |
+| `CruinnCMS/schema/platform.sql` / `instance_core.sql` | 4a | Schema: `template_id` on `pages` / `pages_draft` |
 
 ---
 
@@ -148,6 +182,7 @@ This document tracks the agreed remediation work across all four stages.
 
 Stages 1 → 2 must be done in order (2 depends on 1 being clean).  
 Stage 3 is independent — can be done any time after Stage 1 item 5.  
-Stage 4 can only land cleanly after Stages 1 and 2 are complete.
+Stage 4a (schema) must land before 4b (render service). 4b must land before 4c (editor context).  
+Stage 1 item 4 (`layout.php` shell reduction) is a cleanup that lands last, after 4b is complete and verified.
 
 Within Stage 1, items 1–6 can largely be done together in one pass since they are all removals.

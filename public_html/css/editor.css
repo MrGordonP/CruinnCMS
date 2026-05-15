@@ -1421,8 +1421,16 @@ a.editor-zone-preview {
 .editor-zone-inner {
     min-height: 60px;
     pointer-events: none;
-    transform: translateZ(0);
-    /* contain position:fixed children within the preview box */
+    overflow: hidden;
+}
+
+/* Reset viewport-anchored positioning within zone previews.
+   position:fixed/sticky is meaningless in a preview context and
+   causes the container to collapse (elements leave normal flow). */
+.editor-zone-inner *:not(script):not(style) {
+    position: relative !important;
+    inset: auto !important;
+    transform: none !important;
 }
 
 .editor-zone-empty {
