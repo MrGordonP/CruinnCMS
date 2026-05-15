@@ -125,16 +125,16 @@ This document tracks the agreed remediation work across all four stages.
 
 #### 4c — Editor context rendering
 
-- [ ] **16. Editor context rendering**  
+- [x] **16. Editor context rendering**  
   When opening a page for editing, load the template's zone canvases (header, footer, sidebar etc.) and render them as non-editable chrome surrounding the primary canvas.  
-  - Server side: editor endpoint passes `contextCanvases` (array of `{zone, pageId, html, css}`) alongside primary `pageId`  
+  - Server side: editor endpoint passes `contextCanvases` (array of `{zone, pageId, html, css, position}`) alongside primary `pageId`. Sidebar unified into `contextCanvases` with `position='right'`; separate `sidebarContext*` path removed.  
   - CSS: zone preview containers render inline HTML with a scoped editor CSS override neutralising `position:fixed`/`sticky` to `relative` so content flows in place within the preview  
   - Context zones are locked (no selection, no drag, no properties panel trigger)  
   - Visually distinct: dimmed, labelled, click navigates to that zone's canvas
 
-- [ ] **17. Canvas switching from context zones**  
+- [x] **17. Canvas switching from context zones**  
   Clicking a context zone navigates the editor to that zone's canvas (page or template-owned).  
-  Back button / breadcrumb returns to the original page canvas.
+  Back button / breadcrumb returns to the original page canvas via `?from={pageId}` query parameter — the editor reads it and shows "← [page title]" in the toolbar back button.
 
 ---
 

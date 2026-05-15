@@ -53,33 +53,15 @@ class CruinnController extends BaseController
 
         // Build nav data — identical to edit(), but with no page loaded
         $headerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"header\"')
-             ORDER BY pt.sort_order, pt.name"
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'zone' AND zone_name = 'header'
+             ORDER BY title ASC"
         );
-        $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
-        if ($hp0) {
-            array_unshift($headerPages, [
-                'id' => (int) $hp0['id'], 'title' => 'Header Zone Page',
-                'slug' => '_header', 'template_name' => null,
-            ]);
-        }
         $footerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
-             ORDER BY pt.sort_order, pt.name"
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'zone' AND zone_name = 'footer'
+             ORDER BY title ASC"
         );
-        $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
-        if ($fp0) {
-            array_unshift($footerPages, [
-                'id' => (int) $fp0['id'], 'title' => 'Footer Zone Page',
-                'slug' => '_footer', 'template_name' => null,
-            ]);
-        }
 
         $sitePages = $this->db->fetchAll(
             "SELECT id, title, slug, render_mode FROM pages_index
@@ -192,6 +174,8 @@ class CruinnController extends BaseController
             'htmlContent'     => null,
             'editorPageBase'  => null,
             'apiBase'         => '/admin/editor',
+            'fromPageId'      => 0,
+            'fromPageTitle'   => '',
         ]);
     }
 
@@ -203,6 +187,21 @@ class CruinnController extends BaseController
     {
         Auth::requireRole('admin');
         $pageId = (int) $pageId;
+
+        // Back-navigation: ?from={pageId} passes the originating page when jumping
+        // to a context zone canvas (header, footer, etc.) from the editor.
+        $fromPageId    = 0;
+        $fromPageTitle = '';
+        if (!empty($_GET['from'])) {
+            $fromId = (int) $_GET['from'];
+            if ($fromId > 0) {
+                $fromRow = $this->db->fetch('SELECT id, title FROM pages_index WHERE id = ? LIMIT 1', [$fromId]);
+                if ($fromRow) {
+                    $fromPageId    = (int) $fromRow['id'];
+                    $fromPageTitle = $fromRow['title'];
+                }
+            }
+        }
 
         $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
         if (!$page) {
@@ -356,10 +355,6 @@ class CruinnController extends BaseController
         $templateCanvasPageId = null;
         $templateCanvasHtml  = '';
         $templateCanvasCss   = '';
-        $sidebarContextHtml  = '';
-        $sidebarContextCss   = '';
-        $sidebarContextPageId = null;
-        $sidebarContextLabel = '';
         $zoneSuggestions     = $this->db->fetchColumn("SELECT value FROM settings WHERE `key` = 'editor.zone_suggestions' LIMIT 1") ?: 'main,header,footer,sidebar';
 
         $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
@@ -387,47 +382,9 @@ class CruinnController extends BaseController
                         }
                     }
 
-                    // Sidebar context preview: mirror public runtime sidebar source resolution.
-                    if ($tplRow) {
-                        $tplZones = json_decode($tplRow['zones'] ?? '[]', true) ?: [];
-                        $hasSidebarZone = in_array('sidebar', $tplZones, true);
-                        if ($hasSidebarZone) {
-                            $tplSettings = json_decode($tplRow['settings'] ?? '{}', true) ?: [];
-                            $sidebarSource = (string) ($tplSettings['sidebar_source'] ?? 'default');
-
-                            $sourceSlug = $sidebarSource === 'default'
-                                ? '_global_sidebar'
-                                : ($sidebarSource === 'custom' ? ($tplRow['slug'] ?? '') : $sidebarSource);
-                            if (preg_match('/^[a-z0-9_\-]+$/', $sourceSlug)) {
-                                $sourceTpl = $this->db->fetch(
-                                    "SELECT id, name, slug, canvas_page_id FROM page_templates
-                                      WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"')
-                                      LIMIT 1",
-                                    [$sourceSlug]
-                                );
-                                if ($sourceTpl && !empty($sourceTpl['canvas_page_id'])) {
-                                    $sourceCanvasId = (int) $sourceTpl['canvas_page_id'];
-                                    if ($cruinnSvc->hasPublished($sourceCanvasId)) {
-                                        // For custom sidebar, render only sidebar zone blocks
-                                        // For global/other templates, render entire canvas (backward compatible)
-                                        $sidebarContextHtml = ($sidebarSource === 'custom')
-                                            ? $cruinnSvc->buildZoneHtml($sourceCanvasId, 'sidebar')
-                                            : $cruinnSvc->buildHtml($sourceCanvasId);
-                                        $sidebarContextCss  = $cruinnSvc->buildCss($sourceCanvasId);
-                                        $sidebarContextPageId = $sourceCanvasId;
-                                        $sidebarContextLabel = ($sidebarSource === 'default')
-                                            ? 'Auto - global default sidebar'
-                                            : (($sidebarSource === 'custom')
-                                                ? 'Custom - this template'
-                                                : ('Template - ' . ($sourceTpl['name'] ?? $sourceSlug)));
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                     // Build context canvases — for each zone on the template except
-                    // the page's own injection zone and 'sidebar' (handled separately above).
+                    // the page's own injection zone. Sidebar gets position='right';
+                    // all other non-main zones get 'before' or 'after' relative to main.
                     if ($tplRow) {
                         $allZones      = json_decode($tplRow['zones'] ?? '[]', true) ?: [];
                         $zoneCanvasMap = json_decode($tplRow['zone_canvases'] ?? '{}', true) ?: [];
@@ -437,7 +394,7 @@ class CruinnController extends BaseController
                         if ($mainIdx === false) { $mainIdx = count($allZones); }
 
                         foreach ($allZones as $idx => $zone) {
-                            if ($zone === $pageZone || $zone === 'sidebar') { continue; }
+                            if ($zone === $pageZone) { continue; }
 
                             // Resolve canvas page ID: zone_overrides → zone_canvases → global zone page → legacy slug
                             $canvasPageId = null;
@@ -480,7 +437,7 @@ class CruinnController extends BaseController
                                 'label'    => ucfirst($zone),
                                 'html'     => $ctxHtml,
                                 'css'      => $ctxCss,
-                                'position' => $idx < $mainIdx ? 'before' : 'after',
+                                'position' => $zone === 'sidebar' ? 'right' : ($idx < $mainIdx ? 'before' : 'after'),
                             ];
                         }
                     }
@@ -593,35 +550,17 @@ class CruinnController extends BaseController
             }
         }
 
-        // All editable header pages: canvas pages for templates with a header zone
+        // All editable header/footer zone canvas pages for sidebar nav and toolbar shortcuts.
         $headerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"header\"')
-             ORDER BY pt.sort_order, pt.name"
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'zone' AND zone_name = 'header'
+             ORDER BY title ASC"
         );
-        $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
-        if ($hp0) {
-            array_unshift($headerPages, [
-                'id' => (int) $hp0['id'], 'title' => 'Header Zone Page',
-                'slug' => '_header', 'template_name' => null,
-            ]);
-        }
         $footerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
-             ORDER BY pt.sort_order, pt.name"
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'zone' AND zone_name = 'footer'
+             ORDER BY title ASC"
         );
-        $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
-        if ($fp0) {
-            array_unshift($footerPages, [
-                'id' => (int) $fp0['id'], 'title' => 'Footer Zone Page',
-                'slug' => '_footer', 'template_name' => null,
-            ]);
-        }
 
         // Content pages for the sidebar nav (exclude all zone/template pages starting with _)
         $sitePages = $this->db->fetchAll(
@@ -752,10 +691,10 @@ class CruinnController extends BaseController
             'templateCanvasPageId' => $templateCanvasPageId,
             'templateCanvasHtml'  => $templateCanvasHtml,
             'templateCanvasCss'   => $templateCanvasCss,
-            'sidebarContextHtml'  => $sidebarContextHtml,
-            'sidebarContextCss'   => $sidebarContextCss,
-            'sidebarContextPageId'=> $sidebarContextPageId,
-            'sidebarContextLabel' => $sidebarContextLabel,
+            'sidebarContextHtml'  => '',
+            'sidebarContextCss'   => '',
+            'sidebarContextPageId'=> null,
+            'sidebarContextLabel' => '',
             'contextFields'       => $contextFields,
             'templateLayoutSettings' => $templateLayoutSettings,
             'startInCodeView'   => !$hasImportedBlocks && $renderMode === 'html',
@@ -766,6 +705,8 @@ class CruinnController extends BaseController
             'docBodyBlock'      => $docBodyBlock,
             'editorPageBase'    => null,
             'apiBase'           => '/admin/editor',
+            'fromPageId'        => $fromPageId,
+            'fromPageTitle'     => $fromPageTitle,
         ]);
     }
 

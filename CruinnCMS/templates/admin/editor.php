@@ -19,6 +19,16 @@ $_editorPageHref = function (int $id) use ($editorPageBase): string {
 };
 $_editorBackHref  = $editorPageBase ?? '/admin/site-builder/pages';
 $_editorPagesHref = $editorPageBase ?? '/admin/pages';
+
+// Appends ?from={currentPageId} so zone canvas editors can navigate back.
+$_editorPageHrefFrom = function(int $targetId) use ($page, $_editorPageHref): string {
+    $url = $_editorPageHref($targetId);
+    if ($page) {
+        $sep = str_contains($url, '?') ? '&' : '?';
+        $url .= $sep . 'from=' . (int) $page['id'];
+    }
+    return $url;
+};
 ?>
 <?php
 $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($templateCanvasCss ?? '');
@@ -57,7 +67,9 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
 
     <!-- ── Toolbar ──────────────────────────────────────────────── -->
     <div id="editor-toolbar">
-        <?php if (!empty($isTemplatePage)): ?>
+        <?php if (!empty($fromPageId)): ?>
+            <a href="<?= e($_editorPageHref((int)$fromPageId)) ?>" class="editor-back-btn">&larr; <?= e($fromPageTitle) ?></a>
+        <?php elseif (!empty($isTemplatePage)): ?>
             <a href="<?= $templateId ? '/admin/templates/' . (int)$templateId . '/edit' : '/admin/templates' ?>" class="editor-back-btn">&larr; Templates</a>
         <?php else: ?>
             <a href="<?= e($_editorBackHref) ?>" class="editor-back-btn">&larr; All Pages</a>
@@ -91,24 +103,24 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                 <button type="button" class="btn btn-small editor-zone-link">Edit Header ▾</button>
                 <div class="zone-picker-menu">
                     <?php foreach ($headerPages as $_hp): ?>
-                    <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"><?= e($_hp['template_name'] ?? $_hp['title']) ?></a>
+                    <a href="<?= e($_editorPageHrefFrom((int)$_hp['id'])) ?>"><?= e($_hp['title']) ?></a>
                     <?php endforeach; ?>
                 </div>
             </div>
             <?php elseif (!empty($headerPageId)): ?>
-            <a href="<?= e($_editorPageHref((int)$headerPageId)) ?>" class="btn btn-small editor-zone-link">Edit Header</a>
+            <a href="<?= e($_editorPageHrefFrom((int)$headerPageId)) ?>" class="btn btn-small editor-zone-link">Edit Header</a>
             <?php endif; ?>
             <?php if (!empty($footerPages) && count($footerPages) > 1): ?>
             <div style="position:relative;display:inline-block" class="zone-picker">
                 <button type="button" class="btn btn-small editor-zone-link">Edit Footer ▾</button>
                 <div class="zone-picker-menu">
                     <?php foreach ($footerPages as $_fp): ?>
-                    <a href="<?= e($_editorPageHref((int)$_fp['id'])) ?>"><?= e($_fp['template_name'] ?? $_fp['title']) ?></a>
+                    <a href="<?= e($_editorPageHrefFrom((int)$_fp['id'])) ?>"><?= e($_fp['title']) ?></a>
                     <?php endforeach; ?>
                 </div>
             </div>
             <?php elseif (!empty($footerPageId)): ?>
-            <a href="<?= e($_editorPageHref((int)$footerPageId)) ?>" class="btn btn-small editor-zone-link">Edit Footer</a>
+            <a href="<?= e($_editorPageHrefFrom((int)$footerPageId)) ?>" class="btn btn-small editor-zone-link">Edit Footer</a>
             <?php endif; ?>
         <?php endif; ?>
         <div id="cruinn-canvas-size-control">
@@ -308,7 +320,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                             <?php foreach ($headerPages as $_hp): ?>
                             <a href="<?= e($_editorPageHref((int)$_hp['id'])) ?>"
                                class="editor-site-nav-link<?= $page && (int)$_hp['id'] === (int)$page['id'] ? ' active' : '' ?>">
-                                <?= e($_hp['template_name'] ?? $_hp['title']) ?>
+                                <?= e($_hp['title']) ?>
                             </a>
                             <?php endforeach; ?>
                         </div>
@@ -321,7 +333,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                             <?php foreach ($footerPages as $_fp): ?>
                             <a href="<?= e($_editorPageHref((int)$_fp['id'])) ?>"
                                class="editor-site-nav-link<?= $page && (int)$_fp['id'] === (int)$page['id'] ? ' active' : '' ?>">
-                                <?= e($_fp['template_name'] ?? $_fp['title']) ?>
+                                <?= e($_fp['title']) ?>
                             </a>
                             <?php endforeach; ?>
                         </div>
@@ -447,15 +459,16 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
 
         <!-- Canvas -->
         <div id="editor-canvas-wrap" class="pl-main">
-            <?php $hasSidebarContext = !empty($sidebarContextHtml); ?>
-            <?php if (!empty($sidebarContextCss)): ?>
-            <style id="editor-sidebar-context-styles">
-<?= $sidebarContextCss ?>
-            </style>
-            <?php endif; ?>
+            <?php
+                $_sidebarCC = null;
+                foreach ($contextCanvases ?? [] as $_cc_s) {
+                    if ($_cc_s['position'] === 'right') { $_sidebarCC = $_cc_s; break; }
+                }
+                $hasSidebarContext = $_sidebarCC !== null;
+            ?>
 
             <?php foreach (array_filter($contextCanvases ?? [], fn($cc) => $cc['position'] === 'before') as $_cc): ?>
-            <a href="<?= e($_editorPageHref((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
+            <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
                 <?php if (!empty($_cc['html'])): ?>
                 <div class="editor-zone-inner"><?= $_cc['html'] ?></div>
                 <?php else: ?>
@@ -566,14 +579,14 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                 <?php if ($hasSidebarContext): ?>
                 <aside class="editor-sidebar-context" aria-label="Sidebar context preview">
                     <div class="editor-sidebar-context-head">
-                        Sidebar Context<?= !empty($sidebarContextLabel) ? ': ' . e($sidebarContextLabel) : '' ?>
+                        <?= e(ucfirst($_sidebarCC['label'] ?? 'Sidebar')) ?> Zone
                     </div>
                     <div class="editor-sidebar-context-body">
-                        <?= $sidebarContextHtml ?>
+                        <?= $_sidebarCC['html'] ?? '' ?>
                     </div>
-                    <?php if (!empty($sidebarContextPageId)): ?>
-                    <a href="<?= e($_editorPageHref((int)$sidebarContextPageId)) ?>" class="editor-sidebar-context-link">
-                        Edit Sidebar Source
+                    <?php if (!empty($_sidebarCC['pageId'])): ?>
+                    <a href="<?= e($_editorPageHrefFrom((int)$_sidebarCC['pageId'])) ?>" class="editor-sidebar-context-link">
+                        Edit <?= e(ucfirst($_sidebarCC['label'] ?? 'Sidebar')) ?>
                     </a>
                     <?php endif; ?>
                 </aside>
@@ -591,7 +604,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
             <?php endif; ?>
 
             <?php foreach (array_filter($contextCanvases ?? [], fn($cc) => $cc['position'] === 'after') as $_cc): ?>
-            <a href="<?= e($_editorPageHref((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
+            <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
                 <?php if (!empty($_cc['html'])): ?>
                 <div class="editor-zone-inner"><?= $_cc['html'] ?></div>
                 <?php else: ?>
