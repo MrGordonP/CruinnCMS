@@ -43,43 +43,29 @@ This document tracks the agreed remediation work across all four stages.
 
 ### Stage 1 — Remove engine hardcoding (removals/simplifications only)
 
-- [ ] **1. `editor.js` ~line 1992-1993**  
-  Remove the `header`/`footer` zone skip in the page-zone selector's `refreshZoneOptions()` function.  
-  The editor must not know or care what zone names mean.  
-  ```js
-  // DELETE these two lines:
-  // Skip header/footer zones - they're for template layout, not page content
-  if (zone === 'header' || zone === 'footer') { return; }
-  ```
+- [x] **1. `editor.js` — `refreshZoneOptions()` header/footer skip**  
+  Already clean — no zone name skip present.
 
-- [ ] **2. `editor.js` ~line 430**  
-  Move hardcoded `['main', 'header', 'footer', 'sidebar']` zone name suggestions out of JS.  
-  **Agreed approach:** Store as `settings` key `editor.zone_suggestions` (value: `main,header,footer,sidebar`), seeded in `instance_core.sql`. Pass to editor via `data-zone-suggestions` on `#editor-wrap`. JS reads the attribute only — knows nothing about the names.  
-  - Add `editor.zone_suggestions` seed to `instance_core.sql` settings INSERT  
-  - Pass the setting via `data-zone-suggestions` in the editor template (CruinnController or AdminPageController)  
-  - Update `getAvailableZoneNames()` in editor.js to use `wrap.dataset.zoneSuggestions`
+- [x] **2. `editor.js` — hardcoded zone name suggestions**  
+  Already done — `editor.zone_suggestions` seeded in `instance_core.sql`; editor reads `wrap.dataset.zoneSuggestions`.
 
 - [ ] **3. `PageController.php` — Collapse two-path header resolution**  
   Remove the `header_source` / `_global_header` branching and the `tpl_header_blocks` / `_header` fallback.  
   Header is a zone — resolve it the same way `resolveSidebarRender()` works today.  
   Unify into a single `resolveZoneRender(string $zoneName, array $tpl, CruinnRenderService $cruinn): array` method.  
-  Remove `tpl_header_blocks` and `tpl_footer_blocks` as Template globals.
+  Remove `tpl_header_blocks` and `tpl_footer_blocks` as Template globals.  
+  _Note: `tpl_header_blocks`/`tpl_footer_blocks` removed from `SiteBuilderController::builderPreviewTemplate()` (dead code — table gone). Full PageController collapse deferred to Stage 4b._
 
 - [ ] **4. `layout.php` — Reduce to HTML document shell**  
   Remove all structural content from layout.php: `<header>`, `<aside>`, `<footer>` wrappers, `$_headerHtml`, `$_footerHtml`, `$_sidebarHtml`, `show_header`/`show_footer` flags, `site-body-wrap`, `<main id="main-content">`.  
   layout.php becomes: `<!DOCTYPE html><html><head>…</head><body><?= $pageHtml ?></body></html>` plus scripts, CSS links, flash messages.  
   All structural content is produced by `buildWithTemplate()` in Stage 4 (items 13–15). This item is a **cleanup** that lands after Stage 4 is complete.
 
-- [ ] **5. `instance_core.sql` — Strip structural seeds**  
-  Remove from the seeded INSERTs:  
-  - The 6 default `page_templates` rows (default, full-width, landing, blank, sidebar-right, sidebar-left)  
-  - The system zone `pages_index` rows (`_header`, `_footer`, `_tpl__global_header`, `_tpl_default`, `_typography`)  
-  - The seed `pages` blocks for header and footer  
-  Write a **migration file** (`migrations/core/NNN_remove_structural_seeds.sql`) to remove these from existing instances. A fresh install is clean; existing instances get them cleaned up on next migration run.  
-  Note: `editor.zone_suggestions` setting seed (from item 2) stays — that is configuration, not structural assumption.
+- [x] **5. `instance_core.sql` — Strip structural seeds**  
+  Already clean — no `page_templates` or `pages_index` structural seeds present. `editor.zone_suggestions` setting remains (configuration, not structural).
 
-- [ ] **6. `SiteBuilderController.php` ~line 37-38`**  
-  Remove the hardcoded `WHERE slug = '_header'` query. Identify what it's used for and replace with a proper lookup that doesn't assume a slug naming convention.
+- [x] **6. `SiteBuilderController.php` — Remove hardcoded `_header`/`_footer` slug queries**  
+  Replaced with `SELECT ... WHERE canvas_type = 'zone'` in `builderStructure()`. Data array now passes `zoneCanvases` instead of `headerPages`/`footerPages`. Dead `tpl_header_blocks`/`tpl_footer_blocks` globals removed from `builderPreviewTemplate()`.
 
 ---
 

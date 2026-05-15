@@ -480,8 +480,6 @@ class SiteBuilderController extends BaseController
         unset($zoneBlocks);
 
         Template::addGlobal('page_tpl', $tpl);
-        Template::addGlobal('tpl_header_blocks', $grouped['header']);
-        Template::addGlobal('tpl_footer_blocks', $grouped['footer']);
 
         $this->render('admin/site-builder/template-preview', [
             'title'      => 'Preview: ' . $tpl['name'],
@@ -689,12 +687,9 @@ class SiteBuilderController extends BaseController
              ORDER BY p.slug"
         );
 
-        // Header and footer zone pages
-        $headerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug FROM pages_index p WHERE p.slug = '_header' LIMIT 5"
-        );
-        $footerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug FROM pages_index p WHERE p.slug = '_footer' LIMIT 5"
+        // Zone canvas pages (header, footer, sidebar etc.)
+        $zoneCanvases = $this->db->fetchAll(
+            "SELECT id, title, slug, zone_name FROM pages_index WHERE canvas_type = 'zone' ORDER BY slug"
         );
 
         // Menus with item counts
@@ -731,8 +726,7 @@ class SiteBuilderController extends BaseController
             'section'        => 'builder',
             'tab'            => 'structure',
             'contentPages'   => $contentPages,
-            'headerPages'    => $headerPages,
-            'footerPages'    => $footerPages,
+            'zoneCanvases'   => $zoneCanvases,
             'menus'          => $menus,
             'menuItemsByMenu'=> $menuItemsByMenu,
             'templates'      => $templates,
