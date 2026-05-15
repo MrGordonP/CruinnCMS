@@ -15,6 +15,7 @@ class CruinnRenderService
 {
     private Database $db;
     private array $context = [];
+    private array $_consumedZones = [];  // zone names rendered by the template canvas in current buildWithTemplate call
 
     public function __construct()
     {
@@ -458,6 +459,8 @@ class CruinnRenderService
         ?int    $pageId        = null,
         ?string $injectHtml    = null
     ): array {
+        $this->_consumedZones = [];
+
         // ── Fetch template layout blocks ─────────────────────────────
         $tplFlat = [];
         try {
@@ -552,6 +555,36 @@ class CruinnRenderService
             $injectHtml
         );
 
+        // ── Render unconsumed zone canvases around the template output ───
+        // Zones that have a canvas but no matching zone block in the template
+        // canvas are rendered outside — before (header-like) or after (footer-like).
+        $beforeHtml = '';
+        $afterHtml  = '';
+        foreach ($zoneCanvasMap as $zoneName => $canvasId) {
+            if (in_array($zoneName, $this->_consumedZones, true)) {
+                continue;
+            }
+            $canvasId = (int) $canvasId;
+            if ($canvasId <= 0 || !isset($zoneCanvasBlocks[$zoneName])) {
+                continue;
+            }
+            $zc       = $zoneCanvasBlocks[$zoneName];
+            $zoneHtml = $this->renderTree('__root', $zc['byId'], $zc['childrenOf']);
+            if (empty(trim($zoneHtml))) {
+                continue;
+            }
+            // Heuristic: header-like zones before, everything else after
+            $lower = strtolower($zoneName);
+            if (str_contains($lower, 'header') || str_contains($lower, 'topbar') || str_contains($lower, 'navbar') || str_contains($lower, 'banner')) {
+                $beforeHtml .= $zoneHtml;
+            } else {
+                $afterHtml .= $zoneHtml;
+            }
+        }
+        if ($beforeHtml !== '' || $afterHtml !== '') {
+            $html = $beforeHtml . $html . $afterHtml;
+        }
+
         // ── Merge CSS from all sources ───────────────────────────────
         $css = $canvasCssPageId !== null
             ? $this->buildCss($canvasCssPageId)      // fallback path
@@ -607,6 +640,7 @@ class CruinnRenderService
 
                 if ($rawZone === $pageZone) {
                     // ── Page zone: inject the page's own content ──
+                    $this->_consumedZones[] = $rawZone;
                     if ($injectHtml !== null) {
                         // html-mode: inject raw HTML directly
                         $inner = $injectHtml;
@@ -630,6 +664,7 @@ class CruinnRenderService
                     }
                 } elseif (isset($zoneCanvasBlocks[$rawZone])) {
                     // ── Non-page zone: inject zone canvas blocks ──
+                    $this->_consumedZones[] = $rawZone;
                     $zc = $zoneCanvasBlocks[$rawZone];
                     $inner = $this->renderTree('__root', $zc['byId'], $zc['childrenOf']);
                 }
