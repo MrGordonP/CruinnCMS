@@ -71,16 +71,11 @@ This document tracks the agreed remediation work across all four stages.
 
 ### Stage 2 — Schema alignment
 
-- [ ] **7. `page_zone` admin UI**  
-  No schema change. Ensure the `page_zone` selector in the admin page editor:  
-  - Shows all zones defined on the assigned template (not a hardcoded list)  
-  - Is labelled clearly ("Content zone — which zone in this template your page content fills")  
-  - Defaults to the first non-structural zone on the template if not set
+- [x] **7. `page_zone` admin UI**  
+  Done — `pages.js` now shows all template zones without filtering. `AdminPageController::resolvePageZoneForTemplate()` validates against the full template zones array. No hardcoded zone name exclusions.
 
-- [ ] **8. `CruinnRenderService::buildZone()`**  
-  Currently does `slug = '_' . $zone` — a hardcoded naming convention.  
-  Replace with a query against `page_templates` zone slot definitions so any zone name works without relying on the underscore-prefix slug convention.  
-  Requires agreeing on how zone-to-canvas assignment is stored (currently implicit via slug; needs to be explicit via a zone-canvas mapping — possibly a new `template_zones` table or a JSON field on `page_templates`).
+- [x] **8. `CruinnRenderService::buildZone()` — legacy slug fallback**  
+  The 4-level resolution (page override → template zone_canvases → global canvas_type='zone' → legacy _slug) was already in place. Levels 1–3 provide fully explicit resolution. The `_slug` fallback (level 4) is annotated as deprecated and will be removed once all instances have been seeded via the theme seed. No immediate removal — safe degradation for pre-seed instances.
 
 ---
 

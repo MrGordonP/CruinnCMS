@@ -8,9 +8,7 @@
     templates.forEach(function (t) {
         if (!t || !t.slug) return;
         var zones = Array.isArray(t.zones) && t.zones.length ? t.zones : ['main'];
-        templateZonesBySlug[t.slug] = zones.filter(function (z) {
-            return z !== 'header' && z !== 'footer';
-        });
+        templateZonesBySlug[t.slug] = zones;
         if (!templateZonesBySlug[t.slug].length) {
             templateZonesBySlug[t.slug] = ['main'];
         }

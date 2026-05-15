@@ -183,6 +183,9 @@ class CruinnRenderService
         }
 
         // 4. Legacy slug fallback (_header, _footer, etc.)
+        // Deprecated: canvas_type='zone' + zone_name (level 3) is the authoritative lookup.
+        // This fallback supports instances that pre-date the theme seed migration.
+        // Will be removed once all instances have been seeded via themes/{slug}/seed.sql.
         if ($canvasPageId === null) {
             $row = $this->db->fetch(
                 'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',

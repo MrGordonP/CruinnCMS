@@ -427,9 +427,6 @@ HTML;
             if (!preg_match('/^[a-z0-9_\-]+$/', $zone)) {
                 continue;
             }
-            if (in_array($zone, ['header', 'footer'], true)) {
-                continue;
-            }
             $contentZones[] = $zone;
         }
 
