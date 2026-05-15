@@ -43,6 +43,21 @@ class CruinnController extends BaseController
     // ── Public actions ─────────────────────────────────────────────
 
     /**
+     * Resolve the block storage key for a page.
+     * Post-migration 012, template canvas blocks are stored with template_id, not page_id.
+     * Returns ['col' => 'page_id'|'template_id', 'val' => int].
+     */
+    private function resolveBlockKey(int $pageId): array
+    {
+        $tplId = (int) ($this->db->fetchColumn(
+            'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1', [$pageId]
+        ) ?: 0);
+        return $tplId > 0
+            ? ['col' => 'template_id', 'val' => $tplId]
+            : ['col' => 'page_id',     'val' => $pageId];
+    }
+
+    /**
      * GET /admin/editor
      * Redirect to the editor for the first accessible Cruinn content page.
      * Falls back to the site-builder pages list if no pages exist yet.
@@ -210,38 +225,54 @@ class CruinnController extends BaseController
             return;
         }
 
+        // Early template detection: after migration 012, template blocks are stored
+        // with template_id rather than page_id, so block queries must use the right column.
+        $earlyCanvasType     = $page['canvas_type'] ?? null;
+        $earlyIsTemplatePage = ($earlyCanvasType === 'template-shell')
+            || ($earlyCanvasType === null && str_starts_with($page['slug'] ?? '', '_tpl_'));
+        $earlyTemplateId = 0;
+        if ($earlyIsTemplatePage) {
+            $earlyTemplateId = (int) ($this->db->fetchColumn(
+                'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1', [$pageId]
+            ) ?: 0);
+        }
+
         // For file/html render modes, edit_seq=1 is the auto-import baseline written
         // on every fresh open — not a user edit. Only seq>=2 means the user has made
         // actual changes worth showing the "unsaved draft" banner for.
         $renderMode  = $page['render_mode'] ?? 'block';
+        // Template-page blocks are keyed by template_id (post-migration 012), not page_id.
+        $blockWhere  = ($earlyIsTemplatePage && $earlyTemplateId > 0)
+            ? ['col' => 'template_id', 'val' => $earlyTemplateId]
+            : ['col' => 'page_id',     'val' => $pageId];
         $anyDraftRows = (int) $this->db->fetchColumn(
-            'SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]
+            "SELECT COUNT(*) FROM pages_draft WHERE {$blockWhere['col']} = ?", [$blockWhere['val']]
         ) > 0;
         if (in_array($renderMode, ['file', 'html'], true)) {
             $maxDraftSeq = (int) $this->db->fetchColumn(
-                'SELECT COALESCE(MAX(edit_seq), 0) FROM pages_draft WHERE page_id = ?', [$pageId]
+                "SELECT COALESCE(MAX(edit_seq), 0) FROM pages_draft WHERE {$blockWhere['col']} = ?", [$blockWhere['val']]
             );
             $hasDraft = $maxDraftSeq > 1;
         } else {
             $hasDraft    = $anyDraftRows;
             $maxDraftSeq = $anyDraftRows
-                ? (int) $this->db->fetchColumn('SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId])
+                ? (int) $this->db->fetchColumn("SELECT MAX(edit_seq) FROM pages_draft WHERE {$blockWhere['col']} = ?", [$blockWhere['val']])
                 : 0;
         }
 
         if ($anyDraftRows) {
             $flat = $this->db->fetchAll(
-                'SELECT * FROM pages_draft
-                  WHERE page_id = ? AND edit_seq = ?
-                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$pageId, $maxDraftSeq]
+                "SELECT * FROM pages_draft
+                  WHERE {$blockWhere['col']} = ? AND edit_seq = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC",
+                [$blockWhere['val'], $maxDraftSeq]
             );
         } else {
             $flat = $this->db->fetchAll(
-                'SELECT * FROM pages
-                  WHERE page_id = ?
-                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$pageId]
+                "SELECT * FROM pages
+                  WHERE {$blockWhere['col']} = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC",
+                [$blockWhere['val']]
             );
         }
 
@@ -493,17 +524,17 @@ class CruinnController extends BaseController
                 $sort = max(10, ((int) floor($maxSort / 10) + 1) * 10);
                 if ($hasDraft) {
                     $targetSeq = (int) $this->db->fetchColumn(
-                        'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?',
-                        [$pageId]
+                        'SELECT MAX(edit_seq) FROM pages_draft WHERE template_id = ?',
+                        [$templateId]
                     );
                     foreach ($missingZones as $zn) {
-                        $blockId = 'zone-' . $zn . '-' . $pageId;
+                        $blockId = 'zone-' . $zn . '-tpl-' . $templateId;
                         $this->db->execute(
                             'INSERT IGNORE INTO pages_draft
-                                 (page_id, edit_seq, block_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                                 (template_id, edit_seq, block_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)',
                             [
-                                $pageId,
+                                $templateId,
                                 $targetSeq,
                                 $blockId,
                                 'zone',
@@ -517,20 +548,20 @@ class CruinnController extends BaseController
                     }
                     $flat = $this->db->fetchAll(
                         'SELECT * FROM pages_draft
-                          WHERE page_id = ? AND edit_seq = ?
+                          WHERE template_id = ? AND edit_seq = ?
                           ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                        [$pageId, $targetSeq]
+                        [$templateId, $targetSeq]
                     );
                 } else {
                     foreach ($missingZones as $zn) {
-                        $blockId = 'zone-' . $zn . '-' . $pageId;
+                        $blockId = 'zone-' . $zn . '-tpl-' . $templateId;
                         $this->db->execute(
                             'INSERT IGNORE INTO pages
-                                 (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+                                 (block_id, template_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
                              VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
                             [
                                 $blockId,
-                                $pageId,
+                                $templateId,
                                 'zone',
                                 '',
                                 json_encode(['min-height' => '120px']),
@@ -542,9 +573,9 @@ class CruinnController extends BaseController
                     }
                     $flat = $this->db->fetchAll(
                         'SELECT * FROM pages
-                          WHERE page_id = ?
+                          WHERE template_id = ?
                           ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                        [$pageId]
+                        [$templateId]
                     );
                 }
             }
@@ -1068,23 +1099,25 @@ class CruinnController extends BaseController
         $pdo->beginTransaction();
 
         try {
+            $bk = $this->resolveBlockKey($pageId);
+
             // Determine next sequence number
             $currentSeq = (int) $this->db->fetchColumn(
-                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?',
-                [$pageId]
+                "SELECT MAX(edit_seq) FROM pages_draft WHERE {$bk['col']} = ?",
+                [$bk['val']]
             );
             $newSeq = $currentSeq + 1;
 
             // Insert all incoming blocks as a full snapshot at newSeq
             foreach ($incomingBlocks as $b) {
                 $this->db->execute(
-                    'INSERT INTO pages_draft
-                        (page_id, edit_seq, block_id, block_type, inner_html, css_props,
+                    "INSERT INTO pages_draft
+                        ({$bk['col']}, edit_seq, block_id, block_type, inner_html, css_props,
                          css_props_tablet, css_props_mobile,
                          block_config, sort_order, parent_block_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     [
-                        $pageId, $newSeq,
+                        $bk['val'], $newSeq,
                         $b['block_id'], $b['block_type'], $b['inner_html'],
                         $b['css_props'], $b['css_props_tablet'], $b['css_props_mobile'],
                         $b['block_config'],
@@ -1095,17 +1128,17 @@ class CruinnController extends BaseController
 
             // Enforce 50-action history cap: prune oldest seq if exceeded
             $seqCount = (int) $this->db->fetchColumn(
-                'SELECT COUNT(DISTINCT edit_seq) FROM pages_draft WHERE page_id = ?',
-                [$pageId]
+                "SELECT COUNT(DISTINCT edit_seq) FROM pages_draft WHERE {$bk['col']} = ?",
+                [$bk['val']]
             );
             if ($seqCount > 50) {
                 $oldest = (int) $this->db->fetchColumn(
-                    'SELECT MIN(edit_seq) FROM pages_draft WHERE page_id = ?',
-                    [$pageId]
+                    "SELECT MIN(edit_seq) FROM pages_draft WHERE {$bk['col']} = ?",
+                    [$bk['val']]
                 );
                 $this->db->execute(
-                    'DELETE FROM pages_draft WHERE page_id = ? AND edit_seq = ?',
-                    [$pageId, $oldest]
+                    "DELETE FROM pages_draft WHERE {$bk['col']} = ? AND edit_seq = ?",
+                    [$bk['val'], $oldest]
                 );
             }
 
@@ -1133,8 +1166,9 @@ class CruinnController extends BaseController
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
+        $bk = $this->resolveBlockKey($pageId);
         $maxSeq = (int) $this->db->fetchColumn(
-            'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?', [$pageId]
+            "SELECT MAX(edit_seq) FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]
         );
         if ($maxSeq < 1) {
             $this->json(['error' => 'Nothing to undo'], 400);
@@ -1145,32 +1179,32 @@ class CruinnController extends BaseController
         try {
             // Destructive undo: delete the most recent snapshot
             $this->db->execute(
-                'DELETE FROM pages_draft WHERE page_id = ? AND edit_seq = ?',
-                [$pageId, $maxSeq]
+                "DELETE FROM pages_draft WHERE {$bk['col']} = ? AND edit_seq = ?",
+                [$bk['val'], $maxSeq]
             );
 
             $pdo->commit();
 
             $newMax = (int) $this->db->fetchColumn(
-                'SELECT MAX(edit_seq) FROM pages_draft WHERE page_id = ?',
-                [$pageId]
+                "SELECT MAX(edit_seq) FROM pages_draft WHERE {$bk['col']} = ?",
+                [$bk['val']]
             );
 
             if ($newMax > 0) {
                 // Return the previous snapshot
                 $activeBlocks = $this->db->fetchAll(
-                    'SELECT * FROM pages_draft
-                      WHERE page_id = ? AND edit_seq = ?
-                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                    [$pageId, $newMax]
+                    "SELECT * FROM pages_draft
+                      WHERE {$bk['col']} = ? AND edit_seq = ?
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC",
+                    [$bk['val'], $newMax]
                 );
             } else {
                 // No draft remains: return published blocks
                 $activeBlocks = $this->db->fetchAll(
-                    'SELECT * FROM pages
-                      WHERE page_id = ?
-                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                    [$pageId]
+                    "SELECT * FROM pages
+                      WHERE {$bk['col']} = ?
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC",
+                    [$bk['val']]
                 );
             }
 
@@ -1321,8 +1355,9 @@ class CruinnController extends BaseController
         }
 
         // ── Standard block mode ────────────────────────────────────────────
+        $bk = $this->resolveBlockKey($pageId);
         $hasDraftBlock = (int) $this->db->fetchColumn(
-            'SELECT COUNT(*) FROM pages_draft WHERE page_id = ?', [$pageId]
+            "SELECT COUNT(*) FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]
         ) > 0;
         if (!$hasDraftBlock) {
             // No draft: page is already at its published state, nothing to do.
@@ -1335,24 +1370,24 @@ class CruinnController extends BaseController
         $pdo->beginTransaction();
         try {
             // Wipe existing published blocks for this page
-            $this->db->execute('DELETE FROM pages WHERE page_id = ?', [$pageId]);
+            $this->db->execute("DELETE FROM pages WHERE {$bk['col']} = ?", [$bk['val']]);
 
             // Copy current draft snapshot into published table
             $this->db->execute(
-                'INSERT INTO pages
-                    (block_id, page_id, block_type, inner_html, css_props,
+                "INSERT INTO pages
+                    (block_id, page_id, template_id, block_type, inner_html, css_props,
                      css_props_tablet, css_props_mobile,
                      block_config, sort_order, parent_block_id)
-                 SELECT block_id, page_id, block_type, inner_html, css_props,
+                 SELECT block_id, page_id, template_id, block_type, inner_html, css_props,
                         css_props_tablet, css_props_mobile,
                         block_config, sort_order, parent_block_id
                    FROM pages_draft
-                  WHERE page_id = ? AND edit_seq = (SELECT MAX(edit_seq) FROM pages_draft pd2 WHERE pd2.page_id = ?)',
-                [$pageId, $pageId]
+                  WHERE {$bk['col']} = ? AND edit_seq = (SELECT MAX(edit_seq) FROM pages_draft pd2 WHERE pd2.{$bk['col']} = ?)",
+                [$bk['val'], $bk['val']]
             );
 
             // Clean up draft
-            $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+            $this->db->execute("DELETE FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]);
             $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
 
             $pdo->commit();
@@ -1424,7 +1459,8 @@ class CruinnController extends BaseController
         $this->requireEditorAuth();
         $pageId = (int) $pageId;
 
-        $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+        $bk = $this->resolveBlockKey($pageId);
+        $this->db->execute("DELETE FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]);
 
         if (str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/')) {
             $redirect = '/cms/editor?instance=__platform__&page=' . $pageId;
@@ -1448,7 +1484,8 @@ class CruinnController extends BaseController
             $this->json(['error' => 'Page not found'], 404);
         }
 
-        $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
+        $bk = $this->resolveBlockKey($pageId);
+        $this->db->execute("DELETE FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]);
 
         $renderMode = $page['render_mode'] ?? 'block';
         if (in_array($renderMode, ['html', 'file'], true)) {
