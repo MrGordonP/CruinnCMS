@@ -382,6 +382,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                         <a href="<?= e($_editorPageHref((int)$typographyPageId)) ?>"
                            class="editor-site-nav-link<?= $page && (int)($page['id'] ?? 0) === (int)$typographyPageId ? ' active' : '' ?>">Site Theme</a>
                         <?php endif; ?>
+                        <a href="<?= url('/admin/theme/seeds') ?>" class="editor-site-nav-link">Theme Seeds</a>
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($themeFiles ?? [])): ?>

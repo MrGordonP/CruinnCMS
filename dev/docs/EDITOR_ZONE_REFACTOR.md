@@ -81,14 +81,14 @@ This document tracks the agreed remediation work across all four stages.
 
 ### Stage 3 — Theme scaffolding
 
-- [ ] **9. `CruinnCMS/themes/default/seed.sql`**  
+- [x] **9. `CruinnCMS/themes/default/seed.sql`**  
   Create a theme seed file. Move all structural seeds removed from `instance_core.sql` (item 5) here:  
   - Header, footer, typography canvases  
   - Default page templates  
   - Any other opinionated structural defaults  
   This file is applied explicitly when a user activates the default theme — not at install time.
 
-- [ ] **10. `ThemeController` — Apply theme seed action**  
+- [x] **10. `ThemeController` — Apply theme seed action**  
   Add `POST /admin/theme/apply-seed` route + controller method.  
   Reads `themes/{slug}/seed.sql`, runs it against the active instance DB.  
   Called once on first theme activation. Idempotent (use INSERT IGNORE or similar).
