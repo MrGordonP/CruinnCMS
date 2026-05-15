@@ -99,13 +99,11 @@ This document tracks the agreed remediation work across all four stages.
 
 #### 4a — Schema: template blocks ownership
 
-- [ ] **11. `pages` table — add `template_id` column**  
-  Add nullable `template_id INT` column to `pages` and `pages_draft`. Mutually exclusive with `page_id` at the application level (one or the other set, not both).  
-  Write migration: `migrations/core/NNN_template_id_on_pages.sql`.
+- [x] **11. `pages` table — add `template_id` column**  
+  Done — `template_id INT UNSIGNED NULL` added to `pages` and `pages_draft`. `page_id` made nullable. Deferred FKs added after `page_templates` definition. Schema updated in `instance_core.sql`.
 
-- [ ] **12. Migrate existing template canvas blocks**  
-  For each `page_templates` row with a `canvas_page_id`: move its `pages` rows from `page_id = canvas_page_id` to `template_id = page_templates.id`, clearing `page_id`. Write as part of the same migration.  
-  After migration, `canvas_page_id` on `page_templates` is unused — deprecate column (keep nullable for one release, then drop).
+- [x] **12. Migrate existing template canvas blocks**  
+  Done — `migrations/core/012_template_id_on_pages.sql` moves published and draft blocks from `page_id = canvas_page_id` to `template_id = page_templates.id`. `canvas_page_id` remains on `page_templates` (deprecated, kept for one release).
 
 #### 4b — Render service: full-pass zone assembly
 

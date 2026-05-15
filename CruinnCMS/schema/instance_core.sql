@@ -266,7 +266,8 @@ CREATE TABLE `pages_index` (
 -- Published page blocks — one row per block, the canonical published state
 CREATE TABLE `pages` (
     `block_id`        VARCHAR(20)       NOT NULL,
-    `page_id`         INT UNSIGNED      NOT NULL,
+    `page_id`         INT UNSIGNED      NULL     DEFAULT NULL COMMENT 'Set for page content blocks; mutually exclusive with template_id',
+    `template_id`     INT UNSIGNED      NULL     DEFAULT NULL COMMENT 'Set for template layout blocks; mutually exclusive with page_id',
     `block_type`      VARCHAR(40)       NOT NULL,
     `inner_html`      MEDIUMTEXT        NULL,
     `css_props`       JSON              NULL,
@@ -278,8 +279,9 @@ CREATE TABLE `pages` (
     `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`      DATETIME          NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`block_id`),
-    KEY `idx_pages_page` (`page_id`, `parent_block_id`, `sort_order`),
-    CONSTRAINT `fk_pages_page_id` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
+    KEY `idx_pages_page`     (`page_id`, `parent_block_id`, `sort_order`),
+    KEY `idx_pages_template` (`template_id`),
+    CONSTRAINT `fk_pages_page_id`     FOREIGN KEY (`page_id`)     REFERENCES `pages_index` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Editor draft history — one snapshot per block per edit action
@@ -287,7 +289,8 @@ CREATE TABLE `pages` (
 -- Undo deletes forward rows (destructive). Cleared entirely on publish.
 CREATE TABLE `pages_draft` (
     `id`              INT UNSIGNED      NOT NULL AUTO_INCREMENT,
-    `page_id`         INT UNSIGNED      NOT NULL,
+    `page_id`         INT UNSIGNED      NULL     DEFAULT NULL COMMENT 'Set for page content drafts; mutually exclusive with template_id',
+    `template_id`     INT UNSIGNED      NULL     DEFAULT NULL COMMENT 'Set for template layout drafts; mutually exclusive with page_id',
     `edit_seq`        INT UNSIGNED      NOT NULL,
     `block_id`        VARCHAR(20)       NOT NULL,
     `block_type`      VARCHAR(40)       NOT NULL,
@@ -300,9 +303,10 @@ CREATE TABLE `pages_draft` (
     `parent_block_id` VARCHAR(20)       NULL,
     `created_at`      DATETIME          NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    KEY `idx_pages_draft_page_seq` (`page_id`, `edit_seq`),
-    KEY `idx_pages_draft_block`    (`page_id`, `block_id`),
-    CONSTRAINT `fk_pages_draft_page` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
+    KEY `idx_pages_draft_page_seq`     (`page_id`, `edit_seq`),
+    KEY `idx_pages_draft_block`        (`page_id`, `block_id`),
+    KEY `idx_pages_draft_template`     (`template_id`),
+    CONSTRAINT `fk_pages_draft_page`        FOREIGN KEY (`page_id`)     REFERENCES `pages_index` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
@@ -327,6 +331,15 @@ CREATE TABLE `page_templates` (
     UNIQUE KEY `uk_page_templates_slug` (`slug`),
     CONSTRAINT `fk_tpl_canvas_page` FOREIGN KEY (`canvas_page_id`) REFERENCES `pages_index` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Deferred FKs: pages/pages_draft → page_templates (page_templates defined above)
+ALTER TABLE `pages`
+    ADD CONSTRAINT `fk_pages_template_id`
+        FOREIGN KEY (`template_id`) REFERENCES `page_templates` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `pages_draft`
+    ADD CONSTRAINT `fk_pages_draft_template_id`
+        FOREIGN KEY (`template_id`) REFERENCES `page_templates` (`id`) ON DELETE CASCADE;
 
 -- ============================================================
 -- MENUS
