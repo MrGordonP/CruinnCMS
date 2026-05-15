@@ -13,7 +13,7 @@ include __DIR__ . '/_tabs.php';
         </div>
         <div class="acp-card-body">
             <form method="post" action="<?= url('/admin/site-builder/zones/new') ?>">
-                <?= \Cruinn\CSRF::field() ?>
+                <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
                 <div style="display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end">
                     <div style="flex: 1; min-width: 180px">
                         <label class="form-label" for="zone-title">Display Name</label>
