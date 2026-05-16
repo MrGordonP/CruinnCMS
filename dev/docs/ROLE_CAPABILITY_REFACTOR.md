@@ -288,3 +288,98 @@ Stage 5 is independent — can land any time after Stage 3.
   display (role name in user list, etc.) — never for logic.
 - `positionIds()` requires the organisation module to be active. If it is not, the method
   returns `[]` gracefully. No engine dependency on the org module.
+
+---
+
+## Next Session Start (v1.0.0-beta.9 continuation)
+
+**Current status:** 17 May 2026, 23:30  
+**Commits ahead of origin:** 0 (pushed as bb53dea)  
+**Live site:** Stable with compatibility shims in place
+
+### Session Startup Checklist
+
+1. `git log --oneline -5` — confirm HEAD at bb53dea or later
+2. `git status` — verify clean working tree
+3. Review production hotfix notes in `dev/docs/sessions/v1.0.0-beta.9_role-capability-refactor_CHECKPOINT.md`
+4. Decide path forward:
+
+### Path Options
+
+**Option A: Tag and Release**
+- Tag current state as stable beta.9 checkpoint: `git tag v1.0.0-beta.9.1 && git push origin --tags`
+- Rationale: Stages 1–3 complete, hotfix stable, good stopping point before larger work
+
+**Option B: Stage 5 — Notifications Widget (Recommended)**
+- Low-risk, high-value feature demonstrating widget dashboard system
+- Self-contained mailbox module work, no engine changes needed
+- Creates visible benefit for users immediately
+- **Files to create:**
+  - `modules/mailbox/src/Widgets/NotificationsWidget.php` (data provider class)
+  - `modules/mailbox/templates/widgets/notifications.php` (widget partial)
+- **Files to modify:**
+  - `modules/mailbox/module.php` — register widget in `ModuleRegistry::registerWidget()`
+- **Expected duration:** 1–2 hours
+- **Migration needed:** No
+
+**Option C: Stage 4 — Position Integration**
+- Medium-risk, requires coordination across Auth + Organisation module
+- Implements `Auth::positionIds()` backed by `organisation.user_positions` table
+- Adds position-based admin area grants UI
+- Adds position dashboard canvas assignment UI
+- **Files to create:**
+  - `modules/organisation/templates/positions/areas.php` (area grants UI)
+  - `modules/organisation/templates/positions/dashboard-canvas.php` (canvas assignment UI)
+- **Files to modify:**
+  - `src/Auth.php` — implement `positionIds()` method with session caching
+  - `modules/organisation/src/Controllers/PositionController.php` — add config routes
+  - `modules/organisation/module.php` — register new routes
+- **Expected duration:** 3–4 hours
+- **Migration needed:** No (uses existing `user_positions` table)
+
+**Option D: Stage 6 — Module Migration (Tedious but Necessary)**
+- Replace deprecated `Auth::role()`, `hasRole()`, `requireRole()` calls in modules
+- ~100+ locations across forum, drivespace, membership, organisation
+- Once complete, remove compatibility shims from `Auth.php`
+- **Can be done incrementally:** One module per session
+- **Recommended order:**
+  1. `modules/forum/` (~20 locations)
+  2. `modules/drivespace/` (~15 locations)
+  3. `modules/membership/` (~30 locations)
+  4. `modules/organisation/` (~40 locations)
+- **Expected duration per module:** 1–2 hours
+- **Migration needed:** No
+
+### Recommended Sequence
+
+1. **Stage 5** (notifications widget) — quick win, demonstrates system, builds momentum
+2. **Stage 4** (position integration) — completes the authorization model
+3. **Stage 6** (module migration) — clean up technical debt, remove deprecated code
+4. **Tag v1.0.0-beta.10** — full authorization system shipped
+
+### Known Issues to Address
+
+- **Canvas vs Dashboard terminology:** UI uses "Canvas" in site builder, "Dashboard" in role config. Consider standardizing to "Widget Dashboard Template" and "Dashboard" for consistency.
+- **Area grant UI feedback:** No visual confirmation when saving area grants (only flash message). Consider adding a success banner or toast.
+- **Widget canvas empty state:** If no dashboard assigned, user sees empty dashboard. Should show placeholder/welcome message instead.
+- **Documentation:** No user-facing docs for widget system yet. Consider adding help text or tooltips in UI.
+
+### Pre-flight Checks Before Starting Work
+
+```bash
+# Verify engine state
+git log --oneline -5
+git status
+php public_html/index.php  # Quick syntax check
+
+# Check live site (if deployed)
+curl -I https://igaportal.ie  # Should return 200, not 500
+
+# Review completed work
+cat dev/docs/sessions/v1.0.0-beta.9_role-capability-refactor_CHECKPOINT.md
+```
+
+---
+
+**Last updated:** 17 May 2026, 23:30  
+**Next session:** TBD — awaiting path decision (recommend Stage 5)
