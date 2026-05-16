@@ -1,6 +1,6 @@
 # CruinnCMS Session Checkpoint — 16 May 2026 (Stage 3)
 
-**Commit:** TBD
+**Commit:** `862f8ed`
 **Version:** `v1.0.0-beta.9` (in progress)
 **Branch:** `main`
 
@@ -255,6 +255,6 @@ Position assignment UI deferred to Stage 4 (org module integration).
 ## Mode Instructions Update
 
 Update the mode instructions with:
-- Current HEAD: TBD (after commit)
+- Current HEAD: `862f8ed`
 - Version: `v1.0.0-beta.9` (in progress)
 - Session summary: Stage 3 complete — Widget dashboard canvases, assignment + resolution
