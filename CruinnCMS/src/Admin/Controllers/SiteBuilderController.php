@@ -1167,6 +1167,114 @@ class SiteBuilderController extends BaseController
         exit;
     }
 
+    // ══════════════════════════════════════════════════════════════
+    //  DASHBOARDS (Stage 3)
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * GET /admin/site-builder/dashboards — List all widget dashboard canvases.
+     */
+    public function builderDashboards(): void
+    {
+        Auth::requireAdmin();
+
+        $dashboardService = new \Cruinn\Services\DashboardService();
+        $canvases = $dashboardService->listDashboardCanvases();
+
+        // Get assignment counts for each dashboard
+        foreach ($canvases as &$canvas) {
+            $assignments = $this->db->fetchAll(
+                'SELECT context_type, context_id FROM context_dashboards WHERE page_id = ?',
+                [$canvas['id']]
+            );
+            $canvas['assignment_count'] = count($assignments);
+        }
+        unset($canvas);
+
+        $this->renderAdmin('admin/site-builder/dashboards', [
+            'title'       => 'Widget Dashboards',
+            'breadcrumbs' => [
+                ['Admin', '/admin'],
+                ['Site Builder', '/admin/site-builder'],
+                ['Dashboards'],
+            ],
+            'canvases' => $canvases,
+        ]);
+    }
+
+    /**
+     * POST /admin/site-builder/dashboards/new — Create a new dashboard canvas.
+     */
+    public function builderCreateDashboard(): void
+    {
+        Auth::requireAdmin();
+        \Cruinn\CSRF::verify();
+
+        $title = trim($_POST['title'] ?? '');
+        if (empty($title)) {
+            Auth::flash('error', 'Dashboard title is required.');
+            $this->redirect('/admin/site-builder/dashboards');
+        }
+
+        // Create a new page with canvas_type='widget-dashboard'
+        $pageId = $this->db->insert('pages_index', [
+            'title'       => $title,
+            'slug'        => $this->generateUniqueSlug($title),
+            'canvas_type' => 'widget-dashboard',
+            'created_by'  => Auth::userId(),
+            'updated_by'  => Auth::userId(),
+        ]);
+
+        Auth::flash('success', "Dashboard \"{$title}\" created.");
+        $this->redirect("/admin/editor/{$pageId}/edit");
+    }
+
+    /**
+     * POST /admin/site-builder/dashboards/{id}/delete — Delete a dashboard canvas.
+     */
+    public function builderDeleteDashboard(int $id): void
+    {
+        Auth::requireAdmin();
+        \Cruinn\CSRF::verify();
+
+        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
+        if (!$page || $page['canvas_type'] !== 'widget-dashboard') {
+            Auth::flash('error', 'Dashboard not found.');
+            $this->redirect('/admin/site-builder/dashboards');
+        }
+
+        // Delete assignments first
+        $this->db->delete('context_dashboards', 'page_id = ?', [$id]);
+
+        // Delete published and draft blocks
+        $this->db->delete('blocks_published', 'page_id = ?', [$id]);
+        $this->db->delete('blocks_draft', 'page_id = ?', [$id]);
+
+        // Delete the page
+        $this->db->delete('pages_index', 'id = ?', [$id]);
+
+        Auth::flash('success', "Dashboard \"{$page['title']}\" deleted.");
+        $this->redirect('/admin/site-builder/dashboards');
+    }
+
+    /**
+     * Generate a unique slug from a title.
+     */
+    private function generateUniqueSlug(string $title): string
+    {
+        $base = strtolower(preg_replace('/[^a-z0-9]+/i', '-', trim($title)));
+        $base = trim($base, '-');
+        $slug = $base;
+        $counter = 1;
+
+        while ($this->db->fetchColumn('SELECT COUNT(*) FROM pages_index WHERE slug = ?', [$slug]) > 0) {
+            $slug = $base . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
 }
 
 /**

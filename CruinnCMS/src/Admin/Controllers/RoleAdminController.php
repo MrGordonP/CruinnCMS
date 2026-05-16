@@ -513,6 +513,69 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
         $this->redirect("/admin/roles/{$id}/areas");
     }
 
+    /**
+     * GET /admin/roles/{id}/dashboard-canvas — Widget dashboard canvas assignment.
+     */
+    public function dashboardCanvasConfig(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+
+        $role = $this->roles->find($id);
+        if (!$role) {
+            Auth::flash('error', 'Role not found.');
+            $this->redirect('/admin/roles');
+        }
+
+        $dashService = new \Cruinn\Services\DashboardService();
+        $canvases = $dashService->listDashboardCanvases();
+        $currentDashboard = $dashService->getDashboardForContext('role', $id);
+
+        $this->renderAdmin('admin/roles/dashboard-canvas', [
+            'title'            => "Widget Dashboard — {$role['name']}",
+            'breadcrumbs'      => [
+                ['Admin', '/admin'],
+                ['Roles', '/admin/roles'],
+                [$role['name'], "/admin/roles/{$id}/edit"],
+                ['Dashboard Canvas'],
+            ],
+            'role'             => $role,
+            'canvases'         => $canvases,
+            'currentDashboard' => $currentDashboard,
+        ]);
+    }
+
+    /**
+     * POST /admin/roles/{id}/dashboard-canvas — Save widget dashboard canvas assignment.
+     */
+    public function saveDashboardCanvasConfig(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+
+        $role = $this->roles->find($id);
+        if (!$role) {
+            Auth::flash('error', 'Role not found.');
+            $this->redirect('/admin/roles');
+        }
+
+        $pageId = (int) ($_POST['dashboard_page_id'] ?? 0);
+
+        $dashService = new \Cruinn\Services\DashboardService();
+
+        if ($pageId > 0) {
+            // Assign dashboard
+            $dashService->assignDashboard('role', $id, $pageId);
+            $this->logActivity('update', 'role', $id, "Assigned dashboard canvas to role: {$role['name']}");
+            Auth::flash('success', "Dashboard canvas assigned to \"{$role['name']}\".");
+        } else {
+            // Remove assignment
+            $dashService->removeDashboard('role', $id);
+            $this->logActivity('update', 'role', $id, "Removed dashboard canvas from role: {$role['name']}");
+            Auth::flash('success', "Dashboard canvas removed from \"{$role['name']}\".");
+        }
+
+        $this->redirect("/admin/roles/{$id}/dashboard-canvas");
+    }
+
     // ── Private helpers ───────────────────────────────────────────
 
     private function gatherInput(): array

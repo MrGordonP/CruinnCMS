@@ -113,6 +113,19 @@ CREATE TABLE `admin_area_grants` (
     FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Context dashboards — assign widget dashboard canvases to roles, positions, or users
+CREATE TABLE `context_dashboards` (
+    `id`           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `context_type` ENUM('role','position','user')      NOT NULL COMMENT 'Dashboard assigned to role, position, or user',
+    `context_id`   INT UNSIGNED                        NOT NULL COMMENT 'Role ID, position ID, or user ID',
+    `page_id`      INT UNSIGNED                        NOT NULL COMMENT 'Dashboard canvas page (canvas_type=widget-dashboard)',
+    `created_at`   DATETIME DEFAULT CURRENT_TIMESTAMP  NOT NULL,
+    `created_by`   INT UNSIGNED                        DEFAULT NULL COMMENT 'User who assigned dashboard',
+    UNIQUE KEY `uq_context` (`context_type`, `context_id`),
+    INDEX `idx_dashboard_page` (`page_id`),
+    FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- GROUPS
 -- ============================================================

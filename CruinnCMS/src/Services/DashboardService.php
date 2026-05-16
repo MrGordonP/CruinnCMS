@@ -422,4 +422,198 @@ class DashboardService
 
         return ['member' => $member ?: null];
     }
+
+    // ══════════════════════════════════════════════════════════════
+    //  WIDGET CANVAS RENDERING (Stage 3)
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Render a widget dashboard canvas from blocks.
+     * Fetches published blocks for the page and renders them.
+     * For module-widget blocks, injects userContext into settings.
+     *
+     * @param int   $pageId      Dashboard canvas page ID
+     * @param array $userContext User context: ['user_id', 'role_id', 'role_level', 'position_ids']
+     * @return string Rendered HTML
+     */
+    public function renderWidgetCanvas(int $pageId, array $userContext): string
+    {
+        // Fetch published blocks for this dashboard page
+        $blocks = $this->db->fetchAll(
+            'SELECT * FROM blocks_published
+             WHERE page_id = ?
+             ORDER BY sort_order ASC',
+            [$pageId]
+        );
+
+        if (empty($blocks)) {
+            return '<div class="dashboard-empty"><p>No widgets configured for this dashboard.</p></div>';
+        }
+
+        $html = '';
+        $renderService = new CruinnRenderService();
+
+        foreach ($blocks as $block) {
+            $blockType = $block['block_type'];
+
+            // For module-widget blocks, inject userContext
+            if ($blockType === 'module-widget') {
+                $props = json_decode($block['properties'] ?? '{}', true) ?? [];
+                $props['_userContext'] = $userContext;
+                $block['properties'] = json_encode($props);
+            }
+
+            // Render block via CruinnRenderService
+            $html .= $renderService->renderBlock($block);
+        }
+
+        return $html;
+    }
+
+    /**
+     * Resolve which dashboard page to show for a user.
+     * Resolution order: user → position → role → default admin dashboard.
+     *
+     * @param int $userId User ID
+     * @return int|null Dashboard page ID, or null if none configured
+     */
+    public function resolveDashboardForUser(int $userId): ?int
+    {
+        // 1. Check user-specific dashboard
+        $pageId = $this->db->fetchColumn(
+            'SELECT page_id FROM context_dashboards
+             WHERE context_type = ? AND context_id = ?',
+            ['user', $userId]
+        );
+        if ($pageId) {
+            return (int) $pageId;
+        }
+
+        // 2. Check position dashboards (highest priority position)
+        $positionIds = Auth::positionIds();
+        if (!empty($positionIds)) {
+            // @TODO: when positions have priority/sort_order, use that
+            // For now, just use the first position
+            $pageId = $this->db->fetchColumn(
+                'SELECT page_id FROM context_dashboards
+                 WHERE context_type = ? AND context_id = ?',
+                ['position', $positionIds[0]]
+            );
+            if ($pageId) {
+                return (int) $pageId;
+            }
+        }
+
+        // 3. Check role dashboard
+        $roleId = Auth::roleId();
+        if ($roleId) {
+            $pageId = $this->db->fetchColumn(
+                'SELECT page_id FROM context_dashboards
+                 WHERE context_type = ? AND context_id = ?',
+                ['role', $roleId]
+            );
+            if ($pageId) {
+                return (int) $pageId;
+            }
+        }
+
+        // 4. Fallback: admin role dashboard (default)
+        $adminRoleId = $this->db->fetchColumn(
+            'SELECT id FROM roles WHERE level >= 100 ORDER BY level DESC LIMIT 1'
+        );
+        if ($adminRoleId) {
+            $pageId = $this->db->fetchColumn(
+                'SELECT page_id FROM context_dashboards
+                 WHERE context_type = ? AND context_id = ?',
+                ['role', $adminRoleId]
+            );
+            if ($pageId) {
+                return (int) $pageId;
+            }
+        }
+
+        // No dashboard configured
+        return null;
+    }
+
+    /**
+     * Get all widget dashboard canvases (pages with canvas_type='widget-dashboard').
+     *
+     * @return array[] Dashboard page records
+     */
+    public function listDashboardCanvases(): array
+    {
+        return $this->db->fetchAll(
+            "SELECT * FROM pages_index
+             WHERE canvas_type = 'widget-dashboard'
+             ORDER BY title ASC"
+        );
+    }
+
+    /**
+     * Get dashboard assignment for a context (role/position/user).
+     *
+     * @param string $contextType 'role', 'position', or 'user'
+     * @param int    $contextId   Context ID
+     * @return int|null Assigned dashboard page ID, or null
+     */
+    public function getDashboardForContext(string $contextType, int $contextId): ?int
+    {
+        $pageId = $this->db->fetchColumn(
+            'SELECT page_id FROM context_dashboards
+             WHERE context_type = ? AND context_id = ?',
+            [$contextType, $contextId]
+        );
+        return $pageId ? (int) $pageId : null;
+    }
+
+    /**
+     * Assign a dashboard to a context (role/position/user).
+     *
+     * @param string $contextType 'role', 'position', or 'user'
+     * @param int    $contextId   Context ID
+     * @param int    $pageId      Dashboard page ID
+     */
+    public function assignDashboard(string $contextType, int $contextId, int $pageId): void
+    {
+        // Check if assignment already exists
+        $existing = $this->db->fetch(
+            'SELECT id FROM context_dashboards
+             WHERE context_type = ? AND context_id = ?',
+            [$contextType, $contextId]
+        );
+
+        if ($existing) {
+            // Update existing
+            $this->db->update(
+                'context_dashboards',
+                ['page_id' => $pageId, 'created_by' => Auth::userId()],
+                'id = ?',
+                [$existing['id']]
+            );
+        } else {
+            // Insert new
+            $this->db->insert('context_dashboards', [
+                'context_type' => $contextType,
+                'context_id'   => $contextId,
+                'page_id'      => $pageId,
+                'created_by'   => Auth::userId(),
+            ]);
+        }
+    }
+
+    /**
+     * Remove dashboard assignment for a context.
+     *
+     * @param string $contextType 'role', 'position', or 'user'
+     * @param int    $contextId   Context ID
+     */
+    public function removeDashboard(string $contextType, int $contextId): void
+    {
+        $this->db->delete(
+            'context_dashboards',
+            'context_type = ? AND context_id = ?',
+            [$contextType, $contextId]
+        );
+    }
 }

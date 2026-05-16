@@ -1,10 +1,11 @@
 # CruinnCMS — Role & Capability Refactor + Widget Dashboards
 
-**Status:** Stage 2 Complete (commit fdaab4f)
+**Status:** Stage 3 Complete (commit TBD)
 **Version target:** v1.0.0-beta.9
 **Agreed:** May 2026
 **Stage 1 landed:** 16 May 2026
 **Stage 2 landed:** 16 May 2026
+**Stage 3 landed:** 16 May 2026
 
 ---
 
@@ -172,6 +173,8 @@ dedicated `config/admin_areas.php`. No hardcoding in `Auth.php`.
 ---
 
 ## Stage 3 — Widget dashboard canvases
+
+**✓ COMPLETE** (commit TBD, 16 May 2026)
 
 ### Goal
 

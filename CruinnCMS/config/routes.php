@@ -130,6 +130,8 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/roles/{id}/navigation',  [RoleAdminController::class, 'navConfig']);
     $router->post('/admin/roles/{id}/navigation', [RoleAdminController::class, 'saveNavConfig']);    $router->get('/admin/roles/{id}/areas',       [RoleAdminController::class, 'areaConfig']);
     $router->post('/admin/roles/{id}/areas',      [RoleAdminController::class, 'saveAreaConfig']);
+    $router->get('/admin/roles/{id}/dashboard-canvas',  [RoleAdminController::class, 'dashboardCanvasConfig']);
+    $router->post('/admin/roles/{id}/dashboard-canvas', [RoleAdminController::class, 'saveDashboardCanvasConfig']);
     // Admin � Groups
     $router->get('/admin/groups',               [GroupController::class, 'groupIndex']);
     $router->get('/admin/groups/new',           [GroupController::class, 'groupCreate']);
@@ -311,6 +313,9 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/site-builder/set-home/{id}',        [SiteBuilderController::class, 'setHomePage']);
     $router->get('/admin/site-builder/zones',                 [SiteBuilderController::class, 'builderZones']);
     $router->post('/admin/site-builder/zones/new',            [SiteBuilderController::class, 'builderNewZone']);
+    $router->get('/admin/site-builder/dashboards',           [SiteBuilderController::class, 'builderDashboards']);
+    $router->post('/admin/site-builder/dashboards/new',      [SiteBuilderController::class, 'builderCreateDashboard']);
+    $router->post('/admin/site-builder/dashboards/{id}/delete', [SiteBuilderController::class, 'builderDeleteDashboard']);
     $router->get('/admin/template-editor',                    [SiteBuilderController::class, 'templateEditorList']);
     $router->get('/admin/template-editor/edit',               [SiteBuilderController::class, 'templateEditorEdit']);
     $router->post('/admin/template-editor/edit',              [SiteBuilderController::class, 'templateEditorEdit']);
