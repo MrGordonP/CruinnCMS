@@ -28,7 +28,7 @@ class PageController extends BaseController
             : null;
 
         if (!$page) {
-            if (Auth::hasRole('admin')) {
+            if (Auth::isAdmin()) {
                 header('Location: ' . url('/admin/site-builder/structure'));
                 exit;
             }

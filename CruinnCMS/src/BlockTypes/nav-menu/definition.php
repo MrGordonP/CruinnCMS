@@ -29,21 +29,20 @@ BlockRegistry::register([
             return '';
         }
 
-        // Filter by visibility and min_role (mirrors get_menu() logic)
+        // Filter by visibility and min_role
         if (!BlockRegistry::isEditMode()) {
-            $loggedIn   = \Cruinn\Auth::check();
-            $userRole   = \Cruinn\Auth::role() ?? 'public';
-            $roleLevels = ['public' => 0, 'member' => 10, 'editor' => 20, 'council' => 50, 'admin' => 100];
-            $userLevel  = $roleLevels[$userRole] ?? 0;
+            $loggedIn  = \Cruinn\Auth::check();
+            $userLevel = \Cruinn\Auth::roleLevel();
 
-            $all = array_filter($all, function ($row) use ($loggedIn, $userLevel, $roleLevels) {
+            $all = array_filter($all, function ($row) use ($loggedIn, $userLevel) {
                 $vis = $row['visibility'] ?? 'always';
                 if ($vis === 'logged_in' && !$loggedIn) return false;
                 if ($vis === 'logged_out' && $loggedIn) return false;
-                if (!empty($row['min_role'])) {
-                    $reqLevel = $roleLevels[$row['min_role']] ?? 0;
-                    if ($userLevel < $reqLevel) return false;
-                }
+                
+                // min_role is now a numeric level (migration 014)
+                $reqLevel = (int) ($row['min_role'] ?? 0);
+                if ($userLevel < $reqLevel) return false;
+                
                 return true;
             });
             $all = array_values($all);

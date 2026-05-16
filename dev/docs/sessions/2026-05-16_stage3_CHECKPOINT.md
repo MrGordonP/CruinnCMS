@@ -64,7 +64,7 @@ Added to `schema/instance_core.sql` and `migrations/core/016_context_dashboards.
 - `builderDashboards()` — GET `/admin/site-builder/dashboards`
   - Lists all widget dashboard canvases
   - Shows assignment counts for each dashboard
-  
+
 - `builderCreateDashboard()` — POST `/admin/site-builder/dashboards/new`
   - Creates new page with `canvas_type='widget-dashboard'`
   - Redirects to block editor
