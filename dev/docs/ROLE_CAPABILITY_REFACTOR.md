@@ -1,6 +1,6 @@
 # CruinnCMS — Role & Capability Refactor + Widget Dashboards
 
-**Status:** Stage 2 Complete (commit TBD)
+**Status:** Stage 2 Complete (commit fdaab4f)
 **Version target:** v1.0.0-beta.9
 **Agreed:** May 2026
 **Stage 1 landed:** 16 May 2026
@@ -105,7 +105,7 @@ conversion.
 
 ## Stage 2 — Admin area grants
 
-**✓ COMPLETE** (commit TBD, 16 May 2026)
+**✓ COMPLETE** (commit fdaab4f, 16 May 2026)
 
 ### Goal
 

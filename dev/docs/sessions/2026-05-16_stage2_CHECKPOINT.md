@@ -1,6 +1,6 @@
 # CruinnCMS Session Checkpoint — 16 May 2026 (Stage 2)
 
-**Commit:** TBD
+**Commit:** `fdaab4f`
 **Version:** `v1.0.0-beta.9` (in progress)
 **Branch:** `main`
 
@@ -211,6 +211,6 @@ Position grants stubbed for Stage 4 (organisation module integration).
 ## Mode Instructions Update
 
 Update the mode instructions with:
-- Current HEAD: TBD (after commit)
+- Current HEAD: `fdaab4f`
 - Version: `v1.0.0-beta.9` (in progress)
 - Session summary: Stage 2 complete — Admin area grants, middleware + UI + migration
