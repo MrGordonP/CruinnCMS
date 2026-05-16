@@ -293,8 +293,8 @@ Stage 5 is independent — can land any time after Stage 3.
 
 ## Next Session Start (v1.0.0-beta.9 continuation)
 
-**Current status:** 17 May 2026, 23:30  
-**Commits ahead of origin:** 0 (pushed as bb53dea)  
+**Current status:** 17 May 2026, 23:30
+**Commits ahead of origin:** 0 (pushed as bb53dea)
 **Live site:** Stable with compatibility shims in place
 
 ### Session Startup Checklist
@@ -381,5 +381,5 @@ cat dev/docs/sessions/v1.0.0-beta.9_role-capability-refactor_CHECKPOINT.md
 
 ---
 
-**Last updated:** 17 May 2026, 23:30  
+**Last updated:** 17 May 2026, 23:30
 **Next session:** TBD — awaiting path decision (recommend Stage 5)
