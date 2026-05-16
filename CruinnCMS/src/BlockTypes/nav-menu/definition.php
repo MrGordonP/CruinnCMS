@@ -38,11 +38,11 @@ BlockRegistry::register([
                 $vis = $row['visibility'] ?? 'always';
                 if ($vis === 'logged_in' && !$loggedIn) return false;
                 if ($vis === 'logged_out' && $loggedIn) return false;
-                
+
                 // min_role is now a numeric level (migration 014)
                 $reqLevel = (int) ($row['min_role'] ?? 0);
                 if ($userLevel < $reqLevel) return false;
-                
+
                 return true;
             });
             $all = array_values($all);

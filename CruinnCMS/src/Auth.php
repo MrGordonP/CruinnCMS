@@ -611,7 +611,7 @@ class Auth
     public static function requireRole(string $minimumRole): void
     {
         self::requireLoggedIn();
-        
+
         if (!self::hasRole($minimumRole)) {
             http_response_code(403);
             $template = new Template();
