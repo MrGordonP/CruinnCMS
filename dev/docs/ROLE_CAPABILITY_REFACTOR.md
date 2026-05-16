@@ -1,8 +1,9 @@
 # CruinnCMS — Role & Capability Refactor + Widget Dashboards
 
-**Status:** Planned  
-**Version target:** v1.0.0-beta.9  
+**Status:** Stage 1 Complete (commit cc6c030)
+**Version target:** v1.0.0-beta.9
 **Agreed:** May 2026
+**Stage 1 landed:** 16 May 2026
 
 ---
 
@@ -32,6 +33,8 @@ per-user, or context-specific dashboards built from the existing widget and bloc
 ---
 
 ## Stage 1 — Auth API cleanup
+
+**✓ COMPLETE** (commit cc6c030, 16 May 2026)
 
 ### Target API
 
@@ -92,7 +95,7 @@ INSERT IGNORE INTO roles (name, slug, level, is_system) VALUES
 
 ### Migration
 
-`migrations/core/014_role_visibility_levels.sql`  
+`migrations/core/014_role_visibility_levels.sql`
 Convert any `visibility` / `min_role` string columns storing slug values to integers
 using the legacy map (public=0, editor=20, council=50, admin=100) as a one-time
 conversion.
@@ -153,8 +156,8 @@ Full admin-only sections (user management, roles, platform settings, migrations)
 
 ### Admin UI
 
-`GET /admin/roles/{id}/areas` — configure which area slugs a role can access.  
-`GET /admin/organisation/positions/{id}/areas` — configure which area slugs a position can access.  
+`GET /admin/roles/{id}/areas` — configure which area slugs a role can access.
+`GET /admin/organisation/positions/{id}/areas` — configure which area slugs a position can access.
 Both render a checklist of registered area slugs.
 
 ### Area slug registration
@@ -214,8 +217,8 @@ Position dashboards and admin area grants ship together.
 
 ### Admin UI
 
-`GET /admin/site-builder/dashboards` — list all widget dashboard canvases.  
-`POST /admin/site-builder/dashboards/new` — create a new dashboard canvas, redirect to editor.  
+`GET /admin/site-builder/dashboards` — list all widget dashboard canvases.
+`POST /admin/site-builder/dashboards/new` — create a new dashboard canvas, redirect to editor.
 Assignment UI lives in role config and org position config (select which dashboard canvas
 this role/position uses).
 
@@ -263,10 +266,10 @@ A `notifications` widget registered by the mailbox module:
 
 ## Implementation Order
 
-Stage 1 must land first — it cleans up the auth API that everything else builds on.  
-Stage 2 depends on Stage 1 (uses the new requireAdminArea + positionIds).  
-Stage 3 depends on Stage 2 (position dashboards need area grants to be useful).  
-Stage 4 depends on Stages 2 and 3.  
+Stage 1 must land first — it cleans up the auth API that everything else builds on.
+Stage 2 depends on Stage 1 (uses the new requireAdminArea + positionIds).
+Stage 3 depends on Stage 2 (position dashboards need area grants to be useful).
+Stage 4 depends on Stages 2 and 3.
 Stage 5 is independent — can land any time after Stage 3.
 
 ---
