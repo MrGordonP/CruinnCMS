@@ -211,23 +211,6 @@ class Auth
     }
 
     /**
-     * Get the current user's highest role slug (admin, council, editor, public).
-     * Derived from the session role level — no DB query.
-     * Returns null if not logged in.
-     */
-    public static function role(): ?string
-    {
-        if (!self::check()) {
-            return null;
-        }
-        $level = self::roleLevel();
-        if ($level >= 100) return 'admin';
-        if ($level >= 50)  return 'council';
-        if ($level >= 20)  return 'editor';
-        return 'member';
-    }
-
-    /**
      * Get the current user's primary role ID (highest level role).
      * Returns null if not logged in or no roles assigned.
      */
@@ -287,15 +270,20 @@ class Auth
     }
 
     /**
-     * Check if the current user has at least the given CMS role.
-     * Accepts legacy slug names mapped to levels, or a numeric level.
-     * admin=100, council=50, editor=20, public=0
+     * Check if the current user is an admin (role level >= 100).
      */
-    public static function hasRole(string $minimumRole): bool
+    public static function isAdmin(): bool
     {
-        $levels = ['public' => 0, 'editor' => 20, 'council' => 50, 'admin' => 100];
-        $required = $levels[$minimumRole] ?? 0;
-        return self::roleLevel() >= $required;
+        return self::roleLevel() >= 100;
+    }
+
+    /**
+     * Check if a user is currently logged in.
+     * Alias for check() — kept for semantic clarity.
+     */
+    public static function isLoggedIn(): bool
+    {
+        return self::check();
     }
 
     /**
@@ -365,7 +353,7 @@ class Auth
      */
     public static function requirePermission(string $permission): void
     {
-        self::requireLogin();
+        self::requireLoggedIn();
 
         if (!self::can($permission)) {
             http_response_code(403);
@@ -387,7 +375,7 @@ class Auth
     /**
      * Require the user to be logged in. Redirects to login page if not.
      */
-    public static function requireLogin(): void
+    public static function requireLoggedIn(): void
     {
         if (!self::check()) {
             $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
@@ -397,19 +385,73 @@ class Auth
     }
 
     /**
-     * Require the user to have at least the given role.
-     * Returns 403 if insufficient permissions.
+     * Require the user to be an admin (role level >= 100).
+     * Returns 403 if not admin.
      */
-    public static function requireRole(string $minimumRole): void
+    public static function requireAdmin(): void
     {
-        self::requireLogin();
+        self::requireLoggedIn();
 
-        if (!self::hasRole($minimumRole)) {
+        if (!self::isAdmin()) {
             http_response_code(403);
             $template = new Template();
             echo $template->render('errors/403');
             exit;
         }
+    }
+
+    /**
+     * Require the user to have at least the given role level.
+     * Returns 403 if insufficient permissions.
+     */
+    public static function requireLevel(int $minimumLevel): void
+    {
+        self::requireLoggedIn();
+
+        if (self::roleLevel() < $minimumLevel) {
+            http_response_code(403);
+            $template = new Template();
+            echo $template->render('errors/403');
+            exit;
+        }
+    }
+
+    /**
+     * Require access to a specific admin area.
+     * Passes if admin OR user/position has a grant for this area.
+     * Stage 2: admin_area_grants table and grant lookup.
+     * Stage 1: stub — passes for admin only.
+     *
+     * @param string $slug Admin area slug (e.g. 'blog', 'forum', 'events').
+     */
+    public static function requireAdminArea(string $slug): void
+    {
+        self::requireLoggedIn();
+
+        // Stage 1 stub: admin-only access
+        if (!self::isAdmin()) {
+            http_response_code(403);
+            $template = new Template();
+            echo $template->render('errors/403');
+            exit;
+        }
+
+        // Stage 2: check admin_area_grants for role_id or position_ids
+    }
+
+    /**
+     * Get the current user's organisation position IDs.
+     * Stage 1: stub — returns empty array.
+     * Stage 4: requires organisation module.
+     *
+     * @return int[]
+     */
+    public static function positionIds(): array
+    {
+        // Stage 1 stub
+        return [];
+
+        // Stage 4: query organisation_positions via organisation module
     }
 
     /**

@@ -511,7 +511,7 @@ class MenuController extends BaseController
      */
     public function blockEditor(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $menu = $this->db->fetch('SELECT * FROM menus WHERE id = ?', [(int) $id]);
         if (!$menu) {

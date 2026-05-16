@@ -109,4 +109,14 @@ VALUES
     ('seed_ftr_copy',    @ftr_page, 'text',    NULL, '{}',                       '{}',                                           0, 'seed_ftr_section'),
     ('seed_ftr_nav',     @ftr_page, 'nav-menu',NULL, '{"_class":"footer-nav"}',  JSON_OBJECT('menu_id', CAST(@menu_footer AS CHAR)), 1, 'seed_ftr_section');
 
+-- ── Instance-specific roles ───────────────────────────────────
+-- System roles (admin, public) are seeded in instance_core.sql.
+-- Instance-specific roles (council, member) are added here
+-- via the theme seed so they can be customised per instance.
+-- Stage 1 of Role & Capability Refactor (v1.0.0-beta.9).
+
+INSERT IGNORE INTO `roles` (`slug`, `name`, `description`, `level`, `is_system`, `colour`, `default_redirect`) VALUES
+    ('council', 'Council', 'Council member with elevated access',      50, 0, '#fd7e14', '/profile'),
+    ('member',  'Member',  'Registered member with standard access', 10, 0, '#198754', '/profile');
+
 SET FOREIGN_KEY_CHECKS = 1;

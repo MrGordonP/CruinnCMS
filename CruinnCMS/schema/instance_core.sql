@@ -370,7 +370,7 @@ CREATE TABLE `menu_items` (
     `open_new_tab` TINYINT(1)   NOT NULL DEFAULT 0,
     `is_active`    TINYINT(1)   NOT NULL DEFAULT 1,
     `visibility`   ENUM('always','logged_in','logged_out') NOT NULL DEFAULT 'always',
-    `min_role`     VARCHAR(20)  NULL DEFAULT NULL,
+    `min_role`     SMALLINT UNSIGNED NULL DEFAULT NULL COMMENT 'Minimum role level (0=public, 10=member, 50=council, 100=admin)',
     `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT `fk_menu_items_menu`    FOREIGN KEY (`menu_id`)    REFERENCES `menus`      (`id`) ON DELETE CASCADE,
@@ -423,10 +423,12 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 
 -- ── System Roles ─────────────────────────────────────────────
+-- Only admin and public are system roles (is_system=1).
+-- Instance-specific roles (council, member, editor, etc.) should be
+-- added via theme seeds or instance provisioning.
 INSERT INTO `roles` (`slug`, `name`, `description`, `level`, `is_system`, `colour`, `default_redirect`) VALUES
-    ('admin',  'Administrator', 'Full site administration',              100, 1, '#dc3545', '/profile'),
-    ('editor', 'Editor',        'Authenticated user with standard access', 20, 1, '#198754', '/profile'),
-    ('public', 'Public',        'Basic account with no special access',     0, 1, '#6c757d', '/');
+    ('admin',  'Administrator', 'Full site administration',          100, 1, '#dc3545', '/profile'),
+    ('public', 'Public',        'Basic account with no special access', 0, 1, '#6c757d', '/');
 
 -- ── Core Permissions ─────────────────────────────────────────
 INSERT INTO `permissions` (`slug`, `name`, `category`, `description`) VALUES

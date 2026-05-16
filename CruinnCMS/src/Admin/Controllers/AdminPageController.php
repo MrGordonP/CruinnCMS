@@ -187,7 +187,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function htmlEditor(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
@@ -206,7 +206,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function saveHtml(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             http_response_code(404);
@@ -234,7 +234,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function convertToBlocks(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');
@@ -277,7 +277,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function exportHtml(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
         if (!$page) {
             Auth::flash('error', 'Page not found.');

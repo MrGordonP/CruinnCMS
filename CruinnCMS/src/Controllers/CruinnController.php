@@ -37,7 +37,7 @@ class CruinnController extends BaseController
             $this->db = \Cruinn\Database::getInstance();
             return;
         }
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
     }
 
     // ── Public actions ─────────────────────────────────────────────
@@ -64,7 +64,7 @@ class CruinnController extends BaseController
      */
     public function openEditor(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         // Build nav data — identical to edit(), but with no page loaded
         $headerPages = $this->db->fetchAll(
@@ -200,7 +200,7 @@ class CruinnController extends BaseController
      */
     public function edit(string $pageId): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $pageId = (int) $pageId;
 
         // Back-navigation: ?from={pageId} passes the originating page when jumping
@@ -748,7 +748,7 @@ class CruinnController extends BaseController
      */
     public function editArticle(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $id;
 
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ? LIMIT 1', [$articleId]);
@@ -1523,7 +1523,7 @@ class CruinnController extends BaseController
      */
     public function phpIncludePreview(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         header('Content-Type: application/json');
 
         $raw = $_GET['template'] ?? '';
@@ -1577,7 +1577,7 @@ class CruinnController extends BaseController
      */
     public function navMenuPreview(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         header('Content-Type: application/json');
 
         $menuId = (int) ($_GET['menu_id'] ?? 0);
@@ -1624,7 +1624,7 @@ class CruinnController extends BaseController
      */
     public function editZone(string $zone): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         if (!in_array($zone, ['header', 'footer'], true)) {
             http_response_code(404);
@@ -1723,7 +1723,7 @@ class CruinnController extends BaseController
      */
     public function dbTables(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         header('Content-Type: application/json');
         try {
             $svc    = new \Cruinn\Services\QueryBuilderService($this->db);
@@ -1742,7 +1742,7 @@ class CruinnController extends BaseController
      */
     public function dbColumns(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         header('Content-Type: application/json');
         $tables = array_values(array_filter((array) ($_GET['tables'] ?? []), fn($t) => is_string($t) && $t !== ''));
         if (empty($tables)) {
@@ -1774,7 +1774,7 @@ class CruinnController extends BaseController
      */
     public function dbPreview(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         header('Content-Type: application/json');
         $table  = trim($_GET['table']  ?? '');
         $column = trim($_GET['column'] ?? '');

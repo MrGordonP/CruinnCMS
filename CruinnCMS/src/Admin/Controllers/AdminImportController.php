@@ -29,7 +29,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
     public function index(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->renderAdmin('admin/import/index', [
             'title'  => 'Import Pages',
@@ -42,7 +42,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
     public function upload(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $this->requireCsrf();
 
         $file    = $_FILES['import_file'] ?? null;
@@ -123,7 +123,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
     public function confirm(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $this->requireCsrf();
 
         $pending = $_SESSION['_import_pending'] ?? null;

@@ -21,7 +21,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
      */
     public function linkCheck(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->renderAdmin('admin/maintenance/link-check', [
             'title'       => 'Broken Link Scanner',
@@ -35,7 +35,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
      */
     public function runLinkCheck(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $siteUrl  = rtrim(App::config('site.url', ''), '/');
         $results  = $this->scanLinks($siteUrl);
@@ -200,7 +200,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
      */
     public function rerunMigration(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $db     = Database::getInstance();
@@ -257,7 +257,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
      */
     public function migrations(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         [$all, $applied, $slugRemapped] = $this->collectMigrationState();
 
@@ -288,7 +288,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
      */
     public function runMigrations(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $db = Database::getInstance();

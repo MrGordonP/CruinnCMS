@@ -310,7 +310,7 @@ class AcpSystemController extends BaseController
 
     public function exportDatabase(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $dbName   = App::config('db.name');
         $filename = $dbName . '_' . date('Y-m-d_His') . '.sql';
@@ -328,7 +328,7 @@ class AcpSystemController extends BaseController
 
     public function exportInstance(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         if (!class_exists('ZipArchive')) {
             Auth::flash('error', 'PHP ZipArchive extension is not available on this server.');
@@ -713,7 +713,7 @@ class AcpSystemController extends BaseController
 
     public function modules(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $all     = \Cruinn\Modules\ModuleRegistry::all();
         $available = [];
@@ -799,7 +799,7 @@ class AcpSystemController extends BaseController
 
     public function toggleModule(string $slug): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $def = \Cruinn\Modules\ModuleRegistry::get($slug);
         if (!$def) {
@@ -836,7 +836,7 @@ class AcpSystemController extends BaseController
 
     public function saveModuleSettings(string $slug): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $def = \Cruinn\Modules\ModuleRegistry::get($slug);
         if (!$def) {
@@ -884,7 +884,7 @@ class AcpSystemController extends BaseController
 
     public function applyModuleMigrations(string $slug): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $def = \Cruinn\Modules\ModuleRegistry::get($slug);
         if (!$def) {
@@ -950,7 +950,7 @@ class AcpSystemController extends BaseController
      */
     public function rerunModuleMigrations(string $slug): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $def = \Cruinn\Modules\ModuleRegistry::get($slug);
         if (!$def) {
@@ -975,7 +975,7 @@ class AcpSystemController extends BaseController
 
     public function installModule(string $slug): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $def = \Cruinn\Modules\ModuleRegistry::get($slug);
         if (!$def) {
@@ -1099,7 +1099,7 @@ class AcpSystemController extends BaseController
 
     public function uninstallModule(string $slug): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $def = \Cruinn\Modules\ModuleRegistry::get($slug);
         if (!$def) {

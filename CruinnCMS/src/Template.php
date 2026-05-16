@@ -287,16 +287,16 @@ namespace {
         );
 
         $loggedIn  = \Cruinn\Auth::check();
-        $userLevel = $loggedIn ? \Cruinn\Auth::groupLevel() : 0;
-        $roleLevels = ['public' => 0, 'editor' => 20, 'council' => 50, 'admin' => 100];
+        $userLevel = $loggedIn ? \Cruinn\Auth::roleLevel() : 0;
 
-        // Filter by visibility and role
-        $rows = array_filter($rows, function ($row) use ($loggedIn, $userLevel, $roleLevels) {
+        // Filter by visibility and role level
+        $rows = array_filter($rows, function ($row) use ($loggedIn, $userLevel) {
             $vis = $row['visibility'] ?? 'always';
             if ($vis === 'logged_in' && !$loggedIn) return false;
             if ($vis === 'logged_out' && $loggedIn) return false;
             if (!empty($row['min_role'])) {
-                $reqLevel = $roleLevels[$row['min_role']] ?? 0;
+                // min_role is now an integer level (0, 10, 50, 100) not a slug
+                $reqLevel = (int) $row['min_role'];
                 if ($userLevel < $reqLevel) return false;
             }
             return true;

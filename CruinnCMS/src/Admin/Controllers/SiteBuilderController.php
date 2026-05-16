@@ -121,7 +121,7 @@ class SiteBuilderController extends BaseController
 
     public function builderEnsureCanvas(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [(int) $id]);
         if (!$tpl) {
             Auth::flash('error', 'Template not found.');
@@ -166,7 +166,7 @@ class SiteBuilderController extends BaseController
      */
     public function builderEnsureZoneCanvas(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [(int) $id]);
         if (!$tpl) {
             Auth::flash('error', 'Template not found.');
@@ -221,7 +221,7 @@ class SiteBuilderController extends BaseController
      */
     public function builderSaveZoneCanvases(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $tpl = $this->db->fetch('SELECT id FROM page_templates WHERE id = ?', [(int) $id]);
         if (!$tpl) {
             http_response_code(404);
@@ -737,7 +737,7 @@ class SiteBuilderController extends BaseController
 
     public function builderZones(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $zones = $this->db->fetchAll(
             "SELECT id, title, zone_name, status, updated_at
                FROM pages_index
@@ -754,7 +754,7 @@ class SiteBuilderController extends BaseController
 
     public function builderNewZone(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $title    = trim($this->input('title', ''));
@@ -883,7 +883,7 @@ class SiteBuilderController extends BaseController
      */
     public function templateEditorList(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $base    = dirname(__DIR__, 3) . '/templates';
         $exclude = ['/admin/', '/platform/'];
@@ -936,7 +936,7 @@ class SiteBuilderController extends BaseController
      */
     public function templateEditorEdit(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $raw       = $_REQUEST['f'] ?? '';
         $returnRaw = $_REQUEST['return'] ?? '';
@@ -1042,7 +1042,7 @@ class SiteBuilderController extends BaseController
      */
     public function templateEditorVars(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $base    = realpath(dirname(__DIR__, 3) . '/templates');
         $exclude = ['/admin/', '/platform/'];
@@ -1080,7 +1080,7 @@ class SiteBuilderController extends BaseController
      */
     public function templateEditorPreview(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $raw = $_GET['f'] ?? '';
 

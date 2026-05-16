@@ -455,7 +455,7 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
      */
     public function userSearch(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $q = trim((string) $this->query('q', ''));
         if (strlen($q) < 2) {
             $this->json([]);
@@ -477,7 +477,7 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
     /** POST /admin/users/{id}/link-member */
     public function linkMember(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $q = trim((string) $this->input('member_search', ''));
         if ($q === '') {
@@ -518,7 +518,7 @@ class UserAdminController extends \Cruinn\Controllers\BaseController
     /** POST /admin/users/{id}/unlink-member */
     public function unlinkMember(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         try {
             $member = $this->db->fetch('SELECT id FROM members WHERE user_id = ?', [$id]);

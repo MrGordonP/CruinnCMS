@@ -18,7 +18,7 @@ class ThemeController extends BaseController
      */
     public function edit(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $db   = \Cruinn\Database::getInstance();
         $id   = (int) ($db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
@@ -32,7 +32,7 @@ class ThemeController extends BaseController
      */
     public function save(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         \Cruinn\CSRF::verify();
 
         $theme    = self::activeTheme();
@@ -73,7 +73,7 @@ class ThemeController extends BaseController
      */
     public function listSeeds(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $themesDir = CRUINN_ROOT . '/themes';
         $seeds = [];
@@ -107,7 +107,7 @@ class ThemeController extends BaseController
      */
     public function applySeed(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         \Cruinn\CSRF::verify();
 
         $slug = preg_replace('/[^a-z0-9_-]/i', '', $this->input('theme', 'default'));
