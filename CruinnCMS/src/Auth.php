@@ -419,8 +419,6 @@ class Auth
     /**
      * Require access to a specific admin area.
      * Passes if admin OR user/position has a grant for this area.
-     * Stage 2: admin_area_grants table and grant lookup.
-     * Stage 1: stub — passes for admin only.
      *
      * @param string $slug Admin area slug (e.g. 'blog', 'forum', 'events').
      */
@@ -428,15 +426,90 @@ class Auth
     {
         self::requireLoggedIn();
 
-        // Stage 1 stub: admin-only access
-        if (!self::isAdmin()) {
-            http_response_code(403);
-            $template = new Template();
-            echo $template->render('errors/403');
-            exit;
+        // Admin role level always has access to all areas
+        if (self::isAdmin()) {
+            return;
         }
 
-        // Stage 2: check admin_area_grants for role_id or position_ids
+        // Check role-based grants
+        $roleId = self::roleId();
+        if ($roleId && self::hasAreaGrant($slug, 'role', $roleId)) {
+            return;
+        }
+
+        // Check position-based grants (Stage 4 — organisation module)
+        $positionIds = self::positionIds();
+        foreach ($positionIds as $positionId) {
+            if (self::hasAreaGrant($slug, 'position', $positionId)) {
+                return;
+            }
+        }
+
+        // No access — return 403
+        http_response_code(403);
+        $template = new Template();
+        echo $template->render('errors/403');
+        exit;
+    }
+
+    /**
+     * Check if a grant exists for the given area, context type, and context ID.
+     * Result is cached in session for the request lifetime.
+     *
+     * @param string $areaSlug    Admin area slug
+     * @param string $contextType 'role' or 'position'
+     * @param int    $contextId   Role ID or position ID
+     * @return bool
+     */
+    private static function hasAreaGrant(string $areaSlug, string $contextType, int $contextId): bool
+    {
+        // Session cache key
+        $cacheKey = "area_grant_{$areaSlug}_{$contextType}_{$contextId}";
+        if (isset($_SESSION[$cacheKey])) {
+            return $_SESSION[$cacheKey];
+        }
+
+        $db = Database::getInstance();
+        $exists = $db->fetchColumn(
+            'SELECT COUNT(*) FROM admin_area_grants
+             WHERE area_slug = ? AND context_type = ? AND context_id = ?',
+            [$areaSlug, $contextType, $contextId]
+        );
+
+        $result = (int) $exists > 0;
+        $_SESSION[$cacheKey] = $result;
+        return $result;
+    }
+
+    /**
+     * Map a URI to an admin area slug based on the admin_areas.php config.
+     * Returns the area slug if the URI matches a grantable area, null otherwise.
+     *
+     * @param string $uri Request URI (e.g. '/admin/media/list')
+     * @return string|null Area slug or null if not grantable
+     */
+    private static function getAreaSlugForUri(string $uri): ?string
+    {
+        static $areas = null;
+        if ($areas === null) {
+            $areasPath = App::path('config/admin_areas.php');
+            $areas = file_exists($areasPath) ? require $areasPath : [];
+        }
+
+        // Check each area's route patterns
+        foreach ($areas as $slug => $config) {
+            $patterns = $config['routes'] ?? [];
+            foreach ($patterns as $pattern) {
+                // Convert glob pattern to regex
+                $regex = '#^' . str_replace(['\*', '/'], ['.*', '\/'], preg_quote($pattern, '#')) . '#';
+                if (preg_match($regex, $uri)) {
+                    return $slug;
+                }
+            }
+        }
+
+        // No match — this is a non-grantable admin route (users, roles, settings, etc.)
+        return null;
     }
 
     /**
@@ -501,8 +574,9 @@ class Auth
     // ── Middleware Callbacks ───────────────────────────────────────
 
     /**
-     * Middleware: require admin role for /admin routes.
-     * Uses role level (>= 100) with legacy ENUM fallback.
+     * Middleware: require admin role OR area grant for /admin routes.
+     * Admin role (level >= 100) always passes.
+     * Non-admins must have an admin_area_grant for the specific section.
      */
     public static function adminMiddleware(string $uri, string $method): ?string
     {
@@ -532,14 +606,34 @@ class Auth
             exit;
         }
 
-        if (self::roleLevel() < 100) {
-            http_response_code(403);
-            $template = new Template();
-            echo $template->render('errors/403');
-            exit;
+        // Admin role always has access
+        if (self::isAdmin()) {
+            return null;
         }
 
-        return null; // Allow request to proceed
+        // Non-admin: check if this URI maps to a grantable area
+        $areaSlug = self::getAreaSlugForUri($uri);
+        if ($areaSlug) {
+            // Check role grant
+            $roleId = self::roleId();
+            if ($roleId && self::hasAreaGrant($areaSlug, 'role', $roleId)) {
+                return null;
+            }
+
+            // Check position grants
+            $positionIds = self::positionIds();
+            foreach ($positionIds as $positionId) {
+                if (self::hasAreaGrant($areaSlug, 'position', $positionId)) {
+                    return null;
+                }
+            }
+        }
+
+        // No admin role and no area grant — deny access
+        http_response_code(403);
+        $template = new Template();
+        echo $template->render('errors/403');
+        exit;
     }
 
     /**

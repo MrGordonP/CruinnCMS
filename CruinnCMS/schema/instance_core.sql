@@ -100,6 +100,19 @@ CREATE TABLE `role_nav_items` (
     INDEX `idx_role_nav_role` (`role_id`, `sort_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Admin area grants — allow sub-admin access to specific sections without full admin
+CREATE TABLE `admin_area_grants` (
+    `id`           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `area_slug`    VARCHAR(60)                         NOT NULL COMMENT 'Admin area identifier (blog, forum, mailout, etc.)',
+    `context_type` ENUM('role','position')             NOT NULL COMMENT 'Grant to role or org position',
+    `context_id`   INT UNSIGNED                        NOT NULL COMMENT 'Role ID or position ID',
+    `granted_at`   DATETIME DEFAULT CURRENT_TIMESTAMP  NOT NULL,
+    `granted_by`   INT UNSIGNED                        DEFAULT NULL COMMENT 'User who granted access',
+    UNIQUE KEY `uq_grant` (`area_slug`, `context_type`, `context_id`),
+    INDEX `idx_grants_context` (`context_type`, `context_id`),
+    FOREIGN KEY (`granted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============================================================
 -- GROUPS
 -- ============================================================

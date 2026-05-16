@@ -128,8 +128,8 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/roles/{id}/dashboard',  [RoleAdminController::class, 'dashboardConfig']);
     $router->post('/admin/roles/{id}/dashboard', [RoleAdminController::class, 'saveDashboardConfig']);
     $router->get('/admin/roles/{id}/navigation',  [RoleAdminController::class, 'navConfig']);
-    $router->post('/admin/roles/{id}/navigation', [RoleAdminController::class, 'saveNavConfig']);
-
+    $router->post('/admin/roles/{id}/navigation', [RoleAdminController::class, 'saveNavConfig']);    $router->get('/admin/roles/{id}/areas',       [RoleAdminController::class, 'areaConfig']);
+    $router->post('/admin/roles/{id}/areas',      [RoleAdminController::class, 'saveAreaConfig']);
     // Admin � Groups
     $router->get('/admin/groups',               [GroupController::class, 'groupIndex']);
     $router->get('/admin/groups/new',           [GroupController::class, 'groupCreate']);

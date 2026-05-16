@@ -432,6 +432,87 @@ class RoleAdminController extends \Cruinn\Controllers\BaseController
         $this->redirect("/admin/roles/{$id}/navigation");
     }
 
+    /**
+     * GET /admin/roles/{id}/areas — Admin area grants configuration.
+     */
+    public function areaConfig(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+
+        $role = $this->roles->find($id);
+        if (!$role) {
+            Auth::flash('error', 'Role not found.');
+            $this->redirect('/admin/roles');
+        }
+
+        // Load available areas from config
+        $areasPath = \Cruinn\App::path('config/admin_areas.php');
+        $availableAreas = file_exists($areasPath) ? require $areasPath : [];
+
+        // Load current grants for this role
+        $currentGrants = $this->db->fetchAll(
+            'SELECT area_slug FROM admin_area_grants
+             WHERE context_type = ? AND context_id = ?',
+            ['role', $id]
+        );
+        $grantedSlugs = array_column($currentGrants, 'area_slug');
+
+        $this->renderAdmin('admin/roles/areas', [
+            'title'          => "Admin Area Access — {$role['name']}",
+            'breadcrumbs'    => [
+                ['Admin', '/admin'],
+                ['Roles', '/admin/roles'],
+                [$role['name'], "/admin/roles/{$id}/edit"],
+                ['Area Access'],
+            ],
+            'role'           => $role,
+            'availableAreas' => $availableAreas,
+            'grantedSlugs'   => $grantedSlugs,
+        ]);
+    }
+
+    /**
+     * POST /admin/roles/{id}/areas — Save admin area grants.
+     */
+    public function saveAreaConfig(int $id): void
+    {
+        Auth::requirePermission('roles.manage');
+
+        $role = $this->roles->find($id);
+        if (!$role) {
+            Auth::flash('error', 'Role not found.');
+            $this->redirect('/admin/roles');
+        }
+
+        // Admin role cannot have grants configured (always has all access)
+        if ((int) $role['level'] >= 100) {
+            Auth::flash('error', 'Admin role always has access to all areas. Grants cannot be configured.');
+            $this->redirect("/admin/roles/{$id}/areas");
+        }
+
+        $selectedAreas = $_POST['areas'] ?? [];
+
+        // Delete existing grants for this role
+        $this->db->query(
+            'DELETE FROM admin_area_grants WHERE context_type = ? AND context_id = ?',
+            ['role', $id]
+        );
+
+        // Insert new grants
+        foreach ($selectedAreas as $areaSlug) {
+            $this->db->insert('admin_area_grants', [
+                'area_slug'    => $areaSlug,
+                'context_type' => 'role',
+                'context_id'   => $id,
+                'granted_by'   => Auth::userId(),
+            ]);
+        }
+
+        $this->logActivity('update', 'role', $id, "Updated admin area grants for role: {$role['name']}");
+        Auth::flash('success', "Admin area access updated for \"{$role['name']}\".");
+        $this->redirect("/admin/roles/{$id}/areas");
+    }
+
     // ── Private helpers ───────────────────────────────────────────
 
     private function gatherInput(): array

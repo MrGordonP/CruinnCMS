@@ -1,7 +1,7 @@
 # CruinnCMS Session Checkpoint — 2026-05-08 (55ddc75)
 
-**Version:** v1.0.0-beta.7  
-**Session Focus:** Mailout module enhancements, migration fixes, image URLs in emails  
+**Version:** v1.0.0-beta.7
+**Session Focus:** Mailout module enhancements, migration fixes, image URLs in emails
 **HEAD Commit:** 55ddc75 — fix(mailout): remove CLI queue processor, integrate into controller
 
 ---
@@ -128,13 +128,13 @@ Converts: `/storage/iga-portal/media/2026/05/image.jpg` → `https://geology.ie/
 
 ## Testing Status
 
-✅ Recipients list displays on mailout show page  
-✅ Duplicate mailout creates draft copy  
-✅ Import from previous mailout populates form  
-✅ Mailing list members sortable by multiple fields  
-✅ Migrations re-run without errors  
-✅ Images appear in received emails (absolute URLs)  
-✅ Queue processor callable from admin UI  
+✅ Recipients list displays on mailout show page
+✅ Duplicate mailout creates draft copy
+✅ Import from previous mailout populates form
+✅ Mailing list members sortable by multiple fields
+✅ Migrations re-run without errors
+✅ Images appear in received emails (absolute URLs)
+✅ Queue processor callable from admin UI
 
 ---
 
@@ -146,6 +146,6 @@ Converts: `/storage/iga-portal/media/2026/05/image.jpg` → `https://geology.ie/
 
 ---
 
-**Session Duration:** ~3 hours  
-**Commits This Session:** 13  
+**Session Duration:** ~3 hours
+**Commits This Session:** 13
 **Lines Changed:** +~400, -~250 (net +150)
