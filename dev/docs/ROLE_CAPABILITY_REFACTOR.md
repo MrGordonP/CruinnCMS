@@ -1,6 +1,6 @@
 # CruinnCMS — Role & Capability Refactor + Widget Dashboards
 
-**Status:** Stage 4 Complete (commit 968c1e1)
+**Status:** Stage 6 Complete (commit TBD)
 **Version target:** v1.0.0-beta.9
 **Agreed:** May 2026
 **Stage 1 landed:** 16 May 2026
@@ -8,6 +8,7 @@
 **Stage 3 landed:** 16 May 2026
 **Stage 4 landed:** 18 May 2026
 **Stage 5 landed:** 18 May 2026
+**Stage 6 landed:** 18 May 2026
 
 ---
 
@@ -362,11 +363,67 @@ Provider signature: `public static function getData(array $settings, array $user
 
 ---
 
+## Stage 6 — Module migration from deprecated Auth methods
+
+**✓ COMPLETE** (commit TBD, 18 May 2026)
+
+Migrated all modules from deprecated `Auth::role()`, `Auth::hasRole()`, and `Auth::requireRole()` methods to the new level-based API introduced in Stage 1.
+
+### Modules Migrated
+
+**Forum module:**
+- Added `roleSlugToLevel()` helper to `NativeForumProvider.php` and `ForumController.php`
+- Updated `listCategories()`, `listCategoriesHierarchical()`, `getCategoryBySlug()`, `getSubcategories()` to accept `?int $viewerLevel` instead of `?string $viewerRole`
+- Replaced `Auth::role()` with `Auth::roleLevel()`
+- Replaced `Auth::hasRole('admin')` with `Auth::isAdmin()`
+- Replaced `Auth::hasRole($roleSlug)` with level comparisons using helper
+- Updated `ForumAdminController`: all `Auth::requireRole('admin')` → `Auth::requireAdmin()`
+
+**Drivespace module:**
+- Added `roleSlugToLevel()` helper to `GoogleDriveController.php` and `FileManagerController.php`
+- Replaced `Auth::requireRole('member')` with `Auth::requireLevel(10)`
+- Replaced `Auth::requireRole($this->gdrive->getWriteRole())` with `Auth::requireLevel($this->roleSlugToLevel($this->gdrive->getWriteRole()))`
+- Replaced `Auth::hasRole('admin')` with `Auth::isAdmin()` in controllers and templates
+- Updated `FileManagerAdminController`: all `Auth::requireRole('admin')` → `Auth::requireAdmin()`
+
+**Membership module:**
+- Updated `MembershipAdminController`: all `Auth::requireRole('admin')` → `Auth::requireAdmin()` (20 occurrences)
+
+**Organisation module:**
+- Updated templates: replaced `\Cruinn\Auth::hasRole('admin')` with `\Cruinn\Auth::isAdmin()`
+- Updated `OrganisationAdminController` and `FinanceController`: all `Auth::requireRole('admin')` → `Auth::requireAdmin()`
+
+**Additional modules (blog, mailout, documents, mailbox):**
+- Batch-replaced `Auth::requireRole('admin')` with `Auth::requireAdmin()` across all remaining modules
+- Updated `MailboxService`: changed method signatures to accept `bool $isAdmin` instead of `string $role`
+  - `getAccessibleMailboxes(int $userId, bool $isAdmin)`
+  - `getMailbox(int $mailboxId, int $userId, bool $isAdmin)`
+  - `getMessages()` — removed unused `$role` parameter
+- Updated `MailboxController`: replaced `Auth::requireRole('member')` with `Auth::requireLevel(10)`, all `Auth::role()` calls with `Auth::isAdmin()`
+
+### Compatibility Shims Removed
+
+Removed the following deprecated methods from `src/Auth.php`:
+- `Auth::role(): ?string` — replaced by `Auth::roleLevel(): int`
+- `Auth::hasRole(string $minimumRole): bool` — replaced by level comparisons or `Auth::isAdmin()`
+- `Auth::requireRole(string $minimumRole): void` — replaced by `Auth::requireAdmin()` or `Auth::requireLevel(int)`
+
+All compatibility notes and warnings removed. The deprecated API is no longer available.
+
+### Result
+
+- Zero occurrences of `Auth::role()`, `Auth::hasRole()`, or `Auth::requireRole()` remain in the codebase
+- All modules use the new level-based Auth API consistently
+- Engine is fully instance-agnostic — no hardcoded role slug assumptions
+- No errors reported
+
+---
+
 ## Files Affected (summary)
 
 | File | Stage | Change |
 |---|---|---|
-| `src/Auth.php` | 1 | Remove role(), hasRole(), requireRole(); add isAdmin(), requireAdmin(), requireLevel(), requireAdminArea(), positionIds() |
+| `src/Auth.php` | 1, 6 | Remove role(), hasRole(), requireRole(); add isAdmin(), requireAdmin(), requireLevel(), requireAdminArea(), positionIds() |
 | `src/Template.php` | 1 | Replace hardcoded level map with numeric Auth::roleLevel() check |
 | `schema/instance_core.sql` | 1 | Seed only admin + public system roles |
 | `themes/default/seed.sql` | 1 | Add council + member as instance defaults |
@@ -389,6 +446,23 @@ Provider signature: `public static function getData(array $settings, array $user
 | `modules/mailbox/src/Widgets/NotificationsWidget.php` | 5 | NEW — Data provider for notifications widget |
 | `modules/mailbox/templates/widgets/notifications.php` | 5 | NEW — Widget template partial |
 | `modules/mailbox/module.php` | 5 | Register notifications widget |
+| `modules/forum/src/Forum/NativeForumProvider.php` | 6 | Replace role string methods with level-based helpers |
+| `modules/forum/src/Controllers/ForumController.php` | 6 | Replace deprecated Auth calls with level API |
+| `modules/forum/src/Controllers/ForumAdminController.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/drivespace/src/Controllers/GoogleDriveController.php` | 6 | Add roleSlugToLevel(), use Auth::requireLevel() |
+| `modules/drivespace/src/Controllers/FileManagerController.php` | 6 | Add roleSlugToLevel(), use Auth::isAdmin() |
+| `modules/drivespace/src/Controllers/FileManagerAdminController.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/drivespace/templates/admin/files/index.php` | 6 | hasRole('admin') → isAdmin(), level-based write check |
+| `modules/membership/src/Controllers/MembershipAdminController.php` | 6 | requireRole('admin') → requireAdmin() (20×) |
+| `modules/organisation/src/Controllers/OrganisationAdminController.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/organisation/src/Controllers/FinanceController.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/organisation/templates/organisation/*.php` | 6 | hasRole('admin') → isAdmin() |
+| `modules/blog/src/Controllers/ArticleEditorController.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/mailout/src/Controllers/*.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/mailbox/src/Controllers/MailboxAdminController.php` | 6 | requireRole('admin') → requireAdmin() |
+| `modules/mailbox/src/Controllers/MailboxController.php` | 6 | requireRole('member') → requireLevel(10), role() → isAdmin() |
+| `modules/mailbox/src/Services/MailboxService.php` | 6 | Change signatures: string $role → bool $isAdmin |
+| `modules/documents/src/Controllers/DocumentAdminController.php` | 6 | requireRole('admin') → requireAdmin() |
 
 ---
 

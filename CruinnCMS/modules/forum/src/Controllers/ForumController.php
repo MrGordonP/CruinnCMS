@@ -10,7 +10,7 @@ class ForumController extends BaseController
 {
     public function index(): void
     {
-        $categories = ForumManager::provider()->listCategoriesHierarchical(Auth::role());
+        $categories = ForumManager::provider()->listCategoriesHierarchical(Auth::roleLevel());
 
         $this->render('public/forum/index', [
             'title' => 'Forum',
@@ -21,7 +21,7 @@ class ForumController extends BaseController
     public function category(string $slug): void
     {
         $provider = ForumManager::provider();
-        $category = $provider->getCategoryBySlug($slug, Auth::role());
+        $category = $provider->getCategoryBySlug($slug, Auth::roleLevel());
 
         if (!$category) {
             http_response_code(404);
@@ -29,7 +29,7 @@ class ForumController extends BaseController
             return;
         }
 
-        $subcategories = $provider->getSubcategories((int)$category['id'], Auth::role());
+        $subcategories = $provider->getSubcategories((int)$category['id'], Auth::roleLevel());
         $breadcrumbs = $provider->getCategoryBreadcrumbs((int)$category['id']);
 
         $page = max(1, (int)$this->query('page', 1));
@@ -46,8 +46,23 @@ class ForumController extends BaseController
             'threads' => $threads,
             'page' => $page,
             'totalPages' => $totalPages,
-            'canPost' => Auth::check() && Auth::hasRole($category['access_role']),
+            'canPost' => Auth::check() && Auth::roleLevel() >= $this->roleSlugToLevel($category['access_role']),
         ]);
+    }
+
+    /**
+     * Convert role slug to numeric level.
+     */
+    private function roleSlugToLevel(string $slug): int
+    {
+        return match ($slug) {
+            'admin' => 100,
+            'council' => 50,
+            'editor' => 20,
+            'member' => 10,
+            'public' => 0,
+            default => 0,
+        };
     }
 
     public function thread(string $id): void
@@ -61,7 +76,7 @@ class ForumController extends BaseController
             return;
         }
 
-        if (!Auth::hasRole($thread['access_role'])) {
+        if (Auth::roleLevel() < $this->roleSlugToLevel($thread['access_role'])) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;
@@ -91,9 +106,9 @@ class ForumController extends BaseController
             'posts'       => $posts,
             'page'        => $page,
             'totalPages'  => $totalPages,
-            'canReply'    => Auth::check() && Auth::hasRole($thread['access_role']) && !$thread['is_locked'],
+            'canReply'    => Auth::check() && Auth::roleLevel() >= $this->roleSlugToLevel($thread['access_role']) && !$thread['is_locked'],
             'isLoggedIn'       => Auth::check(),
-            'isAdmin'          => Auth::hasRole('admin'),
+            'isAdmin'          => Auth::isAdmin(),
             'currentUserId'    => Auth::userId(),
             'authorPostCounts' => $authorPostCounts,
         ]);
@@ -104,7 +119,7 @@ class ForumController extends BaseController
         Auth::requireLogin();
 
         $provider = ForumManager::provider();
-        $category = $provider->getCategoryBySlug($slug, Auth::role());
+        $category = $provider->getCategoryBySlug($slug, Auth::roleLevel());
 
         if (!$category) {
             Auth::flash('error', 'Category not found or access denied.');
@@ -127,7 +142,7 @@ class ForumController extends BaseController
         Auth::requireLogin();
 
         $provider = ForumManager::provider();
-        $category = $provider->getCategoryBySlug($slug, Auth::role());
+        $category = $provider->getCategoryBySlug($slug, Auth::roleLevel());
 
         if (!$category) {
             Auth::flash('error', 'Category not found or access denied.');
@@ -181,7 +196,7 @@ class ForumController extends BaseController
             $this->redirect('/forum');
         }
 
-        if (!Auth::hasRole($thread['access_role'])) {
+        if (Auth::roleLevel() < $this->roleSlugToLevel($thread['access_role'])) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;
@@ -221,7 +236,7 @@ class ForumController extends BaseController
         }
 
         // Only OP or admin may edit
-        if ((int)$thread['user_id'] !== (int)Auth::userId() && !Auth::hasRole('admin')) {
+        if ((int)$thread['user_id'] !== (int)Auth::userId() && !Auth::isAdmin()) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;
@@ -245,7 +260,7 @@ class ForumController extends BaseController
             $this->redirect('/forum');
         }
 
-        if ((int)$thread['user_id'] !== (int)Auth::userId() && !Auth::hasRole('admin')) {
+        if ((int)$thread['user_id'] !== (int)Auth::userId() && !Auth::isAdmin()) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;
@@ -277,16 +292,14 @@ class ForumController extends BaseController
         $total      = 0;
 
         $provider = ForumManager::provider();
-        $categories = $provider->listCategories(Auth::role());
+        $categories = $provider->listCategories(Auth::roleLevel());
 
         if ($q !== '') {
-            $role    = Auth::role();
-            $allowed = match ($role) {
-                'admin'   => ['public', 'member', 'council', 'admin'],
-                'council' => ['public', 'member', 'council'],
-                'member'  => ['public', 'member'],
-                default   => ['public'],
-            };
+            $level = Auth::roleLevel();
+            $allowed = $level >= 100 ? ['public', 'member', 'editor', 'council', 'admin'] :
+                      ($level >= 50 ? ['public', 'member', 'editor', 'council'] :
+                      ($level >= 20 ? ['public', 'member', 'editor'] :
+                      ($level >= 10 ? ['public', 'member'] : ['public'])));
             $placeholders = implode(',', array_fill(0, count($allowed), '?'));
 
             $params = [
@@ -347,13 +360,13 @@ class ForumController extends BaseController
         }
 
         // Only the post author (or admin) may edit
-        if ((int)$post['user_id'] !== (int)Auth::userId() && !Auth::hasRole('admin')) {
+        if ((int)$post['user_id'] !== (int)Auth::userId() && !Auth::isAdmin()) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;
         }
 
-        if ((int)$post['is_locked'] === 1 && !Auth::hasRole('admin')) {
+        if ((int)$post['is_locked'] === 1 && !Auth::isAdmin()) {
             Auth::flash('error', 'This thread is locked.');
             $this->redirect('/forum/thread/' . (int)$post['thread_id']);
         }
@@ -379,13 +392,13 @@ class ForumController extends BaseController
             $this->redirect('/forum');
         }
 
-        if ((int)$post['user_id'] !== (int)Auth::userId() && !Auth::hasRole('admin')) {
+        if ((int)$post['user_id'] !== (int)Auth::userId() && !Auth::isAdmin()) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;
         }
 
-        if ((int)$post['is_locked'] === 1 && !Auth::hasRole('admin')) {
+        if ((int)$post['is_locked'] === 1 && !Auth::isAdmin()) {
             Auth::flash('error', 'This thread is locked.');
             $this->redirect('/forum/thread/' . (int)$post['thread_id']);
         }
@@ -417,7 +430,7 @@ class ForumController extends BaseController
             $this->redirect('/forum');
         }
 
-        if ((int)$post['user_id'] !== (int)Auth::userId() && !Auth::hasRole('admin')) {
+        if ((int)$post['user_id'] !== (int)Auth::userId() && !Auth::isAdmin()) {
             http_response_code(403);
             $this->render('errors/403', ['title' => 'Access Denied']);
             return;

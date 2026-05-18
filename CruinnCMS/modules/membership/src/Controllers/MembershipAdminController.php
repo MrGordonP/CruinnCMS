@@ -18,7 +18,7 @@ class MembershipAdminController extends BaseController
 
     public function indexMembers(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $filters = [
             'q' => trim((string) $this->query('q', '')),
@@ -56,13 +56,13 @@ class MembershipAdminController extends BaseController
 
     public function showMember(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $this->redirect('/admin/membership?member=' . $id);
     }
 
     public function newMember(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->renderAdmin('admin/membership/members/form', [
             'title'       => 'New Member',
@@ -75,7 +75,7 @@ class MembershipAdminController extends BaseController
 
     public function createMember(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $data = $this->memberPayload();
         $errors = $this->validateMemberPayload($data, null);
@@ -99,13 +99,13 @@ class MembershipAdminController extends BaseController
 
     public function editMember(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $this->redirect('/admin/membership?member=' . $id);
     }
 
     public function updateMember(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $existing = $this->membership->findById($id);
         if (!$existing) {
@@ -143,7 +143,7 @@ class MembershipAdminController extends BaseController
 
     public function createSubscription(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $member = $this->membership->findById($id);
         if (!$member) {
@@ -181,7 +181,7 @@ class MembershipAdminController extends BaseController
 
     public function updateSubscriptionStatus(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $status = (string) $this->input('status', 'unverified');
         $allowed = ['unverified', 'verified', 'disputed', 'waived'];
@@ -204,7 +204,7 @@ class MembershipAdminController extends BaseController
 
     public function recordPayment(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $data = [
             'transaction_id' => $this->input('transaction_id', ''),
@@ -238,7 +238,7 @@ class MembershipAdminController extends BaseController
 
     public function importForm(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->renderAdmin('admin/membership/members/import', [
             'title'       => 'Import Members',
@@ -252,7 +252,7 @@ class MembershipAdminController extends BaseController
      */
     public function processImport(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         if (empty($_FILES['csv_file']['tmp_name']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
             Auth::flash('error', 'No file uploaded or upload error.');
@@ -400,7 +400,7 @@ class MembershipAdminController extends BaseController
      */
     public function confirmImport(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $importMeta = $_SESSION['cruinn_import'] ?? null;
         if (!$importMeta || !isset($importMeta['tmp']) || !file_exists($importMeta['tmp'])) {
@@ -471,7 +471,7 @@ class MembershipAdminController extends BaseController
 
     public function listPlans(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->renderAdmin('admin/membership/plans/index', [
             'title'       => 'Membership Plans',
@@ -482,7 +482,7 @@ class MembershipAdminController extends BaseController
 
     public function newPlan(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->renderAdmin('admin/membership/plans/form', [
             'title'       => 'New Membership Plan',
@@ -494,7 +494,7 @@ class MembershipAdminController extends BaseController
 
     public function createPlan(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $data = $this->planPayload();
         $errors = $this->validatePlanPayload($data, null);
@@ -517,7 +517,7 @@ class MembershipAdminController extends BaseController
 
     public function editPlan(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $plan = $this->membership->findPlan($id);
         if (!$plan) {
@@ -536,7 +536,7 @@ class MembershipAdminController extends BaseController
 
     public function updatePlan(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $plan = $this->membership->findPlan($id);
         if (!$plan) {
@@ -566,7 +566,7 @@ class MembershipAdminController extends BaseController
 
     public function searchMembers(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $q = trim((string) $this->query('q', ''));
         if (strlen($q) < 2) {
             $this->json([]);
@@ -589,7 +589,7 @@ class MembershipAdminController extends BaseController
 
     public function linkUser(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $member = $this->membership->findById($id);
         if (!$member) {
@@ -633,7 +633,7 @@ class MembershipAdminController extends BaseController
 
     public function unlinkUser(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $member = $this->membership->findById($id);
         if (!$member) {

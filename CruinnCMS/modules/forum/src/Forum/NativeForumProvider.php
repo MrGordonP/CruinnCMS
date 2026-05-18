@@ -14,10 +14,10 @@ class NativeForumProvider implements ForumProviderInterface
         $this->db = $db ?? Database::getInstance();
     }
 
-    public function listCategories(?string $viewerRole = null): array
+    public function listCategories(?int $viewerLevel = null): array
     {
-        $role = $viewerRole ?? Auth::role() ?? 'public';
-        $allowed = $this->allowedRolesForViewer($role);
+        $level = $viewerLevel ?? Auth::roleLevel();
+        $allowed = $this->allowedRolesForViewer($level);
         $placeholders = implode(',', array_fill(0, count($allowed), '?'));
 
         // Top-level categories only (parent_id IS NULL)
@@ -50,10 +50,10 @@ class NativeForumProvider implements ForumProviderInterface
      * Fetch all categories in hierarchical structure for PHPBB-style display.
      * Returns array of parent categories with 'children' key containing sub-forums.
      */
-    public function listCategoriesHierarchical(?string $viewerRole = null): array
+    public function listCategoriesHierarchical(?int $viewerLevel = null): array
     {
-        $role = $viewerRole ?? Auth::role() ?? 'public';
-        $allowed = $this->allowedRolesForViewer($role);
+        $level = $viewerLevel ?? Auth::roleLevel();
+        $allowed = $this->allowedRolesForViewer($level);
         $placeholders = implode(',', array_fill(0, count($allowed), '?'));
 
         // Fetch ALL categories with stats
@@ -99,25 +99,25 @@ class NativeForumProvider implements ForumProviderInterface
         return $rootCategories;
     }
 
-    public function getCategoryBySlug(string $slug, ?string $viewerRole = null): ?array
+    public function getCategoryBySlug(string $slug, ?int $viewerLevel = null): ?array
     {
         $category = $this->db->fetch('SELECT * FROM forum_categories WHERE slug = ? AND is_active = 1 LIMIT 1', [$slug]);
         if (!$category) {
             return null;
         }
 
-        $role = $viewerRole ?? Auth::role();
-        if (!$this->canAccessCategoryRole($role, $category['access_role'])) {
+        $level = $viewerLevel ?? Auth::roleLevel();
+        if (!$this->canAccessCategoryRole($level, $category['access_role'])) {
             return null;
         }
 
         return $category;
     }
 
-    public function getSubcategories(int $parentId, ?string $viewerRole = null): array
+    public function getSubcategories(int $parentId, ?int $viewerLevel = null): array
     {
-        $role = $viewerRole ?? Auth::role();
-        $allowed = $this->allowedRolesForViewer($role);
+        $level = $viewerLevel ?? Auth::roleLevel();
+        $allowed = $this->allowedRolesForViewer($level);
         $placeholders = implode(',', array_fill(0, count($allowed), '?'));
 
         $params = array_merge([$parentId], $allowed);
@@ -389,20 +389,45 @@ class NativeForumProvider implements ForumProviderInterface
         });
     }
 
-    private function allowedRolesForViewer(string $viewerRole): array
+    /**
+     * Convert role slug to numeric level.
+     * Maps legacy role names to the engine's level system.
+     */
+    private function roleSlugToLevel(string $slug): int
     {
-        return match ($viewerRole) {
-            'admin' => ['public', 'member', 'council', 'admin'],
-            'council' => ['public', 'member', 'council'],
-            'member' => ['public', 'member'],
-            default => ['public'],
+        return match ($slug) {
+            'admin' => 100,
+            'council' => 50,
+            'editor' => 20,
+            'member' => 10,
+            'public' => 0,
+            default => 0,
         };
     }
 
-    private function canAccessCategoryRole(string $viewerRole, string $accessRole): bool
+    /**
+     * Get all role slugs accessible by a given level.
+     * e.g. level 50 (council) can access: public, member, council
+     */
+    private function levelToAllowedSlugs(int $level): array
     {
-        $hierarchy = ['public' => 0, 'member' => 1, 'council' => 2, 'admin' => 3];
-        return ($hierarchy[$viewerRole] ?? 0) >= ($hierarchy[$accessRole] ?? 0);
+        if ($level >= 100) return ['public', 'member', 'editor', 'council', 'admin'];
+        if ($level >= 50) return ['public', 'member', 'editor', 'council'];
+        if ($level >= 20) return ['public', 'member', 'editor'];
+        if ($level >= 10) return ['public', 'member'];
+        return ['public'];
+    }
+
+    private function allowedRolesForViewer(?int $viewerLevel = null): array
+    {
+        $level = $viewerLevel ?? Auth::roleLevel();
+        return $this->levelToAllowedSlugs($level);
+    }
+
+    private function canAccessCategoryRole(?int $viewerLevel, string $accessRole): bool
+    {
+        $level = $viewerLevel ?? Auth::roleLevel();
+        return $level >= $this->roleSlugToLevel($accessRole);
     }
 
     private function slugify(string $value): string

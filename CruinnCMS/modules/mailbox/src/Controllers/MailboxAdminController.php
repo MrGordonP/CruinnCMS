@@ -24,7 +24,7 @@ class MailboxAdminController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $config        = require CRUINN_ROOT . '/config/config.php';
         $secret        = $config['secret_key'] ?? '';

@@ -25,6 +25,21 @@ class GoogleDriveController extends BaseController
         $this->gdrive = new GoogleDriveService();
     }
 
+    /**
+     * Convert role slug to numeric level.
+     */
+    private function roleSlugToLevel(string $slug): int
+    {
+        return match ($slug) {
+            'admin' => 100,
+            'council' => 50,
+            'editor' => 20,
+            'member' => 10,
+            'public' => 0,
+            default => 0,
+        };
+    }
+
     // ── Browse ──────────────────────────────────────────────────
 
     /**
@@ -32,7 +47,7 @@ class GoogleDriveController extends BaseController
      */
     public function index(): void
     {
-        Auth::requireRole('member');
+        Auth::requireLevel(10);
 
         if (!$this->gdrive->isConfigured()) {
             Auth::flash('error', 'Google Drive integration is not configured.');
@@ -48,7 +63,7 @@ class GoogleDriveController extends BaseController
             $this->redirect('/drivespace');
         }
 
-        $canWrite = Auth::hasRole($this->gdrive->getWriteRole());
+        $canWrite = Auth::roleLevel() >= $this->roleSlugToLevel($this->gdrive->getWriteRole());
 
         $this->renderAdmin('admin/files/gdrive', [
             'title'        => 'Drivespace — Google Drive',
@@ -66,7 +81,7 @@ class GoogleDriveController extends BaseController
      */
     public function download(string $id): void
     {
-        Auth::requireRole('member');
+        Auth::requireLevel(10);
 
         if (!$this->gdrive->isConfigured()) {
             http_response_code(503);
@@ -106,7 +121,7 @@ class GoogleDriveController extends BaseController
      */
     public function fragment(): void
     {
-        Auth::requireRole('member');
+        Auth::requireLevel(10);
 
         if (!$this->gdrive->isConfigured()) {
             $this->json(['error' => 'not_configured']);
@@ -118,7 +133,7 @@ class GoogleDriveController extends BaseController
         try {
             $listing      = $this->gdrive->listFolder($folderId);
             $rootFolderId = $this->gdrive->getRootFolderId();
-            $canWrite     = Auth::hasRole($this->gdrive->getWriteRole());
+            $canWrite     = Auth::roleLevel() >= $this->roleSlugToLevel($this->gdrive->getWriteRole());
         } catch (\Throwable $e) {
             $this->json(['error' => $e->getMessage()]);
             return;
@@ -214,7 +229,7 @@ class GoogleDriveController extends BaseController
      */
     public function upload(): void
     {
-        Auth::requireRole($this->gdrive->getWriteRole());
+        Auth::requireLevel($this->roleSlugToLevel($this->gdrive->getWriteRole()));
 
         if (!$this->gdrive->isConfigured()) {
             $this->json(['success' => false, 'error' => 'Google Drive not configured.']);
@@ -259,7 +274,7 @@ class GoogleDriveController extends BaseController
      */
     public function import(string $id): void
     {
-        Auth::requireRole($this->gdrive->getWriteRole());
+        Auth::requireLevel($this->roleSlugToLevel($this->gdrive->getWriteRole()));
 
         if (!$this->gdrive->isConfigured()) {
             $this->json(['success' => false, 'error' => 'Google Drive not configured.']);

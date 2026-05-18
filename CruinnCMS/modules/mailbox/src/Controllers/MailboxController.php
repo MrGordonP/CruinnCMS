@@ -22,7 +22,7 @@ class MailboxController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        Auth::requireRole('member');
+        Auth::requireLevel(10);
 
         $config        = require CRUINN_ROOT . '/config/config.php';
         $secret        = $config['secret_key'] ?? '';
@@ -36,8 +36,8 @@ class MailboxController extends BaseController
     public function index(): void
     {
         $userId    = Auth::userId();
-        $role      = Auth::role();
-        $mailboxes = $this->mailbox->getAccessibleMailboxes($userId, $role);
+        $isAdmin   = Auth::isAdmin();
+        $mailboxes = $this->mailbox->getAccessibleMailboxes($userId, $isAdmin);
 
         if (empty($mailboxes)) {
             $this->renderAdmin('mailbox/index', [
@@ -80,10 +80,10 @@ class MailboxController extends BaseController
         $folder      = urldecode($folder);
         $page        = max(1, (int) ($this->query('page', 1)));
 
-        $messages    = $this->mailbox->getMessages($mb, $folder, Auth::userId(), Auth::role(), $page);
+        $messages    = $this->mailbox->getMessages($mb, $folder, Auth::userId(), $page);
         $total       = $this->mailbox->getMessageCount((int) $mb['id'], $folder);
         $folders     = $this->mailbox->getFolders($mb);
-        $allMailboxes = $this->mailbox->getAccessibleMailboxes(Auth::userId(), Auth::role());
+        $allMailboxes = $this->mailbox->getAccessibleMailboxes(Auth::userId(), Auth::isAdmin());
 
         $this->renderAdmin('mailbox/messages', [
             'mailbox'      => $mb,
@@ -392,7 +392,7 @@ class MailboxController extends BaseController
      */
     private function resolveMailbox(int $mailboxId): array
     {
-        $mb = $this->mailbox->getMailbox($mailboxId, Auth::userId(), Auth::role());
+        $mb = $this->mailbox->getMailbox($mailboxId, Auth::userId(), Auth::isAdmin());
         if (!$mb) {
             http_response_code(403);
             $this->render('errors/403', []);

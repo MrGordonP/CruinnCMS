@@ -627,52 +627,6 @@ class Auth
     // ══════════════════════════════════════════════════════════════
     //  DEPRECATED COMPATIBILITY SHIMS (Stage 1 refactor)
     // ══════════════════════════════════════════════════════════════
-    //
-    //  These methods were removed in Stage 1 but are retained temporarily
-    //  for module compatibility. They will be removed in a future version.
-    //  DO NOT USE IN NEW CODE.
-
-    /**
-     * @deprecated Use Auth::roleLevel() instead. Returns role slug derived from level.
-     * @return string|null 'admin', 'council', 'member', or 'public'
-     */
-    public static function role(): ?string
-    {
-        $level = self::roleLevel();
-        if ($level >= 100) return 'admin';
-        if ($level >= 50) return 'council';
-        if ($level >= 10) return 'member';
-        return 'public';
-    }
-
-    /**
-     * @deprecated Use Auth::roleLevel() >= $minimumLevel or Auth::isAdmin() instead.
-     * @param string $minimumRole Role slug: 'admin', 'council', 'member', 'public'
-     * @return bool
-     */
-    public static function hasRole(string $minimumRole): bool
-    {
-        $roleLevels = ['public' => 0, 'member' => 10, 'editor' => 20, 'council' => 50, 'admin' => 100];
-        $reqLevel = $roleLevels[$minimumRole] ?? 0;
-        return self::roleLevel() >= $reqLevel;
-    }
-
-    /**
-     * @deprecated Use Auth::requireAdmin() or Auth::requireLevel($level) instead.
-     * @param string $minimumRole Role slug: 'admin', 'council', 'member', 'public'
-     */
-    public static function requireRole(string $minimumRole): void
-    {
-        self::requireLoggedIn();
-
-        if (!self::hasRole($minimumRole)) {
-            http_response_code(403);
-            $template = new Template();
-            echo $template->render('errors/403');
-            exit;
-        }
-    }
-
     // ══════════════════════════════════════════════════════════════
 
     // ── Middleware Callbacks ───────────────────────────────────────

@@ -78,9 +78,9 @@ class MailboxService
      * Return a single officer/mailbox row, asserting access for the given user.
      * Returns null if not found or access denied.
      */
-    public function getMailbox(int $mailboxId, int $userId, string $role): ?array
+    public function getMailbox(int $mailboxId, int $userId, bool $isAdmin): ?array
     {
-        if ($role === 'admin') {
+        if ($isAdmin) {
             return $this->db->fetch(
                 'SELECT id, label AS position, email,
                         imap_host, imap_port, imap_encryption,
@@ -194,7 +194,6 @@ class MailboxService
         array $mailbox,
         string $folder,
         int $userId,
-        string $role,
         int $page = 1,
         int $perPage = 50
     ): array {

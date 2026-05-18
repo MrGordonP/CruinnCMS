@@ -10,7 +10,7 @@ class ForumAdminController extends BaseController
 {
     public function index(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $search = trim((string)$this->query('q', ''));
         $categoryId = (int)$this->query('category_id', 0);
@@ -75,7 +75,7 @@ class ForumAdminController extends BaseController
 
     public function togglePin(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $thread = $this->db->fetch('SELECT id, title, is_pinned FROM forum_threads WHERE id = ? LIMIT 1', [$id]);
         if (!$thread) {
@@ -103,7 +103,7 @@ class ForumAdminController extends BaseController
 
     public function toggleLock(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $thread = $this->db->fetch('SELECT id, title, is_locked FROM forum_threads WHERE id = ? LIMIT 1', [$id]);
         if (!$thread) {
@@ -131,7 +131,7 @@ class ForumAdminController extends BaseController
 
     public function deleteThread(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $thread = $this->db->fetch('SELECT id, title FROM forum_threads WHERE id = ? LIMIT 1', [$id]);
         if (!$thread) {
@@ -153,7 +153,7 @@ class ForumAdminController extends BaseController
 
     public function editThreadTitle(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $thread = $this->db->fetch('SELECT id, title FROM forum_threads WHERE id = ? LIMIT 1', [$id]);
         if (!$thread) {
@@ -181,7 +181,7 @@ class ForumAdminController extends BaseController
 
     public function editPost(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $post = $this->db->fetch(
             'SELECT p.*, t.title AS thread_title, t.category_id FROM forum_posts p
@@ -203,7 +203,7 @@ class ForumAdminController extends BaseController
 
     public function updatePost(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $post = $this->db->fetch('SELECT id, thread_id FROM forum_posts WHERE id = ? LIMIT 1', [$postId]);
         if (!$post) {
@@ -231,7 +231,7 @@ class ForumAdminController extends BaseController
 
     public function deletePost(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $post = $this->db->fetch('SELECT id, thread_id FROM forum_posts WHERE id = ? LIMIT 1', [$postId]);
         if (!$post) {
@@ -253,7 +253,7 @@ class ForumAdminController extends BaseController
 
     public function moveThreadForm(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $thread = $this->db->fetch('SELECT id, title, category_id FROM forum_threads WHERE id = ? LIMIT 1', [$id]);
         if (!$thread) {
@@ -275,7 +275,7 @@ class ForumAdminController extends BaseController
 
     public function moveThread(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $thread = $this->db->fetch('SELECT id, title FROM forum_threads WHERE id = ? LIMIT 1', [$id]);
         if (!$thread) {
@@ -309,7 +309,7 @@ class ForumAdminController extends BaseController
 
     public function listReports(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $status = (string)$this->query('status', 'open');
 
@@ -340,7 +340,7 @@ class ForumAdminController extends BaseController
 
     public function reviewReport(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $report = $this->db->fetch('SELECT id FROM forum_post_reports WHERE id = ? LIMIT 1', [$reportId]);
         if (!$report) {

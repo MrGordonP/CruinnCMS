@@ -9,7 +9,7 @@ class ExampleController extends BaseController
 {
     public function index(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $items = $this->db->fetchAll(
             'SELECT * FROM example_items ORDER BY created_at DESC LIMIT 100'

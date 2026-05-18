@@ -24,7 +24,7 @@ class DocumentAdminController extends BaseController
      */
     public function index(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $status     = $this->query('status', '');
         $categoryId = $this->query('category_id', '');
@@ -102,7 +102,7 @@ class DocumentAdminController extends BaseController
      */
     public function approve(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $doc = $this->db->fetch('SELECT id, status FROM documents WHERE id = ?', [$id]);
@@ -125,7 +125,7 @@ class DocumentAdminController extends BaseController
      */
     public function reject(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $doc = $this->db->fetch('SELECT id, status FROM documents WHERE id = ?', [$id]);
@@ -148,7 +148,7 @@ class DocumentAdminController extends BaseController
      */
     public function archive(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $doc = $this->db->fetch('SELECT id FROM documents WHERE id = ?', [$id]);
@@ -175,7 +175,7 @@ class DocumentAdminController extends BaseController
      */
     public function categories(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $categories = $this->db->fetchAll(
             "SELECT c.*, COUNT(d.id) AS document_count
@@ -201,7 +201,7 @@ class DocumentAdminController extends BaseController
      */
     public function createCategory(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $name  = trim($this->input('name', ''));
@@ -238,7 +238,7 @@ class DocumentAdminController extends BaseController
      */
     public function updateCategory(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $cat = $this->db->fetch('SELECT id FROM document_categories WHERE id = ?', [$id]);
@@ -270,7 +270,7 @@ class DocumentAdminController extends BaseController
      */
     public function deleteCategory(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $cat = $this->db->fetch(

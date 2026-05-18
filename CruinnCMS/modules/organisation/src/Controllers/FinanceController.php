@@ -33,7 +33,7 @@ class FinanceController extends BaseController
      */
     public function index(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $periods = $this->db->fetchAll(
             'SELECT * FROM finance_periods ORDER BY starts_on DESC'
@@ -89,7 +89,7 @@ class FinanceController extends BaseController
      */
     public function newEntry(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $periodId  = (int) ($_GET['period_id'] ?? 0);
         $periods   = $this->db->fetchAll('SELECT id, name FROM finance_periods ORDER BY starts_on DESC');
@@ -114,7 +114,7 @@ class FinanceController extends BaseController
      */
     public function createEntry(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $data = $this->collectEntryData();
@@ -134,7 +134,7 @@ class FinanceController extends BaseController
      */
     public function editEntry(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $entry = $this->db->fetch('SELECT * FROM finance_entries WHERE id = ?', [$id]);
         if (!$entry) { $this->notFound(); return; }
@@ -161,7 +161,7 @@ class FinanceController extends BaseController
      */
     public function updateEntry(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $entry = $this->db->fetch('SELECT id, period_id FROM finance_entries WHERE id = ?', [$id]);
@@ -180,7 +180,7 @@ class FinanceController extends BaseController
      */
     public function deleteEntry(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $entry = $this->db->fetch('SELECT id, period_id FROM finance_entries WHERE id = ?', [$id]);
@@ -199,7 +199,7 @@ class FinanceController extends BaseController
      */
     public function ingest(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $periodId = (int) $this->input('period_id', 0);
@@ -224,7 +224,7 @@ class FinanceController extends BaseController
      */
     public function exportCsv(int $periodId): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $period = $this->db->fetch('SELECT name FROM finance_periods WHERE id = ?', [$periodId]);
         $filename = 'finance-' . ($period ? preg_replace('/[^a-z0-9]+/i', '-', strtolower($period['name'])) : $periodId) . '.csv';
@@ -244,7 +244,7 @@ class FinanceController extends BaseController
      */
     public function periods(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $periods = $this->db->fetchAll('SELECT * FROM finance_periods ORDER BY starts_on DESC');
 
@@ -264,7 +264,7 @@ class FinanceController extends BaseController
      */
     public function createPeriod(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $name      = trim($this->input('name', ''));
@@ -300,7 +300,7 @@ class FinanceController extends BaseController
      */
     public function setCurrentPeriod(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $this->db->execute('UPDATE finance_periods SET is_current = 0');

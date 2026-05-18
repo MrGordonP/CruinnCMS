@@ -36,7 +36,7 @@ class BroadcastController extends BaseController
 
     public function articleImport(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $this->query('article_id', 0);
         if (!$articleId) {
             $this->json(['error' => 'No article_id provided'], 400);
@@ -59,7 +59,7 @@ class BroadcastController extends BaseController
 
     public function broadcastImport(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $broadcastId = (int) $this->query('broadcast_id', 0);
         if (!$broadcastId) {
             $this->json(['error' => 'No broadcast_id provided'], 400);

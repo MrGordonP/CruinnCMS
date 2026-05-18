@@ -31,7 +31,7 @@
                     <?php endif; ?>
                 <?php endforeach; ?>
                 <div class="admin-nav-sep"></div>
-                <?php if (\Cruinn\Auth::hasRole('admin')): ?>
+                <?php if (\Cruinn\Auth::isAdmin()): ?>
                     <a href="<?= url('/admin') ?>" class="admin-nav-organisation">Admin</a>
                 <?php endif; ?>
                 <span class="admin-user"><?= e($current_user['name'] ?? 'Organisation') ?></span>
@@ -43,7 +43,7 @@
                 <a href="<?= url('/organisation/discussions') ?>">Discussions</a>
                 <a href="<?= url('/organisation/inbox') ?>">Inbox</a>
                 <div class="admin-nav-sep"></div>
-                <?php if (\Cruinn\Auth::hasRole('admin')): ?>
+                <?php if (\Cruinn\Auth::isAdmin()): ?>
                     <a href="<?= url('/admin') ?>" class="admin-nav-organisation">Admin</a>
                 <?php endif; ?>
                 <span class="admin-user"><?= e($current_user['name'] ?? 'Organisation') ?></span>

@@ -25,6 +25,21 @@ class FileManagerController extends BaseController
         $this->docService = new DocumentService();
     }
 
+    /**
+     * Convert role slug to numeric level.
+     */
+    private function roleSlugToLevel(string $slug): int
+    {
+        return match ($slug) {
+            'admin' => 100,
+            'council' => 50,
+            'editor' => 20,
+            'member' => 10,
+            'public' => 0,
+            default => 0,
+        };
+    }
+
     // â”€â”€ File Browser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
@@ -470,7 +485,7 @@ class FileManagerController extends BaseController
         }
 
         $folder = $file['folder_id'] ? $this->db->fetch('SELECT * FROM folders WHERE id = ?', [$file['folder_id']]) : null;
-        if (!$this->canEditFile($file, $folder) && !Auth::hasRole('admin')) {
+        if (!$this->canEditFile($file, $folder) && !Auth::isAdmin()) {
             Auth::flash('error', 'Access denied.');
             $this->redirect('/drivespace/' . $id);
         }
@@ -646,7 +661,7 @@ class FileManagerController extends BaseController
             $this->redirect('/drivespace');
         }
 
-        if ($folder['owner_id'] !== Auth::userId() && !Auth::hasRole('admin')) {
+        if ($folder['owner_id'] !== Auth::userId() && !Auth::isAdmin()) {
             Auth::flash('error', 'Access denied.');
             $this->redirect('/drivespace?folder=' . $id);
         }
@@ -689,7 +704,7 @@ class FileManagerController extends BaseController
             $this->redirect('/drivespace');
         }
 
-        if ($folder['owner_id'] !== Auth::userId() && !Auth::hasRole('admin')) {
+        if ($folder['owner_id'] !== Auth::userId() && !Auth::isAdmin()) {
             Auth::flash('error', 'Access denied.');
             $this->redirect('/drivespace');
         }
@@ -746,7 +761,7 @@ class FileManagerController extends BaseController
             [$id]
         );
 
-        $canEdit = Auth::hasRole('admin') || (int)$folder['owner_id'] === Auth::userId();
+        $canEdit = Auth::isAdmin() || (int)$folder['owner_id'] === Auth::userId();
 
         $this->json([
             'folder'   => $folder,
@@ -814,7 +829,7 @@ class FileManagerController extends BaseController
     private function canAccessFolder(array $folder): bool
     {
         // Admin can access everything
-        if (Auth::hasRole('admin')) {
+        if (Auth::isAdmin()) {
             return true;
         }
 
@@ -838,7 +853,7 @@ class FileManagerController extends BaseController
             return true; // Root level â€” logged-in users can add
         }
 
-        if (Auth::hasRole('admin') || $folder['owner_id'] === Auth::userId()) {
+        if (Auth::isAdmin() || $folder['owner_id'] === Auth::userId()) {
             return true;
         }
 
@@ -856,7 +871,7 @@ class FileManagerController extends BaseController
 
     private function canAccessFile(array $file, ?array $folder): bool
     {
-        if (Auth::hasRole('admin')) {
+        if (Auth::isAdmin()) {
             return true;
         }
         if ($file['owner_id'] === Auth::userId()) {
@@ -874,7 +889,7 @@ class FileManagerController extends BaseController
 
     private function canEditFile(array $file, ?array $folder): bool
     {
-        if (Auth::hasRole('admin')) {
+        if (Auth::isAdmin()) {
             return true;
         }
         if ($file['owner_id'] === Auth::userId()) {
@@ -1081,7 +1096,7 @@ class FileManagerController extends BaseController
     public function pushToDrive(int $id): void
     {
         $gdrive = new \Cruinn\Module\Drivespace\Services\GoogleDriveService();
-        \Cruinn\Auth::requireRole($gdrive->getWriteRole());
+        \Cruinn\Auth::requireLevel($this->roleSlugToLevel($gdrive->getWriteRole()));
 
         $row = $this->db->row('SELECT * FROM files WHERE id = ?', [$id]);
         if (!$row) {

@@ -9,7 +9,7 @@ class ArticleEditorController extends BaseController
 {
     public function recordAction(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $id;
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
@@ -156,7 +156,7 @@ class ArticleEditorController extends BaseController
 
     public function undo(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $id;
 
         $state = $this->db->fetch('SELECT * FROM article_edit_state WHERE article_id = ?', [$articleId]);
@@ -210,7 +210,7 @@ class ArticleEditorController extends BaseController
 
     public function redo(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $id;
 
         $state = $this->db->fetch('SELECT * FROM article_edit_state WHERE article_id = ?', [$articleId]);
@@ -263,7 +263,7 @@ class ArticleEditorController extends BaseController
 
     public function publish(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $id;
 
         $state = $this->db->fetch('SELECT * FROM article_edit_state WHERE article_id = ?', [$articleId]);
@@ -299,7 +299,7 @@ class ArticleEditorController extends BaseController
 
     public function discardDraft(string $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         $articleId = (int) $id;
 
         $this->db->execute('DELETE FROM article_draft_blocks WHERE article_id = ?', [$articleId]);

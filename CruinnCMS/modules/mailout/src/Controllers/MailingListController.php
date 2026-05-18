@@ -78,7 +78,7 @@ class MailingListController extends BaseController
      */
     public function create(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $name = trim($this->input('name', ''));
@@ -156,7 +156,7 @@ class MailingListController extends BaseController
      */
     public function update(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $list = $this->db->fetch('SELECT id FROM mailing_lists WHERE id = ?', [$id]);
@@ -190,7 +190,7 @@ class MailingListController extends BaseController
      */
     public function delete(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $list = $this->db->fetch('SELECT name FROM mailing_lists WHERE id = ?', [$id]);
@@ -374,7 +374,7 @@ class MailingListController extends BaseController
      */
     public function addSubscriber(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $list = $this->db->fetch('SELECT id, name FROM mailing_lists WHERE id = ?', [$id]);
@@ -508,7 +508,7 @@ class MailingListController extends BaseController
      */
     public function removeSubscriber(int $id, int $subId): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $this->db->execute(
@@ -523,7 +523,7 @@ class MailingListController extends BaseController
      */
     public function syncList(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::validate();
 
         $affected = $this->syncMailingList($id);

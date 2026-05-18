@@ -25,7 +25,7 @@ class OrganisationAdminController extends BaseController
      */
     public function profile(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $profile = $this->db->fetch('SELECT * FROM organisation_profile WHERE id = 1');
 
@@ -44,7 +44,7 @@ class OrganisationAdminController extends BaseController
      */
     public function saveProfile(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $fields = [
@@ -80,7 +80,7 @@ class OrganisationAdminController extends BaseController
      */
     public function officers(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $officers = $this->db->fetchAll(
             "SELECT o.*, u.display_name AS user_display_name
@@ -130,7 +130,7 @@ class OrganisationAdminController extends BaseController
      */
     public function createOfficer(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $position = trim($this->input('position', ''));
         if ($position === '') {
@@ -163,7 +163,7 @@ class OrganisationAdminController extends BaseController
      */
     public function updateOfficer(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $officer = $this->db->fetch('SELECT id FROM organisation_officers WHERE id = ?', [$id]);
         if (!$officer) {
@@ -207,7 +207,7 @@ class OrganisationAdminController extends BaseController
      */
     public function deleteOfficer(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->db->delete('organisation_officers', 'id = ?', [$id]);
 
@@ -220,7 +220,7 @@ class OrganisationAdminController extends BaseController
      */
     public function assignMailbox(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $mailboxId = (int) $this->input('mailbox_id', 0);
@@ -244,7 +244,7 @@ class OrganisationAdminController extends BaseController
      */
     public function revokeMailbox(int $id, int $grant_id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $this->db->execute(
@@ -265,7 +265,7 @@ class OrganisationAdminController extends BaseController
      */
     public function meetings(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $status = $this->query('status', '');
         $year   = $this->query('year', '');
@@ -328,7 +328,7 @@ class OrganisationAdminController extends BaseController
      */
     public function createMeeting(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $title = trim($this->input('title', ''));
@@ -363,7 +363,7 @@ class OrganisationAdminController extends BaseController
      */
     public function updateMeeting(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $meeting = $this->db->fetch('SELECT id FROM organisation_meetings WHERE id = ?', [$id]);
@@ -409,7 +409,7 @@ class OrganisationAdminController extends BaseController
      */
     public function deleteMeeting(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $this->db->delete('organisation_meetings', 'id = ?', [$id]);
@@ -428,7 +428,7 @@ class OrganisationAdminController extends BaseController
      */
     public function officerAreas(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $officer = $this->db->fetch(
             "SELECT o.*, u.display_name AS user_display_name
@@ -473,7 +473,7 @@ class OrganisationAdminController extends BaseController
      */
     public function saveOfficerAreas(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $officer = $this->db->fetch('SELECT * FROM organisation_officers WHERE id = ?', [$id]);
@@ -516,7 +516,7 @@ class OrganisationAdminController extends BaseController
      */
     public function officerDashboard(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $officer = $this->db->fetch(
             "SELECT o.*, u.display_name AS user_display_name
@@ -556,7 +556,7 @@ class OrganisationAdminController extends BaseController
      */
     public function saveOfficerDashboard(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $officer = $this->db->fetch('SELECT * FROM organisation_officers WHERE id = ?', [$id]);

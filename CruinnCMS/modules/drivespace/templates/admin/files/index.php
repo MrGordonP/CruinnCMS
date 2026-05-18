@@ -420,7 +420,7 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
             </div>
         </form>
 
-        <?php if ($currentFolder['owner_id'] == \Cruinn\Auth::userId() || \Cruinn\Auth::hasRole('admin')): ?>
+        <?php if ($currentFolder['owner_id'] == \Cruinn\Auth::userId() || \Cruinn\Auth::isAdmin()): ?>
         <form method="post"
               action="/drivespace/folders/<?= (int)$currentFolder['id'] ?>/delete"
               style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border,#ccd9d3)"
@@ -434,8 +434,18 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
 <?php endif; ?>
 
 <script>
+<?php
+$gdriveWriteRoleSlug = (new \Cruinn\Module\Drivespace\Services\GoogleDriveService())->getWriteRole();
+$gdriveWriteLevel = match ($gdriveWriteRoleSlug) {
+    'admin' => 100,
+    'council' => 50,
+    'editor' => 20,
+    'member' => 10,
+    default => 0,
+};
+?>
 var GDRIVE_CONFIGURED = <?= \Cruinn\Module\Drivespace\Services\GoogleDriveService::isConfiguredStatic() ? 'true' : 'false' ?>;
-var GDRIVE_CAN_WRITE  = <?= (\Cruinn\Auth::check() && \Cruinn\Auth::hasRole((new \Cruinn\Module\Drivespace\Services\GoogleDriveService())->getWriteRole())) ? 'true' : 'false' ?>;
+var GDRIVE_CAN_WRITE  = <?= (\Cruinn\Auth::check() && \Cruinn\Auth::roleLevel() >= $gdriveWriteLevel) ? 'true' : 'false' ?>;
 var CSRF_TOKEN        = <?= json_encode(\Cruinn\CSRF::getToken()) ?>;
 (function () {
     'use strict';

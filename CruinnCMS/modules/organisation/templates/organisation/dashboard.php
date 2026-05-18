@@ -13,7 +13,7 @@
         </a>
         <a class="pl-nav-item" href="/organisation/inbox">📥 Inbox</a>
     </div>
-    <?php if (\Cruinn\Auth::hasRole('admin')): ?>
+    <?php if (\Cruinn\Auth::isAdmin()): ?>
     <div class="pl-sidebar-footer">
         <a href="/admin" class="btn btn-sm btn-outline" style="width:100%;text-align:center">Admin Panel</a>
     </div>

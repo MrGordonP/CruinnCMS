@@ -19,7 +19,7 @@ class FileManagerAdminController extends BaseController
      */
     public function index(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $users = $this->db->fetchAll(
             "SELECT id, display_name, email,
@@ -44,7 +44,7 @@ class FileManagerAdminController extends BaseController
      */
     public function setQuota(int $id): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
         CSRF::verify();
 
         $user = $this->db->fetch('SELECT id FROM users WHERE id = ?', [$id]);
@@ -72,7 +72,7 @@ class FileManagerAdminController extends BaseController
      */
     public function gdriveSettings(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $gdrive = new GoogleDriveService();
 
@@ -102,7 +102,7 @@ class FileManagerAdminController extends BaseController
      */
     public function gdriveSettingsSave(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $rootFolder = trim($this->input('root_folder_id', ''));
 
@@ -151,7 +151,7 @@ class FileManagerAdminController extends BaseController
      */
     public function gdriveTest(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $gdrive = new GoogleDriveService();
         try {
@@ -172,7 +172,7 @@ class FileManagerAdminController extends BaseController
      */
     public function gdriveClear(): void
     {
-        Auth::requireRole('admin');
+        Auth::requireAdmin();
 
         $this->db->execute("UPDATE settings SET `value` = NULL WHERE `key` = 'gdrive.service_account_json'");
         $this->db->execute("UPDATE settings SET `value` = NULL WHERE `key` = 'gdrive.access_token'");
