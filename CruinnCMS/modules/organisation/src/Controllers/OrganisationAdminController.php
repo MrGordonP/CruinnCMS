@@ -417,4 +417,173 @@ class OrganisationAdminController extends BaseController
         Auth::flash('success', 'Meeting deleted.');
         $this->redirect('/admin/organisation/meetings');
     }
+
+    // ══════════════════════════════════════════════════════════════════
+    //  OFFICER POSITION CONFIGURATION (Stage 4)
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * GET /admin/organisation/officers/{id}/areas
+     * Configure admin area grants for this position.
+     */
+    public function officerAreas(int $id): void
+    {
+        Auth::requireRole('admin');
+
+        $officer = $this->db->fetch(
+            "SELECT o.*, u.display_name AS user_display_name
+             FROM organisation_officers o
+             LEFT JOIN users u ON o.user_id = u.id
+             WHERE o.id = ?",
+            [$id]
+        );
+
+        if (!$officer) {
+            Auth::flash('error', 'Officer position not found.');
+            $this->redirect('/admin/organisation/officers');
+        }
+
+        // Fetch current grants for this position
+        $grantsRows = $this->db->fetchAll(
+            "SELECT area_slug FROM admin_area_grants
+             WHERE context_type = 'position' AND context_id = ?",
+            [$id]
+        );
+
+        $grants = [];
+        foreach ($grantsRows as $row) {
+            $grants[$row['area_slug']] = true;
+        }
+
+        $this->renderAdmin('admin/organisation/officer-areas', [
+            'title'       => 'Area Grants — ' . $officer['position'],
+            'breadcrumbs' => [
+                ['Dashboard', '/admin/dashboard'],
+                ['Officers', '/admin/organisation/officers'],
+                [$officer['position'] . ' — Area Grants'],
+            ],
+            'officer' => $officer,
+            'grants'  => $grants,
+        ]);
+    }
+
+    /**
+     * POST /admin/organisation/officers/{id}/areas
+     * Save admin area grants for this position.
+     */
+    public function saveOfficerAreas(int $id): void
+    {
+        Auth::requireRole('admin');
+        CSRF::verify();
+
+        $officer = $this->db->fetch('SELECT * FROM organisation_officers WHERE id = ?', [$id]);
+        if (!$officer) {
+            Auth::flash('error', 'Officer position not found.');
+            $this->redirect('/admin/organisation/officers');
+        }
+
+        $selectedAreas = $_POST['areas'] ?? [];
+
+        // Clear existing grants for this position
+        $this->db->execute(
+            "DELETE FROM admin_area_grants WHERE context_type = 'position' AND context_id = ?",
+            [$id]
+        );
+
+        // Insert new grants
+        $userId = Auth::userId();
+        foreach ($selectedAreas as $area_slug) {
+            $this->db->insert('admin_area_grants', [
+                'area_slug'    => $area_slug,
+                'context_type' => 'position',
+                'context_id'   => $id,
+                'granted_by'   => $userId,
+            ]);
+        }
+
+        // Refresh position IDs in session if current user holds this position
+        if ($officer['user_id'] === $userId) {
+            Auth::refreshPositionIds();
+        }
+
+        Auth::flash('success', 'Area grants updated for ' . $officer['position'] . '.');
+        $this->redirect('/admin/organisation/officers');
+    }
+
+    /**
+     * GET /admin/organisation/officers/{id}/dashboard
+     * Assign widget dashboard canvas to this position.
+     */
+    public function officerDashboard(int $id): void
+    {
+        Auth::requireRole('admin');
+
+        $officer = $this->db->fetch(
+            "SELECT o.*, u.display_name AS user_display_name
+             FROM organisation_officers o
+             LEFT JOIN users u ON o.user_id = u.id
+             WHERE o.id = ?",
+            [$id]
+        );
+
+        if (!$officer) {
+            Auth::flash('error', 'Officer position not found.');
+            $this->redirect('/admin/organisation/officers');
+        }
+
+        // Get assigned dashboard
+        $assignedDashboardId = $this->db->fetchColumn(
+            "SELECT page_id FROM context_dashboards
+             WHERE context_type = 'position' AND context_id = ?",
+            [$id]
+        );
+
+        $this->renderAdmin('admin/organisation/officer-dashboard', [
+            'title'       => 'Dashboard — ' . $officer['position'],
+            'breadcrumbs' => [
+                ['Dashboard', '/admin/dashboard'],
+                ['Officers', '/admin/organisation/officers'],
+                [$officer['position'] . ' — Dashboard'],
+            ],
+            'officer' => $officer,
+            'assignedDashboardId' => $assignedDashboardId ? (int) $assignedDashboardId : null,
+        ]);
+    }
+
+    /**
+     * POST /admin/organisation/officers/{id}/dashboard
+     * Save dashboard assignment for this position.
+     */
+    public function saveOfficerDashboard(int $id): void
+    {
+        Auth::requireRole('admin');
+        CSRF::verify();
+
+        $officer = $this->db->fetch('SELECT * FROM organisation_officers WHERE id = ?', [$id]);
+        if (!$officer) {
+            Auth::flash('error', 'Officer position not found.');
+            $this->redirect('/admin/organisation/officers');
+        }
+
+        $dashboardId = !empty($_POST['dashboard_id']) ? (int) $_POST['dashboard_id'] : null;
+
+        // Remove existing assignment
+        $this->db->execute(
+            "DELETE FROM context_dashboards WHERE context_type = 'position' AND context_id = ?",
+            [$id]
+        );
+
+        // Insert new assignment if dashboard selected
+        if ($dashboardId) {
+            $this->db->insert('context_dashboards', [
+                'context_type' => 'position',
+                'context_id'   => $id,
+                'page_id'      => $dashboardId,
+                'created_by'   => Auth::userId(),
+            ]);
+        }
+
+        Auth::flash('success', 'Dashboard assignment updated for ' . $officer['position'] . '.');
+        $this->redirect('/admin/organisation/officers');
+    }
 }

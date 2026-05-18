@@ -87,6 +87,7 @@ class Auth
             $_SESSION['user_name']       = $user['display_name'];
             $_SESSION['user_role_level'] = self::loadRoleLevel($user['id']);
             $_SESSION['user_group_level']= self::loadGroupLevel($user['id']);
+            $_SESSION['user_position_ids'] = self::loadPositionIds($user['id']);
             $_SESSION['login_time']      = time();
             unset($_SESSION['_login_error']);
 
@@ -158,6 +159,7 @@ class Auth
         $_SESSION['user_name']       = $user['display_name'];
         $_SESSION['user_role_level'] = self::loadRoleLevel($user['id']);
         $_SESSION['user_group_level']= self::loadGroupLevel($user['id']);
+        $_SESSION['user_position_ids'] = self::loadPositionIds($user['id']);
         $_SESSION['login_time']      = time();
 
         self::$permissionCache = null;
@@ -514,17 +516,68 @@ class Auth
 
     /**
      * Get the current user's organisation position IDs.
-     * Stage 1: stub — returns empty array.
-     * Stage 4: requires organisation module.
+     * Returns array of organisation_officers.id where user_id matches and active = 1.
+     * Returns empty array if not logged in or organisation module inactive.
+     *
+     * Cached in session for performance. Position changes require re-login to reflect.
      *
      * @return int[]
      */
     public static function positionIds(): array
     {
-        // Stage 1 stub
-        return [];
+        if (!self::check()) {
+            return [];
+        }
 
-        // Stage 4: query organisation_positions via organisation module
+        // Check if organisation module is active
+        if (!class_exists('Cruinn\Modules\ModuleRegistry') || !\Cruinn\Modules\ModuleRegistry::isActive('organisation')) {
+            return [];
+        }
+
+        // Return cached value if present
+        if (isset($_SESSION['user_position_ids']) && is_array($_SESSION['user_position_ids'])) {
+            return $_SESSION['user_position_ids'];
+        }
+
+        // Load from database and cache
+        $_SESSION['user_position_ids'] = self::loadPositionIds(self::userId());
+        return $_SESSION['user_position_ids'];
+    }
+
+    /**
+     * Load organisation position IDs for a user from the DB.
+     * Called at login and when positions are modified.
+     *
+     * @return int[]
+     */
+    private static function loadPositionIds(int $userId): array
+    {
+        $db = Database::getInstance();
+
+        // Check if organisation_officers table exists
+        try {
+            $ids = $db->fetchColumn(
+                'SELECT id FROM organisation_officers WHERE user_id = ? AND active = 1 ORDER BY sort_order',
+                [$userId],
+                \PDO::FETCH_COLUMN | \PDO::FETCH_NUM
+            );
+            return is_array($ids) ? array_map('intval', $ids) : [];
+        } catch (\Throwable $e) {
+            // Table doesn't exist or query failed — module not installed or misconfigured
+            error_log("Auth::loadPositionIds() failed: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Refresh cached position IDs for the current user.
+     * Call this after modifying organisation_officers assignments.
+     */
+    public static function refreshPositionIds(): void
+    {
+        if (self::check()) {
+            $_SESSION['user_position_ids'] = self::loadPositionIds(self::userId());
+        }
     }
 
     /**

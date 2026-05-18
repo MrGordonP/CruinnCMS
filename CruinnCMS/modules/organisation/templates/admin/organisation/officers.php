@@ -107,6 +107,15 @@
                     </td>
                     <td><?= $o['active'] ? '✓' : '—' ?></td>
                     <td class="actions">
+                        <a href="/admin/organisation/officers/<?= (int)$o['id'] ?>/areas" 
+                           class="btn btn-xs btn-outline" title="Configure admin area access">
+                            Areas
+                        </a>
+                        <a href="/admin/organisation/officers/<?= (int)$o['id'] ?>/dashboard" 
+                           class="btn btn-xs btn-outline" title="Assign widget dashboard">
+                            Dashboard
+                        </a>
+                        
                         <button type="button" class="btn btn-xs btn-secondary"
                                 onclick="this.closest('tr').nextElementSibling.style.display='table-row';this.style.display='none'">
                             Edit

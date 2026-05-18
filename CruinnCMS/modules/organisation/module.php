@@ -69,6 +69,10 @@ return [
         $router->post('/admin/organisation/officers',                                  [OrganisationAdminController::class, 'createOfficer']);
         $router->post('/admin/organisation/officers/{id}/update',                      [OrganisationAdminController::class, 'updateOfficer']);
         $router->post('/admin/organisation/officers/{id}/delete',                      [OrganisationAdminController::class, 'deleteOfficer']);
+        $router->get('/admin/organisation/officers/{id}/areas',                        [OrganisationAdminController::class, 'officerAreas']);
+        $router->post('/admin/organisation/officers/{id}/areas',                       [OrganisationAdminController::class, 'saveOfficerAreas']);
+        $router->get('/admin/organisation/officers/{id}/dashboard',                    [OrganisationAdminController::class, 'officerDashboard']);
+        $router->post('/admin/organisation/officers/{id}/dashboard',                   [OrganisationAdminController::class, 'saveOfficerDashboard']);
         $router->post('/admin/organisation/officers/{id}/mailbox/assign',              [OrganisationAdminController::class, 'assignMailbox']);
         $router->post('/admin/organisation/officers/{id}/mailbox/{grant_id}/revoke',   [OrganisationAdminController::class, 'revokeMailbox']);
 
