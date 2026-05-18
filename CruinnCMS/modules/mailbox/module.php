@@ -37,6 +37,15 @@ return [
         ['group' => 'Mail', 'label' => 'Mailbox', 'url' => '/mail', 'icon' => '✉️', 'roles' => ['admin', 'council', 'member']],
     ],
 
+    'widget_providers' => [
+        [
+            'slug'     => 'notifications',
+            'label'    => 'Mailbox Notifications',
+            'provider' => 'Cruinn\\Module\\Mailbox\\Widgets\\NotificationsWidget::getData',
+            'template' => 'widgets/notifications',
+        ],
+    ],
+
     'routes' => static function (object $router): void {
 
         // --- Public / member-facing routes ---

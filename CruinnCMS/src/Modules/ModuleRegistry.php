@@ -69,6 +69,7 @@ class ModuleRegistry
                 'provides'        => [],
                 'submodules'      => [],
                 'widgets'         => null,
+                'widget_providers' => [],
             ], $def);
         }
     }
@@ -202,6 +203,97 @@ class ModuleRegistry
             }
         }
         return '';
+    }
+
+    /**
+     * Render a provider-based widget with settings and userContext.
+     * Used by module-widget blocks when userContext is injected.
+     *
+     * @param string $widgetKey Widget key (module:key format)
+     * @param array  $settings  Widget settings
+     * @param array  $userContext User context: ['user_id', 'role_id', 'role_level', 'position_ids']
+     * @return string Rendered HTML or error message
+     */
+    public static function renderProviderWidget(string $widgetKey, array $settings, array $userContext): string
+    {
+        self::load();
+
+        // Parse widget key (format: module:widget-slug)
+        if (!str_contains($widgetKey, ':')) {
+            return '<p class="cruinn-module-widget-error">Invalid widget key format.</p>';
+        }
+
+        [$moduleSlug, $widgetSlug] = explode(':', $widgetKey, 2);
+
+        // Check module exists and is active
+        if (!isset(self::$modules[$moduleSlug]) || !self::isActive($moduleSlug)) {
+            return '<p class="cruinn-module-widget-error">Module not active: ' . htmlspecialchars($moduleSlug, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+
+        $module = self::$modules[$moduleSlug];
+        $providers = $module['widget_providers'] ?? [];
+
+        // Find widget provider
+        $providerDef = null;
+        foreach ($providers as $p) {
+            if (($p['slug'] ?? '') === $widgetSlug) {
+                $providerDef = $p;
+                break;
+            }
+        }
+
+        if (!$providerDef) {
+            // Fall back to simple widget rendering
+            return self::renderWidgetByKey($widgetKey);
+        }
+
+        // Call provider
+        $provider = $providerDef['provider'] ?? null;
+        $template = $providerDef['template'] ?? null;
+
+        if (!$provider || !is_string($provider)) {
+            return '<p class="cruinn-module-widget-error">Widget provider not defined.</p>';
+        }
+
+        // Parse provider string (format: "Class::method")
+        if (!str_contains($provider, '::')) {
+            return '<p class="cruinn-module-widget-error">Invalid provider format.</p>';
+        }
+
+        [$class, $method] = explode('::', $provider, 2);
+
+        if (!class_exists($class) || !method_exists($class, $method)) {
+            return '<p class="cruinn-module-widget-error">Provider class or method not found: ' . htmlspecialchars($provider, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+
+        try {
+            $data = $class::$method($settings, $userContext);
+        } catch (\Throwable $e) {
+            error_log("ModuleRegistry: Widget provider failed for {$widgetKey}: " . $e->getMessage());
+            return '<p class="cruinn-module-widget-error">Widget provider error.</p>';
+        }
+
+        // Render template
+        if (!$template) {
+            return '<p class="cruinn-module-widget-error">No template specified for widget.</p>';
+        }
+
+        // Template path relative to module template_path
+        $templatePath = $module['template_path'];
+        if (!$templatePath) {
+            return '<p class="cruinn-module-widget-error">Module template path not set.</p>';
+        }
+
+        $fullPath = rtrim($templatePath, '/') . '/' . ltrim($template, '/') . '.php';
+        if (!file_exists($fullPath)) {
+            return '<p class="cruinn-module-widget-error">Widget template not found: ' . htmlspecialchars($template, ENT_QUOTES, 'UTF-8') . '</p>';
+        }
+
+        // Render template with data
+        ob_start();
+        extract($data);
+        require $fullPath;
+        return ob_get_clean();
     }
 
     /**

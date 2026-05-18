@@ -23,7 +23,20 @@ BlockRegistry::register([
             return '<p class="cruinn-module-widget-empty">Module widget: no widget selected.</p>';
         }
 
-        $html = ModuleRegistry::renderWidgetByKey($widgetKey);
+        // Check if userContext is present (injected by DashboardService for widget dashboards)
+        $userContext = $config['_userContext'] ?? null;
+
+        if ($userContext && is_array($userContext)) {
+            // Provider-based widget with userContext — extract settings and call provider
+            $settings = $config;
+            unset($settings['widget_key'], $settings['_userContext']);
+
+            $html = ModuleRegistry::renderProviderWidget($widgetKey, $settings, $userContext);
+        } else {
+            // Simple widget (sidebar) — pre-rendered HTML
+            $html = ModuleRegistry::renderWidgetByKey($widgetKey);
+        }
+
         if ($html === '') {
             return '<p class="cruinn-module-widget-empty">Module widget not found: '
                  . htmlspecialchars($widgetKey, ENT_QUOTES, 'UTF-8')
