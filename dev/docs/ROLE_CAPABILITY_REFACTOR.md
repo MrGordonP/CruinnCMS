@@ -1,11 +1,12 @@
 # CruinnCMS — Role & Capability Refactor + Widget Dashboards
 
-**Status:** Stage 3 Complete (commit 862f8ed)
+**Status:** Stage 5 Complete (commit 252c18d)
 **Version target:** v1.0.0-beta.9
 **Agreed:** May 2026
 **Stage 1 landed:** 16 May 2026
 **Stage 2 landed:** 16 May 2026
 **Stage 3 landed:** 16 May 2026
+**Stage 5 landed:** 18 May 2026
 
 ---
 
@@ -241,12 +242,58 @@ Details to be designed when Stage 2–3 are complete.
 
 ## Stage 5 — Notifications widget
 
-A `notifications` widget registered by the mailbox module:
+**✓ COMPLETE** (commit 252c18d, 18 May 2026)
 
-- **Data provider:** `MailboxModule::notificationsData(array $settings, array $userContext)`
-  — queries unread counts for mailboxes the user/position has access to
-- **Template partial:** `templates/admin/widgets/notifications.php`
-- No new block type needed — uses existing `module-widget` block
+A `notifications` widget registered by the mailbox module that queries unread mailbox counts with access control.
+
+### Implementation
+
+**New files:**
+- `modules/mailbox/src/Widgets/NotificationsWidget.php` — Data provider class
+- `modules/mailbox/templates/widgets/notifications.php` — Widget template partial
+
+**Modified files:**
+- `src/Modules/ModuleRegistry.php` — Added `widget_providers` support + `renderProviderWidget()`
+- `src/BlockTypes/module-widget/definition.php` — Enhanced to check for `_userContext` and call providers
+- `modules/mailbox/module.php` — Registered notifications widget in `widget_providers` array
+
+### How It Works
+
+1. **Provider registration:** Modules define `widget_providers` array with provider class/method + template path
+2. **userContext injection:** `DashboardService::renderWidgetCanvas()` injects `_userContext` into module-widget block properties
+3. **Provider calling:** module-widget block renderer checks for `_userContext`, calls provider with `(settings, userContext)`
+4. **Template rendering:** Provider returns data array, template renders with extracted variables
+5. **Fallback:** If no userContext or no provider, falls back to simple widget (pre-rendered HTML)
+
+### Widget Provider Pattern
+
+```php
+'widget_providers' => [
+    [
+        'slug'     => 'notifications',
+        'label'    => 'Mailbox Notifications',
+        'provider' => 'Cruinn\\Module\\Mailbox\\Widgets\\NotificationsWidget::getData',
+        'template' => 'widgets/notifications',
+    ],
+]
+```
+
+Provider signature: `public static function getData(array $settings, array $userContext): array`
+
+### Data Provider
+
+`NotificationsWidget::getData()` queries:
+- Accessible mailboxes via `MailboxService::getAccessibleMailboxes()`
+- Unread counts by comparing `mailbox_messages` vs `mailbox_reads` for user
+- Returns `['mailboxes' => [...], 'total_unread' => int]`
+
+### Template
+
+`widgets/notifications.php` renders:
+- Mailbox list with unread badges
+- Links to `/mail/{mailbox_id}`
+- Total unread count in widget title
+- Styled with scoped CSS (no external dependencies)
 
 ---
 
@@ -266,7 +313,11 @@ A `notifications` widget registered by the mailbox module:
 | `schema/instance_core.sql` | 3 | Add context_dashboards table |
 | `src/Services/DashboardService.php` | 3 | renderWidgetCanvas() + userContext injection |
 | `src/Admin/Controllers/SiteBuilderController.php` | 3 | Dashboards tab |
-| Mailbox module | 5 | Register notifications widget |
+| `src/Modules/ModuleRegistry.php` | 5 | widget_providers support + renderProviderWidget() |
+| `src/BlockTypes/module-widget/definition.php` | 5 | userContext detection + provider calling |
+| `modules/mailbox/src/Widgets/NotificationsWidget.php` | 5 | NEW — Data provider for notifications widget |
+| `modules/mailbox/templates/widgets/notifications.php` | 5 | NEW — Widget template partial |
+| `modules/mailbox/module.php` | 5 | Register notifications widget |
 
 ---
 
