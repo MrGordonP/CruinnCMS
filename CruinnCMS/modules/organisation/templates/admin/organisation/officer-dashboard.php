@@ -24,7 +24,7 @@ $canvases = $dashboardService->listDashboardCanvases();
             </p>
         <?php else: ?>
             <p class="warning-banner">
-                <strong>No linked account.</strong> 
+                <strong>No linked account.</strong>
                 Assign a user account to this position before setting a dashboard.
             </p>
         <?php endif; ?>
@@ -51,7 +51,7 @@ $canvases = $dashboardService->listDashboardCanvases();
                 <div class="form-group">
                     <label>Current Dashboard</label>
                     <p>
-                        <a href="/admin/site-builder/editor/dashboard/<?= (int) $assignedDashboardId ?>" 
+                        <a href="/admin/site-builder/editor/dashboard/<?= (int) $assignedDashboardId ?>"
                            class="btn btn-outline btn-sm" target="_blank">Edit Blocks &rarr;</a>
                     </p>
                 </div>

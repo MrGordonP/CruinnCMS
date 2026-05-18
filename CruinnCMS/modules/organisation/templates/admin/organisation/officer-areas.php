@@ -24,7 +24,7 @@ $allAreas = file_exists($areasPath) ? require $areasPath : [];
             </p>
         <?php else: ?>
             <p class="warning-banner">
-                <strong>No linked account.</strong> 
+                <strong>No linked account.</strong>
                 Assign a user account to this position before granting admin area access.
             </p>
         <?php endif; ?>
@@ -34,7 +34,7 @@ $allAreas = file_exists($areasPath) ? require $areasPath : [];
 
             <h3>Admin Area Access</h3>
             <p class="form-hint">
-                Select which admin sections this position holder can access. 
+                Select which admin sections this position holder can access.
                 Users with this position will have editor-level access to these areas without full admin privileges.
             </p>
 
