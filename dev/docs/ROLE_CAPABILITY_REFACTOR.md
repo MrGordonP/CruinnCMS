@@ -1,11 +1,12 @@
 # CruinnCMS — Role & Capability Refactor + Widget Dashboards
 
-**Status:** Stage 5 Complete (commit 252c18d)
+**Status:** Stage 4 Complete (commit 968c1e1)
 **Version target:** v1.0.0-beta.9
 **Agreed:** May 2026
 **Stage 1 landed:** 16 May 2026
 **Stage 2 landed:** 16 May 2026
 **Stage 3 landed:** 16 May 2026
+**Stage 4 landed:** 18 May 2026
 **Stage 5 landed:** 18 May 2026
 
 ---
@@ -233,10 +234,74 @@ this role/position uses).
 
 ## Stage 4 — Position dashboard in org module
 
-The organisation module exposes a position → dashboard assignment UI and the position
-area grants UI (from Stage 2). These are module-level features, not engine features.
+**✓ COMPLETE** (commit 968c1e1, 18 May 2026)
 
-Details to be designed when Stage 2–3 are complete.
+Integrate organisation_officers table to provide position-based authorization. Users holding officer positions inherit access grants and dashboard assignments from those positions.
+
+### Implementation
+
+**Modified:** `src/Auth.php`
+
+**Added methods:**
+- `Auth::positionIds(): array` — Returns array of active `organisation_officers.id` where user_id matches, cached in session
+- `Auth::loadPositionIds(int $userId): array` — Queries organisation_officers table (called at login)
+- `Auth::refreshPositionIds(): void` — Reloads position IDs in session (call after modifying officer assignments)
+
+**Login integration:**
+- `Auth::attempt()` and `Auth::loginById()` now call `loadPositionIds()` and store in session
+- Position IDs cached alongside role_level and group_level for performance
+
+**Access control:**
+- `Auth::requireAdminArea()` already checks position grants (implemented in Stage 2)
+- Checks role grants first, then iterates position grants
+- Admin-level users bypass all grants (100% access)
+
+### Organisation Module Changes
+
+**New routes:**
+- GET/POST `/admin/organisation/officers/{id}/areas` — Configure admin area grants
+- GET/POST `/admin/organisation/officers/{id}/dashboard` — Assign widget dashboard canvas
+
+**New controller methods:** `OrganisationAdminController`
+- `officerAreas(int $id)` — Render area grants UI
+- `saveOfficerAreas(int $id)` — Save grants to admin_area_grants (context_type='position', context_id=officer_id)
+- `officerDashboard(int $id)` — Render dashboard assignment UI
+- `saveOfficerDashboard(int $id)` — Save to context_dashboards (context_type='position')
+
+**New templates:**
+- `modules/organisation/templates/admin/organisation/officer-areas.php` — Checkbox grid of grantable areas
+- `modules/organisation/templates/admin/organisation/officer-dashboard.php` — Dashboard dropdown selector
+
+**Modified template:**
+- `officers.php` — Added "Areas" and "Dashboard" config links to actions column
+
+### How It Works
+
+1. **Position assignment:** Admin assigns user to officer position in organisation module
+2. **Login:** User logs in → `Auth::loadPositionIds()` queries organisation_officers → stores IDs in session
+3. **Area grants:** Admin grants "blog" area to "Secretary" position → stored in admin_area_grants (context_type='position', context_id=officer_id)
+4. **Access check:** User visits `/admin/blog` → `Auth::requireAdminArea('blog')` checks position grants → access granted
+5. **Dashboard resolution:** `DashboardService::resolveDashboardForUser()` checks position dashboard → renders custom dashboard if assigned
+
+### Data Flow
+
+```
+organisation_officers (user_id, position, active)
+  ↓
+Auth::positionIds() [cached in session]
+  ↓
+Auth::requireAdminArea() → checks admin_area_grants WHERE context_type='position'
+  ↓
+Access granted to position holder
+```
+
+### Result
+
+Position-based access control fully operational:
+- Users holding officer positions inherit grants from those positions
+- Position dashboards override role dashboards in resolution cascade
+- Admin areas accessible via position without admin role required
+- Session-cached for performance (one DB query at login)
 
 ---
 
@@ -313,6 +378,12 @@ Provider signature: `public static function getData(array $settings, array $user
 | `schema/instance_core.sql` | 3 | Add context_dashboards table |
 | `src/Services/DashboardService.php` | 3 | renderWidgetCanvas() + userContext injection |
 | `src/Admin/Controllers/SiteBuilderController.php` | 3 | Dashboards tab |
+| `src/Auth.php` | 4 | positionIds(), loadPositionIds(), refreshPositionIds() |
+| `modules/organisation/module.php` | 4 | Routes for officer areas/dashboard config |
+| `modules/organisation/src/Controllers/OrganisationAdminController.php` | 4 | officerAreas(), saveOfficerAreas(), officerDashboard(), saveOfficerDashboard() |
+| `modules/organisation/templates/admin/organisation/officer-areas.php` | 4 | NEW — Area grants UI |
+| `modules/organisation/templates/admin/organisation/officer-dashboard.php` | 4 | NEW — Dashboard assignment UI |
+| `modules/organisation/templates/admin/organisation/officers.php` | 4 | Add Areas + Dashboard config links |
 | `src/Modules/ModuleRegistry.php` | 5 | widget_providers support + renderProviderWidget() |
 | `src/BlockTypes/module-widget/definition.php` | 5 | userContext detection + provider calling |
 | `modules/mailbox/src/Widgets/NotificationsWidget.php` | 5 | NEW — Data provider for notifications widget |
