@@ -585,12 +585,12 @@ cat dev/docs/sessions/v1.0.0-beta.9_role-capability-refactor_CHECKPOINT.md
 
 All six stages of the Role & Capability Refactor have been successfully implemented:
 
-✅ Level-based Auth API replacing role slug comparisons  
-✅ Admin area grants for granular access control  
-✅ Widget dashboard system with context-based assignment  
-✅ Position-based authorization via organisation module  
-✅ Working notifications widget demonstrating the pattern  
-✅ Complete module migration with compatibility shims removed  
+✅ Level-based Auth API replacing role slug comparisons
+✅ Admin area grants for granular access control
+✅ Widget dashboard system with context-based assignment
+✅ Position-based authorization via organisation module
+✅ Working notifications widget demonstrating the pattern
+✅ Complete module migration with compatibility shims removed
 
 **Result:**
 - Engine is fully instance-agnostic
