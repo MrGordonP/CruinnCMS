@@ -11,6 +11,7 @@ use Cruinn\App;
 use Cruinn\Template;
 use Cruinn\Database;
 use Cruinn\Auth;
+use Cruinn\Services\CruinnRenderService;
 
 abstract class BaseController
 {
@@ -48,6 +49,82 @@ abstract class BaseController
         $data['acp_mode'] = true;
         $this->template->setLayout('admin/layout');
         echo $this->template->render($view, $data);
+    }
+
+    /**
+     * Render a system page (login, profile, register, etc.) through the block/template
+     * system so it inherits site chrome (header, footer zones) like any other page.
+     *
+     * Resolution is by system_key in the system_pages table — never by public slug —
+     * so renaming a page slug never breaks engine routing.
+     *
+     * Falls back to a bare render('public/{key}', $data) if no system_pages row exists —
+     * graceful degradation for instances that have not had migration 019 applied.
+     */
+    protected function renderSystemPage(string $key, array $data = []): void
+    {
+        // Push all data into Template globals so php-include partials can see them.
+        foreach ($data as $k => $value) {
+            Template::addGlobal($k, $value);
+        }
+
+        $page = null;
+        try {
+            $mapping = $this->db->fetch(
+                'SELECT p.* FROM system_pages sp
+                  JOIN pages_index p ON p.id = sp.page_id
+                  WHERE sp.system_key = ? LIMIT 1',
+                [$key]
+            );
+            if ($mapping) {
+                $page = $mapping;
+            }
+        } catch (\Throwable $e) {
+            // system_pages table doesn't exist yet (pre-migration-019 instance)
+        }
+
+        if (!$page) {
+            // Graceful fallback: system_pages not seeded yet.
+            $this->render('public/' . $key, $data);
+            return;
+        }
+
+        $cruinn = new CruinnRenderService();
+        // Pass page-level data as render context so dynamic blocks (e.g. php-include)
+        // receive variables like $user, $oauth_providers, $errors directly.
+        $cruinn->setContext($data);
+
+        $tplRow = $this->db->fetch(
+            'SELECT * FROM page_templates WHERE slug = ? LIMIT 1',
+            [$page['template'] ?? 'default']
+        );
+        $tpl = $tplRow ?: ['id' => 0, 'slug' => 'default', 'zones' => ['main'], 'settings' => '{}'];
+        $tpl['zones']    = json_decode($tpl['zones']    ?? '["main"]', true) ?? ['main'];
+        $tpl['settings'] = json_decode($tpl['settings'] ?? '{}',       true) ?: [];
+
+        $templateId = (int)($tpl['id'] ?? 0);
+        $pageZone   = (string)($page['page_zone'] ?? 'main');
+
+        // Resolve zone canvases for every zone except the page's own content zone.
+        $zoneCanvasMap = [];
+        foreach ($tpl['zones'] as $zone) {
+            if ($zone === $pageZone) {
+                continue;
+            }
+            $canvasId = $cruinn->resolveZoneCanvasId($zone, $templateId ?: null, (int)$page['id']);
+            if ($canvasId !== null) {
+                $zoneCanvasMap[$zone] = $canvasId;
+            }
+        }
+
+        $merged = $cruinn->buildWithTemplate($templateId, $pageZone, $zoneCanvasMap, (int)$page['id']);
+        Template::addGlobal('cruinn_css', $merged['css']);
+
+        echo $this->template->render('public/cruinn-page', [
+            'title'   => $data['title'] ?? $page['title'],
+            'page'    => $page,
+            'content' => $merged['html'],
+        ]);
     }
 
     /**

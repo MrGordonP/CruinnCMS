@@ -129,14 +129,13 @@ class CruinnRenderService
     }
 
     /**
-     * Resolve a zone canvas page ID using the 4-level priority chain.
+     * Resolve a zone canvas page ID using the 3-level priority chain.
      * Returns null if no canvas is found for this zone.
      *
      * Resolution order (most specific wins):
      *   1. Page-level zone_overrides JSON
      *   2. Template zone_canvases JSON
      *   3. Global zone canvas (canvas_type='zone' AND zone_name=?)
-     *   4. Legacy slug fallback (_zoneName) — deprecated, kept for pre-seed instances
      */
     public function resolveZoneCanvasId(string $zone, ?int $templateId = null, ?int $pageId = null): ?int
     {
@@ -185,17 +184,6 @@ class CruinnRenderService
                     $canvasPageId = (int) $row['id'];
                 }
             } catch (\Throwable $e) { /* column may not exist yet */ }
-        }
-
-        // 4. Legacy slug fallback
-        if ($canvasPageId === null) {
-            $row = $this->db->fetch(
-                'SELECT id FROM pages_index WHERE slug = ? LIMIT 1',
-                ['_' . $zone]
-            );
-            if ($row) {
-                $canvasPageId = (int) $row['id'];
-            }
         }
 
         return $canvasPageId;

@@ -29,13 +29,21 @@ class CruinnController extends BaseController
      */
     private function requireEditorAuth(): void
     {
-        $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
-        if ($editorInstance !== null && PlatformAuth::check()) {
-            // Swap the DB singleton to the correct DB (platform or instance)
-            // based on which instance the platform editor is targeting.
-            \Cruinn\Database::resetInstance();
-            $this->db = \Cruinn\Database::getInstance();
-            return;
+        // DB swap only applies to platform-context requests (/cms/editor/...).
+        // Admin-context requests (/admin/editor/...) always use the instance DB
+        // via Auth::requireAdmin(), even if a platform session is also active.
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $isPlatformContext = str_starts_with(parse_url($uri, PHP_URL_PATH) ?? $uri, '/cms/');
+
+        if ($isPlatformContext) {
+            $editorInstance = $_SESSION['_platform_editor_instance'] ?? null;
+            if ($editorInstance !== null && PlatformAuth::check()) {
+                // Swap the DB singleton to the correct DB (platform or instance)
+                // based on which instance the platform editor is targeting.
+                \Cruinn\Database::resetInstance();
+                $this->db = \Cruinn\Database::getInstance();
+                return;
+            }
         }
         Auth::requireAdmin();
     }
@@ -49,6 +57,12 @@ class CruinnController extends BaseController
      */
     private function resolveBlockKey(int $pageId): array
     {
+        // Platform editor pages are stored by page_id only — page_templates doesn't
+        // exist in the platform DB and template-zone block storage is never used there.
+        if (($_SESSION['_platform_editor_instance'] ?? null) === '__platform__') {
+            return ['col' => 'page_id', 'val' => $pageId];
+        }
+
         $tplId = (int) ($this->db->fetchColumn(
             'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1', [$pageId]
         ) ?: 0);

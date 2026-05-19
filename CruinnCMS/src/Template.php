@@ -64,6 +64,16 @@ class Template
     }
 
     /**
+     * Return all currently registered global variables.
+     * Used by block renderers (e.g. php-include) that execute outside the
+     * Template::renderPartial() path and need access to controller-set globals.
+     */
+    public static function globals(): array
+    {
+        return self::$globals;
+    }
+
+    /**
      * Set the layout template for this render cycle.
      * Pass null to render without a layout (for AJAX responses, etc.).
      */

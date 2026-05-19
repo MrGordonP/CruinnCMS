@@ -24,8 +24,8 @@ class AuthController extends BaseController
             $this->redirect($this->defaultRedirectForRole());
         }
 
-        $this->render('public/login', [
-            'title' => 'Login',
+        $this->renderSystemPage('login', [
+            'title'           => 'Login',
             'oauth_providers' => OAuthService::enabledProviders(),
         ]);
     }
@@ -95,7 +95,7 @@ class AuthController extends BaseController
      */
     public function showForgotPassword(): void
     {
-        $this->render('public/forgot-password', [
+        $this->renderSystemPage('forgot-password', [
             'title' => 'Forgot Password',
         ]);
     }
@@ -167,7 +167,7 @@ class AuthController extends BaseController
             $this->redirect('/forgot-password');
         }
 
-        $this->render('public/reset-password', [
+        $this->renderSystemPage('reset-password', [
             'title' => 'Reset Password',
             'token' => $token,
         ]);
@@ -232,7 +232,7 @@ class AuthController extends BaseController
             $this->redirect('/login');
         }
 
-        $this->render('public/profile', [
+        $this->renderSystemPage('profile', [
             'title' => 'My Profile',
             'user'  => $user,
         ]);
@@ -301,7 +301,7 @@ class AuthController extends BaseController
         }
 
         if (!empty($errors)) {
-            $this->render('public/profile', [
+            $this->renderSystemPage('profile', [
                 'title'  => 'My Profile',
                 'user'   => array_merge($user, ['display_name' => $displayName, 'email' => $email]),
                 'errors' => $errors,
@@ -360,8 +360,8 @@ class AuthController extends BaseController
             $this->redirect($this->defaultRedirectForRole());
         }
 
-        $this->render('public/register', [
-            'title'          => 'Create Account',
+        $this->renderSystemPage('register', [
+            'title'           => 'Create Account',
             'oauth_providers' => OAuthService::enabledProviders(),
         ]);
     }
@@ -403,7 +403,7 @@ class AuthController extends BaseController
         }
 
         if (!empty($errors)) {
-            $this->render('public/register', [
+            $this->renderSystemPage('register', [
                 'title'           => 'Create Account',
                 'oauth_providers' => OAuthService::enabledProviders(),
                 'errors'          => $errors,
@@ -428,7 +428,7 @@ class AuthController extends BaseController
         $this->sendVerificationEmail($email, $displayName, $rawToken);
         $this->logActivity('register', 'user', null, 'New registration: ' . $email);
 
-        $this->render('public/verify-email-sent', [
+        $this->renderSystemPage('verify-email-sent', [
             'title' => 'Verify Your Email',
             'email' => $email,
         ]);

@@ -32,6 +32,9 @@
         try { return JSON.parse(wrap.dataset.templateZones || '[]'); } catch (e) { return []; }
     }());
 
+    // The page's own zone (e.g. 'main'). Used as default for the zone assignment picker.
+    var PAGE_ZONE = wrap.dataset.pageZone || 'main';
+
     // Context fields for content templates: [{key, label, type}]
     // Non-empty only when editing a content template canvas with a context_source assigned.
     var CONTEXT_FIELDS = (function () {
@@ -478,7 +481,7 @@
                 // Read current zone_name from block_config
                 var bCfg = {};
                 try { bCfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
-                zoneAssignSel.value = bCfg.zone_name || TEMPLATE_ZONES[0] || 'main';
+                zoneAssignSel.value = bCfg.zone_name || PAGE_ZONE || TEMPLATE_ZONES[0] || 'main';
                 zoneAssignRow.style.display = '';
             } else {
                 zoneAssignRow.style.display = 'none';
@@ -1986,7 +1989,9 @@
             var zones = [];
             try { zones = JSON.parse(zonesAttr); } catch (e) { zones = ['main']; }
 
-            var currentZone = zoneSelect.value;
+            // Use the currently selected value (when re-running after a template change),
+            // falling back to the page's actual zone from the server on first load.
+            var currentZone = zoneSelect.value || PAGE_ZONE;
             zoneSelect.innerHTML = '';
 
             zones.forEach(function (zone) {

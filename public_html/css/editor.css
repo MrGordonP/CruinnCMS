@@ -1098,6 +1098,15 @@
     margin-top: 1px;
 }
 
+/* Action link (e.g. Edit Template Layout) inside a prop row */
+.editor-prop-action-link {
+    display: inline-block;
+    font-size: 0.8rem;
+    color: var(--accent, #1d9e75);
+    text-decoration: none;
+}
+.editor-prop-action-link:hover { text-decoration: underline; }
+
 /* Browse row */
 .editor-prop-browse-row {
     display: flex;
@@ -1395,7 +1404,7 @@
     color: inherit;
 }
 
-a.editor-zone-preview {
+div.editor-zone-preview {
     pointer-events: auto;
     cursor: pointer;
 }

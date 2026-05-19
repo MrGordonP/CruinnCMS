@@ -23,7 +23,7 @@ BlockRegistry::register([
     'dynamic'   => true,
     'container' => false,
     'isLayout'  => false,
-    'renderer'  => function (array $config, Database $db): string {
+    'renderer'  => function (array $config, Database $db, array $context = []): string {
         $rel = trim($config['template'] ?? '');
         if ($rel === '') {
             return '<p class="php-include-empty" style="color:#9ca3af;font-size:0.8rem;padding:0.5rem">PHP Include — no template selected</p>';
@@ -68,6 +68,9 @@ BlockRegistry::register([
 
             ob_start();
             try {
+                // Merge Template globals so controller-set variables (CSRF token,
+                // $errors, $user, etc.) are visible inside the included partial.
+                $vars = array_merge(\Cruinn\Template::globals(), $vars);
                 extract($vars, EXTR_SKIP);
                 include $fullPath;
                 $output = ob_get_clean();
@@ -115,6 +118,10 @@ BlockRegistry::register([
         }
 
         // ── Live site ──────────────────────────────────────────────────────────
+        // Merge Template globals and render context so controller-set variables
+        // are visible inside the included partial (e.g. $errors, $user, $oauth_providers).
+        // Context (from CruinnRenderService::setContext) must win over block config.
+        $vars = array_merge(\Cruinn\Template::globals(), $vars, $context);
         extract($vars, EXTR_SKIP);
         ob_start();
         try {

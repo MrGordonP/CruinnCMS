@@ -43,6 +43,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
      data-api-base="<?= htmlspecialchars($apiBase ?? '/admin/editor', ENT_QUOTES, 'UTF-8') ?>"
      data-has-draft="<?= $hasDraft ? '1' : '0' ?>"
      data-template-zones="<?= htmlspecialchars(json_encode($templateZones ?? []), ENT_QUOTES, 'UTF-8') ?>"
+     data-page-zone="<?= htmlspecialchars($page['page_zone'] ?? 'main', ENT_QUOTES, 'UTF-8') ?>"
      data-zone-suggestions="<?= htmlspecialchars($zoneSuggestions ?? 'main', ENT_QUOTES, 'UTF-8') ?>"
      data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-widgets="<?= htmlspecialchars(json_encode($moduleWidgets ?? []), ENT_QUOTES, 'UTF-8') ?>"
@@ -469,14 +470,14 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
             ?>
 
             <?php foreach (array_filter($contextCanvases ?? [], fn($cc) => $cc['position'] === 'before') as $_cc): ?>
-            <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
+            <div class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
                 <?php if (!empty($_cc['html'])): ?>
                 <div class="editor-zone-inner"><?= $_cc['html'] ?></div>
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty"><?= e(ucfirst($_cc['zone'])) ?> zone — not yet published.</div>
                 <?php endif; ?>
-                <span class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></span>
-            </a>
+                <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></a>
+            </div>
             <?php endforeach; ?>
 
             <div class="editor-canvas-shell<?= $hasSidebarContext ? ' has-sidebar' : '' ?>">
@@ -594,25 +595,17 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                 <?php endif; ?>
             </div>
 
-            <?php if (!empty($templateCanvasHtml)): ?>
-            <div class="editor-zone-preview editor-template-canvas-preview">
-                <div class="editor-zone-inner">
-                    <?= $templateCanvasHtml ?>
-                </div>
-                <a href="<?= $templateCanvasPageId ? e($_editorPageHref((int)$templateCanvasPageId)) : '#' ?>"
-                   class="editor-zone-edit-link">Edit Template Layout</a>
-            </div>
-            <?php endif; ?>
+
 
             <?php foreach (array_filter($contextCanvases ?? [], fn($cc) => $cc['position'] === 'after') as $_cc): ?>
-            <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
+            <div class="editor-zone-preview editor-zone--<?= e($_cc['zone']) ?>" data-context-zone="<?= e($_cc['zone']) ?>">
                 <?php if (!empty($_cc['html'])): ?>
                 <div class="editor-zone-inner"><?= $_cc['html'] ?></div>
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty"><?= e(ucfirst($_cc['zone'])) ?> zone — not yet published.</div>
                 <?php endif; ?>
-                <span class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></span>
-            </a>
+                <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></a>
+            </div>
             <?php endforeach; ?>
 
         </div>
@@ -726,6 +719,11 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                         </select>
                         <span class="editor-label-hint">Which zone in the template this page's blocks appear in.</span>
                     </div>
+                    <?php if (!empty($templateCanvasPageId)): ?>
+                    <div class="editor-prop-row">
+                        <a href="<?= e($_editorPageHref((int)$templateCanvasPageId)) ?>" class="editor-prop-action-link">Edit Template Layout &rarr;</a>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -1469,7 +1467,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                                 ?>
                                 <optgroup label="<?= htmlspecialchars($piGrpLabels[$_piGrp] ?? ucfirst($_piGrp), ENT_QUOTES, 'UTF-8') ?>">
                                     <?php foreach ($_piFiles as $_piRel): ?>
-                                    <option value="<?= htmlspecialchars($_piRel, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars(basename($_piRel), ENT_QUOTES, 'UTF-8') ?></option>
+                                    <option value="<?= htmlspecialchars($_piRel, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_piGrp === 'root' ? basename($_piRel) : substr($_piRel, strlen($_piGrp) + 1), ENT_QUOTES, 'UTF-8') ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
                                 <?php endforeach; ?>

@@ -289,6 +289,17 @@ CREATE TABLE `pages_index` (
     CONSTRAINT `fk_pages_index_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Engine system-page registry — maps stable engine keys to pages_index rows.
+-- Controllers resolve system pages (login, register, profile, etc.) by system_key,
+-- never by public slug, so renaming a page slug never breaks engine routing.
+CREATE TABLE `system_pages` (
+    `system_key` VARCHAR(64)   NOT NULL,
+    `page_id`    INT UNSIGNED  NOT NULL,
+    PRIMARY KEY (`system_key`),
+    UNIQUE KEY `uq_system_pages_page_id` (`page_id`),
+    CONSTRAINT `fk_system_pages_page` FOREIGN KEY (`page_id`) REFERENCES `pages_index` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Published page blocks — one row per block, the canonical published state
 CREATE TABLE `pages` (
     `block_id`        VARCHAR(20)       NOT NULL,
@@ -553,6 +564,42 @@ INSERT INTO `settings` (`key`, `value`, `group`) VALUES
     ('uploads.image_types',      '', 'security'),
     ('editor.zone_suggestions',  'main,header,footer,sidebar', 'editor')
 ON DUPLICATE KEY UPDATE `key` = VALUES(`key`);
+
+-- ── System Pages ─────────────────────────────────────────────
+-- Engine-level pages that exist outside the user's page tree but use the
+-- block/template system so they inherit site chrome (header, footer zones).
+-- Each page has a single php-include block pointing to the appropriate PHP
+-- template partial.  Admins can add blocks around the include in the editor.
+
+INSERT INTO `pages_index` (`title`, `slug`, `status`, `template`, `page_zone`, `render_mode`, `editor_mode`) VALUES
+    ('Login',              'login',             'published', 'default', 'main', 'block', 'structured'),
+    ('Create Account',     'register',          'published', 'default', 'main', 'block', 'structured'),
+    ('My Profile',         'profile',           'published', 'default', 'main', 'block', 'structured'),
+    ('Forgot Password',    'forgot-password',   'published', 'default', 'main', 'block', 'structured'),
+    ('Reset Password',     'reset-password',    'published', 'default', 'main', 'block', 'structured'),
+    ('Email Verification', 'verify-email-sent', 'published', 'default', 'main', 'block', 'structured');
+
+-- php-include block for each system page
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-login-01',        id, 'php-include', '{"template":"public/login.php"}',             0 FROM `pages_index` WHERE `slug` = 'login';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-register-01',     id, 'php-include', '{"template":"public/register.php"}',          0 FROM `pages_index` WHERE `slug` = 'register';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-profile-01',      id, 'php-include', '{"template":"public/profile.php"}',           0 FROM `pages_index` WHERE `slug` = 'profile';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-forgot-pw-01',    id, 'php-include', '{"template":"public/forgot-password.php"}',   0 FROM `pages_index` WHERE `slug` = 'forgot-password';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-reset-pw-01',     id, 'php-include', '{"template":"public/reset-password.php"}',    0 FROM `pages_index` WHERE `slug` = 'reset-password';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-verify-email-01', id, 'php-include', '{"template":"public/verify-email-sent.php"}', 0 FROM `pages_index` WHERE `slug` = 'verify-email-sent';
+
+-- Register engine system-page keys
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'login',             id FROM `pages_index` WHERE `slug` = 'login';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'register',          id FROM `pages_index` WHERE `slug` = 'register';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'profile',           id FROM `pages_index` WHERE `slug` = 'profile';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'forgot-password',   id FROM `pages_index` WHERE `slug` = 'forgot-password';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'reset-password',    id FROM `pages_index` WHERE `slug` = 'reset-password';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'verify-email-sent', id FROM `pages_index` WHERE `slug` = 'verify-email-sent';
 
 -- ── Mark this schema as applied ──────────────────────────────
 INSERT INTO `module_migrations` (`module`, `filename`) VALUES ('core', 'instance_core.sql');
