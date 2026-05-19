@@ -577,5 +577,34 @@ cat dev/docs/sessions/v1.0.0-beta.9_role-capability-refactor_CHECKPOINT.md
 
 ---
 
-**Last updated:** 17 May 2026, 23:30
-**Next session:** TBD — awaiting path decision (recommend Stage 5)
+## Refactor Complete
+
+**Completed:** 18 May 2026
+**Version:** v1.0.0-beta.9
+**Final commits:** cb441aa (Stage 6), 512329f (docs)
+
+All six stages of the Role & Capability Refactor have been successfully implemented:
+
+✅ Level-based Auth API replacing role slug comparisons  
+✅ Admin area grants for granular access control  
+✅ Widget dashboard system with context-based assignment  
+✅ Position-based authorization via organisation module  
+✅ Working notifications widget demonstrating the pattern  
+✅ Complete module migration with compatibility shims removed  
+
+**Result:**
+- Engine is fully instance-agnostic
+- Zero hardcoded role assumptions in engine code
+- Flexible authorization system supporting roles, positions, and users
+- Clean codebase with no deprecated Auth method calls
+
+**Known minor issues for future work:**
+- Canvas/Dashboard terminology inconsistency in UI
+- Missing visual feedback on area grant saves
+- No empty state placeholder for unassigned dashboards
+- User-facing documentation for widget system needed
+
+---
+
+**Last updated:** 18 May 2026
+**Tagged:** v1.0.0-beta.9
