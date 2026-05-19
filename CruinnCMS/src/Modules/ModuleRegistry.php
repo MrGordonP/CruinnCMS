@@ -70,6 +70,7 @@ class ModuleRegistry
                 'submodules'      => [],
                 'widgets'         => null,
                 'widget_providers' => [],
+                'content_providers' => [],
             ], $def);
         }
     }
@@ -189,6 +190,137 @@ class ModuleRegistry
             ];
         }
         return $catalog;
+    }
+
+    /**
+     * Return key-addressable module content providers for editor selectors.
+     * Each entry: ['key' => 'module:key', 'module' => slug, 'title' => title].
+     */
+    public static function contentProviderCatalog(): array
+    {
+        self::load();
+
+        $catalog = [];
+        $seen = [];
+
+        foreach (self::$modules as $slug => $def) {
+            if ((self::$statuses[$slug] ?? 'discovered') !== 'active') {
+                continue;
+            }
+
+            foreach ((array) ($def['content_providers'] ?? []) as $idx => $provider) {
+                if (!is_array($provider)) {
+                    continue;
+                }
+
+                $raw = trim((string) ($provider['slug'] ?? ''));
+                $safeRaw = self::normaliseWidgetKeyPart($raw);
+                if ($safeRaw === '') {
+                    $safeRaw = 'provider-' . ((int) $idx + 1);
+                }
+
+                $baseKey = $slug . ':' . $safeRaw;
+                $fullKey = $baseKey;
+                $suffix = 2;
+                while (isset($seen[$fullKey])) {
+                    $fullKey = $baseKey . '-' . $suffix;
+                    $suffix++;
+                }
+                $seen[$fullKey] = true;
+
+                $title = trim((string) ($provider['title'] ?? $safeRaw));
+                if ($title === '') {
+                    $title = $fullKey;
+                }
+
+                $catalog[] = [
+                    'key'    => $fullKey,
+                    'module' => $slug,
+                    'title'  => $title,
+                ];
+            }
+        }
+
+        return $catalog;
+    }
+
+    /**
+     * Render content using a module content provider key (module:key).
+     * Returns empty string when not found or unavailable.
+     */
+    public static function renderContentByKey(string $providerKey, array $settings = [], array $context = []): string
+    {
+        self::load();
+
+        if (!str_contains($providerKey, ':')) {
+            return '';
+        }
+
+        [$moduleSlug, $providerSlug] = explode(':', $providerKey, 2);
+
+        if (!isset(self::$modules[$moduleSlug]) || !self::isActive($moduleSlug)) {
+            return '';
+        }
+
+        $module = self::$modules[$moduleSlug];
+        $providers = (array) ($module['content_providers'] ?? []);
+
+        $providerDef = null;
+        foreach ($providers as $p) {
+            if (!is_array($p)) {
+                continue;
+            }
+            $raw = trim((string) ($p['slug'] ?? ''));
+            if (self::normaliseWidgetKeyPart($raw) === $providerSlug) {
+                $providerDef = $p;
+                break;
+            }
+        }
+
+        if (!$providerDef) {
+            return '';
+        }
+
+        $provider = trim((string) ($providerDef['provider'] ?? ''));
+        $template = trim((string) ($providerDef['template'] ?? ''));
+        if ($provider === '' || $template === '') {
+            return '';
+        }
+
+        if (!str_contains($provider, '::')) {
+            return '';
+        }
+
+        [$class, $method] = explode('::', $provider, 2);
+        if (!class_exists($class) || !method_exists($class, $method)) {
+            return '';
+        }
+
+        try {
+            $data = $class::$method($settings, $context);
+        } catch (\Throwable $e) {
+            error_log("ModuleRegistry: Content provider failed for {$providerKey}: " . $e->getMessage());
+            return '';
+        }
+
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        $templatePath = $module['template_path'] ?? null;
+        if (!$templatePath) {
+            return '';
+        }
+
+        $fullPath = rtrim($templatePath, '/') . '/' . ltrim($template, '/') . '.php';
+        if (!file_exists($fullPath)) {
+            return '';
+        }
+
+        ob_start();
+        extract($data);
+        require $fullPath;
+        return ob_get_clean();
     }
 
     /**

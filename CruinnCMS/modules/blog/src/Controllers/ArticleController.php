@@ -9,6 +9,7 @@
 namespace Cruinn\Module\Blog\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\Database;
 use Cruinn\Controllers\BaseController;
 
 class ArticleController extends BaseController
@@ -39,6 +40,18 @@ class ArticleController extends BaseController
         );
 
         $totalPages = (int) ceil($totalCount / $perPage);
+
+        // If a designated system page exists for blog.list, render through the
+        // page/template pipeline so module content blocks can mount there.
+        if ($this->hasBlogListSystemPage()) {
+            $this->renderSystemPage('blog.list', [
+                'title'      => 'Blog',
+                'articles'   => $articles,
+                'page'       => $page,
+                'totalPages' => $totalPages,
+            ]);
+            return;
+        }
 
         $this->render('public/articles/index', [
             'title'         => 'Blog',
@@ -347,6 +360,50 @@ class ArticleController extends BaseController
         $this->redirect('/admin/articles');
     }
 
+    /**
+     * Module content provider for blog listing blocks.
+     * Returns template data consumed by templates/public/articles/module-content/list.php.
+     */
+    public static function contentProviderBlogList(array $settings = [], array $context = []): array
+    {
+        if (!empty($context['articles']) && is_array($context['articles'])) {
+            return [
+                'articles'   => $context['articles'],
+                'page'       => (int) ($context['page'] ?? 1),
+                'totalPages' => (int) ($context['totalPages'] ?? 1),
+            ];
+        }
+
+        $db = Database::getInstance();
+        $page = max(1, (int) ($_GET['page'] ?? 1));
+        $perPage = max(1, (int) ($settings['per_page'] ?? 10));
+        $offset = ($page - 1) * $perPage;
+
+        $articles = $db->fetchAll(
+            'SELECT a.*, u.display_name as author_name, s.title as subject_title
+             FROM articles a
+             LEFT JOIN users u ON a.author_id = u.id
+             LEFT JOIN subjects s ON a.subject_id = s.id
+             WHERE a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
+             ORDER BY a.published_at DESC
+             LIMIT ? OFFSET ?',
+            ['published', $perPage, $offset]
+        );
+
+        $totalCount = (int) $db->fetchColumn(
+            'SELECT COUNT(*) FROM articles WHERE status = ? AND (published_at IS NULL OR published_at <= NOW())',
+            ['published']
+        );
+
+        $totalPages = (int) ceil($totalCount / $perPage);
+
+        return [
+            'articles'   => $articles,
+            'page'       => $page,
+            'totalPages' => max(1, $totalPages),
+        ];
+    }
+
     // ── Helpers ───────────────────────────────────────────────
 
     private function getSidebarEvents(int $limit = 5): array
@@ -361,6 +418,26 @@ class ArticleController extends BaseController
             );
         } catch (\Exception $e) {
             return [];
+        }
+    }
+
+    /**
+     * True when a system_pages mapping exists for blog.list.
+     */
+    private function hasBlogListSystemPage(): bool
+    {
+        try {
+            $row = $this->db->fetch(
+                'SELECT p.id
+                 FROM system_pages sp
+                 JOIN pages_index p ON p.id = sp.page_id
+                 WHERE sp.system_key = ?
+                 LIMIT 1',
+                ['blog.list']
+            );
+            return !empty($row);
+        } catch (\Throwable $e) {
+            return false;
         }
     }
 

@@ -61,4 +61,13 @@ return [
     'public_routes' => [
         ['route' => '/blog', 'label' => 'Blog'],
     ],
+
+    'content_providers' => [
+        [
+            'slug'     => 'list',
+            'title'    => 'Blog List',
+            'provider' => ArticleController::class . '::contentProviderBlogList',
+            'template' => 'public/articles/module-content/list',
+        ],
+    ],
 ];

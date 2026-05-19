@@ -105,7 +105,29 @@ class SiteBuilderController extends BaseController
         $zonesDecoded = json_decode($zones);
         if (!is_array($zonesDecoded)) {
             $zones = '["main"]';
+            $zonesDecoded = ['main'];
         }
+
+        $cleanZones = [];
+        foreach ($zonesDecoded as $zn) {
+            if (!is_string($zn)) {
+                continue;
+            }
+            $zn = trim(strtolower($zn));
+            if ($zn === '' || !preg_match('/^[a-z0-9_-]+$/', $zn)) {
+                continue;
+            }
+            if (!in_array($zn, $cleanZones, true)) {
+                $cleanZones[] = $zn;
+            }
+        }
+        if (!in_array('main', $cleanZones, true)) {
+            array_unshift($cleanZones, 'main');
+        }
+        $zones = json_encode($cleanZones);
+
+        $hasHeaderZone = in_array('header', $cleanZones, true);
+        $hasFooterZone = in_array('footer', $cleanZones, true);
 
         $maxSort = $this->db->fetch('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM page_templates');
 
@@ -537,8 +559,8 @@ class SiteBuilderController extends BaseController
 
         $settings = [
             'show_title'       => (bool) $this->input('show_title', false),
-            'show_header'      => (bool) $this->input('show_header', false),
-            'show_footer'      => (bool) $this->input('show_footer', false),
+            'show_header'      => $hasHeaderZone,
+            'show_footer'      => $hasFooterZone,
             'show_breadcrumbs' => (bool) $this->input('show_breadcrumbs', false),
             'content_width'    => in_array($this->input('content_width', 'default'), ['default', 'narrow', 'wide', 'full'], true)
                                     ? $this->input('content_width', 'default') : 'default',

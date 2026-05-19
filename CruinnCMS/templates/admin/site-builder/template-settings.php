@@ -12,6 +12,8 @@
 $s          = $tpl['settings'] ?? [];
 $zones      = json_decode($tpl['zones'] ?? '["main"]', true) ?: ['main'];
 $hasSidebar = in_array('sidebar', $zones);
+$hasHeader  = in_array('header', $zones);
+$hasFooter  = in_array('footer', $zones);
 $isGlobalHeader = ($tpl['slug'] === '_global_header');
 ?>
 <?php include __DIR__ . '/_tabs.php'; ?>
@@ -88,16 +90,18 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
 
             <div class="form-group">
                 <label class="checkbox-label">
-                    <input type="hidden" name="show_header" value="0">
-                    <input type="checkbox" name="show_header" value="1"
-                           <?= ($s['show_header'] ?? true) ? 'checked' : '' ?>>
+                    <input type="hidden" id="tpl_show_header" name="show_header" value="<?= $hasHeader ? '1' : '0' ?>">
+                    <input type="checkbox" id="tpl_header_toggle"
+                           <?= $hasHeader ? 'checked' : '' ?>>
                     Header
                 </label>
+                <small class="form-help">Defines whether this layout includes a header zone slot.</small>
             </div>
 
             <div class="form-group">
                 <label for="tpl_header_source">Header Source</label>
-                <select id="tpl_header_source" name="header_source" class="form-input">
+                <select id="tpl_header_source" name="header_source" class="form-input"
+                        <?= $hasHeader ? '' : 'disabled' ?>>
                     <option value="default" <?= ($s['header_source'] ?? 'default') === 'default' ? 'selected' : '' ?>>
                         Auto — global default header
                     </option>
@@ -112,7 +116,9 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
                     </option>
                 </select>
                 <small class="form-help">
-                    <?php
+                    <?php if (!$hasHeader): ?>
+                        Add the header zone to select reusable header content.
+                    <?php else:
                     $__hs = $s['header_source'] ?? 'default';
                     if ($__hs === 'default') { ?>
                         <a href="<?= url('/admin/site-builder/global-header') ?>">Edit the global default header in Cruinn &rarr;</a>
@@ -123,7 +129,7 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
                             <?php break;
                             }
                         }
-                    } ?>
+                    } endif; ?>
                 </small>
             </div>
 
@@ -147,11 +153,12 @@ $isGlobalHeader = ($tpl['slug'] === '_global_header');
 
             <div class="form-group">
                 <label class="checkbox-label">
-                    <input type="hidden" name="show_footer" value="0">
-                    <input type="checkbox" name="show_footer" value="1"
-                           <?= ($s['show_footer'] ?? true) ? 'checked' : '' ?>>
+                    <input type="hidden" id="tpl_show_footer" name="show_footer" value="<?= $hasFooter ? '1' : '0' ?>">
+                    <input type="checkbox" id="tpl_footer_toggle"
+                           <?= $hasFooter ? 'checked' : '' ?>>
                     Footer
                 </label>
+                <small class="form-help">Defines whether this layout includes a footer zone slot.</small>
             </div>
 
             <h3 style="margin-top:1.5rem">Content Layout</h3>

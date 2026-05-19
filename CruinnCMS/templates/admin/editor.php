@@ -32,6 +32,7 @@ $_editorPageHrefFrom = function(int $targetId) use ($page, $_editorPageHref): st
 ?>
 <?php
 $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($templateCanvasCss ?? '');
+$moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegistry::contentProviderCatalog();
 ?>
 <?php if (!empty($_contextCss)): ?>
 <style id="editor-zone-context-styles"><?= $_contextCss ?></style>
@@ -47,6 +48,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
      data-zone-suggestions="<?= htmlspecialchars($zoneSuggestions ?? 'main', ENT_QUOTES, 'UTF-8') ?>"
      data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-widgets="<?= htmlspecialchars(json_encode($moduleWidgets ?? []), ENT_QUOTES, 'UTF-8') ?>"
+    data-module-content-providers="<?= htmlspecialchars(json_encode($moduleContentProviders ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
@@ -448,6 +450,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                     <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>PHP Include</button>
                     <button class="palette-btn palette-btn--site" data-add-block="module-widget" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Module Widget</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="module-content" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Module Content</button>
                     <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= !$page ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
                 </div>
             </div>
@@ -1527,6 +1530,24 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
                                 <option value="<?= e($_mw['key'] ?? '') ?>"><?= e(($_mw['module'] ?? 'module') . ' — ' . ($_mw['title'] ?? ($_mw['key'] ?? 'Widget'))) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                    </div>
+                    <!-- module-content config -->
+                    <div class="editor-content-group" data-content-type="module-content" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Provider</label>
+                            <select class="editor-prop-input" id="prop-module-content-provider" data-config="provider_key">
+                                <option value="">— Select provider —</option>
+                                <?php foreach (($moduleContentProviders ?? []) as $_mcp): ?>
+                                <option value="<?= e($_mcp['key'] ?? '') ?>"><?= e(($_mcp['module'] ?? 'module') . ' — ' . ($_mcp['title'] ?? ($_mcp['key'] ?? 'Provider'))) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.35rem">
+                            <label>Settings JSON <small style="font-weight:400;color:#9ca3af">(optional)</small></label>
+                            <textarea class="editor-prop-input" id="prop-module-content-settings" data-config="settings_json"
+                                      rows="5" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
+                                      placeholder="{}"></textarea>
                         </div>
                     </div>
                 </div>

@@ -141,9 +141,11 @@ include __DIR__ . '/_tabs.php';
             $tplInfo     = $tplSettingsMap[$pg['template'] ?? ''] ?? null;
             $tplSettings = $tplInfo['settings'] ?? [];
             $tplZones    = $tplInfo['zones'] ?? ['main'];
-            $showHeader  = $tplSettings['show_header'] ?? true;
-            $showFooter  = $tplSettings['show_footer'] ?? true;
-            $hasSidebar  = in_array('sidebar', $tplZones, true);
+            $validZones  = is_array($tplZones) ? $tplZones : [];
+            $zonesKnown  = !empty($validZones);
+            $showHeader  = $zonesKnown ? in_array('header', $validZones, true) : (bool)($tplSettings['show_header'] ?? true);
+            $showFooter  = $zonesKnown ? in_array('footer', $validZones, true) : (bool)($tplSettings['show_footer'] ?? true);
+            $hasSidebar  = $zonesKnown ? in_array('sidebar', $validZones, true) : false;
             $menuIds     = $pageInMenus[(int)$pg['id']] ?? [];
             $pageData    = [
                 'id'         => (int)$pg['id'],

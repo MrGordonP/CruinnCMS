@@ -45,6 +45,10 @@
         try { return JSON.parse(wrap.dataset.moduleWidgets || '[]'); } catch (e) { return []; }
     }());
 
+    var MODULE_CONTENT_PROVIDERS = (function () {
+        try { return JSON.parse(wrap.dataset.moduleContentProviders || '[]'); } catch (e) { return []; }
+    }());
+
     document.addEventListener('DOMContentLoaded', function () {
         restoreCssProps();
         reInitAll();
@@ -409,8 +413,8 @@
     var ZONE_TYPES = ['zone'];
     var IMAGE_TYPES = ['image', 'site-logo'];
     var TITLE_TYPES = ['site-title'];
-    var DYNAMIC_TYPES = ['event-list', 'data-list', 'module-widget'];
-    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list', 'module-widget'];
+    var DYNAMIC_TYPES = ['event-list', 'data-list', 'module-widget', 'module-content'];
+    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list', 'module-widget', 'module-content'];
     var PHP_CODE_TYPES = ['php-code'];
     // Block types whose inner_html slot is bindable
     var BIND_INNER_TYPES = ['text', 'html', 'heading', 'inline', 'anchor'];
@@ -764,6 +768,34 @@
             refreshModuleWidgetPreview(block);
         }
 
+        if (type === 'module-content') {
+            var mcSel = document.getElementById('prop-module-content-provider');
+            var mcSettings = document.getElementById('prop-module-content-settings');
+            if (mcSel) {
+                var selectedProvider = (config.provider_key || '').toString();
+                mcSel.innerHTML = '<option value="">- Select provider -</option>';
+                MODULE_CONTENT_PROVIDERS.forEach(function (p) {
+                    var key = (p.key || '').toString();
+                    if (!key) { return; }
+                    var opt = document.createElement('option');
+                    opt.value = key;
+                    opt.textContent = (p.module || 'module') + ' - ' + (p.title || key);
+                    mcSel.appendChild(opt);
+                });
+                if (selectedProvider && !Array.from(mcSel.options).some(function (o) { return o.value === selectedProvider; })) {
+                    var staleProvider = document.createElement('option');
+                    staleProvider.value = selectedProvider;
+                    staleProvider.textContent = '(missing) ' + selectedProvider;
+                    mcSel.appendChild(staleProvider);
+                }
+                mcSel.value = selectedProvider;
+            }
+            if (mcSettings) {
+                mcSettings.value = (config.settings_json || '').toString();
+            }
+            refreshModuleContentPreview(block);
+        }
+
         // Site title / tagline text
         if (TITLE_TYPES.indexOf(type) !== -1) {
             var h1El = block.querySelector('.site-name');
@@ -1049,6 +1081,18 @@
                 inp.onchange = function () {
                     writeConfig(block, 'widget_key', inp.value);
                     refreshModuleWidgetPreview(block);
+                };
+            }
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'provider_key' && block.dataset.blockType === 'module-content') {
+                inp.onchange = function () {
+                    writeConfig(block, 'provider_key', inp.value);
+                    refreshModuleContentPreview(block);
+                };
+            }
+            if (inp.tagName === 'TEXTAREA' && inp.dataset.config === 'settings_json' && block.dataset.blockType === 'module-content') {
+                inp.oninput = function () {
+                    writeConfig(block, 'settings_json', inp.value);
+                    refreshModuleContentPreview(block);
                 };
             }
         });
@@ -1564,6 +1608,24 @@
             (hit.module || 'module') + ' — ' + (hit.title || key) + '</p>';
     }
 
+    function refreshModuleContentPreview(block) {
+        if (!block || block.dataset.blockType !== 'module-content') { return; }
+        var cfg = {};
+        try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+        var key = (cfg.provider_key || '').toString();
+        if (!key) {
+            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Content - select a provider in Content settings.</p>';
+            return;
+        }
+        var hit = MODULE_CONTENT_PROVIDERS.find(function (p) { return (p.key || '') === key; });
+        if (!hit) {
+            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Content - missing provider: ' + key + '</p>';
+            return;
+        }
+        block.innerHTML = '<p class="editor-dynamic-placeholder">Module Content: ' +
+            (hit.module || 'module') + ' - ' + (hit.title || key) + '</p>';
+    }
+
 
     function rebuildLiveStyles() {
         if (!liveStyles) { return; }
@@ -1644,6 +1706,7 @@
         'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
         'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
         'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget ΓÇö select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
+        'module-content': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Content - select provider in Content settings.</p>', dynamic: true, defaultConfig: { provider_key: '', settings_json: '' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
@@ -1693,6 +1756,10 @@
 
         if (type === 'module-widget') {
             refreshModuleWidgetPreview(el);
+        }
+
+        if (type === 'module-content') {
+            refreshModuleContentPreview(el);
         }
 
         // Columns block: create initial 2 column sections
