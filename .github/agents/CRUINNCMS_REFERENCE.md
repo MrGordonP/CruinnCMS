@@ -128,7 +128,7 @@ Top-level CMS layer, above all instances. File-based credential, entirely separa
 
 Pages are composed of ordered blocks. Each block has a type, properties, and optional content.
 
-**Block types (22):** `text`, `heading`, `image`, `gallery`, `html`, `section`, `columns`, `site-logo`, `site-title`, `nav-menu`, `map`, `event-list`, `php-include`, `anchor`, `document`, `element`, `form`, `inline`, `list`, `list-item`, `table`, `php-code`
+**Block types (25):** `text`, `heading`, `image`, `gallery`, `html`, `section`, `columns`, `site-logo`, `site-title`, `nav-menu`, `map`, `event-list`, `php-include`, `anchor`, `document`, `element`, `form`, `inline`, `list`, `list-item`, `table`, `php-code`, `data-list`, `module-widget`, `module-content`
 
 **Registry:** Pluggable via `CruinnCMS/src/BlockTypes/BlockRegistry.php` (PHP) and `public_html/js/admin/block-types/_registry.js + {slug}.js` (JS). To add a new block type: create `CruinnCMS/src/BlockTypes/{slug}/definition.php` and `public_html/js/admin/block-types/{slug}.js` — no changes to core editor code needed.
 

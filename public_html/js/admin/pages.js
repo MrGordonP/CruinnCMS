@@ -95,6 +95,10 @@
                 + '<input type="hidden" name="csrf_token" value="' + escHtml(csrfToken) + '">'
                 + '<button class="btn btn-outline" style="width:100%">Convert to blocks</button></form>';
         }
+        actionsHtml += '<form method="POST" action="/admin/pages/' + p.id + '/delete"'
+            + ' onsubmit="return confirm(\'Permanently delete this page? This cannot be undone.\')">'
+            + '<input type="hidden" name="csrf_token" value="' + escHtml(csrfToken) + '">'
+            + '<button class="btn btn-danger" style="width:100%;margin-top:1rem">Delete Page</button></form>';
         actionsHtml += '</div>';
 
         var templateOptions = templates.map(function (t) {

@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.6`
-**HEAD:** `(see git log)` — feat: user profile, cross-domain passthrough, editor improvements, module migration renumbering
+**Current version:** `v1.0.0-beta.13` (pending tag)
+**HEAD:** `57dd9f8` — feat: template-zone sync and module-content mounting
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -196,6 +196,13 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 - **v1.0.0-beta.4** — Editor overhaul: killed Editor 2 completely (deleted 11 files, stubbed `content_blocks` refs), removed council templates, platform editor CSS file editing via `?file=` handler with cPanel path resolution, code view toggle fix, code view CSS layout improvements (`:has(#editor-code-area)` rules), block tree + properties panel scroll constraints (in progress).
 - **v1.0.0-beta.5** — Editor UX: Properties panel accordions start collapsed (except Identity), code view shows clean publishable HTML (block→tag serialization via `blocksToHtml()`), CSS class persistence through `css_props._class`, Collapsed checkbox in Identity panel.
 - **v1.0.0-beta.6** — User profile (`/profile` GET/POST), cross-domain passthrough tokens (HMAC-signed, 60s validity), editor visible outlines + layout container min-sizes + resize handles, module migration renumbering to `001_*_core.sql`, ImportService fragment file support, MySQL 8 information_schema case fix.
+- **v1.0.0-beta.7** (`d8c7a5a`) — Blog editor unification (ArticleEditorController→CruinnController), article apiBase double-ID fix, upload progress indicator, 3-panel admin layout (pages/media/organisation), responsive breakpoints, mailout composition.
+- **v1.0.0-beta.8** — OAuth expansion (GitHub, Microsoft, LinkedIn), user registration + email verification, IMAP webmail module (Mailbox), editor zone refactor Stage 4 (template blocks via `template_id`, context zone rendering).
+- **v1.0.0-beta.9** — Content Sets engine + `data-list` block type, Google Drive integration (Drivespace), mobile nav + tablet accordion, Role Refactor Stages 1-6 complete (level-based Auth API, admin area grants, widget dashboards, position authorization, notifications widget, module migration).
+- **v1.0.0-beta.10** (`faad399`) — Media uploads namespaced per instance slug under `public_html/storage/{slug}/`.
+- **v1.0.0-beta.11** (`26d20bb`) — Template syntax fixes (`<?php` duplication, `IGA\Router`→`Cruinn\Router`).
+- **v1.0.0-beta.12** (`28bafcc`) — Role & Capability Refactor documentation complete. All 6 stages integrated, tested, and deployed. Engine fully instance-agnostic with flexible authorization.
+- **v1.0.0-beta.13** (`57dd9f8`, pending tag) — Template zone/layout separation fix, `module-content` block type + provider registry, Blog list as first provider, system pages editable via block editor (`BaseController::renderSystemPage`), `Template::globals()` for php-include context, migrations 017-019.
 
 ---
 

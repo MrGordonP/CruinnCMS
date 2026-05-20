@@ -4,10 +4,17 @@ Ongoing log of known issues. Add new entries at the top of each section. Mark re
 
 ---
 
+## Pages Admin
+
+### ~~[FIXED] No UI to delete pages~~
+Backend route (`POST /admin/pages/{id}/delete`) and controller method existed, but delete button was missing from pages admin detail panel. Added delete button with confirmation to `public_html/js/admin/pages.js`.
+
+---
+
 ## Editor
 
 ### [OPEN] Article editor shows Page Settings panel in right-hand properties
-~~When editing a blog post via `/admin/article-editor/{id}/edit`, the right-hand properties panel includes a **Page Settings** accordion (template selector, render mode, etc.) that is meaningless for articles.~~  
+~~When editing a blog post via `/admin/article-editor/{id}/edit`, the right-hand properties panel includes a **Page Settings** accordion (template selector, render mode, etc.) that is meaningless for articles.~~
 **Fixed** in commit following this entry — guard updated to check `empty($page['_is_article'])`.
 
 ### ~~[FIXED] AJAX URLs doubled ID — all editor actions 404 when editing articles~~

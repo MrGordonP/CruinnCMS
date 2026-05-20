@@ -2,7 +2,7 @@
 
 A lightweight, framework-free PHP CMS built for organisations that need full control over their content, site structure, and deployment.
 
-> **v1.0.0-beta.2** — Deployment fixes: composer deps, .htaccess hardening, cPanel deployment guide. Suitable for controlled production deployments. Module system in active development.
+> **v1.0.0-beta.13** — Template zones, module content mounting, system pages editable via block editor. Role refactor complete (6 stages). Suitable for controlled production deployments. Module system in active development.
 
 ---
 
@@ -14,7 +14,7 @@ CruinnCMS is a block-based content management system built on custom PHP with no
 - **Multi-instance platform** — one CruinnCMS install can host multiple independent sites. Each instance has its own database, users, and content.
 - **Platform dashboard** (`/cms/`) — a top-level admin layer above all instances, with its own credential, instance provisioning, and a built-in DB browser.
 - **Template-based pages** — pages can be PHP templates, pure HTML files, or block-composed Cruinn pages.
-- **22 built-in block types** — `text`, `heading`, `image`, `gallery`, `html`, `section`, `columns`, `site-logo`, `site-title`, `nav-menu`, `map`, `event-list`, `php-include`, `anchor`, `document`, `element`, `form`, `inline`, `list`, `list-item`, `table`, `php-code`
+- **25 built-in block types** — `text`, `heading`, `image`, `gallery`, `html`, `section`, `columns`, `site-logo`, `site-title`, `nav-menu`, `map`, `event-list`, `php-include`, `anchor`, `document`, `element`, `form`, `inline`, `list`, `list-item`, `table`, `php-code`, `data-list`, `module-widget`, `module-content`
 - **Pluggable block registry** — add new block types by dropping in a PHP definition and a JS file, no core changes needed.
 
 ## Requirements
