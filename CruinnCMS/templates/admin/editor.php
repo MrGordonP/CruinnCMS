@@ -48,6 +48,7 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
      data-zone-suggestions="<?= htmlspecialchars($zoneSuggestions ?? 'main', ENT_QUOTES, 'UTF-8') ?>"
      data-context-fields="<?= htmlspecialchars(json_encode($contextFields ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-widgets="<?= htmlspecialchars(json_encode($moduleWidgets ?? []), ENT_QUOTES, 'UTF-8') ?>"
+    data-available-zone-canvases="<?= htmlspecialchars(json_encode($availableZoneCanvases ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-content-providers="<?= htmlspecialchars(json_encode($moduleContentProviders ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
@@ -337,6 +338,32 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                             <a href="<?= e($_editorPageHref((int)$_fp['id'])) ?>"
                                class="editor-site-nav-link<?= $page && (int)$_fp['id'] === (int)$page['id'] ? ' active' : '' ?>">
                                 <?= e($_fp['title']) ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($sidebarPages)): ?>
+                    <div class="editor-site-nav-group collapsed">
+                        <span class="editor-site-nav-label">Sidebars <span class="editor-group-chevron">▾</span></span>
+                        <div class="editor-site-nav-list">
+                            <?php foreach ($sidebarPages as $_sp): ?>
+                            <a href="<?= e($_editorPageHref((int)$_sp['id'])) ?>"
+                               class="editor-site-nav-link<?= $page && (int)$_sp['id'] === (int)$page['id'] ? ' active' : '' ?>">
+                                <?= e($_sp['title']) ?>
+                            </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($templateLayoutPages)): ?>
+                    <div class="editor-site-nav-group collapsed">
+                        <span class="editor-site-nav-label">Template Layouts <span class="editor-group-chevron">▾</span></span>
+                        <div class="editor-site-nav-list">
+                            <?php foreach ($templateLayoutPages as $_tl): ?>
+                            <a href="<?= e($_editorPageHref((int)$_tl['id'])) ?>"
+                               class="editor-site-nav-link<?= $page && (int)$_tl['id'] === (int)$page['id'] ? ' active' : '' ?>">
+                                <?= e($_tl['title']) ?>
                             </a>
                             <?php endforeach; ?>
                         </div>
@@ -748,6 +775,15 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                                placeholder="custom-zone" style="display:none;margin-top:0.35rem">
                         <span class="editor-label-hint">Choose a predefined zone, or pick Custom for a custom name.</span>
                     </div>
+                    <?php if (!empty($isTemplatePage)): ?>
+                    <div class="editor-prop-row">
+                        <label>Assigned Canvas</label>
+                        <select class="editor-prop-input" id="prop-zone-canvas">
+                            <option value="">— None —</option>
+                        </select>
+                        <span class="editor-label-hint">Which zone canvas page to render in this zone slot.</span>
+                    </div>
+                    <?php endif; ?>
                     <div class="editor-prop-row">
                         <label>Display Label</label>
                         <input type="text" class="editor-prop-input"

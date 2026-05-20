@@ -91,17 +91,32 @@ class CruinnController extends BaseController
              WHERE canvas_type = 'zone' AND zone_name = 'footer'
              ORDER BY title ASC"
         );
-
-        $sitePages = $this->db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages_index
-             WHERE slug NOT LIKE '\\_\\_%'
+        $sidebarPages = $this->db->fetchAll(
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'zone' AND zone_name = 'sidebar'
              ORDER BY title ASC"
         );
+
+        // Content pages only (exclude zone canvases and template layouts)
+        $sitePages = $this->db->fetchAll(
+            "SELECT id, title, slug, render_mode FROM pages_index
+             WHERE canvas_type = 'content'
+             ORDER BY title ASC"
+        );
+
+        // Template layout canvases (template-shell pages not used as template canvases)
+        $templateLayoutPages = $this->db->fetchAll(
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'template-shell'
+               AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+             ORDER BY title ASC"
+        );
+
+        // Template definitions for sidebar nav
         $navTemplates = $this->db->fetchAll(
-            "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
+            "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id, p.title AS canvas_title
              FROM page_templates pt
              LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
         try {
@@ -178,7 +193,9 @@ class CruinnController extends BaseController
             'footerPageId'    => null,
             'headerPages'     => $headerPages,
             'footerPages'     => $footerPages,
+            'sidebarPages'    => $sidebarPages,
             'sitePages'       => $sitePages,
+            'templateLayoutPages' => $templateLayoutPages,
             'navTemplates'    => $navTemplates,
             'navMenus'        => $navMenus,
             'navCssFiles'     => $cssFiles,
@@ -422,6 +439,24 @@ class CruinnController extends BaseController
                             $templateCanvasHtml = $tplResult['html'];
                             $templateCanvasCss  = $tplResult['css'];
                         }
+
+                        // Extract zone names from template's zone blocks for editor UI
+                        try {
+                            $tplZoneBlocks = $this->db->fetchAll(
+                                "SELECT block_config FROM pages
+                                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                                 ORDER BY sort_order ASC",
+                                [(int) $tplRow['id']]
+                            );
+                            foreach ($tplZoneBlocks as $zb) {
+                                $cfg = json_decode($zb['block_config'] ?? '{}', true) ?: [];
+                                if (!empty($cfg['zone_name'])) {
+                                    $templateZones[] = $cfg['zone_name'];
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            // Migration 012 not applied yet
+                        }
                     }
 
                     // Build context canvases - extract zone blocks from the template tree
@@ -448,7 +483,7 @@ class CruinnController extends BaseController
 
                         // Backward compat: zone_canvases fallback (until migration 020 applied)
                         $legacyZoneCanvases = json_decode($tplRow['zone_canvases'] ?? '{}', true) ?: [];
-                        
+
                         // Find main zone index for position calculation
                         $mainIdx = 0;
                         foreach ($zoneBlocks as $idx => $zb) {
@@ -462,12 +497,12 @@ class CruinnController extends BaseController
                         foreach ($zoneBlocks as $idx => $zoneBlock) {
                             $cfg = json_decode($zoneBlock['block_config'] ?? '{}', true) ?: [];
                             $zone = $cfg['zone_name'] ?? null;
-                            
+
                             if (!$zone || $zone === $pageZone) { continue; }
 
                             // Resolve canvas page ID: page override → zone block → legacy zone_canvases → global zone canvas
                             $canvasPageId = null;
-                            
+
                             if (!empty($zoneOverrides[$zone])) {
                                 $canvasPageId = (int) $zoneOverrides[$zone];
                             } elseif (!empty($cfg['canvas_page_id'])) {
@@ -475,6 +510,14 @@ class CruinnController extends BaseController
                             } elseif (!empty($legacyZoneCanvases[$zone])) {
                                 // Backward compat: read from zone_canvases JSON until migration 020 runs
                                 $canvasPageId = (int) $legacyZoneCanvases[$zone];
+                            }
+
+                            // Render the zone canvas content
+                            $ctxHtml = '';
+                            $ctxCss  = '';
+                            if ($canvasPageId > 0 && $cruinnSvc->hasPublished($canvasPageId)) {
+                                $ctxHtml = $cruinnSvc->buildHtml($canvasPageId);
+                                $ctxCss  = $cruinnSvc->buildCss($canvasPageId);
                             }
 
                             $contextCanvases[] = [
@@ -504,7 +547,7 @@ class CruinnController extends BaseController
             }
         }
 
-        // All editable header/footer zone canvas pages for sidebar nav and toolbar shortcuts.
+        // All editable zone canvas pages for sidebar nav and toolbar shortcuts
         $headerPages = $this->db->fetchAll(
             "SELECT id, title, slug FROM pages_index
              WHERE canvas_type = 'zone' AND zone_name = 'header'
@@ -515,20 +558,32 @@ class CruinnController extends BaseController
              WHERE canvas_type = 'zone' AND zone_name = 'footer'
              ORDER BY title ASC"
         );
-
-        // Content pages for the sidebar nav (exclude all zone/template pages starting with _)
-        $sitePages = $this->db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages_index
-             WHERE slug NOT LIKE '\_%'
+        $sidebarPages = $this->db->fetchAll(
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'zone' AND zone_name = 'sidebar'
              ORDER BY title ASC"
         );
 
-        // Templates for sidebar nav
+        // Content pages only (exclude zone canvases and template layouts)
+        $sitePages = $this->db->fetchAll(
+            "SELECT id, title, slug, render_mode FROM pages_index
+             WHERE canvas_type = 'content'
+             ORDER BY title ASC"
+        );
+
+        // Template layout canvases (template-shell pages not used as template canvases)
+        $templateLayoutPages = $this->db->fetchAll(
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'template-shell'
+               AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+             ORDER BY title ASC"
+        );
+
+        // Template definitions for sidebar nav
         $navTemplates = $this->db->fetchAll(
-            "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
+            "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id, p.title AS canvas_title
              FROM page_templates pt
              LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
 
@@ -603,6 +658,16 @@ class CruinnController extends BaseController
             }
         }
 
+        // Fetch available zone canvas pages for canvas assignment dropdown (template pages only)
+        $availableZoneCanvases = [];
+        if ($isTemplatePage) {
+            $availableZoneCanvases = $this->db->fetchAll(
+                "SELECT id, title, zone_name FROM pages_index
+                 WHERE canvas_type = 'zone'
+                 ORDER BY zone_name, title ASC"
+            );
+        }
+
         $this->renderAdmin('admin/editor', [
             'title'             => 'Editor — ' . $page['title'],
             'page'              => $page,
@@ -620,11 +685,14 @@ class CruinnController extends BaseController
             'isTemplatePage'    => $isTemplatePage,
             'templateSlugName'  => $templateSlugName,
             'templateId'        => $templateId,
+            'availableZoneCanvases' => $availableZoneCanvases,
             'headerPageId'      => $headerPageId,
             'footerPageId'      => $footerPageId,
             'headerPages'       => $headerPages,
             'footerPages'       => $footerPages,
+            'sidebarPages'      => $sidebarPages,
             'sitePages'            => $sitePages,
+            'templateLayoutPages'  => $templateLayoutPages,
             'navTemplates'         => $navTemplates,
             'navMenus'             => $navMenus,
             'navCssFiles'          => $cssFiles,
@@ -802,14 +870,22 @@ class CruinnController extends BaseController
         }
 
         $sitePages = $this->db->fetchAll(
-            "SELECT id, title, slug, render_mode FROM pages_index WHERE slug NOT LIKE '\_%' ORDER BY title ASC"
+            "SELECT id, title, slug, render_mode FROM pages_index WHERE canvas_type = 'content' ORDER BY title ASC"
         );
 
+        // Template layout canvases (template-shell pages not used as template canvases)
+        $templateLayoutPages = $this->db->fetchAll(
+            "SELECT id, title, slug FROM pages_index
+             WHERE canvas_type = 'template-shell'
+               AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+             ORDER BY title ASC"
+        );
+
+        // Template definitions
         $navTemplates = $this->db->fetchAll(
             "SELECT pt.id, pt.name, pt.slug, pt.canvas_page_id, p.id AS editor_page_id
              FROM page_templates pt
              LEFT JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE pt.slug NOT LIKE '\\_\\_%'
              ORDER BY pt.sort_order, pt.name"
         );
 
@@ -925,6 +1001,7 @@ class CruinnController extends BaseController
             'headerPages'         => $headerPages,
             'footerPages'         => $footerPages,
             'sitePages'           => $sitePages,
+            'templateLayoutPages' => $templateLayoutPages,
             'navTemplates'        => $navTemplates,
             'navMenus'            => $navMenus,
             'navCssFiles'         => $cssFiles,

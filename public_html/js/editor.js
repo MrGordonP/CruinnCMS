@@ -1126,6 +1126,47 @@
             };
         }
 
+        // Zone canvas assignment selector (template pages only): updates block_config.canvas_page_id
+        var zoneCanvasSel = document.getElementById('prop-zone-canvas');
+        if (zoneCanvasSel && block.dataset.blockType === 'zone') {
+            // Populate dropdown with available zone canvases
+            var wrap = document.getElementById('editor-wrap');
+            var availableCanvases = [];
+            try {
+                availableCanvases = JSON.parse(wrap.dataset.availableZoneCanvases || '[]');
+            } catch (e) { /* ignore */ }
+
+            // Get current zone name and canvas assignment from block config
+            var blockConfig = {};
+            try { blockConfig = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+            var currentZoneName = blockConfig.zone_name || 'main';
+            var currentCanvasPageId = blockConfig.canvas_page_id || null;
+
+            // Filter canvases to this zone name
+            var filtered = availableCanvases.filter(function (c) {
+                return !c.zone_name || c.zone_name === currentZoneName;
+            });
+
+            // Clear and repopulate select
+            zoneCanvasSel.innerHTML = '<option value="">— None —</option>';
+            filtered.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.title + (c.zone_name ? ' (' + c.zone_name + ')' : '');
+                if (c.id == currentCanvasPageId) {
+                    opt.selected = true;
+                }
+                zoneCanvasSel.appendChild(opt);
+            });
+
+            // Handle canvas assignment changes
+            zoneCanvasSel.onchange = function () {
+                var val = this.value ? parseInt(this.value, 10) : null;
+                writeConfig(block, 'canvas_page_id', val);
+                debounceAction();
+            };
+        }
+
         // Zone assignment select: write zone_name to block_config + update badge attribute
         var zoneAssignSel2 = document.getElementById('prop-zone-assign');
         if (zoneAssignSel2 && TEMPLATE_ZONES.length > 0 && ZONE_TYPES.indexOf(block.dataset.blockType) === -1) {

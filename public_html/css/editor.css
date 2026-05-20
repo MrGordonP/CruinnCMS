@@ -1767,3 +1767,64 @@ div.editor-zone-preview {
     gap: 0.75rem;
     flex-wrap: wrap;
 }
+
+/* ── Zone Block Placeholder ─────────────────────────────────────── */
+
+[data-block-type="zone"] {
+    border: 2px dashed #7c3aed !important;
+    background: #f3f0ff !important;
+    padding: 1rem !important;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.zone-block-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.zone-block-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #7c3aed;
+    font-size: 0.9rem;
+}
+
+.zone-block-icon {
+    font-size: 1.25rem;
+}
+
+.zone-block-name {
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+}
+
+.zone-block-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6d28d9;
+    font-size: 0.85rem;
+    font-style: italic;
+    opacity: 0.7;
+}
+
+.zone-block-canvas-info {
+    padding: 0.5rem;
+    background: rgba(124, 58, 237, 0.1);
+    border-radius: 4px;
+}
+
+[data-block-type="zone"].active {
+    border-color: #6d28d9 !important;
+    background: #ede9fe !important;
+}
