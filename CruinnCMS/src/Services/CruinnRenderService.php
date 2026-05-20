@@ -129,96 +129,6 @@ class CruinnRenderService
     }
 
     /**
-     * Resolve a zone canvas page ID using the 3-level priority chain.
-     * Returns null if no canvas is found for this zone.
-     *
-     * Resolution order (most specific wins):
-     *   1. Page-level zone_overrides JSON
-     *   2. Template zone_canvases JSON
-     *   3. Global zone canvas (canvas_type='zone' AND zone_name=?)
-     */
-    public function resolveZoneCanvasId(string $zone, ?int $templateId = null, ?int $pageId = null): ?int
-    {
-        $canvasPageId = null;
-
-        // 1. Page-level override
-        if ($pageId !== null) {
-            try {
-                $row = $this->db->fetch(
-                    'SELECT zone_overrides FROM pages_index WHERE id = ? LIMIT 1',
-                    [$pageId]
-                );
-                if ($row && !empty($row['zone_overrides'])) {
-                    $overrides = json_decode($row['zone_overrides'], true) ?: [];
-                    if (!empty($overrides[$zone])) {
-                        $canvasPageId = (int) $overrides[$zone];
-                    }
-                }
-            } catch (\Throwable $e) { /* column may not exist yet */ }
-        }
-
-        // 2. Template zone_canvases
-        if ($canvasPageId === null && $templateId !== null) {
-            try {
-                $row = $this->db->fetch(
-                    'SELECT zone_canvases FROM page_templates WHERE id = ? LIMIT 1',
-                    [$templateId]
-                );
-                if ($row && !empty($row['zone_canvases'])) {
-                    $canvases = json_decode($row['zone_canvases'], true) ?: [];
-                    if (!empty($canvases[$zone])) {
-                        $canvasPageId = (int) $canvases[$zone];
-                    }
-                }
-            } catch (\Throwable $e) { /* column may not exist yet */ }
-        }
-
-        // 3. Global zone canvas by canvas_type
-        if ($canvasPageId === null) {
-            try {
-                $row = $this->db->fetch(
-                    "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
-                    [$zone]
-                );
-                if ($row) {
-                    $canvasPageId = (int) $row['id'];
-                }
-            } catch (\Throwable $e) { /* column may not exist yet */ }
-        }
-
-        return $canvasPageId;
-    }
-
-    /**
-     * Resolve and render a named zone canvas.
-     * Uses resolveZoneCanvasId() for the 4-level lookup, then renders.
-     *
-     * @param string   $zone       Zone name, e.g. 'header', 'footer', 'sidebar'
-     * @param int|null $templateId page_templates.id of the active template (optional)
-     * @param int|null $pageId     pages_index.id of the current page (optional)
-     */
-    public function buildZone(string $zone, ?int $templateId = null, ?int $pageId = null): ?array
-    {
-        $cacheKey = $zone . ':' . ($templateId ?? 0) . ':' . ($pageId ?? 0);
-        static $cache = [];
-        if (array_key_exists($cacheKey, $cache)) {
-            return $cache[$cacheKey];
-        }
-
-        $canvasPageId = $this->resolveZoneCanvasId($zone, $templateId, $pageId);
-
-        if ($canvasPageId === null || !$this->hasPublished($canvasPageId)) {
-            return $cache[$cacheKey] = null;
-        }
-
-        return $cache[$cacheKey] = [
-            'page_id' => $canvasPageId,
-            'html'    => $this->buildHtml($canvasPageId),
-            'css'     => $this->buildCss($canvasPageId),
-        ];
-    }
-
-    /**
      * Build the CSS stylesheet for template layout blocks (queries by template_id).
      */
     public function buildCssForTemplate(int $templateId): string
@@ -427,24 +337,22 @@ class CruinnRenderService
      * Template layout blocks are fetched via template_id (direct ownership).
      * Falls back to canvas_page_id if no template_id blocks exist (pre-012 instances).
      *
-     * Zone injection:
-     *   - Zone slot whose zone_name === $pageZone → inject page content ($pageId blocks
-     *     or raw $injectHtml for html-mode pages)
-     *   - All other zone slots → inject canvas blocks from $zoneCanvasMap[zoneName]
+     * Zone canvas resolution (per zone block):
+     *   1. Zone block's block_config.canvas_page_id (template-level zone assignment)
+     *   2. Page-level zone_overrides JSON (page-specific override)
+     *   3. Global zone canvas (canvas_type='zone' AND zone_name=?)
      *
-     * @param int         $templateId    page_templates.id
-     * @param string      $pageZone      Zone slot to inject the page content into
-     * @param array       $zoneCanvasMap [zoneName => canvasPageId] for non-page zones
-     * @param int|null    $pageId        pages_index.id for block-mode pages
-     * @param string|null $injectHtml    Raw HTML for html-mode pages (used when $pageId is null)
+     * @param int         $templateId page_templates.id
+     * @param string      $pageZone   Zone slot to inject the page content into
+     * @param int|null    $pageId     pages_index.id for block-mode pages
+     * @param string|null $injectHtml Raw HTML for html-mode pages (used when $pageId is null)
      * @return array ['html' => string, 'css' => string]
      */
     public function buildWithTemplate(
         int     $templateId,
-        string  $pageZone      = 'main',
-        array   $zoneCanvasMap = [],
-        ?int    $pageId        = null,
-        ?string $injectHtml    = null
+        string  $pageZone   = 'main',
+        ?int    $pageId     = null,
+        ?string $injectHtml = null
     ): array {
         // ── Fetch template layout blocks ─────────────────────────────
         $tplFlat = [];
@@ -481,6 +389,61 @@ class CruinnRenderService
             $tplById[$row['block_id']] = $row;
             $pid = $row['parent_block_id'] ?? null;
             $tplChildrenOf[$pid ?? '__root'][] = $row['block_id'];
+        }
+
+        // ── Extract zone canvas map from template zone blocks ────────
+        // Zone blocks declare which canvas to render via block_config.canvas_page_id
+        $zoneCanvasMap = [];  // [zoneName => canvasPageId]
+        foreach ($tplFlat as $row) {
+            if ($row['block_type'] === 'zone' && ($row['parent_block_id'] ?? null) === null) {
+                $cfg      = json_decode($row['block_config'] ?? '{}', true) ?: [];
+                $zoneName = $cfg['zone_name'] ?? null;
+                if ($zoneName !== null && $zoneName !== $pageZone) {
+                    // Priority 1: zone block's own canvas_page_id
+                    if (!empty($cfg['canvas_page_id'])) {
+                        $zoneCanvasMap[$zoneName] = (int) $cfg['canvas_page_id'];
+                    }
+                }
+            }
+        }
+
+        // ── Apply page-level zone_overrides (higher priority) ────────
+        if ($pageId !== null) {
+            try {
+                $row = $this->db->fetch(
+                    'SELECT zone_overrides FROM pages_index WHERE id = ? LIMIT 1',
+                    [$pageId]
+                );
+                if ($row && !empty($row['zone_overrides'])) {
+                    $overrides = json_decode($row['zone_overrides'], true) ?: [];
+                    foreach ($overrides as $zone => $canvasId) {
+                        if ($canvasId !== null && (int) $canvasId > 0) {
+                            $zoneCanvasMap[$zone] = (int) $canvasId;
+                        }
+                    }
+                }
+            } catch (\Throwable $e) { /* column may not exist yet */ }
+        }
+
+        // ── Fallback to global zone canvases ──────────────────────────
+        // For any zone in the template that doesn't have a canvas assigned yet,
+        // check if there's a global zone canvas (canvas_type='zone')
+        foreach ($tplById as $row) {
+            if ($row['block_type'] === 'zone' && ($row['parent_block_id'] ?? null) === null) {
+                $cfg      = json_decode($row['block_config'] ?? '{}', true) ?: [];
+                $zoneName = $cfg['zone_name'] ?? null;
+                if ($zoneName !== null && $zoneName !== $pageZone && !isset($zoneCanvasMap[$zoneName])) {
+                    try {
+                        $global = $this->db->fetch(
+                            "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
+                            [$zoneName]
+                        );
+                        if ($global) {
+                            $zoneCanvasMap[$zoneName] = (int) $global['id'];
+                        }
+                    } catch (\Throwable $e) { /* column may not exist yet */ }
+                }
+            }
         }
 
         // ── Fetch and index page content blocks (block mode) ─────────

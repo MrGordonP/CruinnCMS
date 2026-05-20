@@ -939,15 +939,21 @@ class PlatformController
                                 'SELECT id, canvas_page_id FROM page_templates WHERE slug = ? LIMIT 1',
                                 [$pageTemplateSlug]
                             );
-                            if ($tplRow && !empty($tplRow['canvas_page_id'])) {
-                                $templateCanvasPageId = (int) $tplRow['canvas_page_id'];
-                                if ($cruinnSvc->hasPublished($templateCanvasPageId)) {
-                                    $templateCanvasHtml = $cruinnSvc->buildHtml($templateCanvasPageId);
-                                    $templateCanvasCss  = $cruinnSvc->buildCss($templateCanvasPageId);
+                            if ($tplRow) {
+                                $tplId = (int) $tplRow['id'];
+                                // Get template canvas HTML
+                                if ($cruinnSvc->hasPublishedTemplate($tplId)) {
+                                    $tplResult = $cruinnSvc->buildWithTemplate($tplId, 'main');
+                                    $templateCanvasHtml = $tplResult['html'];
+                                    $templateCanvasCss  = $tplResult['css'];
+                                }
+                                // Extract zone names from template zone blocks
+                                try {
                                     $zoneRows = $db->fetchAll(
                                         "SELECT block_config FROM pages
-                                          WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL",
-                                        [$templateCanvasPageId]
+                                          WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                                          ORDER BY sort_order ASC",
+                                        [$tplId]
                                     );
                                     foreach ($zoneRows as $zr) {
                                         $cfg = json_decode($zr['block_config'] ?? '{}', true) ?: [];
@@ -956,6 +962,9 @@ class PlatformController
                                             $templateZones[] = $zn;
                                         }
                                     }
+                                } catch (\Throwable $e) {
+                                    // Migration 012 not applied yet
+                                    $templateZones = ['main'];
                                 }
                             }
                         }

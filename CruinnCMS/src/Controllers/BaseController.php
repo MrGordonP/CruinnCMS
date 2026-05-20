@@ -98,26 +98,13 @@ abstract class BaseController
             'SELECT * FROM page_templates WHERE slug = ? LIMIT 1',
             [$page['template'] ?? 'default']
         );
-        $tpl = $tplRow ?: ['id' => 0, 'slug' => 'default', 'zones' => ['main'], 'settings' => '{}'];
-        $tpl['zones']    = json_decode($tpl['zones']    ?? '["main"]', true) ?? ['main'];
-        $tpl['settings'] = json_decode($tpl['settings'] ?? '{}',       true) ?: [];
+        $tpl = $tplRow ?: ['id' => 0, 'slug' => 'default', 'settings' => '{}'];
+        $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
 
         $templateId = (int)($tpl['id'] ?? 0);
         $pageZone   = (string)($page['page_zone'] ?? 'main');
 
-        // Resolve zone canvases for every zone except the page's own content zone.
-        $zoneCanvasMap = [];
-        foreach ($tpl['zones'] as $zone) {
-            if ($zone === $pageZone) {
-                continue;
-            }
-            $canvasId = $cruinn->resolveZoneCanvasId($zone, $templateId ?: null, (int)$page['id']);
-            if ($canvasId !== null) {
-                $zoneCanvasMap[$zone] = $canvasId;
-            }
-        }
-
-        $merged = $cruinn->buildWithTemplate($templateId, $pageZone, $zoneCanvasMap, (int)$page['id']);
+        $merged = $cruinn->buildWithTemplate($templateId, $pageZone, (int)$page['id']);
         Template::addGlobal('cruinn_css', $merged['css']);
 
         echo $this->template->render('public/cruinn-page', [

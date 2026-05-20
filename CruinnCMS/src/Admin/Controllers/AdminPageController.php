@@ -25,9 +25,9 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
              ORDER BY p.updated_at DESC"
         );
 
-        $templates = $this->db->fetchAll('SELECT slug, name, zones FROM page_templates ORDER BY sort_order');
+        $templates = $this->db->fetchAll('SELECT id, slug, name FROM page_templates ORDER BY sort_order');
         foreach ($templates as &$tpl) {
-            $tpl['zones'] = json_decode($tpl['zones'] ?? '[]', true) ?: ['main'];
+            $tpl['zones'] = $this->getTemplateZones((int) $tpl['id']);
         }
         unset($tpl);
 
@@ -44,9 +44,9 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
      */
     public function newPage(): void
     {
-        $templates = $this->db->fetchAll('SELECT slug, name, description, zones FROM page_templates ORDER BY sort_order');
+        $templates = $this->db->fetchAll('SELECT id, slug, name, description FROM page_templates ORDER BY sort_order');
         foreach ($templates as &$tpl) {
-            $tpl['zones'] = json_decode($tpl['zones'] ?? '[]', true) ?: ['main'];
+            $tpl['zones'] = $this->getTemplateZones((int) $tpl['id']);
         }
         unset($tpl);
 
@@ -415,30 +415,44 @@ HTML;
 
     private function resolvePageZoneForTemplate(string $templateSlug, string $requestedZone): string
     {
-        $template = $this->db->fetch('SELECT zones FROM page_templates WHERE slug = ? LIMIT 1', [$templateSlug]);
-        $zones = $template ? (json_decode($template['zones'] ?? '[]', true) ?: ['main']) : ['main'];
-
-        $contentZones = [];
-        foreach ($zones as $zone) {
-            if (!is_string($zone)) {
-                continue;
-            }
-            $zone = trim($zone);
-            if (!preg_match('/^[a-z0-9_\-]+$/', $zone)) {
-                continue;
-            }
-            $contentZones[] = $zone;
-        }
-
-        if (empty($contentZones)) {
-            $contentZones = ['main'];
-        }
+        $template = $this->db->fetch('SELECT id FROM page_templates WHERE slug = ? LIMIT 1', [$templateSlug]);
+        $zones = $template ? $this->getTemplateZones((int) $template['id']) : ['main'];
 
         $requestedZone = trim($requestedZone);
-        if (in_array($requestedZone, $contentZones, true)) {
+        if (in_array($requestedZone, $zones, true)) {
             return $requestedZone;
         }
 
-        return $contentZones[0];
+        return $zones[0] ?? 'main';
+    }
+
+    /**
+     * Get the list of zone names for a template by reading its zone blocks.
+     * Returns ['main'] as fallback if no zone blocks exist.
+     */
+    private function getTemplateZones(int $templateId): array
+    {
+        try {
+            $zoneBlocks = $this->db->fetchAll(
+                "SELECT block_config FROM pages
+                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                 ORDER BY sort_order ASC",
+                [$templateId]
+            );
+
+            $zones = [];
+            foreach ($zoneBlocks as $row) {
+                $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+                $zoneName = $cfg['zone_name'] ?? null;
+                if ($zoneName && is_string($zoneName) && preg_match('/^[a-z0-9_\-]+$/', $zoneName)) {
+                    $zones[] = $zoneName;
+                }
+            }
+
+            return !empty($zones) ? $zones : ['main'];
+        } catch (\Throwable $e) {
+            // Migration 012 not applied yet
+            return ['main'];
+        }
     }
 }

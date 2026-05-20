@@ -45,8 +45,7 @@ class PageController extends BaseController
         if ($cruinn->hasPublished((int) $page['id'])) {
             $templateId    = (int)($tpl['id'] ?? 0);
             $pageZone      = (string)($page['page_zone'] ?? 'main');
-            $zoneCanvasMap = $this->buildZoneCanvasMap($tpl, (int) $page['id'], $pageZone, $cruinn);
-            $merged = $cruinn->buildWithTemplate($templateId, $pageZone, $zoneCanvasMap, (int) $page['id']);
+            $merged = $cruinn->buildWithTemplate($templateId, $pageZone, (int) $page['id']);
             Template::addGlobal('cruinn_css', $merged['css']);
             $this->render('public/cruinn-page', [
                 'title'   => $page['title'],
@@ -102,12 +101,11 @@ class PageController extends BaseController
 
         $templateId    = (int)($tpl['id'] ?? 0);
         $pageZone      = (string)($page['page_zone'] ?? 'main');
-        $zoneCanvasMap = $this->buildZoneCanvasMap($tpl, (int) $page['id'], $pageZone, $cruinn);
 
         // ── HTML mode: raw body HTML, injected into template layout ─────────
         if ($renderMode === 'html') {
             if ($templateId > 0) {
-                $merged = $cruinn->buildWithTemplate($templateId, $pageZone, $zoneCanvasMap, null, $page['body_html'] ?? '');
+                $merged = $cruinn->buildWithTemplate($templateId, $pageZone, null, $page['body_html'] ?? '');
                 Template::addGlobal('cruinn_css', $merged['css']);
                 $this->render('public/cruinn-page', [
                     'title'            => $page['title'],
@@ -130,7 +128,7 @@ class PageController extends BaseController
 
         // ── Cruinn mode: block renderer ──────────────────────────────────────
         if ($cruinn->hasPublished((int) $page['id'])) {
-            $merged = $cruinn->buildWithTemplate($templateId, $pageZone, $zoneCanvasMap, (int) $page['id']);
+            $merged = $cruinn->buildWithTemplate($templateId, $pageZone, (int) $page['id']);
             Template::addGlobal('cruinn_css', $merged['css']);
             $this->render('public/cruinn-page', [
                 'title'            => $page['title'],
@@ -154,23 +152,6 @@ class PageController extends BaseController
      * Build a zone-canvas map for all zones in the template except the page's own zone.
      * Returns [zoneName => canvasPageId] for every resolvable zone canvas.
      */
-    private function buildZoneCanvasMap(array $tpl, int $pageId, string $pageZone, CruinnRenderService $cruinn): array
-    {
-        $templateId = (int)($tpl['id'] ?? 0);
-        $zones      = $tpl['zones'] ?? ['main'];
-        $map        = [];
-        foreach ($zones as $zone) {
-            if ($zone === $pageZone) {
-                continue;
-            }
-            $canvasId = $cruinn->resolveZoneCanvasId($zone, $templateId ?: null, $pageId);
-            if ($canvasId !== null) {
-                $map[$zone] = $canvasId;
-            }
-        }
-        return $map;
-    }
-
     /**
      * Legacy content_blocks fallback — table no longer exists.
      * Pages without pages simply render empty.
@@ -195,13 +176,11 @@ class PageController extends BaseController
                 'id' => 0,
                 'slug' => 'default',
                 'name' => 'Default',
-                'zones' => ['main'],
                 'css_class' => 'layout-default',
                 'settings' => [],
             ];
         }
 
-        $tpl['zones'] = json_decode($tpl['zones'], true) ?? ['main'];
         $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
         return $tpl;
     }

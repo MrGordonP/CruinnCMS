@@ -1,10 +1,8 @@
 <?php
-    $tpl = $page_tpl ?? ['slug' => 'default', 'zones' => ['main'], 'css_class' => 'layout-default', 'settings' => []];
+    $tpl = $page_tpl ?? ['slug' => 'default', 'css_class' => 'layout-default', 'settings' => []];
     $tplSlug = $tpl['slug'] ?? 'default';
     $tplClass = $tpl['css_class'] ?? 'layout-default';
     $tplSettings = $tpl['settings'] ?? [];
-    $zones = $tpl['zones'] ?? ['main'];
-    $hasSidebar = in_array('sidebar', $zones, true);
     $isBlank = $tplSlug === 'blank';
     $showTitle = $tplSettings['show_title'] ?? true;
     $titleAlign = $tplSettings['title_align'] ?? 'left';
@@ -17,21 +15,18 @@
     elseif ($contentWidth === 'wide') $widthClass = ' content-wide';
     elseif ($contentWidth === 'full') $widthClass = ' content-full';
 
-    // Split blocks into zones: blocks with role "sidebar" go to sidebar, rest to main
+    // Legacy: Split blocks by role for sidebar support
     $mainBlocks = [];
     $sidebarBlocks = [];
-    if ($hasSidebar) {
-        foreach ($blocks as $block) {
-            $role = $block['settings']['role'] ?? '';
-            if ($role === 'sidebar') {
-                $sidebarBlocks[] = $block;
-            } else {
-                $mainBlocks[] = $block;
-            }
+    foreach ($blocks as $block) {
+        $role = $block['settings']['role'] ?? '';
+        if ($role === 'sidebar') {
+            $sidebarBlocks[] = $block;
+        } else {
+            $mainBlocks[] = $block;
         }
-    } else {
-        $mainBlocks = $blocks;
     }
+    $hasSidebar = !empty($sidebarBlocks);
 ?>
 <?php if ($isBlank): ?>
     <!-- Blank template: raw block output -->

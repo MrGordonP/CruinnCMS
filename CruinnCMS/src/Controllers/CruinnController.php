@@ -410,70 +410,71 @@ class CruinnController extends BaseController
                 $pageTemplateSlug = $page['template'] ?? 'default';
                 if ($pageTemplateSlug && $pageTemplateSlug !== 'none') {
                     $tplRow = $this->db->fetch(
-                        'SELECT id, slug, name, canvas_page_id, zones, zone_canvases, settings FROM page_templates WHERE slug = ? LIMIT 1',
+                        'SELECT id, slug, name, canvas_page_id, zone_canvases, settings FROM page_templates WHERE slug = ? LIMIT 1',
                         [$pageTemplateSlug]
                     );
                     if ($tplRow) {
-                        // templateZones: read from template's zones JSON (authoritative after migration 013)
-                        $templateZones = json_decode($tplRow['zones'] ?? '[]', true) ?: ['main'];
-
                         // templateCanvasHtml: use template_id path (blocks migrated from canvas_page_id in 012)
                         $templateCanvasPageId = !empty($tplRow['canvas_page_id']) ? (int) $tplRow['canvas_page_id'] : null;
                         $tplIdForCanvas = (int) $tplRow['id'];
                         if ($tplIdForCanvas > 0 && $cruinnSvc->hasPublishedTemplate($tplIdForCanvas)) {
-                            $tplResult          = $cruinnSvc->buildWithTemplate($tplIdForCanvas, 'main', []);
+                            $tplResult          = $cruinnSvc->buildWithTemplate($tplIdForCanvas, 'main');
                             $templateCanvasHtml = $tplResult['html'];
                             $templateCanvasCss  = $tplResult['css'];
                         }
                     }
 
-                    // Build context canvases — for each zone on the template except
-                    // the page's own injection zone. Sidebar gets position='right';
-                    // all other non-main zones get 'before' or 'after' relative to main.
+                    // Build context canvases - extract zone blocks from the template tree
                     if ($tplRow) {
-                        $allZones      = json_decode($tplRow['zones'] ?? '[]', true) ?: [];
-                        $zoneCanvasMap = json_decode($tplRow['zone_canvases'] ?? '{}', true) ?: [];
+                        $pageZone = $page['page_zone'] ?? 'main';
+                        $tplId = (int) $tplRow['id'];
+
+                        // Fetch template zone blocks
+                        $zoneBlocks = [];
+                        try {
+                            $zoneBlocks = $this->db->fetchAll(
+                                "SELECT block_id, block_config, sort_order
+                                 FROM pages
+                                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                                 ORDER BY sort_order ASC",
+                                [$tplId]
+                            );
+                        } catch (\Throwable $e) {
+                            // Migration 012 not applied yet
+                        }
+
+                        // Page-level zone overrides
                         $zoneOverrides = json_decode($page['zone_overrides'] ?? '{}', true) ?: [];
-                        $pageZone      = $page['page_zone'] ?? 'main';
-                        $mainIdx       = array_search($pageZone, $allZones);
-                        if ($mainIdx === false) { $mainIdx = count($allZones); }
 
-                        foreach ($allZones as $idx => $zone) {
-                            if ($zone === $pageZone) { continue; }
+                        // Backward compat: zone_canvases fallback (until migration 020 applied)
+                        $legacyZoneCanvases = json_decode($tplRow['zone_canvases'] ?? '{}', true) ?: [];
+                        
+                        // Find main zone index for position calculation
+                        $mainIdx = 0;
+                        foreach ($zoneBlocks as $idx => $zb) {
+                            $cfg = json_decode($zb['block_config'] ?? '{}', true) ?: [];
+                            if (($cfg['zone_name'] ?? '') === $pageZone) {
+                                $mainIdx = $idx;
+                                break;
+                            }
+                        }
 
-                            // Resolve canvas page ID: zone_overrides → zone_canvases → global zone page → legacy slug
+                        foreach ($zoneBlocks as $idx => $zoneBlock) {
+                            $cfg = json_decode($zoneBlock['block_config'] ?? '{}', true) ?: [];
+                            $zone = $cfg['zone_name'] ?? null;
+                            
+                            if (!$zone || $zone === $pageZone) { continue; }
+
+                            // Resolve canvas page ID: page override → zone block → legacy zone_canvases → global zone canvas
                             $canvasPageId = null;
+                            
                             if (!empty($zoneOverrides[$zone])) {
                                 $canvasPageId = (int) $zoneOverrides[$zone];
-                            } elseif (!empty($zoneCanvasMap[$zone])) {
-                                $canvasPageId = (int) $zoneCanvasMap[$zone];
-                            } else {
-                                try {
-                                    $gz = $this->db->fetch(
-                                        "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
-                                        [$zone]
-                                    );
-                                } catch (\Throwable $e) { $gz = false; }
-                                if (!$gz) {
-                                    $gz = $this->db->fetch(
-                                        "SELECT id FROM pages_index WHERE slug = ? LIMIT 1",
-                                        ['_' . $zone]
-                                    );
-                                }
-                                if ($gz) { $canvasPageId = (int) $gz['id']; }
-                            }
-
-                            if (!$canvasPageId) { continue; }
-
-                            $ctxHtml = '';
-                            $ctxCss  = '';
-                            try {
-                                if ($cruinnSvc->hasPublished($canvasPageId)) {
-                                    $ctxHtml = $cruinnSvc->buildHtml($canvasPageId);
-                                    $ctxCss  = $cruinnSvc->buildCss($canvasPageId);
-                                }
-                            } catch (\Throwable $e) {
-                                error_log('CruinnController::edit context zone render failed: ' . $e->getMessage());
+                            } elseif (!empty($cfg['canvas_page_id'])) {
+                                $canvasPageId = (int) $cfg['canvas_page_id'];
+                            } elseif (!empty($legacyZoneCanvases[$zone])) {
+                                // Backward compat: read from zone_canvases JSON until migration 020 runs
+                                $canvasPageId = (int) $legacyZoneCanvases[$zone];
                             }
 
                             $contextCanvases[] = [
@@ -500,98 +501,6 @@ class CruinnController extends BaseController
                 $footerPageId   = $cc['pageId'];
                 $footerZoneHtml = $cc['html'];
                 $footerZoneCss  = $cc['css'];
-            }
-        }
-
-        // Ensure every declared template content zone exists as a root zone block.
-        if ($isTemplatePage) {
-            $requiredZones = [];
-            foreach ($templateZonesDef as $zoneName) {
-                if (!in_array($zoneName, ['header', 'footer'], true)) {
-                    $requiredZones[] = (string) $zoneName;
-                }
-            }
-            if (empty($requiredZones)) {
-                $requiredZones = ['main'];
-            }
-
-            $existingZones = [];
-            $maxSort = 0;
-            foreach ($flat as $row) {
-                $maxSort = max($maxSort, (int) ($row['sort_order'] ?? 0));
-                if (($row['block_type'] ?? '') !== 'zone' || !empty($row['parent_block_id'])) {
-                    continue;
-                }
-                $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
-                $zn = (string) ($cfg['zone_name'] ?? 'main');
-                $existingZones[$zn] = true;
-            }
-
-            $missingZones = [];
-            foreach ($requiredZones as $zn) {
-                if (!isset($existingZones[$zn])) {
-                    $missingZones[] = $zn;
-                }
-            }
-
-            if (!empty($missingZones)) {
-                $sort = max(10, ((int) floor($maxSort / 10) + 1) * 10);
-                if ($hasDraft) {
-                    $targetSeq = (int) $this->db->fetchColumn(
-                        'SELECT MAX(edit_seq) FROM pages_draft WHERE template_id = ?',
-                        [$templateId]
-                    );
-                    foreach ($missingZones as $zn) {
-                        $blockId = 'zone-' . $zn . '-tpl-' . $templateId;
-                        $this->db->execute(
-                            'INSERT IGNORE INTO pages_draft
-                                 (template_id, edit_seq, block_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)',
-                            [
-                                $templateId,
-                                $targetSeq,
-                                $blockId,
-                                'zone',
-                                '',
-                                json_encode(['min-height' => '120px']),
-                                json_encode(['zone_name' => $zn]),
-                                $sort,
-                            ]
-                        );
-                        $sort += 10;
-                    }
-                    $flat = $this->db->fetchAll(
-                        'SELECT * FROM pages_draft
-                          WHERE template_id = ? AND edit_seq = ?
-                          ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                        [$templateId, $targetSeq]
-                    );
-                } else {
-                    foreach ($missingZones as $zn) {
-                        $blockId = 'zone-' . $zn . '-tpl-' . $templateId;
-                        $this->db->execute(
-                            'INSERT IGNORE INTO pages
-                                 (block_id, template_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, NULL)',
-                            [
-                                $blockId,
-                                $templateId,
-                                'zone',
-                                '',
-                                json_encode(['min-height' => '120px']),
-                                json_encode(['zone_name' => $zn]),
-                                $sort,
-                            ]
-                        );
-                        $sort += 10;
-                    }
-                    $flat = $this->db->fetchAll(
-                        'SELECT * FROM pages
-                          WHERE template_id = ?
-                          ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                        [$templateId]
-                    );
-                }
             }
         }
 

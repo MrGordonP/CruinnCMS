@@ -201,14 +201,34 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/templates');
         }
 
-        $zoneCanvases = json_decode($tpl['zone_canvases'] ?? '{}', true) ?: [];
+        $templateId = (int) $id;
 
-        // If already assigned, go directly to the editor
-        if (!empty($zoneCanvases[$zoneName])) {
-            $existing = $this->db->fetch('SELECT id FROM pages_index WHERE id = ? LIMIT 1', [(int) $zoneCanvases[$zoneName]]);
-            if ($existing) {
-                $this->redirect('/admin/editor/' . (int) $existing['id'] . '/edit');
-                return;
+        // Find zone block for this zone in the template tree
+        $zoneBlock = null;
+        try {
+            $zoneBlock = $this->db->fetch(
+                "SELECT block_id, block_config FROM pages
+                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                 AND JSON_UNQUOTE(JSON_EXTRACT(block_config, '$.zone_name')) = ?
+                 LIMIT 1",
+                [$templateId, $zoneName]
+            );
+        } catch (\Throwable $e) {
+            // Migration 012 not applied yet
+        }
+
+        if ($zoneBlock) {
+            // Zone block exists - check if it has a canvas assigned
+            $cfg = json_decode($zoneBlock['block_config'] ?? '{}', true) ?: [];
+            $canvasPageId = !empty($cfg['canvas_page_id']) ? (int) $cfg['canvas_page_id'] : null;
+
+            if ($canvasPageId) {
+                // Canvas already assigned - go to editor
+                $existing = $this->db->fetch('SELECT id FROM pages_index WHERE id = ? LIMIT 1', [$canvasPageId]);
+                if ($existing) {
+                    $this->redirect('/admin/editor/' . $canvasPageId . '/edit');
+                    return;
+                }
             }
         }
 
@@ -227,51 +247,31 @@ class SiteBuilderController extends BaseController
         );
         $canvasPageId = (int) $this->db->pdo()->lastInsertId();
 
-        // Assign in zone_canvases
-        $zoneCanvases[$zoneName] = $canvasPageId;
-        $this->db->execute(
-            'UPDATE page_templates SET zone_canvases = ? WHERE id = ?',
-            [json_encode($zoneCanvases), (int) $id]
-        );
+        if ($zoneBlock) {
+            // Zone block exists - update its canvas_page_id
+            $cfg = json_decode($zoneBlock['block_config'] ?? '{}', true) ?: [];
+            $cfg['canvas_page_id'] = $canvasPageId;
+            $this->db->execute(
+                'UPDATE pages SET block_config = ? WHERE template_id = ? AND block_id = ?',
+                [json_encode($cfg), $templateId, $zoneBlock['block_id']]
+            );
+        } else {
+            // No zone block yet - create it
+            $blockId = 'zone-' . $zoneName . '-tpl-' . $templateId;
+            $this->db->execute(
+                'INSERT INTO pages (block_id, template_id, block_type, block_config, sort_order, parent_block_id)
+                 VALUES (?, ?, ?, ?, ?, NULL)',
+                [
+                    $blockId,
+                    $templateId,
+                    'zone',
+                    json_encode(['zone_name' => $zoneName, 'canvas_page_id' => $canvasPageId]),
+                    32767,  // append at end
+                ]
+            );
+        }
 
         $this->redirect('/admin/editor/' . $canvasPageId . '/edit');
-    }
-
-    /**
-     * POST /admin/templates/{id}/zone-canvases — Save zone canvas assignments
-     * from the template settings form (maps zone names to existing canvas page IDs).
-     */
-    public function builderSaveZoneCanvases(string $id): void
-    {
-        Auth::requireAdmin();
-        $tpl = $this->db->fetch('SELECT id FROM page_templates WHERE id = ?', [(int) $id]);
-        if (!$tpl) {
-            http_response_code(404);
-            echo json_encode(['error' => 'Template not found']);
-            return;
-        }
-
-        $raw = $this->input('zone_canvases', '{}');
-        $canvases = json_decode($raw, true);
-        if (!is_array($canvases)) {
-            $canvases = [];
-        }
-
-        // Validate: values must be positive integers (page IDs) or null/empty
-        $clean = [];
-        foreach ($canvases as $zone => $pageId) {
-            if ($pageId !== null && $pageId !== '' && (int) $pageId > 0) {
-                $clean[preg_replace('/[^a-z0-9_-]/', '', (string) $zone)] = (int) $pageId;
-            }
-        }
-
-        $this->db->execute(
-            'UPDATE page_templates SET zone_canvases = ? WHERE id = ?',
-            [json_encode($clean) ?: '{}', (int) $id]
-        );
-
-        Auth::flash('success', 'Zone canvas assignments saved.');
-        $this->redirect('/admin/templates');
     }
 
     public function builderDeleteTemplate(string $id): void
