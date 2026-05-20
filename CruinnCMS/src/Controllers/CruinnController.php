@@ -259,14 +259,10 @@ class CruinnController extends BaseController
         // Early template detection: after migration 012, template blocks are stored
         // with template_id rather than page_id, so block queries must use the right column.
         $earlyCanvasType     = $page['canvas_type'] ?? null;
-        $earlyIsTemplatePage = ($earlyCanvasType === 'template-shell')
-            || ($earlyCanvasType === null && str_starts_with($page['slug'] ?? '', '_tpl_'));
-        $earlyTemplateId = 0;
-        if ($earlyIsTemplatePage) {
-            $earlyTemplateId = (int) ($this->db->fetchColumn(
-                'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1', [$pageId]
-            ) ?: 0);
-        }
+        $earlyTemplateId = (int) ($this->db->fetchColumn(
+            'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1', [$pageId]
+        ) ?: 0);
+        $earlyIsTemplatePage = $earlyTemplateId > 0;
 
         // For file/html render modes, edit_seq=1 is the auto-import baseline written
         // on every fresh open — not a user edit. Only seq>=2 means the user has made
@@ -377,21 +373,41 @@ class CruinnController extends BaseController
         $canvasType       = $page['canvas_type'] ?? null;
         $isZonePage       = ($canvasType === 'zone') || ($canvasType === null && str_starts_with($page['slug'] ?? '', '_') && !str_starts_with($page['slug'] ?? '', '_tpl_'));
         $zoneName         = $isZonePage ? ($page['zone_name'] ?? ltrim($page['slug'], '_')) : null;
-        $isTemplatePage   = ($canvasType === 'template-shell') || ($canvasType === null && str_starts_with($page['slug'] ?? '', '_tpl_'));
-        $templateSlugName = $isTemplatePage ? ($canvasType === 'template-shell' ? null : substr($page['slug'], 5)) : null;
+        $templateRow      = $this->db->fetch(
+            'SELECT id, slug, zones, context_source, settings, layout_page_id FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+            [$pageId]
+        );
+        $isTemplatePage   = $templateRow !== false && $templateRow !== null;
+        $isTemplateLayoutPage = ($canvasType === 'template-shell') && !$isTemplatePage;
+        $templateSlugName = $isTemplatePage ? ($templateRow['slug'] ?? null) : null;
 
         // For template canvas pages: look up which template owns this canvas
         $templateId      = null;
         $templateZonesDef = [];
         $contextFields   = [];   // [{key, label, type}] for content template binding
         $templateLayoutSettings = [];  // Layout settings for template pages
+        $templateLayoutPageId = null;
+        $templateZoneAssignments = [];
+        $templatePreviewHtml = '';
+        $templatePreviewCss = '';
+        $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
         if ($isTemplatePage) {
-            $tplRow = $this->db->fetch(
-                'SELECT id, zones, context_source, settings FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
-                [$pageId]
-            );
+            $tplRow = $templateRow;
             $templateId       = $tplRow ? (int) $tplRow['id'] : null;
-            $templateZonesDef = $tplRow ? (json_decode($tplRow['zones'] ?? '[]', true) ?: []) : [];
+            $templateLayoutPageId = !empty($tplRow['layout_page_id']) ? (int) $tplRow['layout_page_id'] : null;
+            $hasDraft = false;
+            $templateZonesDef = $templateLayoutPageId
+                ? array_values(array_map(fn(array $zone): string => $zone['zone_name'], $this->getLayoutZones($templateLayoutPageId)))
+                : ($tplRow ? (json_decode($tplRow['zones'] ?? '[]', true) ?: []) : []);
+            if ($templateId && $templateLayoutPageId) {
+                $this->syncTemplateZoneBlocks($templateId, $this->getLayoutZones($templateLayoutPageId));
+            }
+            if ($templateId) {
+                $templateZoneAssignments = $this->getTemplateZoneAssignments($templateId);
+                $preview = $cruinnSvc->buildWithTemplate($templateId, 'main');
+                $templatePreviewHtml = $this->stripPreviewEditorAttrs($preview['html']);
+                $templatePreviewCss = $preview['css'];
+            }
 
             // Template layout settings for .site-body-wrap
             if ($tplRow && !empty($tplRow['settings'])) {
@@ -413,13 +429,11 @@ class CruinnController extends BaseController
         $headerZoneCss       = '';
         $footerZoneHtml      = '';
         $footerZoneCss       = '';
-        $templateZones       = [];
+        $templateZones       = $templateZonesDef;
         $templateCanvasPageId = null;
         $templateCanvasHtml  = '';
         $templateCanvasCss   = '';
         $zoneSuggestions     = $this->db->fetchColumn("SELECT value FROM settings WHERE `key` = 'editor.zone_suggestions' LIMIT 1") ?: 'main,header,footer,sidebar';
-
-        $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
 
         if (!$isZonePage || $isTemplatePage) {
             // For non-template-canvas pages: look up the template canvas and extract zones
@@ -427,7 +441,7 @@ class CruinnController extends BaseController
                 $pageTemplateSlug = $page['template'] ?? 'default';
                 if ($pageTemplateSlug && $pageTemplateSlug !== 'none') {
                     $tplRow = $this->db->fetch(
-                        'SELECT id, slug, name, canvas_page_id, zone_canvases, settings FROM page_templates WHERE slug = ? LIMIT 1',
+                        'SELECT id, slug, name, canvas_page_id, layout_page_id, zone_canvases, settings FROM page_templates WHERE slug = ? LIMIT 1',
                         [$pageTemplateSlug]
                     );
                     if ($tplRow) {
@@ -441,21 +455,8 @@ class CruinnController extends BaseController
                         }
 
                         // Extract zone names from template's zone blocks for editor UI
-                        try {
-                            $tplZoneBlocks = $this->db->fetchAll(
-                                "SELECT block_config FROM pages
-                                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
-                                 ORDER BY sort_order ASC",
-                                [(int) $tplRow['id']]
-                            );
-                            foreach ($tplZoneBlocks as $zb) {
-                                $cfg = json_decode($zb['block_config'] ?? '{}', true) ?: [];
-                                if (!empty($cfg['zone_name'])) {
-                                    $templateZones[] = $cfg['zone_name'];
-                                }
-                            }
-                        } catch (\Throwable $e) {
-                            // Migration 012 not applied yet
+                        foreach ($this->getTemplateDisplayZones((int) $tplRow['id'], (int) ($tplRow['layout_page_id'] ?? 0)) as $zoneDef) {
+                            $templateZones[] = $zoneDef['zone_name'];
                         }
                     }
 
@@ -465,18 +466,8 @@ class CruinnController extends BaseController
                         $tplId = (int) $tplRow['id'];
 
                         // Fetch template zone blocks
-                        $zoneBlocks = [];
-                        try {
-                            $zoneBlocks = $this->db->fetchAll(
-                                "SELECT block_id, block_config, sort_order
-                                 FROM pages
-                                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
-                                 ORDER BY sort_order ASC",
-                                [$tplId]
-                            );
-                        } catch (\Throwable $e) {
-                            // Migration 012 not applied yet
-                        }
+                        $zoneBlocks = $this->getTemplateDisplayZones($tplId, (int) ($tplRow['layout_page_id'] ?? 0));
+                        $assignmentBlocks = $this->getTemplateZoneAssignments($tplId);
 
                         // Page-level zone overrides
                         $zoneOverrides = json_decode($page['zone_overrides'] ?? '{}', true) ?: [];
@@ -487,16 +478,15 @@ class CruinnController extends BaseController
                         // Find main zone index for position calculation
                         $mainIdx = 0;
                         foreach ($zoneBlocks as $idx => $zb) {
-                            $cfg = json_decode($zb['block_config'] ?? '{}', true) ?: [];
-                            if (($cfg['zone_name'] ?? '') === $pageZone) {
+                            if (($zb['zone_name'] ?? '') === $pageZone) {
                                 $mainIdx = $idx;
                                 break;
                             }
                         }
 
                         foreach ($zoneBlocks as $idx => $zoneBlock) {
-                            $cfg = json_decode($zoneBlock['block_config'] ?? '{}', true) ?: [];
-                            $zone = $cfg['zone_name'] ?? null;
+                            $zone = $zoneBlock['zone_name'] ?? null;
+                            $cfg = $assignmentBlocks[$zone] ?? [];
 
                             if (!$zone || $zone === $pageZone) { continue; }
 
@@ -673,8 +663,12 @@ class CruinnController extends BaseController
             'page'              => $page,
             'hasDraft'          => $hasDraft,
             'state'             => null,
-            'cruinnHtml'        => (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
-            'cruinnCss'         => (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
+            'cruinnHtml'        => $isTemplatePage
+                ? $templatePreviewHtml
+                : (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
+            'cruinnCss'         => $isTemplatePage
+                ? $templatePreviewCss
+                : (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
             'menus'             => $menus,
             'contentSets'       => $contentSets,
             'contentTemplates'  => $contentTemplates,
@@ -683,8 +677,13 @@ class CruinnController extends BaseController
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
             'isTemplatePage'    => $isTemplatePage,
+            'isTemplateLayoutPage' => $isTemplateLayoutPage,
             'templateSlugName'  => $templateSlugName,
             'templateId'        => $templateId,
+            'templateLayoutPageId' => $templateLayoutPageId,
+            'templateZoneAssignments' => $templateZoneAssignments,
+            'templatePreviewHtml' => $templatePreviewHtml,
+            'templatePreviewCss' => $templatePreviewCss,
             'availableZoneCanvases' => $availableZoneCanvases,
             'headerPageId'      => $headerPageId,
             'footerPageId'      => $footerPageId,
@@ -1866,6 +1865,152 @@ class CruinnController extends BaseController
         return $builtIn[$contextSource] ?? [];
     }
 
+    private function getLayoutZones(int $layoutPageId): array
+    {
+        if ($layoutPageId <= 0) {
+            return [];
+        }
+
+        $rows = $this->db->fetchAll(
+            "SELECT block_id, block_config, sort_order
+             FROM pages
+             WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+             ORDER BY sort_order ASC",
+            [$layoutPageId]
+        );
+
+        $zones = [];
+        foreach ($rows as $row) {
+            $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            $zoneName = $cfg['zone_name'] ?? null;
+            if (!$zoneName || !preg_match('/^[a-z0-9_-]+$/', (string) $zoneName)) {
+                continue;
+            }
+            $zones[] = [
+                'block_id' => $row['block_id'],
+                'block_config' => $row['block_config'] ?? '{}',
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+                'zone_name' => (string) $zoneName,
+            ];
+        }
+
+        return $zones;
+    }
+
+    private function getTemplateZoneAssignments(int $templateId): array
+    {
+        if ($templateId <= 0) {
+            return [];
+        }
+
+        $rows = $this->db->fetchAll(
+            "SELECT block_id, block_config, sort_order
+             FROM pages
+             WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+             ORDER BY sort_order ASC",
+            [$templateId]
+        );
+
+        $zones = [];
+        foreach ($rows as $row) {
+            $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            $zoneName = $cfg['zone_name'] ?? null;
+            if (!$zoneName || !preg_match('/^[a-z0-9_-]+$/', (string) $zoneName)) {
+                continue;
+            }
+            $zones[(string) $zoneName] = $cfg + [
+                'block_id' => $row['block_id'],
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+        }
+
+        return $zones;
+    }
+
+    private function getTemplateDisplayZones(int $templateId, int $layoutPageId): array
+    {
+        $layoutZones = $this->getLayoutZones($layoutPageId);
+        if (!empty($layoutZones)) {
+            return $layoutZones;
+        }
+
+        $assignments = $this->getTemplateZoneAssignments($templateId);
+        $zones = [];
+        foreach ($assignments as $zoneName => $cfg) {
+            $zones[] = [
+                'block_id' => $cfg['block_id'] ?? ('zone-' . $zoneName),
+                'block_config' => json_encode($cfg),
+                'sort_order' => (int) ($cfg['sort_order'] ?? 0),
+                'zone_name' => $zoneName,
+            ];
+        }
+
+        return $zones;
+    }
+
+    private function syncTemplateZoneBlocks(int $templateId, array $layoutZones): void
+    {
+        if ($templateId <= 0 || empty($layoutZones)) {
+            return;
+        }
+
+        $existing = $this->getTemplateZoneAssignments($templateId);
+        foreach ($layoutZones as $index => $zone) {
+            $zoneName = $zone['zone_name'] ?? null;
+            if (!$zoneName || isset($existing[$zoneName])) {
+                continue;
+            }
+
+            $this->db->execute(
+                'INSERT INTO pages (block_id, template_id, block_type, block_config, sort_order, parent_block_id)
+                 VALUES (?, ?, ?, ?, ?, NULL)',
+                [
+                    'tpl-zone-' . $templateId . '-' . $zoneName,
+                    $templateId,
+                    'zone',
+                    json_encode(['zone_name' => $zoneName]),
+                    $index,
+                ]
+            );
+        }
+    }
+
+    private function updateTemplateZoneAssignments(int $templateId, array $assignments): void
+    {
+        if ($templateId <= 0) {
+            return;
+        }
+
+        $existing = $this->getTemplateZoneAssignments($templateId);
+        foreach ($assignments as $zoneName => $canvasPageId) {
+            if (!isset($existing[$zoneName])) {
+                continue;
+            }
+
+            $cfg = $existing[$zoneName];
+            unset($cfg['block_id'], $cfg['sort_order']);
+
+            $canvasId = (int) $canvasPageId;
+            if ($canvasId > 0) {
+                $cfg['canvas_page_id'] = $canvasId;
+            } else {
+                unset($cfg['canvas_page_id']);
+            }
+
+            $this->db->execute(
+                'UPDATE pages SET block_config = ? WHERE template_id = ? AND block_id = ?',
+                [json_encode($cfg), $templateId, $existing[$zoneName]['block_id']]
+            );
+        }
+    }
+
+    private function stripPreviewEditorAttrs(string $html): string
+    {
+        $html = preg_replace('/\sdata-block(?:="[^"]*")?/', '', $html) ?? $html;
+        $html = preg_replace('/\sdata-block-type="[^"]*"/', '', $html) ?? $html;
+        return $html;
+    }
+
     /**
      * POST /admin/editor/{pageId}/metadata
      * Save page metadata (template, zone) or template layout settings.
@@ -1882,32 +2027,45 @@ class CruinnController extends BaseController
 
         $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-        // Detect if this is a template page (slug starts with _tpl_)
-        $isTemplatePage = str_starts_with($page['slug'] ?? '', '_tpl_');
+        $templateRow = $this->db->fetch(
+            'SELECT id FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+            [$pageId]
+        );
+        $isTemplatePage = $templateRow !== false && $templateRow !== null;
 
-        // Template layout settings (for template pages only)
-        if ($isTemplatePage && isset($body['layout_settings'])) {
-            // Extract template slug from page slug: _tpl_landing → landing
-            $templateSlug = substr($page['slug'], 5);
-            if (!$templateSlug) {
-                $this->json(['error' => 'Template slug not found'], 400);
+        if ($isTemplatePage) {
+            $templateId = (int) $templateRow['id'];
+
+            if (array_key_exists('layout_page_id', $body)) {
+                $layoutPageId = (int) ($body['layout_page_id'] ?? 0);
+                if ($layoutPageId > 0) {
+                    $layoutPage = $this->db->fetch(
+                        "SELECT id FROM pages_index
+                         WHERE id = ? AND canvas_type = 'template-shell'
+                           AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+                         LIMIT 1",
+                        [$layoutPageId]
+                    );
+                    if (!$layoutPage) {
+                        $this->json(['error' => 'Invalid template layout'], 400);
+                    }
+                } else {
+                    $layoutPageId = null;
+                }
+
+                $fields = ['layout_page_id' => $layoutPageId];
+                if ($layoutPageId !== null) {
+                    $layoutZones = $this->getLayoutZones($layoutPageId);
+                    $this->syncTemplateZoneBlocks($templateId, $layoutZones);
+                    $fields['zones'] = json_encode(array_values(array_map(fn(array $zone): string => $zone['zone_name'], $layoutZones)));
+                }
+
+                $this->db->update('page_templates', $fields, 'id = ?', [$templateId]);
             }
 
-            $currentTpl = $this->db->fetch(
-                'SELECT settings FROM page_templates WHERE slug = ? LIMIT 1',
-                [$templateSlug]
-            );
-            if (!$currentTpl) {
-                $this->json(['error' => 'Template not found'], 404);
+            if (isset($body['zone_assignments']) && is_array($body['zone_assignments'])) {
+                $this->updateTemplateZoneAssignments($templateId, $body['zone_assignments']);
             }
-
-            $settings = json_decode($currentTpl['settings'] ?? '{}', true) ?: [];
-            $settings['body_layout'] = $body['layout_settings'];
-
-            $this->db->execute(
-                'UPDATE page_templates SET settings = ? WHERE slug = ?',
-                [json_encode($settings), $templateSlug]
-            );
 
             $this->json(['success' => true]);
             return;

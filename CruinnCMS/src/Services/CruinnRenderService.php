@@ -354,24 +354,38 @@ class CruinnRenderService
         ?int    $pageId     = null,
         ?string $injectHtml = null
     ): array {
+        $templateRow = $this->db->fetch(
+            'SELECT canvas_page_id, layout_page_id FROM page_templates WHERE id = ? LIMIT 1',
+            [$templateId]
+        ) ?: [];
+
         // ── Fetch template layout blocks ─────────────────────────────
         $tplFlat = [];
-        try {
+        $layoutPageId = (int) ($templateRow['layout_page_id'] ?? 0);
+        if ($layoutPageId > 0) {
             $tplFlat = $this->db->fetchAll(
                 'SELECT * FROM pages
-                  WHERE template_id = ?
+                  WHERE page_id = ?
                   ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
-                [$templateId]
+                [$layoutPageId]
             );
-        } catch (\Throwable $e) {
-            // Column doesn't exist yet (migration 012 not applied) — fall through to canvas_page_id
+        } else {
+            try {
+                $tplFlat = $this->db->fetchAll(
+                    'SELECT * FROM pages
+                      WHERE template_id = ?
+                      ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                    [$templateId]
+                );
+            } catch (\Throwable $e) {
+                // Column doesn't exist yet (migration 012 not applied) — fall through to canvas_page_id
+            }
         }
 
         // Migration safety: if no template_id blocks, fall back to canvas_page_id
         $canvasCssPageId = null;
         if (empty($tplFlat)) {
-            $tpl = $this->db->fetch('SELECT canvas_page_id FROM page_templates WHERE id = ? LIMIT 1', [$templateId]);
-            $cpid = $tpl ? (int)($tpl['canvas_page_id'] ?? 0) : 0;
+            $cpid = (int) ($templateRow['canvas_page_id'] ?? 0);
             if ($cpid > 0) {
                 $tplFlat = $this->db->fetchAll(
                     'SELECT * FROM pages
@@ -394,8 +408,16 @@ class CruinnRenderService
         // ── Extract zone canvas map from template zone blocks ────────
         // Zone blocks declare which canvas to render via block_config.canvas_page_id
         $zoneCanvasMap = [];  // [zoneName => canvasPageId]
-        foreach ($tplFlat as $row) {
-            if ($row['block_type'] === 'zone' && ($row['parent_block_id'] ?? null) === null) {
+        $assignmentRows = $layoutPageId > 0
+            ? $this->db->fetchAll(
+                'SELECT block_type, block_config, parent_block_id FROM pages
+                  WHERE template_id = ?
+                  ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC',
+                [$templateId]
+            )
+            : $tplFlat;
+        foreach ($assignmentRows as $row) {
+            if (($row['block_type'] ?? null) === 'zone' && ($row['parent_block_id'] ?? null) === null) {
                 $cfg      = json_decode($row['block_config'] ?? '{}', true) ?: [];
                 $zoneName = $cfg['zone_name'] ?? null;
                 if ($zoneName !== null && $zoneName !== $pageZone) {

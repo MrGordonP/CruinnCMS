@@ -18,6 +18,7 @@
 
     var PAGE_ID = wrap.dataset.pageId;
     var HAS_PAGE = wrap.dataset.hasPage === '1' && !!PAGE_ID;
+    var IS_TEMPLATE_PAGE = wrap.dataset.isTemplatePage === '1';
     var CSRF = wrap.dataset.csrf;
     var API_BASE = wrap.dataset.apiBase || '/admin/editor';
     var liveStyles = document.getElementById('editor-live-styles');
@@ -60,6 +61,7 @@
         bindDocPanel();
         bindPageSettings();
         bindTemplateLayout();
+        bindTemplatePageSettings();
         // Auto-enter code view for HTML render-mode pages
         if (wrap.dataset.startInCodeView === '1') {
             _htmlPageMode = true;
@@ -2210,6 +2212,61 @@
         maxWidthNum.addEventListener('input', saveTemplateLayout);
         maxWidthUnit.addEventListener('change', saveTemplateLayout);
         padding.addEventListener('input', saveTemplateLayout);
+    }
+
+    function bindTemplatePageSettings() {
+        if (!IS_TEMPLATE_PAGE) { return; }
+
+        var layoutSelect = document.getElementById('tpl-layout-page-select');
+        var zoneSelects = Array.from(document.querySelectorAll('.template-zone-canvas-select'));
+
+        function collectAssignments() {
+            var assignments = {};
+            zoneSelects.forEach(function (sel) {
+                assignments[sel.dataset.zone] = sel.value ? parseInt(sel.value, 10) : null;
+            });
+            return assignments;
+        }
+
+        function saveTemplateSettings(reloadAfterSave) {
+            fetch(API_BASE + '/' + PAGE_ID + '/metadata', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': CSRF,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    layout_page_id: layoutSelect ? (layoutSelect.value ? parseInt(layoutSelect.value, 10) : null) : null,
+                    zone_assignments: collectAssignments()
+                })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data || !data.success) {
+                        console.error('[Cruinn] saveTemplateSettings failed:', data && data.error ? data.error : data);
+                        return;
+                    }
+                    if (reloadAfterSave) {
+                        window.location.reload();
+                    }
+                })
+                .catch(function (err) {
+                    console.error('[Cruinn] saveTemplateSettings failed:', err);
+                });
+        }
+
+        if (layoutSelect) {
+            layoutSelect.addEventListener('change', function () {
+                saveTemplateSettings(true);
+            });
+        }
+
+        zoneSelects.forEach(function (sel) {
+            sel.addEventListener('change', function () {
+                saveTemplateSettings(true);
+            });
+        });
     }
 
     var _actionTimer = null;

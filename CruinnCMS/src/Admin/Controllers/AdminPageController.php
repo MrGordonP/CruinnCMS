@@ -433,12 +433,26 @@ HTML;
     private function getTemplateZones(int $templateId): array
     {
         try {
-            $zoneBlocks = $this->db->fetchAll(
-                "SELECT block_config FROM pages
-                 WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
-                 ORDER BY sort_order ASC",
+            $layoutPageId = (int) ($this->db->fetchColumn(
+                'SELECT layout_page_id FROM page_templates WHERE id = ? LIMIT 1',
                 [$templateId]
-            );
+            ) ?: 0);
+
+            if ($layoutPageId > 0) {
+                $zoneBlocks = $this->db->fetchAll(
+                    "SELECT block_config FROM pages
+                     WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                     ORDER BY sort_order ASC",
+                    [$layoutPageId]
+                );
+            } else {
+                $zoneBlocks = $this->db->fetchAll(
+                    "SELECT block_config FROM pages
+                     WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+                     ORDER BY sort_order ASC",
+                    [$templateId]
+                );
+            }
 
             $zones = [];
             foreach ($zoneBlocks as $row) {

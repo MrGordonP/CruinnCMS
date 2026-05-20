@@ -353,6 +353,7 @@ CREATE TABLE `pages_draft` (
 CREATE TABLE `page_templates` (
     `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `canvas_page_id` INT UNSIGNED NULL DEFAULT NULL,
+    `layout_page_id` INT UNSIGNED NULL DEFAULT NULL,
     `slug`           VARCHAR(50)  NOT NULL,
     `name`           VARCHAR(100) NOT NULL,
     `description`    VARCHAR(255) DEFAULT '',
@@ -366,7 +367,8 @@ CREATE TABLE `page_templates` (
     `updated_at`     DATETIME     NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_page_templates_slug` (`slug`),
-    CONSTRAINT `fk_tpl_canvas_page` FOREIGN KEY (`canvas_page_id`) REFERENCES `pages_index` (`id`) ON DELETE SET NULL
+    CONSTRAINT `fk_tpl_canvas_page` FOREIGN KEY (`canvas_page_id`) REFERENCES `pages_index` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_tpl_layout_page` FOREIGN KEY (`layout_page_id`) REFERENCES `pages_index` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Deferred FKs: pages/pages_draft → page_templates (page_templates defined above)
