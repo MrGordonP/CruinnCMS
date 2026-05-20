@@ -439,28 +439,15 @@ class SiteBuilderController extends BaseController
             'SELECT slug, name FROM content_sets ORDER BY name'
         );
 
-        // All zone canvases for zone assignment UI
-        $zoneCanvases = $this->db->fetchAll(
-            "SELECT id, title, slug, zone_name, status, updated_at
-             FROM pages_index
-             WHERE canvas_type = 'zone'
-             ORDER BY zone_name, title"
-        );
-
-        // Current zone→canvas assignments
-        $currentZoneCanvases = json_decode($tpl['zone_canvases'] ?? '{}', true) ?: [];
-
         $this->renderAdmin('admin/site-builder/template-settings', [
-            'title'              => 'Edit Template: ' . $tpl['name'],
-            'section'            => 'builder',
-            'tab'                => 'templates',
-            'tpl'                => $tpl,
-            'pages'              => $pages,
-            'headerTemplates'    => $headerTemplates,
-            'sidebarTemplates'   => $sidebarTemplates,
-            'contentSets'        => $contentSets,
-            'zoneCanvases'       => $zoneCanvases,
-            'currentZoneCanvases'=> $currentZoneCanvases,
+            'title'           => 'Edit Template: ' . $tpl['name'],
+            'section'         => 'builder',
+            'tab'             => 'templates',
+            'tpl'             => $tpl,
+            'pages'           => $pages,
+            'headerTemplates' => $headerTemplates,
+            'sidebarTemplates'=> $sidebarTemplates,
+            'contentSets'     => $contentSets,
         ]);
     }
 
@@ -548,13 +535,7 @@ class SiteBuilderController extends BaseController
         $zonesDecoded = json_decode($zones);
         if (!is_array($zonesDecoded)) {
             $zones = '["main"]';
-            $zonesDecoded = ['main'];
         }
-
-        // Derive zone presence from zones array
-        $hasHeaderZone  = in_array('header', $zonesDecoded, true);
-        $hasFooterZone  = in_array('footer', $zonesDecoded, true);
-        $hasSidebarZone = in_array('sidebar', $zonesDecoded, true);
 
         $slug = $tpl['slug'];
         if (!$tpl['is_system']) {
@@ -598,26 +579,6 @@ class SiteBuilderController extends BaseController
             }
         }
 
-        // Zone canvas assignments
-        $zoneCanvasInput = $this->input('zone_canvas', []);
-        $zoneCanvases = [];
-        if (is_array($zoneCanvasInput)) {
-            foreach ($zoneCanvasInput as $zoneName => $canvasId) {
-                $zoneName = preg_replace('/[^a-z0-9_-]/', '', (string) $zoneName);
-                $canvasId = (int) $canvasId;
-                if ($zoneName && $canvasId > 0) {
-                    // Verify canvas exists
-                    $canvas = $this->db->fetch(
-                        "SELECT id FROM pages_index WHERE id = ? AND canvas_type = 'zone'",
-                        [$canvasId]
-                    );
-                    if ($canvas) {
-                        $zoneCanvases[$zoneName] = $canvasId;
-                    }
-                }
-            }
-        }
-
         $this->db->update('page_templates', [
             'name'           => $name,
             'slug'           => $slug,
@@ -627,7 +588,6 @@ class SiteBuilderController extends BaseController
             'sort_order'     => $sortOrder,
             'settings'       => json_encode($settings),
             'context_source' => $contextSource ?: null,
-            'zone_canvases'  => json_encode($zoneCanvases),
         ], 'id = ?', [$id]);
 
         Auth::flash('success', "Template '{$name}' updated.");
