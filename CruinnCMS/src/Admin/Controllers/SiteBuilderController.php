@@ -399,58 +399,6 @@ class SiteBuilderController extends BaseController
         return $tpl;
     }
 
-    public function builderEditTemplate(string $id): void
-    {
-        $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [(int) $id]);
-        if (!$tpl) {
-            Auth::flash('error', 'Template not found.');
-            $this->redirect('/admin/templates');
-        }
-
-        $usage = $this->db->fetch(
-            'SELECT COUNT(*) AS cnt FROM pages_index WHERE template = ?',
-            [$tpl['slug']]
-        );
-        $tpl['page_count'] = $usage['cnt'] ?? 0;
-        $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
-
-        $pages = $this->db->fetchAll(
-            'SELECT id, title, slug, status FROM pages_index WHERE template = ? ORDER BY title LIMIT 20',
-            [$tpl['slug']]
-        );
-
-        // All templates that have a 'header' zone — these are valid header_source choices.
-        $headerTemplates = $this->db->fetchAll(
-            "SELECT id, slug, name, canvas_page_id FROM page_templates
-              WHERE JSON_CONTAINS(zones, '\"header\"') AND id != ?
-              ORDER BY sort_order, name",
-            [(int) $id]
-        );
-
-                // All templates that have a 'sidebar' zone — valid sidebar_source choices.
-                $sidebarTemplates = $this->db->fetchAll(
-                        "SELECT id, slug, name, canvas_page_id FROM page_templates
-                            WHERE JSON_CONTAINS(zones, '\"sidebar\"') AND id != ?
-                            ORDER BY sort_order, name",
-                        [(int) $id]
-                );
-
-        $contentSets = $this->db->fetchAll(
-            'SELECT slug, name FROM content_sets ORDER BY name'
-        );
-
-        $this->renderAdmin('admin/site-builder/template-settings', [
-            'title'           => 'Edit Template: ' . $tpl['name'],
-            'section'         => 'builder',
-            'tab'             => 'templates',
-            'tpl'             => $tpl,
-            'pages'           => $pages,
-            'headerTemplates' => $headerTemplates,
-            'sidebarTemplates'=> $sidebarTemplates,
-            'contentSets'     => $contentSets,
-        ]);
-    }
-
     public function builderPreviewTemplate(string $id): void
     {
         $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [(int) $id]);

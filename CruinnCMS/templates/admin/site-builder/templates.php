@@ -46,7 +46,9 @@
                 <?php endif; ?>
             </td>
             <td class="sb-actions">
-                <a href="<?= url('/admin/templates/' . (int)$tpl['id'] . '/edit') ?>" class="btn btn-small">Edit</a>
+                <?php if ($tpl['canvas_page_id']): ?>
+                    <a href="<?= url('/admin/editor/' . (int)$tpl['canvas_page_id'] . '/edit') ?>" class="btn btn-small">Edit</a>
+                <?php endif; ?>
                 <?php if (!$tpl['is_system']): ?>
                     <form method="post" action="<?= url('/admin/templates/' . (int)$tpl['id'] . '/delete') ?>"
                           style="display:inline">
