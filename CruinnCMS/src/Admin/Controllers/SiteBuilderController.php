@@ -53,6 +53,11 @@ class SiteBuilderController extends BaseController
 
     public function builderTemplates(): void
     {
+        $panel = $this->query('panel', 'page-templates');
+        if (!in_array($panel, ['page-templates', 'template-layouts'], true)) {
+            $panel = 'page-templates';
+        }
+
         $templates = $this->db->fetchAll(
             'SELECT * FROM page_templates ORDER BY sort_order, name'
         );
@@ -66,11 +71,22 @@ class SiteBuilderController extends BaseController
         }
         unset($tpl);
 
+        $templateLayouts = $this->db->fetchAll(
+            "SELECT p.id, p.title, p.slug, p.status, p.updated_at,
+                    (SELECT COUNT(*) FROM page_templates pt WHERE pt.layout_page_id = p.id) AS usage_count
+             FROM pages_index p
+             WHERE p.canvas_type = 'template-shell'
+               AND p.id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+             ORDER BY p.title"
+        );
+
         $data = [
             'title'     => 'Page Templates',
             'section'   => 'builder',
             'tab'       => 'templates',
             'templates' => $templates,
+            'templateLayouts' => $templateLayouts,
+            'activePanel' => $panel,
         ];
         $this->renderAdmin('admin/site-builder/templates', $data);
     }
@@ -301,6 +317,97 @@ class SiteBuilderController extends BaseController
         $this->db->execute('DELETE FROM page_templates WHERE id = ?', [$id]);
         Auth::flash('success', "Template '{$tpl['name']}' deleted.");
         $this->redirect('/admin/templates');
+    }
+
+    /**
+     * POST /admin/templates/layouts/new
+     * Create a standalone template layout page (canvas_type=template-shell).
+     */
+    public function builderCreateTemplateLayout(): void
+    {
+        $title = trim($this->input('title', ''));
+        $slugInput = trim($this->input('slug', ''));
+
+        if ($title === '') {
+            Auth::flash('error', 'Layout title is required.');
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+
+        if ($slugInput !== '' && !preg_match('/^[a-z0-9_-]+$/', $slugInput)) {
+            Auth::flash('error', 'Layout slug must contain only lowercase letters, numbers, hyphens, or underscores.');
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+
+        $baseSlug = $slugInput !== ''
+            ? trim($slugInput, '-_')
+            : $this->generateUniqueSlug('layout-' . $title);
+        if ($baseSlug === '') {
+            $baseSlug = 'layout-' . date('YmdHis');
+        }
+
+        $slug = '_layout_' . $baseSlug;
+        $suffix = 2;
+        while ($this->db->fetchColumn('SELECT COUNT(*) FROM pages_index WHERE slug = ?', [$slug]) > 0) {
+            $slug = '_layout_' . $baseSlug . '-' . $suffix;
+            $suffix++;
+        }
+
+        $pageId = (int) $this->db->insert('pages_index', [
+            'title'       => $title,
+            'slug'        => $slug,
+            'status'      => 'published',
+            'template'    => 'none',
+            'editor_mode' => 'freeform',
+            'canvas_type' => 'template-shell',
+            'created_by'  => Auth::userId(),
+            'updated_by'  => Auth::userId(),
+        ]);
+
+        Auth::flash('success', "Template layout '{$title}' created.");
+        $this->redirect('/admin/editor/' . $pageId . '/edit');
+    }
+
+    /**
+     * POST /admin/templates/layouts/{id}/delete
+     * Delete a standalone template layout page if no templates reference it.
+     */
+    public function builderDeleteTemplateLayout(string $id): void
+    {
+        $layoutId = (int) $id;
+
+        $layout = $this->db->fetch(
+            "SELECT id, title, canvas_type FROM pages_index WHERE id = ? LIMIT 1",
+            [$layoutId]
+        );
+        if (!$layout || ($layout['canvas_type'] ?? '') !== 'template-shell') {
+            Auth::flash('error', 'Template layout not found.');
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+
+        $isTemplateCanvas = (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM page_templates WHERE canvas_page_id = ?',
+            [$layoutId]
+        );
+        if ($isTemplateCanvas > 0) {
+            Auth::flash('error', 'This page is a template canvas and cannot be deleted as a standalone layout.');
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+
+        $usage = (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM page_templates WHERE layout_page_id = ?',
+            [$layoutId]
+        );
+        if ($usage > 0) {
+            Auth::flash('error', "Cannot delete: {$usage} template(s) currently use this layout.");
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+
+        $this->db->delete('blocks_published', 'page_id = ?', [$layoutId]);
+        $this->db->delete('blocks_draft', 'page_id = ?', [$layoutId]);
+        $this->db->delete('pages_index', 'id = ?', [$layoutId]);
+
+        Auth::flash('success', "Template layout '{$layout['title']}' deleted.");
+        $this->redirect('/admin/templates?panel=template-layouts');
     }
 
     public function builderGlobalHeader(): void

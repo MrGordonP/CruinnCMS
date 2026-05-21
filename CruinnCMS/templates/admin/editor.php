@@ -371,6 +371,8 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                                 <?= e($_tl['title']) ?>
                             </a>
                             <?php endforeach; ?>
+                            <a href="<?= url('/admin/templates?panel=template-layouts#new-template-layout') ?>" class="editor-site-nav-link editor-site-nav-manage">New template layout →</a>
+                            <a href="<?= url('/admin/templates?panel=template-layouts') ?>" class="editor-site-nav-link editor-site-nav-manage">Manage template layouts →</a>
                         </div>
                     </div>
                     <?php endif; ?>
