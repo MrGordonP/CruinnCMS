@@ -659,13 +659,23 @@ class PlatformController
             \Cruinn\Auth::loginById((int) $adminUser['id']);
 
         // ── Nav queries (same as CruinnController::openEditor) ──────────
-        $headerPages = $db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"header\"')
-             ORDER BY pt.sort_order, pt.name"
-        );
+           $headerPages = $db->fetchAll(
+              "SELECT p.id, p.title, p.slug, pt.name AS template_name
+               FROM page_templates pt
+               JOIN pages_index p ON p.id = pt.canvas_page_id
+               WHERE EXISTS (
+                 SELECT 1
+                 FROM pages z
+                 WHERE z.block_type = 'zone'
+                   AND z.parent_block_id IS NULL
+                   AND (
+                        (pt.layout_page_id IS NOT NULL AND pt.layout_page_id > 0 AND z.page_id = pt.layout_page_id)
+                        OR ((pt.layout_page_id IS NULL OR pt.layout_page_id = 0) AND z.template_id = pt.id)
+                   )
+                   AND JSON_UNQUOTE(JSON_EXTRACT(z.block_config, '$.zone_name')) = 'header'
+               )
+               ORDER BY pt.sort_order, pt.name"
+           );
         $hp0 = $db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
         if ($hp0) {
             array_unshift($headerPages, [
@@ -673,13 +683,23 @@ class PlatformController
                 'slug' => '_header', 'template_name' => null,
             ]);
         }
-        $footerPages = $db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
-             ORDER BY pt.sort_order, pt.name"
-        );
+           $footerPages = $db->fetchAll(
+              "SELECT p.id, p.title, p.slug, pt.name AS template_name
+               FROM page_templates pt
+               JOIN pages_index p ON p.id = pt.canvas_page_id
+               WHERE EXISTS (
+                 SELECT 1
+                 FROM pages z
+                 WHERE z.block_type = 'zone'
+                   AND z.parent_block_id IS NULL
+                   AND (
+                        (pt.layout_page_id IS NOT NULL AND pt.layout_page_id > 0 AND z.page_id = pt.layout_page_id)
+                        OR ((pt.layout_page_id IS NULL OR pt.layout_page_id = 0) AND z.template_id = pt.id)
+                   )
+                   AND JSON_UNQUOTE(JSON_EXTRACT(z.block_config, '$.zone_name')) = 'footer'
+               )
+               ORDER BY pt.sort_order, pt.name"
+           );
         $fp0 = $db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
         if ($fp0) {
             array_unshift($footerPages, [

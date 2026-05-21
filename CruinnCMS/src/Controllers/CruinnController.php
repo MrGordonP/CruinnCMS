@@ -127,7 +127,7 @@ class CruinnController extends BaseController
 
         $cssDir   = CRUINN_PUBLIC . '/css';
         $cssFiles = [];
-        foreach (glob($cssDir . '/*.css') as $f) {
+        foreach (glob($cssDir . '/*.css') ?: [] as $f) {
             $cssFiles[] = basename($f);
         }
         sort($cssFiles);
@@ -169,9 +169,13 @@ class CruinnController extends BaseController
         }
 
         $allTemplates = $this->db->fetchAll(
-            'SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
+            'SELECT id, slug, name FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
             ['page']
         );
+        foreach ($allTemplates as &$tpl) {
+            $tpl['zones'] = $this->getTemplateZonesByTemplateId((int) ($tpl['id'] ?? 0));
+        }
+        unset($tpl);
 
         $this->renderAdmin('admin/editor', [
             'title'           => 'Editor',
@@ -374,7 +378,7 @@ class CruinnController extends BaseController
         $isZonePage       = ($canvasType === 'zone') || ($canvasType === null && str_starts_with($page['slug'] ?? '', '_') && !str_starts_with($page['slug'] ?? '', '_tpl_'));
         $zoneName         = $isZonePage ? ($page['zone_name'] ?? ltrim($page['slug'], '_')) : null;
         $templateRow      = $this->db->fetch(
-            'SELECT id, slug, zones, context_source, settings, layout_page_id FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+            'SELECT id, slug, context_source, settings, layout_page_id FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
             [$pageId]
         );
         $isTemplatePage   = $templateRow !== false && $templateRow !== null;
@@ -395,15 +399,17 @@ class CruinnController extends BaseController
             $tplRow = $templateRow;
             $templateId       = $tplRow ? (int) $tplRow['id'] : null;
             $templateLayoutPageId = !empty($tplRow['layout_page_id']) ? (int) $tplRow['layout_page_id'] : null;
-            $hasDraft = false;
-            $templateZonesDef = $templateLayoutPageId
-                ? array_values(array_map(fn(array $zone): string => $zone['zone_name'], $this->getLayoutZones($templateLayoutPageId)))
-                : ($tplRow ? (json_decode($tplRow['zones'] ?? '[]', true) ?: []) : []);
             if ($templateId && $templateLayoutPageId) {
                 $this->syncTemplateZoneBlocks($templateId, $this->getLayoutZones($templateLayoutPageId));
             }
             if ($templateId) {
                 $templateZoneAssignments = $this->getTemplateZoneAssignments($templateId);
+                $templateZonesDef = array_values(array_map(
+                    fn(array $zone): string => (string) ($zone['zone_name'] ?? ''),
+                    $this->getTemplateDisplayZones($templateId, (int) $templateLayoutPageId)
+                ));
+                $templateZonesDef = array_values(array_filter($templateZonesDef, fn(string $z): bool => $z !== ''));
+
                 $preview = $cruinnSvc->buildWithTemplate($templateId, 'main');
                 $templatePreviewHtml = $this->stripPreviewEditorAttrs($preview['html']);
                 $templatePreviewCss = $preview['css'];
@@ -619,9 +625,13 @@ class CruinnController extends BaseController
         unset($g);
 
         $allTemplates = $this->db->fetchAll(
-            'SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
+            'SELECT id, slug, name FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
             ['page']
         );
+        foreach ($allTemplates as &$tpl) {
+            $tpl['zones'] = $this->getTemplateZonesByTemplateId((int) ($tpl['id'] ?? 0));
+        }
+        unset($tpl);
 
         $typographyPageId = (int) ($this->db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
         $isThemePage   = ($page['slug'] ?? '') === '_typography';
@@ -663,12 +673,8 @@ class CruinnController extends BaseController
             'page'              => $page,
             'hasDraft'          => $hasDraft,
             'state'             => null,
-            'cruinnHtml'        => $isTemplatePage
-                ? $templatePreviewHtml
-                : (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
-            'cruinnCss'         => $isTemplatePage
-                ? $templatePreviewCss
-                : (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
+            'cruinnHtml'        => (new \Cruinn\Services\EditorRenderService())->buildCanvasHtml($flat, $this->db),
+            'cruinnCss'         => (new \Cruinn\Services\EditorRenderService())->buildCanvasCss($flat),
             'menus'             => $menus,
             'contentSets'       => $contentSets,
             'contentTemplates'  => $contentTemplates,
@@ -845,24 +851,44 @@ class CruinnController extends BaseController
         }
 
         // ── Build shared nav payload ──────────────────────────────
-        $headerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"header\"')
-             ORDER BY pt.sort_order, pt.name"
-        );
+           $headerPages = $this->db->fetchAll(
+              "SELECT p.id, p.title, p.slug, pt.name AS template_name
+               FROM page_templates pt
+               JOIN pages_index p ON p.id = pt.canvas_page_id
+               WHERE EXISTS (
+                 SELECT 1
+                 FROM pages z
+                 WHERE z.block_type = 'zone'
+                   AND z.parent_block_id IS NULL
+                   AND (
+                        (pt.layout_page_id IS NOT NULL AND pt.layout_page_id > 0 AND z.page_id = pt.layout_page_id)
+                        OR ((pt.layout_page_id IS NULL OR pt.layout_page_id = 0) AND z.template_id = pt.id)
+                   )
+                   AND JSON_UNQUOTE(JSON_EXTRACT(z.block_config, '$.zone_name')) = 'header'
+               )
+               ORDER BY pt.sort_order, pt.name"
+           );
         $hp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_header' LIMIT 1");
         if ($hp0) {
             array_unshift($headerPages, ['id' => (int) $hp0['id'], 'title' => 'Header Zone Page', 'slug' => '_header', 'template_name' => null]);
         }
-        $footerPages = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, pt.name AS template_name
-             FROM page_templates pt
-             JOIN pages_index p ON p.id = pt.canvas_page_id
-             WHERE JSON_CONTAINS(pt.zones, '\"footer\"')
-             ORDER BY pt.sort_order, pt.name"
-        );
+           $footerPages = $this->db->fetchAll(
+              "SELECT p.id, p.title, p.slug, pt.name AS template_name
+               FROM page_templates pt
+               JOIN pages_index p ON p.id = pt.canvas_page_id
+               WHERE EXISTS (
+                 SELECT 1
+                 FROM pages z
+                 WHERE z.block_type = 'zone'
+                   AND z.parent_block_id IS NULL
+                   AND (
+                        (pt.layout_page_id IS NOT NULL AND pt.layout_page_id > 0 AND z.page_id = pt.layout_page_id)
+                        OR ((pt.layout_page_id IS NULL OR pt.layout_page_id = 0) AND z.template_id = pt.id)
+                   )
+                   AND JSON_UNQUOTE(JSON_EXTRACT(z.block_config, '$.zone_name')) = 'footer'
+               )
+               ORDER BY pt.sort_order, pt.name"
+           );
         $fp0 = $this->db->fetch("SELECT id FROM pages_index WHERE slug = '_footer' LIMIT 1");
         if ($fp0) {
             array_unshift($footerPages, ['id' => (int) $fp0['id'], 'title' => 'Footer Zone Page', 'slug' => '_footer', 'template_name' => null]);
@@ -967,7 +993,11 @@ class CruinnController extends BaseController
             $navArticles = [];
         }
 
-        $allTemplates     = $this->db->fetchAll('SELECT id, slug, name, zones FROM page_templates WHERE template_type = ? ORDER BY sort_order, name', ['page']);
+        $allTemplates     = $this->db->fetchAll('SELECT id, slug, name FROM page_templates WHERE template_type = ? ORDER BY sort_order, name', ['page']);
+        foreach ($allTemplates as &$tpl) {
+            $tpl['zones'] = $this->getTemplateZonesByTemplateId((int) ($tpl['id'] ?? 0));
+        }
+        unset($tpl);
         $typographyPageId = (int) ($this->db->fetchColumn("SELECT id FROM pages_index WHERE slug = '_typography' LIMIT 1") ?: 0);
 
         $this->renderAdmin('admin/editor', [
@@ -1290,18 +1320,7 @@ class CruinnController extends BaseController
                         );
                         // HTML mode: pages is the published state.
                         $this->db->execute('DELETE FROM pages WHERE page_id = ?', [$pageId]);
-                        $this->db->execute(
-                            'INSERT INTO pages
-                                 (block_id, page_id, block_type, inner_html, css_props,
-                                  css_props_tablet, css_props_mobile,
-                                  block_config, sort_order, parent_block_id)
-                             SELECT block_id, page_id, block_type, inner_html, css_props,
-                                    css_props_tablet, css_props_mobile,
-                                    block_config, sort_order, parent_block_id
-                               FROM pages_draft
-                              WHERE page_id = ? AND edit_seq = ?',
-                            [$pageId, $maxSeq]
-                        );
+                        $this->publishDraftSnapshotToPages('page_id', $pageId, $maxSeq);
                     }
                     $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
                     $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
@@ -1359,7 +1378,15 @@ class CruinnController extends BaseController
             "SELECT COUNT(*) FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]
         ) > 0;
         if (!$hasDraftBlock) {
-            // No draft: page is already at its published state, nothing to do.
+            // No draft: only succeed if a published snapshot already exists.
+            $hasPublishedBlock = (int) $this->db->fetchColumn(
+                "SELECT COUNT(*) FROM pages WHERE {$bk['col']} = ?",
+                [$bk['val']]
+            ) > 0;
+            if (!$hasPublishedBlock) {
+                $this->json(['error' => 'No saved blocks to publish.'], 400);
+            }
+
             $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
             $this->json(['success' => true]);
             return;
@@ -1371,19 +1398,11 @@ class CruinnController extends BaseController
             // Wipe existing published blocks for this page
             $this->db->execute("DELETE FROM pages WHERE {$bk['col']} = ?", [$bk['val']]);
 
-            // Copy current draft snapshot into published table
-            $this->db->execute(
-                "INSERT INTO pages
-                    (block_id, page_id, template_id, block_type, inner_html, css_props,
-                     css_props_tablet, css_props_mobile,
-                     block_config, sort_order, parent_block_id)
-                 SELECT block_id, page_id, template_id, block_type, inner_html, css_props,
-                        css_props_tablet, css_props_mobile,
-                        block_config, sort_order, parent_block_id
-                   FROM pages_draft
-                  WHERE {$bk['col']} = ? AND edit_seq = (SELECT MAX(edit_seq) FROM pages_draft pd2 WHERE pd2.{$bk['col']} = ?)",
-                [$bk['val'], $bk['val']]
+            $maxSeq = (int) $this->db->fetchColumn(
+                "SELECT MAX(edit_seq) FROM pages_draft WHERE {$bk['col']} = ?",
+                [$bk['val']]
             );
+            $this->publishDraftSnapshotToPages($bk['col'], $bk['val'], $maxSeq);
 
             // Clean up draft
             $this->db->execute("DELETE FROM pages_draft WHERE {$bk['col']} = ?", [$bk['val']]);
@@ -1618,6 +1637,110 @@ class CruinnController extends BaseController
     }
 
     /**
+     * GET /admin/editor/canvas-preview?page_id=X
+     * Returns rendered html/css for a published canvas page.
+     */
+    public function canvasPreview(): void
+    {
+        Auth::requireAdmin();
+        header('Content-Type: application/json');
+
+        $pageId = (int) ($_GET['page_id'] ?? 0);
+        if ($pageId <= 0) {
+            echo json_encode(['html' => '', 'css' => '']);
+            exit;
+        }
+
+        $page = $this->db->fetch(
+            'SELECT id FROM pages_index WHERE id = ? AND canvas_type = ? LIMIT 1',
+            [$pageId, 'zone']
+        );
+        if (!$page) {
+            echo json_encode(['html' => '', 'css' => '']);
+            exit;
+        }
+
+        try {
+            $cruinnSvc = new \Cruinn\Services\CruinnRenderService();
+            if (!$cruinnSvc->hasPublished($pageId)) {
+                echo json_encode(['html' => '', 'css' => '']);
+                exit;
+            }
+            echo json_encode([
+                'html' => $cruinnSvc->buildHtml($pageId),
+                'css' => $cruinnSvc->buildCss($pageId),
+            ]);
+            exit;
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Canvas preview failed']);
+            exit;
+        }
+    }
+
+    /**
+     * POST /admin/editor/{pageId}/zone-canvas/new
+     * Create a new zone canvas page for the current template canvas and
+     * immediately assign it to the requested zone.
+     */
+    public function createZoneCanvas(string $pageId): void
+    {
+        $this->requireEditorAuth();
+        header('Content-Type: application/json');
+
+        $pageId = (int) $pageId;
+        if ($pageId <= 0) {
+            $this->json(['error' => 'Invalid page id'], 400);
+        }
+
+        $templateRow = $this->db->fetch(
+            'SELECT id, name FROM page_templates WHERE canvas_page_id = ? LIMIT 1',
+            [$pageId]
+        );
+        if (!$templateRow) {
+            $this->json(['error' => 'Not a template canvas page'], 400);
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $zoneName = preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) ($body['zone_name'] ?? '')));
+        if ($zoneName === '' || !preg_match('/^[a-z0-9_\-]+$/', $zoneName)) {
+            $this->json(['error' => 'Invalid zone name'], 400);
+        }
+
+        $templateId = (int) $templateRow['id'];
+        $templateName = (string) ($templateRow['name'] ?? 'Template');
+
+        $baseSlug = '_zone_tpl_' . $templateId . '_' . $zoneName;
+        $slug = $baseSlug;
+        $i = 2;
+        while ((int) $this->db->fetchColumn('SELECT COUNT(*) FROM pages_index WHERE slug = ?', [$slug]) > 0) {
+            $slug = $baseSlug . '_' . $i;
+            $i++;
+        }
+
+        $zoneLabel = ucwords(str_replace(['-', '_'], ' ', $zoneName));
+        $title = $zoneLabel . ' — ' . $templateName;
+
+        $this->db->execute(
+            "INSERT INTO pages_index (title, slug, status, template, editor_mode, canvas_type, zone_name)
+             VALUES (?, ?, 'published', 'none', 'freeform', 'zone', ?)",
+            [$title, $slug, $zoneName]
+        );
+        $newCanvasId = (int) $this->db->pdo()->lastInsertId();
+
+        $this->updateTemplateZoneAssignments($templateId, [$zoneName => $newCanvasId]);
+
+        $this->json([
+            'success' => true,
+            'canvas' => [
+                'id' => $newCanvasId,
+                'title' => $title,
+                'zone_name' => $zoneName,
+            ],
+        ]);
+    }
+
+    /**
      * GET /admin/editor/zone/{zone}
      * Redirect to the Cruinn editor for the named global zone page (header/footer).
      */
@@ -1844,7 +1967,7 @@ class CruinnController extends BaseController
             }
             return $out;
         }
-        // Built-in sources — define their fields inline
+
         $builtIn = [
             'blog.post' => [
                 ['key' => 'title',         'label' => 'Post Title',       'type' => 'text'],
@@ -1862,6 +1985,7 @@ class CruinnController extends BaseController
                 ['key' => 'totalPages', 'label' => 'Total Pages',      'type' => 'number'],
             ],
         ];
+
         return $builtIn[$contextSource] ?? [];
     }
 
@@ -1872,7 +1996,7 @@ class CruinnController extends BaseController
         }
 
         $rows = $this->db->fetchAll(
-            "SELECT block_id, block_config, sort_order
+            "SELECT block_id, block_config, inner_html, css_props, css_props_tablet, css_props_mobile, sort_order
              FROM pages
              WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
              ORDER BY sort_order ASC",
@@ -1888,6 +2012,10 @@ class CruinnController extends BaseController
             }
             $zones[] = [
                 'block_id' => $row['block_id'],
+                'inner_html' => $row['inner_html'] ?? null,
+                'css_props' => $row['css_props'] ?? null,
+                'css_props_tablet' => $row['css_props_tablet'] ?? null,
+                'css_props_mobile' => $row['css_props_mobile'] ?? null,
                 'block_config' => $row['block_config'] ?? '{}',
                 'sort_order' => (int) ($row['sort_order'] ?? 0),
                 'zone_name' => (string) $zoneName,
@@ -1935,6 +2063,7 @@ class CruinnController extends BaseController
         }
 
         $assignments = $this->getTemplateZoneAssignments($templateId);
+
         $zones = [];
         foreach ($assignments as $zoneName => $cfg) {
             $zones[] = [
@@ -1948,27 +2077,101 @@ class CruinnController extends BaseController
         return $zones;
     }
 
+    private function getTemplateZonesByTemplateId(int $templateId): array
+    {
+        if ($templateId <= 0) {
+            return ['main'];
+        }
+
+        $layoutPageId = (int) ($this->db->fetchColumn(
+            'SELECT layout_page_id FROM page_templates WHERE id = ? LIMIT 1',
+            [$templateId]
+        ) ?: 0);
+
+        $zones = $this->getTemplateDisplayZones($templateId, $layoutPageId);
+        $names = [];
+        foreach ($zones as $zone) {
+            $zn = (string) ($zone['zone_name'] ?? '');
+            if ($zn !== '' && !in_array($zn, $names, true)) {
+                $names[] = $zn;
+            }
+        }
+
+        return !empty($names) ? $names : ['main'];
+    }
+
     private function syncTemplateZoneBlocks(int $templateId, array $layoutZones): void
     {
-        if ($templateId <= 0 || empty($layoutZones)) {
+        if ($templateId <= 0) {
             return;
         }
 
         $existing = $this->getTemplateZoneAssignments($templateId);
+
+        $layoutZoneNames = [];
+        foreach ($layoutZones as $zone) {
+            $zoneName = $zone['zone_name'] ?? null;
+            if (is_string($zoneName) && $zoneName !== '') {
+                $layoutZoneNames[$zoneName] = true;
+            }
+        }
+
+        // Remove zones that no longer exist in layout.
+        foreach ($existing as $zoneName => $cfg) {
+            if (!isset($layoutZoneNames[$zoneName])) {
+                $this->db->execute(
+                    'DELETE FROM pages WHERE template_id = ? AND block_id = ?',
+                    [$templateId, $cfg['block_id']]
+                );
+            }
+        }
+
         foreach ($layoutZones as $index => $zone) {
             $zoneName = $zone['zone_name'] ?? null;
-            if (!$zoneName || isset($existing[$zoneName])) {
+            if (!$zoneName) {
+                continue;
+            }
+
+            $layoutCfg = json_decode($zone['block_config'] ?? '{}', true) ?: [];
+            $layoutCfg['zone_name'] = $zoneName;
+
+            if (isset($existing[$zoneName])) {
+                $existingCfg = $existing[$zoneName];
+                $mergedCfg = $layoutCfg;
+                if (isset($existingCfg['canvas_page_id'])) {
+                    $mergedCfg['canvas_page_id'] = (int) $existingCfg['canvas_page_id'];
+                }
+
+                $this->db->execute(
+                    'UPDATE pages
+                        SET block_config = ?, inner_html = ?, css_props = ?, css_props_tablet = ?, css_props_mobile = ?, sort_order = ?
+                      WHERE template_id = ? AND block_id = ?',
+                    [
+                        json_encode($mergedCfg),
+                        $zone['inner_html'] ?? null,
+                        $zone['css_props'] ?? null,
+                        $zone['css_props_tablet'] ?? null,
+                        $zone['css_props_mobile'] ?? null,
+                        $index,
+                        $templateId,
+                        $existingCfg['block_id'],
+                    ]
+                );
                 continue;
             }
 
             $this->db->execute(
-                'INSERT INTO pages (block_id, template_id, block_type, block_config, sort_order, parent_block_id)
-                 VALUES (?, ?, ?, ?, ?, NULL)',
+                'INSERT INTO pages (block_id, template_id, block_type, inner_html, css_props, css_props_tablet, css_props_mobile, block_config, sort_order, parent_block_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
                 [
                     'tpl-zone-' . $templateId . '-' . $zoneName,
                     $templateId,
                     'zone',
-                    json_encode(['zone_name' => $zoneName]),
+                    $zone['inner_html'] ?? null,
+                    $zone['css_props'] ?? null,
+                    $zone['css_props_tablet'] ?? null,
+                    $zone['css_props_mobile'] ?? null,
+                    json_encode($layoutCfg),
                     $index,
                 ]
             );
@@ -1981,7 +2184,49 @@ class CruinnController extends BaseController
             return;
         }
 
-        $existing = $this->getTemplateZoneAssignments($templateId);
+        $maxSeq = (int) ($this->db->fetchColumn(
+            'SELECT MAX(edit_seq) FROM pages_draft WHERE template_id = ?',
+            [$templateId]
+        ) ?: 0);
+
+        // Draft-first model: if no template draft exists yet, seed seq 1 from
+        // current published rows so metadata edits stay in draft until publish.
+        if ($maxSeq <= 0) {
+            $this->db->execute(
+                'INSERT INTO pages_draft
+                    (page_id, template_id, edit_seq, block_id, block_type, inner_html, css_props,
+                     css_props_tablet, css_props_mobile, block_config, sort_order, parent_block_id)
+                 SELECT page_id, template_id, 1, block_id, block_type, inner_html, css_props,
+                        css_props_tablet, css_props_mobile, block_config, sort_order, parent_block_id
+                   FROM pages
+                  WHERE template_id = ?',
+                [$templateId]
+            );
+            $maxSeq = 1;
+        }
+
+        $rows = $this->db->fetchAll(
+            "SELECT block_id, block_config, sort_order
+               FROM pages_draft
+              WHERE template_id = ? AND edit_seq = ?
+                AND block_type = 'zone' AND parent_block_id IS NULL
+              ORDER BY sort_order ASC",
+            [$templateId, $maxSeq]
+        );
+
+        $existing = [];
+        foreach ($rows as $row) {
+            $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            $zoneName = $cfg['zone_name'] ?? null;
+            if (!$zoneName || !preg_match('/^[a-z0-9_-]+$/', (string) $zoneName)) {
+                continue;
+            }
+            $existing[(string) $zoneName] = $cfg + [
+                'block_id' => $row['block_id'],
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+        }
+
         foreach ($assignments as $zoneName => $canvasPageId) {
             if (!isset($existing[$zoneName])) {
                 continue;
@@ -1998,8 +2243,8 @@ class CruinnController extends BaseController
             }
 
             $this->db->execute(
-                'UPDATE pages SET block_config = ? WHERE template_id = ? AND block_id = ?',
-                [json_encode($cfg), $templateId, $existing[$zoneName]['block_id']]
+                'UPDATE pages_draft SET block_config = ? WHERE template_id = ? AND edit_seq = ? AND block_id = ?',
+                [json_encode($cfg), $templateId, $maxSeq, $existing[$zoneName]['block_id']]
             );
         }
     }
@@ -2009,6 +2254,112 @@ class CruinnController extends BaseController
         $html = preg_replace('/\sdata-block(?:="[^"]*")?/', '', $html) ?? $html;
         $html = preg_replace('/\sdata-block-type="[^"]*"/', '', $html) ?? $html;
         return $html;
+    }
+
+    /**
+     * Copy one draft snapshot into published pages.
+     * If draft block_ids collide with existing published block_ids, remap only
+     * the conflicting ids and rewrite parent_block_id references accordingly.
+     */
+    private function publishDraftSnapshotToPages(string $keyCol, int $keyVal, int $editSeq): void
+    {
+        if (!in_array($keyCol, ['page_id', 'template_id'], true) || $keyVal <= 0 || $editSeq <= 0) {
+            return;
+        }
+
+        $rows = $this->db->fetchAll(
+            "SELECT block_id, page_id, template_id, block_type, inner_html, css_props,
+                    css_props_tablet, css_props_mobile, block_config, sort_order, parent_block_id
+               FROM pages_draft
+              WHERE {$keyCol} = ? AND edit_seq = ?
+              ORDER BY ISNULL(parent_block_id), parent_block_id, sort_order ASC",
+            [$keyVal, $editSeq]
+        );
+
+        if (empty($rows)) {
+            return;
+        }
+
+        $incomingIds = [];
+        foreach ($rows as $row) {
+            $bid = (string) ($row['block_id'] ?? '');
+            if ($bid !== '') {
+                $incomingIds[$bid] = true;
+            }
+        }
+
+        $existingIds = [];
+        $incomingList = array_keys($incomingIds);
+        if (!empty($incomingList)) {
+            $placeholders = implode(',', array_fill(0, count($incomingList), '?'));
+            $existingRows = $this->db->fetchAll(
+                "SELECT block_id FROM pages WHERE block_id IN ({$placeholders})",
+                $incomingList
+            );
+            foreach ($existingRows as $existingRow) {
+                $eid = (string) ($existingRow['block_id'] ?? '');
+                if ($eid !== '') {
+                    $existingIds[$eid] = true;
+                }
+            }
+        }
+
+        $idMap = [];
+        $reservedIds = $incomingIds + $existingIds;
+        foreach ($incomingList as $oldId) {
+            if (isset($existingIds[$oldId])) {
+                $idMap[$oldId] = $this->generateUniquePublishedBlockId($reservedIds);
+            }
+        }
+
+        foreach ($rows as $row) {
+            $oldBlockId = (string) ($row['block_id'] ?? '');
+            $newBlockId = $idMap[$oldBlockId] ?? $oldBlockId;
+
+            $parentBlockId = $row['parent_block_id'] ?? null;
+            if (is_string($parentBlockId) && isset($idMap[$parentBlockId])) {
+                $parentBlockId = $idMap[$parentBlockId];
+            }
+
+            $this->db->execute(
+                'INSERT INTO pages
+                    (block_id, page_id, template_id, block_type, inner_html, css_props,
+                     css_props_tablet, css_props_mobile,
+                     block_config, sort_order, parent_block_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $newBlockId,
+                    $row['page_id'] !== null ? (int) $row['page_id'] : null,
+                    $row['template_id'] !== null ? (int) $row['template_id'] : null,
+                    (string) ($row['block_type'] ?? 'text'),
+                    $row['inner_html'] ?? null,
+                    $row['css_props'] ?? null,
+                    $row['css_props_tablet'] ?? null,
+                    $row['css_props_mobile'] ?? null,
+                    $row['block_config'] ?? null,
+                    (int) ($row['sort_order'] ?? 0),
+                    $parentBlockId,
+                ]
+            );
+        }
+    }
+
+    private function generateUniquePublishedBlockId(array &$reservedIds): string
+    {
+        do {
+            $candidate = 'b-' . substr(bin2hex(random_bytes(8)), 0, 8);
+            if (isset($reservedIds[$candidate])) {
+                continue;
+            }
+
+            $exists = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM pages WHERE block_id = ?', [$candidate]) > 0;
+            if ($exists) {
+                continue;
+            }
+
+            $reservedIds[$candidate] = true;
+            return $candidate;
+        } while (true);
     }
 
     /**
@@ -2057,10 +2408,15 @@ class CruinnController extends BaseController
                 if ($layoutPageId !== null) {
                     $layoutZones = $this->getLayoutZones($layoutPageId);
                     $this->syncTemplateZoneBlocks($templateId, $layoutZones);
-                    $fields['zones'] = json_encode(array_values(array_map(fn(array $zone): string => $zone['zone_name'], $layoutZones)));
+                } else {
+                    // Empty layout selection must prune all persisted template zones.
+                    $this->syncTemplateZoneBlocks($templateId, []);
                 }
 
                 $this->db->update('page_templates', $fields, 'id = ?', [$templateId]);
+
+                // Layout swaps invalidate prior template draft snapshots.
+                $this->db->execute('DELETE FROM pages_draft WHERE template_id = ?', [$templateId]);
             }
 
             if (isset($body['zone_assignments']) && is_array($body['zone_assignments'])) {

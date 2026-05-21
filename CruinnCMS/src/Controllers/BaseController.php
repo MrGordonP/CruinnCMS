@@ -85,7 +85,16 @@ abstract class BaseController
 
         if (!$page) {
             // Graceful fallback: system_pages not seeded yet.
-            $this->render('public/' . $key, $data);
+            try {
+                $this->render('public/' . $key, $data);
+            } catch (\Throwable $e) {
+                // Last-resort fail-safe: always allow access to the login form.
+                if ($key === 'login') {
+                    $this->renderBareLoginFallback($data);
+                    return;
+                }
+                throw $e;
+            }
             return;
         }
 
@@ -107,11 +116,71 @@ abstract class BaseController
         $merged = $cruinn->buildWithTemplate($templateId, $pageZone, (int)$page['id']);
         Template::addGlobal('cruinn_css', $merged['css']);
 
-        echo $this->template->render('public/cruinn-page', [
-            'title'   => $data['title'] ?? $page['title'],
-            'page'    => $page,
-            'content' => $merged['html'],
-        ]);
+        try {
+            $html = $this->template->render('public/cruinn-page', [
+                'title'   => $data['title'] ?? $page['title'],
+                'page'    => $page,
+                'content' => $merged['html'],
+            ]);
+
+            if ($key === 'login') {
+                $hasLoginForm = str_contains($html, 'action="/login"') || str_contains($html, "action='/login'");
+                if (!$hasLoginForm) {
+                    $this->renderBareLoginFallback($data);
+                    return;
+                }
+            }
+
+            echo $html;
+        } catch (\Throwable $e) {
+            // If the page wrapper/template chain is broken, keep login reachable.
+            if ($key === 'login') {
+                $this->renderBareLoginFallback($data);
+                return;
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Render an ultra-minimal standalone login form when template rendering is broken.
+     */
+    private function renderBareLoginFallback(array $data = []): void
+    {
+        $title = (string) ($data['title'] ?? 'Login');
+        $token = \Cruinn\CSRF::getToken();
+        $flashes = $_SESSION['_flashes'] ?? [];
+
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<!doctype html>';
+        echo '<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">';
+        echo '<title>' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '</title>';
+        echo '</head><body style="font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 0 1rem;">';
+        echo '<h1 style="font-size: 1.4rem; margin-bottom: 1rem;">Login</h1>';
+        echo '<p style="margin-bottom: 1rem; color: #444;">Fallback login mode is active.</p>';
+
+        foreach (['error', 'success'] as $type) {
+            if (empty($flashes[$type]) || !is_array($flashes[$type])) {
+                continue;
+            }
+            foreach ($flashes[$type] as $msg) {
+                $color = $type === 'error' ? '#8a1f1f' : '#1f6f3d';
+                echo '<p style="margin: 0 0 0.5rem; color: ' . $color . ';">' . htmlspecialchars((string) $msg, ENT_QUOTES, 'UTF-8') . '</p>';
+            }
+        }
+
+        echo '<form method="post" action="/login">';
+        echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">';
+        echo '<label for="email" style="display:block; margin: 0.75rem 0 0.25rem;">Email</label>';
+        echo '<input type="email" id="email" name="email" required autofocus autocomplete="email" style="width:100%; padding:0.5rem; box-sizing:border-box;">';
+        echo '<label for="password" style="display:block; margin: 0.75rem 0 0.25rem;">Password</label>';
+        echo '<input type="password" id="password" name="password" required autocomplete="current-password" style="width:100%; padding:0.5rem; box-sizing:border-box;">';
+        echo '<button type="submit" style="margin-top:1rem; padding:0.5rem 0.9rem;">Login</button>';
+        echo '</form>';
+        echo '</body></html>';
+
+        // Consume flashes once rendered, matching normal template flow behavior.
+        unset($_SESSION['_flashes']);
     }
 
     /**

@@ -15,7 +15,7 @@ foreach ($contentPages as $pg) {
 $tplSettingsMap = [];
 foreach ($templates as $tpl) {
     $settings = is_string($tpl['settings']) ? json_decode($tpl['settings'], true) : ($tpl['settings'] ?? []);
-    $zones    = is_string($tpl['zones'])    ? json_decode($tpl['zones'], true)    : ($tpl['zones']    ?? ['main']);
+    $zones    = is_array($tpl['zones'] ?? null) ? $tpl['zones'] : ['main'];
     $tplSettingsMap[$tpl['slug']] = [
         'name'     => $tpl['name'],
         'settings' => $settings ?? [],

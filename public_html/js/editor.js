@@ -1,5 +1,5 @@
-﻿/**
- * Cruinn CMS â€” Page Editor
+/**
+ * Cruinn CMS — Page Editor
  * Standalone IIFE. No external dependencies. No build step.
  * Sections: A Init, B IDs, C Selection, D contenteditable, E DnD,
  *           F Properties, G Palette, H Media, I Serialise, J Undo/Redo,
@@ -8,7 +8,7 @@
 (function () {
     'use strict';
 
-    // â”€â”€ Section A â€” Init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Section A — Init ────────────────────────────────────────────
 
     var wrap = document.getElementById('editor-wrap');
     var canvas = document.getElementById('editor-canvas');
@@ -23,7 +23,7 @@
     var API_BASE = wrap.dataset.apiBase || '/admin/editor';
     var liveStyles = document.getElementById('editor-live-styles');
 
-    // ── Viewport (responsive breakpoint) state ────────────────────
+    // -- Viewport (responsive breakpoint) state --------------------
     // 'desktop' | 'tablet' | 'mobile'
     var activeViewport = 'desktop';
     var VIEWPORT_WIDTHS = { desktop: null, tablet: 600, mobile: 360 };
@@ -50,7 +50,13 @@
         try { return JSON.parse(wrap.dataset.moduleContentProviders || '[]'); } catch (e) { return []; }
     }());
 
+    var inlineFocusOverlay = null;
+    var inlineFocusFrame = null;
+    var inlineFocusTitle = null;
+    var inlineFocusOpenFull = null;
+
     document.addEventListener('DOMContentLoaded', function () {
+        initInlineCanvasFocus();
         restoreCssProps();
         reInitAll();
         bindPalette();
@@ -100,6 +106,7 @@
     function reInitAll() {
         initDnD(null);
         updateBlockTree();
+        decorateAssignedCanvasInlineEdit();
         // Sync zone block data-zone-name attributes from their block_config
         canvas.querySelectorAll('[data-block-type="zone"]').forEach(function (zoneEl) {
             var cfg = {};
@@ -121,13 +128,103 @@
         }
     }
 
+    function editorHrefForCanvas(pageId) {
+        var id = parseInt(pageId, 10);
+        if (!id) { return '#'; }
+        if ((API_BASE || '').indexOf('/cms/editor') === 0) {
+            var qp = new URLSearchParams(window.location.search || '');
+            var instance = qp.get('instance') || '__platform__';
+            var from = HAS_PAGE ? ('&from=' + encodeURIComponent(PAGE_ID)) : '';
+            return '/cms/editor?instance=' + encodeURIComponent(instance) + '&page=' + id + from;
+        }
+        var fromQs = HAS_PAGE ? ('?from=' + encodeURIComponent(PAGE_ID)) : '';
+        return '/admin/editor/' + id + '/edit' + fromQs;
+    }
+
+    function initInlineCanvasFocus() {
+        inlineFocusOverlay = document.getElementById('editor-inline-focus-overlay');
+        inlineFocusFrame = document.getElementById('editor-inline-focus-frame');
+        inlineFocusTitle = document.getElementById('editor-inline-focus-title');
+        inlineFocusOpenFull = document.getElementById('editor-inline-focus-open-full');
+
+        if (!inlineFocusOverlay || !inlineFocusFrame) { return; }
+
+        document.addEventListener('click', function (e) {
+            var link = e.target.closest('[data-inline-canvas-edit]');
+            if (!link) { return; }
+
+            var href = link.getAttribute('href');
+            if (!href || href === '#') {
+                var canvasId = parseInt(link.getAttribute('data-inline-canvas-id') || '0', 10);
+                href = editorHrefForCanvas(canvasId);
+            }
+            if (!href || href === '#') { return; }
+
+            e.preventDefault();
+            var label = (link.textContent || '').trim() || 'Canvas';
+            openInlineCanvasFocus(href, label);
+        });
+
+        inlineFocusOverlay.querySelectorAll('[data-inline-close]').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                e.preventDefault();
+                closeInlineCanvasFocus();
+            });
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && inlineFocusOverlay.classList.contains('is-open')) {
+                closeInlineCanvasFocus();
+            }
+        });
+    }
+
+    function openInlineCanvasFocus(href, label) {
+        if (!inlineFocusOverlay || !inlineFocusFrame) { return; }
+        if (!href || href === '#') { return; }
+        inlineFocusOverlay.classList.add('is-open');
+        inlineFocusOverlay.setAttribute('aria-hidden', 'false');
+        if (inlineFocusTitle) {
+            inlineFocusTitle.textContent = 'Editing: ' + (label || 'Canvas');
+        }
+        if (inlineFocusOpenFull) {
+            inlineFocusOpenFull.href = href;
+        }
+        // TODO(engine): replace iframe transport with same-shell context swap.
+        inlineFocusFrame.src = href;
+    }
+
+    function closeInlineCanvasFocus() {
+        if (!inlineFocusOverlay || !inlineFocusFrame) { return; }
+        inlineFocusOverlay.classList.remove('is-open');
+        inlineFocusOverlay.setAttribute('aria-hidden', 'true');
+        inlineFocusFrame.src = 'about:blank';
+    }
+
+    function decorateAssignedCanvasInlineEdit() {
+        canvas.querySelectorAll('.editor-zone-assigned-canvas[data-assigned-canvas-id]').forEach(function (assignedWrap) {
+            if (assignedWrap.querySelector('.editor-inline-zone-edit')) { return; }
+
+            var canvasId = parseInt(assignedWrap.getAttribute('data-assigned-canvas-id') || '0', 10);
+            if (!canvasId) { return; }
+
+            var action = document.createElement('a');
+            action.className = 'editor-inline-zone-edit btn btn-small btn-outline';
+            action.textContent = 'Click to edit canvas';
+            action.href = editorHrefForCanvas(canvasId);
+            action.setAttribute('data-inline-canvas-edit', '1');
+            action.setAttribute('data-inline-canvas-id', String(canvasId));
+            assignedWrap.insertBefore(action, assignedWrap.firstChild);
+        });
+    }
+
     /**
      * On editor load, copy data-css-props onto each block's inline style
      * so writeProps / rebuildLiveStyles have a consistent baseline.
      */
     function restoreCssProps() {
         canvas.querySelectorAll('[data-block]').forEach(function (block) {
-            // Desktop props → inline styles (base)
+            // Desktop props ? inline styles (base)
             var raw = block.dataset.cssProps;
             if (raw) {
                 try {
@@ -144,7 +241,7 @@
         rebuildLiveStyles();
     }
 
-    // —— Viewport switching ——————————————————————————
+    // �� Viewport switching ��������������������������
     function switchViewport(vp) {
         activeViewport = vp;
         var canvasWrap = document.getElementById('editor-canvas-wrap');
@@ -165,22 +262,28 @@
         });
     });
 
-    // â”€â”€ Section B â€” Block ID generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Section B — Block ID generation ────────────────────────────
 
     function newId() {
         return 'b-' + Math.random().toString(36).slice(2, 10);
     }
 
-    // â”€â”€ Section C â€” Block selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Section C — Block selection ─────────────────────────────────
 
     var activeBlock = null;
 
-    // Intercept all interactive element clicks in the canvas â€” prevent navigation/submission.
+    // Intercept all interactive element clicks in the canvas — prevent navigation/submission.
     // Ctrl+click or Cmd+click opens anchor href in a new tab (for preview).
     canvas.addEventListener('click', function (e) {
         // Prevent anchor navigation
         var anchor = e.target.closest('a');
         if (anchor && canvas.contains(anchor)) {
+            if (anchor.hasAttribute('data-inline-canvas-edit')) {
+                e.preventDefault();
+                e.stopPropagation();
+                openInlineCanvasFocus(anchor.getAttribute('href') || '#', (anchor.textContent || '').trim() || 'Canvas');
+                return;
+            }
             if ((e.ctrlKey || e.metaKey) && anchor.href) {
                 window.open(anchor.href, '_blank', 'noopener,noreferrer');
             }
@@ -239,7 +342,7 @@
         if (e.key === 'Escape') { deselect(); }
     });
 
-    // â”€â”€ Section D â€” contenteditable + mini-toolbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Section D — contenteditable + mini-toolbar ──────────────────
 
     var EDITABLE_TYPES = ['text', 'heading', 'html', 'site-title'];
     var miniBar = document.getElementById('editor-mini-toolbar');
@@ -290,7 +393,7 @@
         });
     });
 
-    // â”€â”€ Section E â€” Drag and Drop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Section E — Drag and Drop ────────────────────────────────────
 
     var dragSrc = null;
 
@@ -409,7 +512,7 @@
         });
     }
 
-    // â”€â”€ Section F â€” Properties panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Section F — Properties panel ────────────────────────────────
 
     var LAYOUT_TYPES = ['section', 'columns', 'table', 'site-header', 'nav-menu'];
     var ZONE_TYPES = ['zone'];
@@ -530,7 +633,7 @@
             phpCodeAcc.style.display = PHP_CODE_TYPES.indexOf(type) !== -1 ? '' : 'none';
         }
 
-        // Bind group — only when this page has context fields and the block type has bindable slots
+        // Bind group � only when this page has context fields and the block type has bindable slots
         var bindAcc = panel.querySelector('[data-group="bind"]');
         if (bindAcc) {
             var isBindable = CONTEXT_FIELDS.length > 0 && (
@@ -629,7 +732,7 @@
             }
         }
 
-        // CSS properties — read from active viewport overrides, fallback to computed desktop
+        // CSS properties � read from active viewport overrides, fallback to computed desktop
         var vpPropsRaw = activeViewport === 'tablet' ? block.dataset.cssPropsTablet
             : activeViewport === 'mobile' ? block.dataset.cssPropsMobile
                 : null;
@@ -677,7 +780,7 @@
             swatch.value = isTransparent ? '#000000' : (rgbToHex(val) || '#000000');
         });
 
-        // Numeric + unit props — on breakpoints, prefer stored override
+        // Numeric + unit props � on breakpoints, prefer stored override
         panel.querySelectorAll('[data-prop-num]').forEach(function (inp) {
             var prop = inp.dataset.propNum;
             var vpVal = (activeViewport !== 'desktop' && vpProps[prop] !== undefined) ? vpProps[prop] : null;
@@ -750,13 +853,13 @@
             var mwSel = document.getElementById('prop-module-widget-key');
             if (mwSel) {
                 var selectedKey = (config.widget_key || '').toString();
-                mwSel.innerHTML = '<option value="">— Select widget —</option>';
+                mwSel.innerHTML = '<option value="">� Select widget �</option>';
                 MODULE_WIDGETS.forEach(function (w) {
                     var key = (w.key || '').toString();
                     if (!key) { return; }
                     var opt = document.createElement('option');
                     opt.value = key;
-                    opt.textContent = (w.module || 'module') + ' — ' + (w.title || key);
+                    opt.textContent = (w.module || 'module') + ' � ' + (w.title || key);
                     mwSel.appendChild(opt);
                 });
                 if (selectedKey && !Array.from(mwSel.options).some(function (o) { return o.value === selectedKey; })) {
@@ -833,7 +936,7 @@
             }
         }
 
-        // Text shadow â€” parse back into sub-fields (from computed style)
+        // Text shadow — parse back into sub-fields (from computed style)
         (function () {
             var tsX = document.getElementById('prop-text-shadow-x');
             var tsY = document.getElementById('prop-text-shadow-y');
@@ -856,7 +959,7 @@
             }
         }());
 
-        // Box shadow â€” parse back into sub-fields (from computed style)
+        // Box shadow — parse back into sub-fields (from computed style)
         (function () {
             var bsX = document.getElementById('prop-box-shadow-x');
             var bsY = document.getElementById('prop-box-shadow-y');
@@ -921,7 +1024,7 @@
                 slot === 'href' ? ['url', 'text'] :
                     ['text', 'html', 'date', 'number', 'url'];
             // Rebuild options
-            sel.innerHTML = '<option value="">— none —</option>';
+            sel.innerHTML = '<option value="">� none �</option>';
             CONTEXT_FIELDS.forEach(function (f) {
                 if (compatTypes.indexOf(f.type) !== -1 || slot === 'inner_html') {
                     var opt = document.createElement('option');
@@ -960,7 +1063,7 @@
 
     function bindPropInputs(block) {
         // Remove previous listeners by cloning nodes for [data-prop] inputs
-        // We use a delegated approach on panel instead â€” re-bind on each select
+        // We use a delegated approach on panel instead — re-bind on each select
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
             var handler = function () {
                 writeProps(block, inp.dataset.prop, inp.value);
@@ -1150,7 +1253,7 @@
             });
 
             // Clear and repopulate select
-            zoneCanvasSel.innerHTML = '<option value="">— None —</option>';
+            zoneCanvasSel.innerHTML = '<option value="">� None �</option>';
             filtered.forEach(function (c) {
                 var opt = document.createElement('option');
                 opt.value = c.id;
@@ -1160,12 +1263,82 @@
                 }
                 zoneCanvasSel.appendChild(opt);
             });
+            var createOpt = document.createElement('option');
+            createOpt.value = '__create_new__';
+            createOpt.textContent = '+ Create New Canvas';
+            zoneCanvasSel.appendChild(createOpt);
 
             // Handle canvas assignment changes
             zoneCanvasSel.onchange = function () {
+                var cfg = {};
+                try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+                var zoneName = (cfg.zone_name || block.getAttribute('data-zone-name') || '').toString();
+                if (!zoneName) {
+                    return;
+                }
+
+                if (this.value === '__create_new__') {
+                    var selectEl = this;
+                    selectEl.disabled = true;
+                    fetch(API_BASE + '/' + PAGE_ID + '/zone-canvas/new', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': CSRF,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ zone_name: zoneName }),
+                    })
+                        .then(function (r) {
+                            if (!r.ok) {
+                                throw new Error('zone canvas create failed');
+                            }
+                            return r.json();
+                        })
+                        .then(function (data) {
+                            if (data && data.success) {
+                                window.location.reload();
+                            } else {
+                                selectEl.disabled = false;
+                            }
+                        })
+                        .catch(function (err) {
+                            console.error('[Cruinn] zone canvas create failed:', err);
+                            selectEl.disabled = false;
+                        });
+                    return;
+                }
+
                 var val = this.value ? parseInt(this.value, 10) : null;
-                writeConfig(block, 'canvas_page_id', val);
-                debounceAction();
+                fetch(API_BASE + '/' + PAGE_ID + '/metadata', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': CSRF,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        zone_assignments: (function () {
+                            var out = {};
+                            out[zoneName] = val;
+                            return out;
+                        }()),
+                    }),
+                })
+                    .then(function (r) {
+                        if (!r.ok) {
+                            throw new Error('metadata save failed');
+                        }
+                        return r.json();
+                    })
+                    .then(function (data) {
+                        if (data && data.success) {
+                            window.location.reload();
+                        }
+                    })
+                    .catch(function (err) {
+                        console.error('[Cruinn] zone assignment save failed:', err);
+                    });
             };
         }
 
@@ -1488,7 +1661,7 @@
             }
         }
 
-        // Colour swatches â€” pre-apply on click (solves first-pick = same colour),
+        // Colour swatches — pre-apply on click (solves first-pick = same colour),
         // update live while dragging, commit on close
         panel.querySelectorAll('[data-color-swatch]').forEach(function (swatch) {
             var prop = swatch.dataset.colorSwatch;
@@ -1502,7 +1675,7 @@
             swatch.onchange = applyColor;
         });
 
-        // PHP Code textarea â€” write back to block_config._php on change
+        // PHP Code textarea — write back to block_config._php on change
         if (PHP_CODE_TYPES.indexOf(block.dataset.blockType) !== -1) {
             var phpCodeTa = document.getElementById('prop-php-code');
             if (phpCodeTa) {
@@ -1550,7 +1723,7 @@
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
         var rel = cfg.template || '';
         if (!rel) {
-            block.innerHTML = '<p style="color:#9ca3af;font-size:0.8rem;padding:0.5rem">PHP Include â€” no template selected</p>';
+            block.innerHTML = '<p style="color:#9ca3af;font-size:0.8rem;padding:0.5rem">PHP Include — no template selected</p>';
             return;
         }
         var qs = 'template=' + encodeURIComponent(rel);
@@ -1567,7 +1740,7 @@
             .catch(function () { /* leave existing content on error */ });
     }
 
-    // â”€â”€ Data List token hints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Data List token hints ─────────────────────────────────────
 
     function updateDataListTokenHints(slug) {
         var hint = document.getElementById('prop-data-list-tokens');
@@ -1577,7 +1750,7 @@
         for (var i = 0; i < sets.length; i++) { if (sets[i].slug === slug) { set = sets[i]; break; } }
         if (!set || !set.fields || !set.fields.length) {
             hint.textContent = set && set.type === 'query'
-                ? 'Query set â€” tokens depend on selected fields.'
+                ? 'Query set — tokens depend on selected fields.'
                 : 'Select a content set to see available tokens.';
             return;
         }
@@ -1639,16 +1812,16 @@
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
         var key = (cfg.widget_key || '').toString();
         if (!key) {
-            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget — select a widget in Content settings.</p>';
+            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget � select a widget in Content settings.</p>';
             return;
         }
         var hit = MODULE_WIDGETS.find(function (w) { return (w.key || '') === key; });
         if (!hit) {
-            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget — missing widget: ' + key + '</p>';
+            block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget � missing widget: ' + key + '</p>';
             return;
         }
         block.innerHTML = '<p class="editor-dynamic-placeholder">Module Widget: ' +
-            (hit.module || 'module') + ' — ' + (hit.title || key) + '</p>';
+            (hit.module || 'module') + ' � ' + (hit.title || key) + '</p>';
     }
 
     function refreshModuleContentPreview(block) {
@@ -1717,9 +1890,9 @@
             ('0' + parseInt(m[3]).toString(16)).slice(-2);
     }
 
-    // ΓöÇΓöÇ Section G ΓÇö Block palette + delete ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section G G�� Block palette + delete G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
-    // Default CSS applied to new leaf blocks ΓÇö portrait ISO proportions (Γëê A4 at screen scale),
+    // Default CSS applied to new leaf blocks G�� portrait ISO proportions (G�� A4 at screen scale),
     // inline-block so that multiple blocks can sit side by side.
     var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', boxSizing: 'border-box' };
 
@@ -1746,11 +1919,11 @@
         'nav-menu': { tag: 'nav', inner: '', defaultConfig: { menu_id: '' }, initCss: PORTRAIT_INIT },
         'site-logo': { tag: 'div', inner: '<a href="/"><img src="" alt="Site Logo"></a>', initCss: PORTRAIT_INIT },
         'site-title': { tag: 'div', inner: '<h1 class="site-name">Site Name</h1><p class="site-tagline"></p>', initCss: PORTRAIT_INIT },
-        'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
-        'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
-        'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget ΓÇö select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
+        'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list G�� visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
+        'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List G�� visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
+        'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget G�� select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
         'module-content': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Content - select provider in Content settings.</p>', dynamic: true, defaultConfig: { provider_key: '', settings_json: '' }, initCss: PORTRAIT_INIT },
-        'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include ΓÇö visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
+        'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include G�� visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
             initCss: { display: 'block', width: '100%', boxSizing: 'border-box' }
@@ -1875,7 +2048,7 @@
         recordAction();
     }
 
-    // ΓöÇΓöÇ Block tree ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Block tree G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function updateBlockTree() {
         var tree = document.getElementById('editor-block-tree');
@@ -1914,7 +2087,7 @@
         return item;
     }
 
-    // ΓöÇΓöÇ Accordion behaviour ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Accordion behaviour G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function bindAccordions() {
         panel.addEventListener('click', function (e) {
@@ -1925,14 +2098,14 @@
         });
     }
 
-    // ΓöÇΓöÇ Section H ΓÇö Media panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section H G�� Media panel G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
     // Delegated to Cruinn.openMediaBrowser (media-browser.js)
 
     function openMediaPanel(callback) {
         Cruinn.openMediaBrowser(callback);
     }
 
-    // ΓöÇΓöÇ Section I ΓÇö Serialise + recordAction ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section I G�� Serialise + recordAction G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function serialiseCanvas() {
         var blocks = [];
@@ -1954,6 +2127,9 @@
             cloned.removeAttribute('draggable');
             cloned.removeAttribute('contenteditable');
             cloned.removeAttribute('data-css-props');
+            cloned.querySelectorAll('.editor-inline-zone-edit, .editor-zone-assigned-canvas, .editor-zone-assigned-empty').forEach(function (el) {
+                el.remove();
+            });
             // Remove nested block elements from the clone (they are their own rows)
             cloned.querySelectorAll('[data-block]').forEach(function (child) {
                 child.remove();
@@ -2003,7 +2179,7 @@
         return blocks;
     }
 
-    // ΓöÇΓöÇ Document panel (file-mode) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Document panel (file-mode) G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
     var _docSaveTimer = null;
 
     function bindDocPanel() {
@@ -2064,11 +2240,11 @@
             console.error('[Cruinn] saveDocAttrs failed:', err);
         });
     }
-    // ΓöÇΓöÇ End Document panel ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� End Document panel G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function parseCssProps(style) {
         if (!style) { return null; }
-        // Always return an object (possibly empty {}) ΓÇö an empty object signals
+        // Always return an object (possibly empty {}) G�� an empty object signals
         // "this block's styles have been managed and are currently empty", which
         // lets reconstructTree strip a previously-baked style attr on publish.
         var obj = {};
@@ -2083,7 +2259,7 @@
         return obj;
     }
 
-    // ══ Page Settings ═════════════════════════════════════════════════════
+    // -- Page Settings -----------------------------------------------------
 
     function bindPageSettings() {
         var templateSelect = document.getElementById('page-template-select');
@@ -2125,15 +2301,15 @@
         // Handle template change
         templateSelect.addEventListener('change', function () {
             refreshZoneOptions();
-            savePageMetadata();
+            savePageMetadata(true);
         });
 
         // Handle zone change
         zoneSelect.addEventListener('change', function () {
-            savePageMetadata();
+            savePageMetadata(false);
         });
 
-        function savePageMetadata() {
+        function savePageMetadata(reloadAfterSave) {
             if (!HAS_PAGE) { return; }
 
             fetch(API_BASE + '/' + PAGE_ID + '/metadata', {
@@ -2147,9 +2323,21 @@
                     template: templateSelect.value,
                     page_zone: zoneSelect.value,
                 }),
-            }).catch(function (err) {
-                console.error('[Cruinn] savePageMetadata failed:', err);
-            });
+            })
+                .then(function (r) {
+                    if (!r.ok) {
+                        throw new Error('metadata save failed');
+                    }
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (reloadAfterSave && data && data.success) {
+                        window.location.reload();
+                    }
+                })
+                .catch(function (err) {
+                    console.error('[Cruinn] savePageMetadata failed:', err);
+                });
         }
     }
 
@@ -2292,7 +2480,7 @@
                 if (!r.ok) {
                     return r.text().then(function (t) {
                         console.error('recordAction HTTP ' + r.status + ':', t);
-                        showSaveError('Save failed (' + r.status + ') — check console');
+                        showSaveError('Save failed (' + r.status + ') � check console');
                     });
                 }
                 return r.json().then(function (data) {
@@ -2308,7 +2496,7 @@
             })
             .catch(function (err) {
                 console.error('recordAction failed:', err);
-                showSaveError('Save failed — check console');
+                showSaveError('Save failed � check console');
             });
     }
 
@@ -2336,7 +2524,7 @@
         _debounceTimer = setTimeout(recordAction, 2000);
     }
 
-    // ΓöÇΓöÇ Section J ΓÇö Undo / Redo ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section J G�� Undo / Redo G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     // Local ring-buffer for optimistic undo (stores canvas.innerHTML snapshots)
     var localUndoStack = [];
@@ -2502,7 +2690,7 @@
         if (badge) { badge.style.display = hasDraft ? '' : 'none'; }
     }
 
-    // ΓöÇΓöÇ Section K ΓÇö Publish / Discard ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section K G�� Publish / Discard G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function bindToolbar() {
         if (!HAS_PAGE) { return; }
@@ -2525,11 +2713,18 @@
                     headers: publishHeaders,
                     body: publishBody,
                 })
-                    .then(function (r) { return r.json(); })
+                    .then(function (r) {
+                        return r.json().then(function (data) {
+                            if (!r.ok) {
+                                throw new Error((data && data.error) ? data.error : ('HTTP ' + r.status));
+                            }
+                            return data;
+                        });
+                    })
                     .then(function (data) {
                         if (data.success) {
                             if (data.reimported) {
-                                alert('Published. Reloading editor ΓÇö undo history has been reset.');
+                                alert('Published. Reloading editor G�� undo history has been reset.');
                                 location.reload();
                             } else {
                                 showDraftBadge(false);
@@ -2539,11 +2734,17 @@
                                 publishBtn.disabled = false;
                                 alert('Page published successfully.');
                             }
+                        } else {
+                            publishBtn.disabled = false;
+                            var msg = (data && data.error) ? data.error : 'Publish failed.';
+                            console.error('publish failed:', msg);
+                            alert(msg);
                         }
                     })
                     .catch(function (err) {
                         console.error('publish failed:', err);
                         publishBtn.disabled = false;
+                        alert(err && err.message ? err.message : 'Publish failed.');
                     });
             });
         }
@@ -2594,19 +2795,19 @@
         var redoBtn = document.getElementById('editor-redo-btn');
         if (redoBtn) { redoBtn.addEventListener('click', redo); }
 
-        // ΓöÇΓöÇ Code view toggle ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        // G��G�� Code view toggle G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
         var codeBtn = document.getElementById('editor-code-toggle-btn');
         if (codeBtn) { codeBtn.addEventListener('click', toggleCodeView); }
     }
 
-    // ΓöÇΓöÇ Section N ΓÇö Code View ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section N G�� Code View G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     var _inCodeView = false;
     var _codeArea = null;
     var _codeFileMode = null; // { rel } when editing a template file
     var _htmlPageMode = false; // true when page render_mode=html
 
-    // Block type ΓåÆ HTML tag mapping (mirrors PHP BlockRegistry)
+    // Block type G�� HTML tag mapping (mirrors PHP BlockRegistry)
     var BLOCK_TAGS = {
         'text': 'div', 'heading': 'h2', 'image': 'figure', 'gallery': 'div',
         'html': 'div', 'section': 'section', 'columns': 'div', 'site-logo': 'div',
@@ -2757,7 +2958,7 @@
         var btn = document.getElementById('editor-code-toggle-btn');
         if (btn) {
             btn.classList.add('active');
-            btn.textContent = _codeFileMode ? '├ù Close File' : 'Blocks';
+            btn.textContent = _codeFileMode ? '+� Close File' : 'Blocks';
         }
 
         deselect();
@@ -2812,7 +3013,7 @@
     }
 
     /**
-     * Very basic HTML formatter ΓÇö adds newlines before block-level tags.
+     * Very basic HTML formatter G�� adds newlines before block-level tags.
      */
     function formatHtml(html) {
         return html
@@ -2837,7 +3038,7 @@
                 return;
             }
             editSrcBtn.disabled = true;
-            editSrcBtn.textContent = 'LoadingΓÇª';
+            editSrcBtn.textContent = 'LoadingGǪ';
             fetch('/admin/template-editor/edit?f=' + encodeURIComponent(rel) + '&format=json', {
                 headers: { 'Accept': 'application/json' },
             })
@@ -2855,7 +3056,7 @@
         });
     }());
 
-    // ΓöÇΓöÇ Section M ΓÇö Canvas resize ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section M G�� Canvas resize G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function initCanvasResize() {
         var handle = document.getElementById('cruinn-canvas-resize-handle');
@@ -2918,7 +3119,7 @@
         });
     }
 
-    // ΓöÇΓöÇ Section L ΓÇö Keyboard shortcuts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section L G�� Keyboard shortcuts G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
     function bindKeyboard() {
         document.addEventListener('keydown', function (e) {
@@ -2935,7 +3136,7 @@
         });
     }
 
-    // ΓöÇΓöÇ Section M ΓÇö Public API ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // G��G�� Section M G�� Public API G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
     // Expose serialiseCanvas for the Code panel inline script.
     window.serialiseCanvasPublic = serialiseCanvas;
 

@@ -1828,3 +1828,24 @@ div.editor-zone-preview {
     border-color: #6d28d9 !important;
     background: #ede9fe !important;
 }
+
+/* Template-page zone styling: assigned/structural feel without looking disabled */
+#editor-wrap[data-is-template-page="1"] .editor-mode [data-block-type="zone"] {
+    border: 2px dashed #2f7f6d !important;
+    background: rgba(47, 127, 109, 0.1) !important;
+}
+
+#editor-wrap[data-is-template-page="1"] .editor-mode [data-block-type="zone"]:hover {
+    border-color: #256a5b !important;
+    background: rgba(47, 127, 109, 0.16) !important;
+}
+
+#editor-wrap[data-is-template-page="1"] .editor-mode [data-block-type="zone"].active {
+    border-color: #1f5a4d !important;
+    background: rgba(47, 127, 109, 0.22) !important;
+    box-shadow: 0 0 0 2px rgba(47, 127, 109, 0.24) !important;
+}
+
+#editor-wrap[data-is-template-page="1"] .editor-mode [data-block-type="zone"]::before {
+    background: #2f7f6d;
+}

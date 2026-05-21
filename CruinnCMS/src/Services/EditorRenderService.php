@@ -143,6 +143,7 @@ class EditorRenderService
         $visited[$parentKey] = true;
 
         $html = '';
+        $canvasRenderSvc = null;
         foreach ($childrenOf[$parentKey] as $blockId) {
             $row = $byId[$blockId];
 
@@ -251,9 +252,48 @@ class EditorRenderService
             $innerContent  = BlockRegistry::isDynamic($row['block_type'])
                 ? BlockRegistry::renderDynamic($row, $db)
                 : ($row['inner_html'] ?? '');
+            $skipChildren = false;
+
+            if ($row['block_type'] === 'zone') {
+                $assignedCanvasId = (int) ($cfg['canvas_page_id'] ?? 0);
+                if ($assignedCanvasId > 0) {
+                    if ($canvasRenderSvc === null) {
+                        $canvasRenderSvc = new CruinnRenderService();
+                    }
+                    if ($canvasRenderSvc->hasPublished($assignedCanvasId)) {
+                        $assignedHtml = $canvasRenderSvc->buildHtml($assignedCanvasId);
+                        // Assigned canvas in template editor is preview-only. Strip
+                        // editor block markers so it cannot be mistaken as editable
+                        // template block state during serialisation.
+                        $assignedHtml = preg_replace('/\sdata-block(?:="[^"]*")?/', '', $assignedHtml) ?? $assignedHtml;
+                        $assignedHtml = preg_replace('/\sdata-block-type="[^"]*"/', '', $assignedHtml) ?? $assignedHtml;
+                        $assignedHtml = preg_replace('/\sdata-block-config=\'[^\']*\'/', '', $assignedHtml) ?? $assignedHtml;
+                        $assignedHtml = preg_replace('/\sdata-css-props(?:-tablet|-mobile)?=\'[^\']*\'/', '', $assignedHtml) ?? $assignedHtml;
+                        $assignedCss  = $canvasRenderSvc->buildCss($assignedCanvasId);
+                        $innerContent = '<div class="editor-zone-assigned-canvas" data-assigned-canvas-id="'
+                            . $assignedCanvasId
+                            . '" contenteditable="false"><style class="editor-zone-assigned-css">'
+                            . $assignedCss
+                            . '</style>'
+                            . $assignedHtml
+                            . '</div>';
+                        $skipChildren = true;
+                    } else {
+                        $innerContent = '<div class="editor-zone-assigned-canvas" data-assigned-canvas-id="'
+                            . $assignedCanvasId
+                            . '" data-assigned-canvas-empty="1" contenteditable="false">'
+                            . '<div class="editor-zone-assigned-empty">Assigned canvas not yet published.</div>'
+                            . '</div>';
+                        $skipChildren = true;
+                    }
+                }
+            }
+
             // Strip any DOCTYPE declarations from inner content — safe for canvas rendering.
             $innerContent  = preg_replace('/<!DOCTYPE[^>]*>/i', '', $innerContent);
-            $innerContent .= $this->renderTree($blockId, $byId, $childrenOf, $db, $visited);
+            if (!$skipChildren) {
+                $innerContent .= $this->renderTree($blockId, $byId, $childrenOf, $db, $visited);
+            }
 
             $html .= "<{$tag} id=\"{$id}\" data-block data-block-type=\"{$type}\"{$extraAttrs}>"
                    . $innerContent

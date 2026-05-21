@@ -143,7 +143,6 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
         </div>
         <div class="editor-toolbar-actions">
             <?php if ($page): ?>
-            <?php if (empty($isTemplatePage)): ?>
             <button id="editor-code-toggle-btn" class="btn btn-small btn-outline" title="Switch between block editor and code view">
                 &lt;/&gt; Code
             </button>
@@ -173,7 +172,6 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
             <button id="editor-publish-btn" class="btn btn-small btn-primary">
                 Publish
             </button>
-            <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
@@ -469,24 +467,24 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
             <div class="editor-panel-section">
                 <h3 class="editor-panel-heading editor-panel-toggle">Add Block <span class="editor-panel-chevron">▾</span></h3>
                 <div class="editor-palette">
-                    <?php $_disableCanvasEditing = !$page || !empty($isTemplatePage); ?>
-                    <button class="palette-btn" data-add-block="text" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Text</button>
-                    <button class="palette-btn" data-add-block="heading" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Heading</button>
-                    <button class="palette-btn" data-add-block="image" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Image</button>
-                    <button class="palette-btn" data-add-block="section" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Section</button>
-                    <button class="palette-btn" data-add-block="columns" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Columns</button>
-                    <button class="palette-btn" data-add-block="gallery" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Gallery</button>
-                    <button class="palette-btn" data-add-block="html" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>HTML</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-header" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Site Header</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="nav-menu" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Nav Menu</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-logo" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Site Logo</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-title" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Site Title</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Event List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Data List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>PHP Include</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="module-widget" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Module Widget</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="module-content" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Module Content</button>
-                    <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disableCanvasEditing ? 'disabled title="Page templates are configured in the right panel"' : '' ?>>Zone</button>
+                    <?php $_disableCanvasEditing = !$page; ?>
+                    <button class="palette-btn" data-add-block="text" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Text</button>
+                    <button class="palette-btn" data-add-block="heading" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Heading</button>
+                    <button class="palette-btn" data-add-block="image" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Image</button>
+                    <button class="palette-btn" data-add-block="section" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Section</button>
+                    <button class="palette-btn" data-add-block="columns" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Columns</button>
+                    <button class="palette-btn" data-add-block="gallery" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Gallery</button>
+                    <button class="palette-btn" data-add-block="html" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>HTML</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="site-header" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Header</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="nav-menu" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Nav Menu</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="site-logo" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Logo</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="site-title" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Title</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Event List</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>PHP Include</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="module-widget" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Module Widget</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="module-content" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Module Content</button>
+                    <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
                 </div>
             </div>
             <div class="editor-panel-section" id="editor-tree-section">
@@ -514,7 +512,10 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty"><?= e(ucfirst($_cc['zone'])) ?> zone — not yet published.</div>
                 <?php endif; ?>
-                <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></a>
+                     <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>"
+                         class="editor-zone-edit-link"
+                         data-inline-canvas-edit="1"
+                         data-inline-canvas-id="<?= (int)($_cc['pageId'] ?? 0) ?>">Click to edit <?= e($_cc['label']) ?></a>
             </div>
             <?php endforeach; ?>
 
@@ -625,7 +626,10 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                         <?= $_sidebarCC['html'] ?? '' ?>
                     </div>
                     <?php if (!empty($_sidebarCC['pageId'])): ?>
-                    <a href="<?= e($_editorPageHrefFrom((int)$_sidebarCC['pageId'])) ?>" class="editor-sidebar-context-link">
+                    <a href="<?= e($_editorPageHrefFrom((int)$_sidebarCC['pageId'])) ?>"
+                       class="editor-sidebar-context-link"
+                       data-inline-canvas-edit="1"
+                       data-inline-canvas-id="<?= (int)($_sidebarCC['pageId'] ?? 0) ?>">
                         Edit <?= e(ucfirst($_sidebarCC['label'] ?? 'Sidebar')) ?>
                     </a>
                     <?php endif; ?>
@@ -642,7 +646,10 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                 <?php else: ?>
                 <div class="editor-zone-inner editor-zone-empty"><?= e(ucfirst($_cc['zone'])) ?> zone — not yet published.</div>
                 <?php endif; ?>
-                <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>" class="editor-zone-edit-link">Click to edit <?= e($_cc['label']) ?></a>
+                     <a href="<?= e($_editorPageHrefFrom((int)$_cc['pageId'])) ?>"
+                         class="editor-zone-edit-link"
+                         data-inline-canvas-edit="1"
+                         data-inline-canvas-id="<?= (int)($_cc['pageId'] ?? 0) ?>">Click to edit <?= e($_cc['label']) ?></a>
             </div>
             <?php endforeach; ?>
 
@@ -721,18 +728,9 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                         </select>
                         <span class="editor-label-hint">Template layouts define only the zone arrangement.</span>
                     </div>
-                    <?php foreach (($templateZones ?? []) as $_zoneName): ?>
                     <div class="editor-prop-row">
-                        <label for="tpl-zone-canvas-<?= e($_zoneName) ?>"><?= e(ucfirst($_zoneName)) ?> Canvas</label>
-                        <select class="editor-prop-input template-zone-canvas-select" id="tpl-zone-canvas-<?= e($_zoneName) ?>" data-zone="<?= e($_zoneName) ?>">
-                            <option value="">— None —</option>
-                            <?php foreach (($availableZoneCanvases ?? []) as $_zoneCanvas): ?>
-                            <?php if (!empty($_zoneCanvas['zone_name']) && $_zoneCanvas['zone_name'] !== $_zoneName) { continue; } ?>
-                            <option value="<?= (int) $_zoneCanvas['id'] ?>" <?= (int) ($_zoneCanvas['id'] ?? 0) === (int) (($templateZoneAssignments[$_zoneName]['canvas_page_id'] ?? 0)) ? 'selected' : '' ?>><?= e($_zoneCanvas['title']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                        <span class="editor-label-hint">Assign zone content directly on the canvas by selecting each zone block and setting its Assigned Canvas in Zone Settings.</span>
                     </div>
-                    <?php endforeach; ?>
                 </div>
             </div>
             <?php endif; ?>
@@ -746,8 +744,9 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                         <label for="page-template-select">Template</label>
                         <select id="page-template-select" class="editor-prop-input">
                             <?php foreach ($templates ?? [] as $tpl): ?>
+                                <?php $tplZones = $tpl['zones'] ?? ['main']; ?>
                             <option value="<?= e($tpl['slug']) ?>"
-                                    data-zones="<?= e($tpl['zones'] ?? '["main"]') ?>"
+                                    data-zones="<?= e(json_encode(is_array($tplZones) ? $tplZones : ['main'])) ?>"
                                     <?= ($page['template'] ?? 'default') === $tpl['slug'] ? 'selected' : '' ?>>
                                 <?= e($tpl['name']) ?>
                             </option>
@@ -1380,6 +1379,18 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                         </select>
                     </div>
                     <div class="editor-prop-row">
+                        <label>Vertical Align</label>
+                        <select class="editor-prop-input" data-prop="verticalAlign">
+                            <option value="">—</option>
+                            <option value="baseline">Baseline</option>
+                            <option value="top">Top</option>
+                            <option value="middle">Middle</option>
+                            <option value="bottom">Bottom</option>
+                            <option value="text-top">Text Top</option>
+                            <option value="text-bottom">Text Bottom</option>
+                        </select>
+                    </div>
+                    <div class="editor-prop-row">
                         <label>Float</label>
                         <select class="editor-prop-input" data-prop="cssFloat">
                             <option value="">—</option>
@@ -1615,6 +1626,33 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
     </div>
 
 </div><!-- /#editor-wrap -->
+
+<div id="editor-inline-focus-overlay" aria-hidden="true">
+    <div class="editor-inline-focus-backdrop" data-inline-close></div>
+    <div class="editor-inline-focus-panel" role="dialog" aria-modal="true" aria-label="Inline canvas editor">
+        <div class="editor-inline-focus-head">
+            <strong id="editor-inline-focus-title">Inline Canvas Editor</strong>
+            <div class="editor-inline-focus-actions">
+                <a id="editor-inline-focus-open-full" class="btn btn-small btn-outline" href="#" target="_self">Open full editor</a>
+                <button id="editor-inline-focus-close" type="button" class="btn btn-small btn-primary" data-inline-close>Return</button>
+            </div>
+        </div>
+        <iframe id="editor-inline-focus-frame" title="Inline canvas editor" loading="eager"></iframe>
+    </div>
+</div>
+
+<style>
+#editor-inline-focus-overlay { display:none; position:fixed; inset:0; z-index:12000; }
+#editor-inline-focus-overlay.is-open { display:block; }
+#editor-inline-focus-overlay .editor-inline-focus-backdrop { position:absolute; inset:0; background:rgba(12,22,20,0.55); }
+#editor-inline-focus-overlay .editor-inline-focus-panel { position:absolute; inset:4vh 4vw; background:#fff; border-radius:10px; box-shadow:0 18px 60px rgba(0,0,0,0.35); display:flex; flex-direction:column; overflow:hidden; }
+#editor-inline-focus-overlay .editor-inline-focus-head { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:0.6rem 0.75rem; border-bottom:1px solid #e5e7eb; background:#f8fafc; }
+#editor-inline-focus-overlay .editor-inline-focus-actions { display:flex; gap:0.5rem; }
+#editor-inline-focus-frame { width:100%; height:100%; border:0; flex:1; background:#fff; }
+.editor-inline-zone-edit { display:inline-block; margin-bottom:0.5rem; }
+#editor-canvas [data-block-type="zone"] > .editor-zone-assigned-canvas { display:block; max-width:100%; overflow:auto; }
+#editor-canvas [data-block-type="zone"] > .editor-zone-assigned-canvas > * { max-width:100%; }
+</style>
 
 <style id="editor-live-styles"><?= $cruinnCss ?></style>
 <?php

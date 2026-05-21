@@ -526,9 +526,15 @@ class CruinnRenderService
         );
 
         // ── Merge CSS from all sources ───────────────────────────────
-        $css = $canvasCssPageId !== null
-            ? $this->buildCss($canvasCssPageId)      // fallback path
-            : $this->buildCssForTemplate($templateId); // normal path
+        if ($layoutPageId > 0) {
+            // Layout-driven templates must use the layout page CSS as the base
+            // so zone width constraints carry through to live rendering.
+            $css = $this->buildCss($layoutPageId);
+        } else {
+            $css = $canvasCssPageId !== null
+                ? $this->buildCss($canvasCssPageId)      // fallback path
+                : $this->buildCssForTemplate($templateId); // normal path
+        }
 
         if ($pageId !== null) {
             $css .= $this->buildCss($pageId);

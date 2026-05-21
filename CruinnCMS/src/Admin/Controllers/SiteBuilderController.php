@@ -63,6 +63,14 @@ class SiteBuilderController extends BaseController
         );
 
         foreach ($templates as &$tpl) {
+            $zones = $this->getTemplateDisplayZones((int) ($tpl['id'] ?? 0), (int) ($tpl['layout_page_id'] ?? 0));
+            $tpl['zones'] = array_values(array_unique(array_filter(array_map(
+                static fn(array $z): string => (string) ($z['zone_name'] ?? ''),
+                $zones
+            ))));
+            if (empty($tpl['zones'])) {
+                $tpl['zones'] = ['main'];
+            }
             $usage = $this->db->fetch(
                 'SELECT COUNT(*) AS cnt FROM pages_index WHERE template = ?',
                 [$tpl['slug']]
@@ -152,8 +160,6 @@ class SiteBuilderController extends BaseController
             $layoutPageId = null;
         }
 
-        $zones = json_encode($cleanZones);
-
         $hasHeaderZone = in_array('header', $cleanZones, true);
         $hasFooterZone = in_array('footer', $cleanZones, true);
 
@@ -163,7 +169,7 @@ class SiteBuilderController extends BaseController
             'slug'           => $slug,
             'name'           => $name,
             'description'    => $description,
-            'zones'          => $zones,
+            'zones'          => json_encode(['main']),
             'css_class'      => $cssClass,
             'is_system'      => 0,
             'sort_order'     => $maxSort['next_sort'] ?? 99,
@@ -337,8 +343,21 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/templates');
         }
 
-        $this->db->execute('DELETE FROM page_templates WHERE id = ?', [$id]);
-        Auth::flash('success', "Template '{$tpl['name']}' deleted.");
+        $pdo = $this->db->pdo();
+        $pdo->beginTransaction();
+        try {
+            $this->db->execute('DELETE FROM page_templates WHERE id = ?', [$id]);
+            $stillExists = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM page_templates WHERE id = ?', [$id]);
+            if ($stillExists > 0) {
+                throw new \RuntimeException('Template row still exists after delete.');
+            }
+            $pdo->commit();
+            Auth::flash('success', "Template '{$tpl['name']}' deleted.");
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            Auth::flash('error', 'Template could not be deleted: ' . $e->getMessage());
+        }
+
         $this->redirect('/admin/templates');
     }
 
@@ -449,7 +468,7 @@ class SiteBuilderController extends BaseController
                 'name'        => 'Default Header',
                 'slug'        => '_global_header',
                 'description' => 'Global default header — blocks in the Header zone appear on all pages whose template uses the Auto header source.',
-                'zones'       => json_encode(['header']),
+                'zones'       => json_encode(['main']),
                 'css_class'   => '',
                 'is_system'   => 1,
                 'sort_order'  => 0,
@@ -487,7 +506,7 @@ class SiteBuilderController extends BaseController
                 'name'        => 'Default Footer',
                 'slug'        => '_global_footer',
                 'description' => 'Global default footer — blocks in the Footer zone appear on all pages whose template uses the Auto footer source.',
-                'zones'       => json_encode(['footer']),
+                'zones'       => json_encode(['main']),
                 'css_class'   => '',
                 'is_system'   => 1,
                 'sort_order'  => 1,
@@ -513,7 +532,7 @@ class SiteBuilderController extends BaseController
                 'name'        => 'Default Sidebar',
                 'slug'        => '_global_sidebar',
                 'description' => 'Global default sidebar — blocks in the Sidebar zone appear on templates using a sidebar source template.',
-                'zones'       => json_encode(['sidebar']),
+                'zones'       => json_encode(['main']),
                 'css_class'   => '',
                 'is_system'   => 1,
                 'sort_order'  => 2,
@@ -536,7 +555,14 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/templates');
         }
 
-        $tpl['zones'] = json_decode($tpl['zones'] ?? '["main"]', true) ?: ['main'];
+        $zoneRows = $this->getTemplateDisplayZones((int) ($tpl['id'] ?? 0), (int) ($tpl['layout_page_id'] ?? 0));
+        $tpl['zones'] = array_values(array_unique(array_filter(array_map(
+            static fn(array $z): string => (string) ($z['zone_name'] ?? ''),
+            $zoneRows
+        ))));
+        if (empty($tpl['zones'])) {
+            $tpl['zones'] = ['main'];
+        }
         $tpl['settings'] = json_decode($tpl['settings'] ?? '{}', true) ?: [];
 
         // content_blocks table no longer exists — template-attached blocks
@@ -599,7 +625,6 @@ class SiteBuilderController extends BaseController
 
         $name          = trim($this->input('name', ''));
         $description   = trim($this->input('description', ''));
-        $zones         = trim($this->input('zones', '["main"]'));
         $cssClass      = trim($this->input('css_class', ''));
         $sortOrder     = (int) $this->input('sort_order', $tpl['sort_order']);
         $contextSource = $this->sanitiseContextSource($this->input('context_source', $tpl['context_source'] ?? ''));
@@ -609,10 +634,16 @@ class SiteBuilderController extends BaseController
             $this->redirect("/admin/templates/{$id}/edit");
         }
 
-        $zonesDecoded = json_decode($zones);
-        if (!is_array($zonesDecoded)) {
-            $zones = '["main"]';
+        $zoneRows = $this->getTemplateDisplayZones((int) $id, (int) ($tpl['layout_page_id'] ?? 0));
+        $zoneNames = array_values(array_unique(array_filter(array_map(
+            static fn(array $z): string => (string) ($z['zone_name'] ?? ''),
+            $zoneRows
+        ))));
+        if (empty($zoneNames)) {
+            $zoneNames = ['main'];
         }
+        $hasHeaderZone = in_array('header', $zoneNames, true);
+        $hasFooterZone = in_array('footer', $zoneNames, true);
 
         $slug = $tpl['slug'];
         if (!$tpl['is_system']) {
@@ -660,7 +691,6 @@ class SiteBuilderController extends BaseController
             'name'           => $name,
             'slug'           => $slug,
             'description'    => $description,
-            'zones'          => $zones,
             'css_class'      => $cssClass,
             'sort_order'     => $sortOrder,
             'settings'       => json_encode($settings),
@@ -678,11 +708,7 @@ class SiteBuilderController extends BaseController
         }
         // Allow any valid template slug that actually has a header zone.
         if (preg_match('/^[a-z0-9_\-]+$/', $value)) {
-            $tpl = $this->db->fetch(
-                "SELECT id FROM page_templates WHERE slug = ? AND JSON_CONTAINS(zones, '\"header\"') LIMIT 1",
-                [$value]
-            );
-            if ($tpl) {
+            if ($this->templateSlugHasZone($value, 'header')) {
                 return $value;
             }
         }
@@ -696,11 +722,7 @@ class SiteBuilderController extends BaseController
         }
         // Allow any valid template slug that actually has a sidebar zone.
         if (preg_match('/^[a-z0-9_\-]+$/', $value)) {
-            $tpl = $this->db->fetch(
-                "SELECT id FROM page_templates WHERE slug = ? AND JSON_CONTAINS(zones, '\"sidebar\"') LIMIT 1",
-                [$value]
-            );
-            if ($tpl) {
+            if ($this->templateSlugHasZone($value, 'sidebar')) {
                 return $value;
             }
         }
@@ -721,6 +743,26 @@ class SiteBuilderController extends BaseController
         return '';
     }
 
+    private function templateSlugHasZone(string $slug, string $zoneName): bool
+    {
+        $tpl = $this->db->fetch(
+            'SELECT id, layout_page_id FROM page_templates WHERE slug = ? LIMIT 1',
+            [$slug]
+        );
+        if (!$tpl) {
+            return false;
+        }
+
+        $zones = $this->getTemplateDisplayZones((int) ($tpl['id'] ?? 0), (int) ($tpl['layout_page_id'] ?? 0));
+        foreach ($zones as $z) {
+            if (($z['zone_name'] ?? null) === $zoneName) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Read top-level zone blocks from a template layout page.
      */
@@ -731,7 +773,7 @@ class SiteBuilderController extends BaseController
         }
 
         $rows = $this->db->fetchAll(
-            "SELECT block_id, block_config, sort_order
+            "SELECT block_id, block_config, inner_html, css_props, css_props_tablet, css_props_mobile, sort_order
              FROM pages
              WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
              ORDER BY sort_order ASC",
@@ -748,6 +790,11 @@ class SiteBuilderController extends BaseController
 
             $zones[] = [
                 'block_id' => $row['block_id'],
+                'inner_html' => $row['inner_html'] ?? null,
+                'css_props' => $row['css_props'] ?? null,
+                'css_props_tablet' => $row['css_props_tablet'] ?? null,
+                'css_props_mobile' => $row['css_props_mobile'] ?? null,
+                'block_config' => $row['block_config'] ?? '{}',
                 'sort_order' => (int) ($row['sort_order'] ?? 0),
                 'zone_name' => (string) $zoneName,
             ];
@@ -761,12 +808,12 @@ class SiteBuilderController extends BaseController
      */
     private function syncTemplateZoneBlocksForTemplate(int $templateId, array $layoutZones): void
     {
-        if ($templateId <= 0 || empty($layoutZones)) {
+        if ($templateId <= 0) {
             return;
         }
 
         $existingRows = $this->db->fetchAll(
-            "SELECT block_config FROM pages
+            "SELECT block_id, block_config FROM pages
              WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL",
             [$templateId]
         );
@@ -776,24 +823,77 @@ class SiteBuilderController extends BaseController
             $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
             $zoneName = $cfg['zone_name'] ?? null;
             if (is_string($zoneName) && $zoneName !== '') {
-                $existingZones[$zoneName] = true;
+                $existingZones[$zoneName] = [
+                    'block_id' => (string) ($row['block_id'] ?? ''),
+                    'block_config' => $cfg,
+                ];
+            }
+        }
+
+        $layoutZoneNames = [];
+        foreach ($layoutZones as $zone) {
+            $zoneName = $zone['zone_name'] ?? null;
+            if (is_string($zoneName) && $zoneName !== '') {
+                $layoutZoneNames[$zoneName] = true;
+            }
+        }
+
+        // Remove zones that no longer exist in the selected layout.
+        foreach ($existingZones as $zoneName => $meta) {
+            if (!isset($layoutZoneNames[$zoneName])) {
+                $this->db->execute(
+                    'DELETE FROM pages WHERE template_id = ? AND block_id = ?',
+                    [$templateId, $meta['block_id']]
+                );
             }
         }
 
         foreach ($layoutZones as $index => $zone) {
             $zoneName = $zone['zone_name'] ?? null;
-            if (!$zoneName || isset($existingZones[$zoneName])) {
+            if (!$zoneName) {
+                continue;
+            }
+
+            $layoutCfg = json_decode($zone['block_config'] ?? '{}', true) ?: [];
+            $layoutCfg['zone_name'] = $zoneName;
+
+            if (isset($existingZones[$zoneName])) {
+                $existingMeta = $existingZones[$zoneName];
+                $mergedCfg = $layoutCfg;
+                if (isset($existingMeta['block_config']['canvas_page_id'])) {
+                    $mergedCfg['canvas_page_id'] = (int) $existingMeta['block_config']['canvas_page_id'];
+                }
+
+                $this->db->execute(
+                    'UPDATE pages
+                        SET block_config = ?, inner_html = ?, css_props = ?, css_props_tablet = ?, css_props_mobile = ?, sort_order = ?
+                      WHERE template_id = ? AND block_id = ?',
+                    [
+                        json_encode($mergedCfg),
+                        $zone['inner_html'] ?? null,
+                        $zone['css_props'] ?? null,
+                        $zone['css_props_tablet'] ?? null,
+                        $zone['css_props_mobile'] ?? null,
+                        $index,
+                        $templateId,
+                        $existingMeta['block_id'],
+                    ]
+                );
                 continue;
             }
 
             $this->db->execute(
-                'INSERT INTO pages (block_id, template_id, block_type, block_config, sort_order, parent_block_id)
-                 VALUES (?, ?, ?, ?, ?, NULL)',
+                'INSERT INTO pages (block_id, template_id, block_type, inner_html, css_props, css_props_tablet, css_props_mobile, block_config, sort_order, parent_block_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
                 [
                     'tpl-zone-' . $templateId . '-' . $zoneName,
                     $templateId,
                     'zone',
-                    json_encode(['zone_name' => $zoneName]),
+                    $zone['inner_html'] ?? null,
+                    $zone['css_props'] ?? null,
+                    $zone['css_props_tablet'] ?? null,
+                    $zone['css_props_mobile'] ?? null,
+                    json_encode($layoutCfg),
                     $index,
                 ]
             );
@@ -893,8 +993,19 @@ class SiteBuilderController extends BaseController
             $menuItemsByMenu[(int)$item['menu_id']][] = $item;
         }
 
-        // Templates with parsed settings (for header/footer/sidebar resolution)
-        $templates = $this->db->fetchAll('SELECT slug, name, zones, settings FROM page_templates ORDER BY sort_order');
+        // Templates with parsed settings and row-derived zones (for header/footer/sidebar resolution)
+        $templates = $this->db->fetchAll('SELECT id, slug, name, layout_page_id, settings FROM page_templates ORDER BY sort_order');
+        foreach ($templates as &$tpl) {
+            $zones = $this->getTemplateDisplayZones((int) ($tpl['id'] ?? 0), (int) ($tpl['layout_page_id'] ?? 0));
+            $tpl['zones'] = array_values(array_unique(array_filter(array_map(
+                static fn(array $z): string => (string) ($z['zone_name'] ?? ''),
+                $zones
+            ))));
+            if (empty($tpl['zones'])) {
+                $tpl['zones'] = ['main'];
+            }
+        }
+        unset($tpl);
 
         $homePageIdRow = $this->db->fetch("SELECT value FROM settings WHERE `key` = 'site.home_page_id' LIMIT 1");
         $homePageId    = $homePageIdRow ? (int)$homePageIdRow['value'] : 0;

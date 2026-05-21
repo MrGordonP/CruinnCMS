@@ -105,8 +105,7 @@ include __DIR__ . '/_tabs.php';
                 <tbody>
                     <?php foreach ($templates as $tpl): ?>
                     <?php
-                    $tplZones = json_decode($tpl['zones'] ?? '["main"]', true);
-                    if (!is_array($tplZones)) { $tplZones = ['main']; }
+                    $tplZones = is_array($tpl['zones'] ?? null) ? $tpl['zones'] : ['main'];
                     $layoutTitle = '';
                     if (!empty($tpl['layout_page_id'])) {
                         foreach (($templateLayouts ?? []) as $layoutRow) {
