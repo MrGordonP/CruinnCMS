@@ -96,11 +96,11 @@ class SiteBuilderController extends BaseController
         $name         = trim($this->input('name', ''));
         $slug         = trim($this->input('slug', ''));
         $description  = trim($this->input('description', ''));
-        $zones        = trim($this->input('zones', '["main"]'));
         $cssClass     = trim($this->input('css_class', ''));
         $templateType  = in_array($this->input('template_type', 'page'), ['page', 'content'], true)
                          ? $this->input('template_type', 'page') : 'page';
         $contextSource = $this->sanitiseContextSource($this->input('context_source', ''));
+        $layoutPageId  = (int) $this->input('layout_page_id', 0);
 
         if (!$name || !$slug) {
             Auth::flash('error', 'Name and slug are required.');
@@ -118,28 +118,40 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/templates');
         }
 
-        $zonesDecoded = json_decode($zones);
-        if (!is_array($zonesDecoded)) {
-            $zones = '["main"]';
-            $zonesDecoded = ['main'];
+        $cleanZones = ['main'];
+        $layoutZones = [];
+        if ($templateType === 'page') {
+            if ($layoutPageId <= 0) {
+                Auth::flash('error', 'Page templates require a Template Layout.');
+                $this->redirect('/admin/templates?panel=page-templates');
+            }
+
+            $layoutValid = $this->db->fetch(
+                "SELECT id FROM pages_index
+                 WHERE id = ? AND canvas_type = 'template-shell'
+                   AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+                 LIMIT 1",
+                [$layoutPageId]
+            );
+            if (!$layoutValid) {
+                Auth::flash('error', 'Selected Template Layout is invalid.');
+                $this->redirect('/admin/templates?panel=page-templates');
+            }
+
+            $layoutZones = $this->getLayoutZonesForTemplate($layoutPageId);
+            if (empty($layoutZones)) {
+                Auth::flash('error', 'Selected Template Layout has no zone blocks. Add zone blocks to the layout first.');
+                $this->redirect('/admin/templates?panel=page-templates');
+            }
+
+            $cleanZones = array_values(array_map(
+                fn(array $zone): string => (string) $zone['zone_name'],
+                $layoutZones
+            ));
+        } else {
+            $layoutPageId = null;
         }
 
-        $cleanZones = [];
-        foreach ($zonesDecoded as $zn) {
-            if (!is_string($zn)) {
-                continue;
-            }
-            $zn = trim(strtolower($zn));
-            if ($zn === '' || !preg_match('/^[a-z0-9_-]+$/', $zn)) {
-                continue;
-            }
-            if (!in_array($zn, $cleanZones, true)) {
-                $cleanZones[] = $zn;
-            }
-        }
-        if (!in_array('main', $cleanZones, true)) {
-            array_unshift($cleanZones, 'main');
-        }
         $zones = json_encode($cleanZones);
 
         $hasHeaderZone = in_array('header', $cleanZones, true);
@@ -147,11 +159,22 @@ class SiteBuilderController extends BaseController
 
         $maxSort = $this->db->fetch('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_sort FROM page_templates');
 
-        $this->db->execute(
-            'INSERT INTO page_templates (slug, name, description, zones, css_class, is_system, sort_order, template_type, context_source)
-             VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
-            [$slug, $name, $description, $zones, $cssClass, $maxSort['next_sort'] ?? 99, $templateType, $contextSource ?: null]
-        );
+        $templateId = (int) $this->db->insert('page_templates', [
+            'slug'           => $slug,
+            'name'           => $name,
+            'description'    => $description,
+            'zones'          => $zones,
+            'css_class'      => $cssClass,
+            'is_system'      => 0,
+            'sort_order'     => $maxSort['next_sort'] ?? 99,
+            'template_type'  => $templateType,
+            'context_source' => $contextSource ?: null,
+            'layout_page_id' => $layoutPageId,
+        ]);
+
+        if ($templateType === 'page' && !empty($layoutZones)) {
+            $this->syncTemplateZoneBlocksForTemplate($templateId, $layoutZones);
+        }
 
         Auth::flash('success', "Template '{$name}' created.");
         $this->redirect('/admin/templates');
@@ -360,7 +383,6 @@ class SiteBuilderController extends BaseController
             'editor_mode' => 'freeform',
             'canvas_type' => 'template-shell',
             'created_by'  => Auth::userId(),
-            'updated_by'  => Auth::userId(),
         ]);
 
         Auth::flash('success', "Template layout '{$title}' created.");
@@ -697,6 +719,85 @@ class SiteBuilderController extends BaseController
         if (preg_match('/^content_set:[a-z0-9_\-]+$/', $value)) { return $value; }
         if (preg_match('/^[a-z0-9_\-]+\.[a-z0-9_\-]+$/', $value)) { return $value; }
         return '';
+    }
+
+    /**
+     * Read top-level zone blocks from a template layout page.
+     */
+    private function getLayoutZonesForTemplate(int $layoutPageId): array
+    {
+        if ($layoutPageId <= 0) {
+            return [];
+        }
+
+        $rows = $this->db->fetchAll(
+            "SELECT block_id, block_config, sort_order
+             FROM pages
+             WHERE page_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+             ORDER BY sort_order ASC",
+            [$layoutPageId]
+        );
+
+        $zones = [];
+        foreach ($rows as $row) {
+            $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            $zoneName = $cfg['zone_name'] ?? null;
+            if (!$zoneName || !preg_match('/^[a-z0-9_-]+$/', (string) $zoneName)) {
+                continue;
+            }
+
+            $zones[] = [
+                'block_id' => $row['block_id'],
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+                'zone_name' => (string) $zoneName,
+            ];
+        }
+
+        return $zones;
+    }
+
+    /**
+     * Ensure the template has zone assignment blocks matching its layout zones.
+     */
+    private function syncTemplateZoneBlocksForTemplate(int $templateId, array $layoutZones): void
+    {
+        if ($templateId <= 0 || empty($layoutZones)) {
+            return;
+        }
+
+        $existingRows = $this->db->fetchAll(
+            "SELECT block_config FROM pages
+             WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL",
+            [$templateId]
+        );
+
+        $existingZones = [];
+        foreach ($existingRows as $row) {
+            $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            $zoneName = $cfg['zone_name'] ?? null;
+            if (is_string($zoneName) && $zoneName !== '') {
+                $existingZones[$zoneName] = true;
+            }
+        }
+
+        foreach ($layoutZones as $index => $zone) {
+            $zoneName = $zone['zone_name'] ?? null;
+            if (!$zoneName || isset($existingZones[$zoneName])) {
+                continue;
+            }
+
+            $this->db->execute(
+                'INSERT INTO pages (block_id, template_id, block_type, block_config, sort_order, parent_block_id)
+                 VALUES (?, ?, ?, ?, ?, NULL)',
+                [
+                    'tpl-zone-' . $templateId . '-' . $zoneName,
+                    $templateId,
+                    'zone',
+                    json_encode(['zone_name' => $zoneName]),
+                    $index,
+                ]
+            );
+        }
     }
 
     public function builderUpdateZoneSettings(string $id): void
@@ -1299,7 +1400,6 @@ class SiteBuilderController extends BaseController
             'slug'        => $this->generateUniqueSlug($title),
             'canvas_type' => 'widget-dashboard',
             'created_by'  => Auth::userId(),
-            'updated_by'  => Auth::userId(),
         ]);
 
         Auth::flash('success', "Dashboard \"{$title}\" created.");
