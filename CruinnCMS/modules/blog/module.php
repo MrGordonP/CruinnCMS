@@ -62,6 +62,16 @@ return [
         ['route' => '/blog', 'label' => 'Blog'],
     ],
 
+    'settings_schema' => [
+        [
+            'key'     => 'blog_list_page_id',
+            'type'    => 'number',
+            'label'   => 'Blog List Page ID',
+            'hint'    => 'Optional pages_index ID to bind blog.list to a template page. Leave blank to keep legacy module template rendering for /blog.',
+            'default' => '',
+        ],
+    ],
+
     'content_providers' => [
         [
             'slug'     => 'list',
