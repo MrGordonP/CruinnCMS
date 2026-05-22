@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.13` (pending tag)
-**HEAD:** `57dd9f8` — feat: template-zone sync and module-content mounting
+**Current version:** `v1.0.0-beta.15` (follow-up work in progress)
+**HEAD:** `55092f7` — fix(editor): stabilize publish, zone assignment, and in-situ editing flows [v1.0.0-beta.15]
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -203,6 +203,8 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 - **v1.0.0-beta.11** (`26d20bb`) — Template syntax fixes (`<?php` duplication, `IGA\Router`→`Cruinn\Router`).
 - **v1.0.0-beta.12** (`28bafcc`) — Role & Capability Refactor documentation complete. All 6 stages integrated, tested, and deployed. Engine fully instance-agnostic with flexible authorization.
 - **v1.0.0-beta.13** (`57dd9f8`, pending tag) — Template zone/layout separation fix, `module-content` block type + provider registry, Blog list as first provider, system pages editable via block editor (`BaseController::renderSystemPage`), `Template::globals()` for php-include context, migrations 017-019.
+- **v1.0.0-beta.14** — Template-layout architecture corrections and follow-up recovery after the incomplete zone/template slice captured in `dev/docs/sessions/v1.0.0-beta.14_PARTIAL_FAILURE.md`.
+- **v1.0.0-beta.15** (`55092f7`) — Template/layout publish stability, system-page/blog list mapping fast follow-up, and the current follow-up working tree for Blog module ownership, Blog control-centre routing, relational Blog Profiles, module-content Blog profile selection, and single-post navigation polish/containment fixes.
 
 ---
 

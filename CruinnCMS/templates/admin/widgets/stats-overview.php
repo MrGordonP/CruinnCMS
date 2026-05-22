@@ -16,10 +16,10 @@ $d = $data;
         <span>Pages</span>
     </a>
     <?php if (isset($d['articles'])): ?>
-    <a href="<?= url('/admin/articles') ?>" class="dash-quick-link">
+    <a href="<?= url('/admin/blog') ?>" class="dash-quick-link">
         <span class="dash-quick-icon">📰</span>
         <strong class="dash-stat-num"><?= (int)$d['articles'] ?></strong>
-        <span>Articles</span>
+        <span>Blog</span>
     </a>
     <?php endif; ?>
     <?php if (isset($d['events'])): ?>

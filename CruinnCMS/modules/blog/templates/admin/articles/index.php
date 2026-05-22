@@ -1,12 +1,15 @@
 <?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
 <div class="admin-article-list">
+    <?php $blogBasePath = trim((string) ($blogBasePath ?? '')); ?>
+    <?php $blogNav = 'posts'; ?>
+    <?php include dirname(__DIR__) . '/blog/_nav.php'; ?>
     <div class="admin-list-header">
         <h1>Blog <span class="count"><?= (int)$total ?></span></h1>
-        <a href="/admin/articles/new" class="btn btn-primary">+ New Blog Post</a>
+        <a href="/admin/blog/posts/new" class="btn btn-primary">+ New Blog Post</a>
     </div>
 
     <!-- Search & Filters -->
-    <form method="get" action="/admin/articles" class="admin-filters">
+    <form method="get" action="/admin/blog/posts" class="admin-filters">
         <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search blog posts…" class="form-input">
         <select name="status" class="form-input">
             <option value="">All Statuses</option>
@@ -22,7 +25,7 @@
         </select>
         <button type="submit" class="btn btn-outline">Filter</button>
         <?php if ($search || $status || $subjectId): ?>
-            <a href="/admin/articles" class="btn btn-text">Clear</a>
+            <a href="/admin/blog/posts" class="btn btn-text">Clear</a>
         <?php endif; ?>
     </form>
 
@@ -46,7 +49,7 @@
             <?php foreach ($articles as $article): ?>
             <tr>
                 <td>
-                    <a href="/admin/articles/<?= (int)$article['id'] ?>/edit" class="strong-link">
+                    <a href="/admin/blog/posts/<?= (int)$article['id'] ?>/edit" class="strong-link">
                         <?= e($article['title']) ?>
                     </a>
                     <?php if (!empty($article['featured_image'])): ?>
@@ -70,9 +73,9 @@
                 </td>
                 <td><?= date('j M Y', strtotime($article['updated_at'])) ?></td>
                 <td>
-                    <a href="/admin/articles/<?= (int)$article['id'] ?>/edit" class="btn btn-small">Edit</a>
-                    <?php if ($article['status'] === 'published'): ?>
-                        <a href="/blog/<?= e($article['slug']) ?>" target="_blank" class="btn btn-small btn-outline">View</a>
+                    <a href="/admin/blog/posts/<?= (int)$article['id'] ?>/edit" class="btn btn-small">Edit</a>
+                    <?php if ($article['status'] === 'published' && $blogBasePath !== ''): ?>
+                        <a href="<?= e($blogBasePath . '/' . ($article['slug'] ?? '')) ?>" target="_blank" class="btn btn-small btn-outline">View</a>
                     <?php endif; ?>
                 </td>
             </tr>
@@ -88,11 +91,11 @@
         $qsPrefix = $qs ? '&' . $qs : '';
         ?>
         <?php if ($page > 1): ?>
-            <a href="/admin/articles?page=<?= $page - 1 ?><?= $qsPrefix ?>" class="btn btn-small">&laquo; Prev</a>
+            <a href="/admin/blog/posts?page=<?= $page - 1 ?><?= $qsPrefix ?>" class="btn btn-small">&laquo; Prev</a>
         <?php endif; ?>
         <span class="page-info">Page <?= $page ?> of <?= $totalPages ?></span>
         <?php if ($page < $totalPages): ?>
-            <a href="/admin/articles?page=<?= $page + 1 ?><?= $qsPrefix ?>" class="btn btn-small">Next &raquo;</a>
+            <a href="/admin/blog/posts?page=<?= $page + 1 ?><?= $qsPrefix ?>" class="btn btn-small">Next &raquo;</a>
         <?php endif; ?>
     </nav>
     <?php endif; ?>

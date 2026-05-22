@@ -71,6 +71,7 @@ class ModuleRegistry
                 'widgets'         => null,
                 'widget_providers' => [],
                 'content_providers' => [],
+                'public_path_resolver' => null,
             ], $def);
         }
     }
@@ -156,6 +157,46 @@ class ModuleRegistry
                 ($def['routes'])($router);
             }
         }
+    }
+
+    /**
+     * Allow active modules to resolve virtual public paths into a published page
+     * plus request-scoped render data.
+     */
+    public static function resolvePublicPath(string $path): ?array
+    {
+        self::load();
+
+        $normalisedPath = trim($path, '/');
+        if ($normalisedPath === '') {
+            return null;
+        }
+
+        foreach (self::$modules as $slug => $def) {
+            if ((self::$statuses[$slug] ?? 'discovered') !== 'active') {
+                continue;
+            }
+
+            $resolver = $def['public_path_resolver'] ?? null;
+            if (!$resolver) {
+                continue;
+            }
+
+            try {
+                $resolved = self::invokePublicPathResolver($resolver, $normalisedPath, self::$settings[$slug] ?? [], $slug);
+            } catch (\Throwable $e) {
+                error_log("ModuleRegistry: Public path resolver failed for {$slug}: " . $e->getMessage());
+                continue;
+            }
+
+            if (is_array($resolved) && !empty($resolved['page_id'])) {
+                $resolved['module'] = $slug;
+                $resolved['data'] = is_array($resolved['data'] ?? null) ? $resolved['data'] : [];
+                return $resolved;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -759,5 +800,25 @@ class ModuleRegistry
         $v = preg_replace('/[^a-z0-9_-]+/', '-', $v) ?? '';
         $v = trim($v, '-_');
         return $v;
+    }
+
+    private static function invokePublicPathResolver(mixed $resolver, string $path, array $settings, string $moduleSlug): ?array
+    {
+        if (is_callable($resolver)) {
+            $result = $resolver($path, $settings, $moduleSlug);
+            return is_array($result) ? $result : null;
+        }
+
+        if (!is_string($resolver) || !str_contains($resolver, '::')) {
+            return null;
+        }
+
+        [$class, $method] = explode('::', $resolver, 2);
+        if (!class_exists($class) || !method_exists($class, $method)) {
+            return null;
+        }
+
+        $result = $class::$method($path, $settings, $moduleSlug);
+        return is_array($result) ? $result : null;
     }
 }

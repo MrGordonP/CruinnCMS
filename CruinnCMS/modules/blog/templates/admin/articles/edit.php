@@ -1,6 +1,10 @@
 <?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
 <div class="admin-article-edit">
+    <?php $blogNav = 'posts'; ?>
+    <?php include dirname(__DIR__) . '/blog/_nav.php'; ?>
     <h1><?= e($title) ?></h1>
+
+    <?php $blogBasePath = trim((string) ($blogBasePath ?? '')); ?>
 
     <?php if (!empty($errors)): ?>
     <div class="flash flash-error" role="alert">
@@ -13,7 +17,7 @@
     <?php endif; ?>
 
     <!-- Blog Post Metadata Form -->
-    <form method="post" action="<?= $article && isset($article['id']) ? '/admin/articles/' . (int)$article['id'] : '/admin/articles' ?>" class="form-article-meta">
+    <form method="post" action="<?= $article && isset($article['id']) ? '/admin/blog/posts/' . (int)$article['id'] : '/admin/blog/posts' ?>" class="form-article-meta">
         <?= csrf_field() ?>
 
         <div class="form-grid">
@@ -30,11 +34,11 @@
                     <div class="form-group">
                         <label for="slug">URL Slug</label>
                         <div class="input-with-prefix">
-                            <span class="input-prefix">/blog/</span>
+                            <span class="input-prefix"><?= e(($blogBasePath !== '' ? $blogBasePath : '/set-blog-page') . '/') ?></span>
                             <input type="text" id="slug" name="slug"
                                    value="<?= e($article['slug'] ?? '') ?>"
                                    class="form-input" pattern="[a-z0-9\-]+"
-                                   placeholder="auto-generated as YYYY-MM-DD-##">
+                                   placeholder="auto-generated as YYYY-MM-DD-HH-MM-SS-##">
                         </div>
                     </div>
                     <div class="form-group">
@@ -100,9 +104,9 @@
             <button type="submit" class="btn btn-primary">
                 <?= $article && isset($article['id']) ? 'Update Blog Post' : 'Create Blog Post' ?>
             </button>
-            <a href="/admin/articles" class="btn btn-outline">Cancel</a>
-            <?php if ($article && isset($article['id']) && ($article['status'] ?? '') === 'published'): ?>
-                <a href="/blog/<?= e($article['slug']) ?>" target="_blank" class="btn btn-outline">Preview</a>
+            <a href="/admin/blog/posts" class="btn btn-outline">Cancel</a>
+            <?php if ($article && isset($article['id']) && ($article['status'] ?? '') === 'published' && $blogBasePath !== ''): ?>
+                <a href="<?= e($blogBasePath . '/' . ($article['slug'] ?? '')) ?>" target="_blank" class="btn btn-outline">Preview</a>
             <?php endif; ?>
         </div>
     </form>
@@ -112,13 +116,13 @@
     <section class="admin-section" style="margin-top:var(--space-xl)">
         <h3>Content</h3>
         <p style="color:var(--color-text-light);margin-bottom:var(--space-md)">Use the Cruinn editor to build the article body.</p>
-        <a href="/admin/article-editor/<?= (int)$article['id'] ?>/edit" class="btn btn-primary">Open Content Editor</a>
+        <a href="/admin/blog/editor/<?= (int)$article['id'] ?>/edit" class="btn btn-primary">Open Content Editor</a>
     </section>
 
     <!-- Danger Zone -->
     <section class="danger-zone">
         <h3>Danger Zone</h3>
-                <form method="post" action="/admin/articles/<?= (int)$article['id'] ?>/delete"
+                <form method="post" action="/admin/blog/posts/<?= (int)$article['id'] ?>/delete"
                             onsubmit="return confirm('Are you sure you want to delete this blog post and all its content blocks? This cannot be undone.')">
             <?= csrf_field() ?>
                         <button type="submit" class="btn btn-danger">Delete this blog post</button>

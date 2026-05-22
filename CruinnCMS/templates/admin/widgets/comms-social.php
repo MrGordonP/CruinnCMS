@@ -16,7 +16,7 @@ $igUrl = $data['instagram'] ?? '';
 <div class="activity-header">
     <h2>Communications &amp; Social</h2>
     <div style="display:flex;gap:0.5rem;">
-        <a href="<?= url('/admin/articles/new') ?>" class="btn btn-primary btn-small">+ New Article</a>
+        <a href="<?= url('/admin/blog/posts/new') ?>" class="btn btn-primary btn-small">+ New Blog Post</a>
         <a href="<?= url('/admin/social') ?>" class="btn btn-secondary btn-small">Social Command Centre</a>
     </div>
 </div>
@@ -25,12 +25,12 @@ $igUrl = $data['instagram'] ?? '';
         <!-- Communications column -->
         <div class="comms-social-col">
             <div class="dash-quick-grid">
-                <a href="<?= url('/admin/articles') ?>" class="dash-quick-link">
+                <a href="<?= url('/admin/blog') ?>" class="dash-quick-link">
                     <span class="dash-quick-icon">📰</span>
                     <strong class="dash-stat-num"><?= (int)$totalArticles ?></strong>
-                    <span>Articles</span>
+                    <span>Blog</span>
                 </a>
-                <a href="<?= url('/admin/articles?status=draft') ?>" class="dash-quick-link">
+                <a href="<?= url('/admin/blog/posts?status=draft') ?>" class="dash-quick-link">
                     <span class="dash-quick-icon">📝</span>
                     <strong class="dash-stat-num"><?= (int)$draftCount ?></strong>
                     <span>Drafts</span>
@@ -38,11 +38,11 @@ $igUrl = $data['instagram'] ?? '';
             </div>
 
             <?php if (!empty($articles)): ?>
-            <h3 class="dash-widget-label">Recent Articles</h3>
+            <h3 class="dash-widget-label">Recent Blog Posts</h3>
             <ul class="comms-article-list">
                 <?php foreach ($articles as $ra): ?>
                 <li>
-                    <a href="<?= url('/admin/articles/' . (int)$ra['id'] . '/edit') ?>"><?= e($ra['title']) ?></a>
+                    <a href="<?= url('/admin/blog/posts/' . (int)$ra['id'] . '/edit') ?>"><?= e($ra['title']) ?></a>
                     <span class="badge badge-<?= $ra['status'] === 'published' ? 'success' : ($ra['status'] === 'draft' ? 'warning' : 'muted') ?>">
                         <?= e(ucfirst($ra['status'])) ?>
                     </span>
@@ -53,7 +53,7 @@ $igUrl = $data['instagram'] ?? '';
                 <?php endforeach; ?>
             </ul>
             <?php else: ?>
-            <p class="text-muted" style="font-size:0.875rem;margin-top:var(--space-md);">No articles yet. <a href="<?= url('/admin/articles/new') ?>">Create your first</a>.</p>
+            <p class="text-muted" style="font-size:0.875rem;margin-top:var(--space-md);">No blog posts yet. <a href="<?= url('/admin/blog/posts/new') ?>">Create your first</a>.</p>
             <?php endif; ?>
         </div>
 

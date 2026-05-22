@@ -9,6 +9,7 @@
 namespace Cruinn\Module\Blog\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\CSRF;
 use Cruinn\Database;
 use Cruinn\Controllers\BaseController;
 
@@ -19,47 +20,10 @@ class ArticleController extends BaseController
      */
     public function index(): void
     {
-        $page    = max(1, (int) $this->query('page', 1));
-        $perPage = 10;
-        $offset  = ($page - 1) * $perPage;
+        $basePath = $this->adminBlogBasePath() ?: '/blog';
+        $data = self::buildBlogListViewData($this->db, $basePath, ['per_page' => 10]);
 
-        $articles = $this->db->fetchAll(
-            'SELECT a.*, u.display_name as author_name, s.title as subject_title
-             FROM articles a
-             LEFT JOIN users u ON a.author_id = u.id
-             LEFT JOIN subjects s ON a.subject_id = s.id
-             WHERE a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
-             ORDER BY a.published_at DESC
-             LIMIT ? OFFSET ?',
-            ['published', $perPage, $offset]
-        );
-
-        $totalCount = $this->db->fetchColumn(
-            'SELECT COUNT(*) FROM articles WHERE status = ? AND (published_at IS NULL OR published_at <= NOW())',
-            ['published']
-        );
-
-        $totalPages = (int) ceil($totalCount / $perPage);
-
-        // If a designated system page exists for blog.list, render through the
-        // page/template pipeline so module content blocks can mount there.
-        if ($this->hasBlogListSystemPage()) {
-            $this->renderSystemPage('blog.list', [
-                'title'      => 'Blog',
-                'articles'   => $articles,
-                'page'       => $page,
-                'totalPages' => $totalPages,
-            ]);
-            return;
-        }
-
-        $this->render('public/articles/index', [
-            'title'         => 'Blog',
-            'articles'      => $articles,
-            'page'          => $page,
-            'totalPages'    => $totalPages,
-            'sidebarEvents' => $this->getSidebarEvents(),
-        ]);
+        $this->render('public/blog.list', $data);
     }
 
     /**
@@ -67,15 +31,7 @@ class ArticleController extends BaseController
      */
     public function show(string $slug): void
     {
-        $article = $this->db->fetch(
-            'SELECT a.*, u.display_name as author_name, s.title as subject_title
-             FROM articles a
-             LEFT JOIN users u ON a.author_id = u.id
-             LEFT JOIN subjects s ON a.subject_id = s.id
-             WHERE a.slug = ? AND a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
-             LIMIT 1',
-            [$slug, 'published']
-        );
+        $article = self::findPublishedArticleBySlug($this->db, $slug);
 
         if (!$article) {
             http_response_code(404);
@@ -83,20 +39,216 @@ class ArticleController extends BaseController
             return;
         }
 
-        $bodyHtml = $this->renderArticleBlocks((int) $article['id']);
-        $siteUrl  = \Cruinn\App::config('site.url', '');
+        $basePath = $this->adminBlogBasePath() ?: '/blog';
+        $this->render('public/blog.post', self::buildBlogPostViewData($article, $this->renderArticleBlocks((int) $article['id']), $basePath));
+    }
 
-        $this->render('public/articles/show', [
-            'title'            => $article['title'],
-            'article'          => $article,
-            'body_html'        => $bodyHtml,
-            'sidebarEvents'    => $this->getSidebarEvents(),
-            'meta_description' => $article['excerpt'] ?: truncate(strip_tags($bodyHtml), 200),
-            'og_title'         => $article['title'],
-            'og_type'          => 'article',
-            'og_url'           => $siteUrl . '/blog/' . $article['slug'],
-            'og_description'   => $article['excerpt'] ?: truncate(strip_tags($bodyHtml), 200),
+    public function dashboard(): void
+    {
+        Auth::requireAdmin();
+
+        $settings = self::readBlogSettings($this->db);
+        $profileCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM blog_profiles');
+        $recentArticles = $this->db->fetchAll(
+            'SELECT id, title, status, published_at, updated_at
+             FROM articles
+             ORDER BY updated_at DESC
+             LIMIT 8'
+        );
+
+        $draftCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM articles WHERE status = ?', ['draft']);
+        $publishedCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM articles WHERE status = ?', ['published']);
+        $listPage = !empty($settings['list_page_id'])
+            ? $this->db->fetch('SELECT id, title, slug FROM pages_index WHERE id = ? LIMIT 1', [(int) $settings['list_page_id']])
+            : null;
+
+        $this->renderAdmin('admin/blog/dashboard', [
+            'title' => 'Blog',
+            'settings' => $settings,
+            'recentArticles' => $recentArticles,
+            'draftCount' => $draftCount,
+            'publishedCount' => $publishedCount,
+            'profileCount' => $profileCount,
+            'listPage' => $listPage,
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog']],
         ]);
+    }
+
+    public function settings(): void
+    {
+        Auth::requireAdmin();
+
+        $settings = self::readBlogSettings($this->db);
+        $pages = $this->db->fetchAll(
+            "SELECT id, title, slug FROM pages_index WHERE canvas_type = 'content' ORDER BY title ASC"
+        );
+
+        $this->renderAdmin('admin/blog/settings', [
+            'title' => 'Blog Settings',
+            'settings' => $settings,
+            'pages' => $pages,
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Settings']],
+        ]);
+    }
+
+    public function saveSettings(): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $listPageId = max(0, (int) $this->input('list_page_id', 0));
+        $postPageId = max(0, (int) $this->input('post_page_id', 0));
+        $defaultPostsPerPage = self::normalisePerPage($this->input('default_posts_per_page', 10));
+        $showReturnToList = $this->input('show_return_to_list', '0') === '1' ? '1' : '0';
+        $showPostNavigation = $this->input('show_post_navigation', '0') === '1' ? '1' : '0';
+
+        $this->upsertBlogSetting('blog.list_page_id', $listPageId > 0 ? (string) $listPageId : null);
+        $this->upsertBlogSetting('blog.post_page_id', $postPageId > 0 ? (string) $postPageId : null);
+        $this->upsertBlogSetting('blog.default_posts_per_page', (string) $defaultPostsPerPage);
+        $this->upsertBlogSetting('blog.show_return_to_list', $showReturnToList);
+        $this->upsertBlogSetting('blog.show_post_navigation', $showPostNavigation);
+
+        Auth::flash('success', 'Blog settings saved.');
+        $this->redirect('/admin/blog/settings');
+    }
+
+    public function profiles(): void
+    {
+        Auth::requireAdmin();
+
+        $profiles = self::readBlogProfiles($this->db);
+
+        $this->renderAdmin('admin/blog/profiles/index', [
+            'title' => 'Blog Profiles',
+            'profiles' => $profiles,
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles']],
+        ]);
+    }
+
+    public function profileNew(): void
+    {
+        Auth::requireAdmin();
+
+        $this->renderAdmin('admin/blog/profiles/edit', [
+            'title' => 'New Blog Profile',
+            'profile' => null,
+            'errors' => [],
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], ['New Profile']],
+        ]);
+    }
+
+    public function profileCreate(): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        [$profile, $errors] = $this->normaliseBlogProfileInput();
+        if ($profile['slug'] !== '' && (int) $this->db->fetchColumn('SELECT COUNT(*) FROM blog_profiles WHERE slug = ?', [$profile['slug']]) > 0) {
+            $errors['slug'] = 'A blog profile with this slug already exists.';
+        }
+
+        if ($errors) {
+            $this->renderAdmin('admin/blog/profiles/edit', [
+                'title' => 'New Blog Profile',
+                'profile' => $profile,
+                'errors' => $errors,
+                'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], ['New Profile']],
+            ]);
+            return;
+        }
+
+        $this->db->insert('blog_profiles', [
+            'name' => $profile['name'],
+            'slug' => $profile['slug'],
+            'description' => $profile['description'],
+            'display_mode' => $profile['display_mode'],
+            'posts_per_page' => $profile['posts_per_page'],
+            'show_return_to_list' => $profile['show_return_to_list'] ? 1 : 0,
+            'show_post_navigation' => $profile['show_post_navigation'] ? 1 : 0,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        Auth::flash('success', 'Blog profile created.');
+        $this->redirect('/admin/blog/profiles');
+    }
+
+    public function profileEdit(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $profile = self::readBlogProfile($this->db, (int) $id);
+        if (!$profile) {
+            Auth::flash('error', 'Blog profile not found.');
+            $this->redirect('/admin/blog/profiles');
+        }
+
+        $this->renderAdmin('admin/blog/profiles/edit', [
+            'title' => 'Edit Blog Profile',
+            'profile' => $profile,
+            'errors' => [],
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], [$profile['name']]],
+        ]);
+    }
+
+    public function profileUpdate(string $id): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $profileId = (int) $id;
+        $existingProfile = self::readBlogProfile($this->db, $profileId);
+        if (!$existingProfile) {
+            Auth::flash('error', 'Blog profile not found.');
+            $this->redirect('/admin/blog/profiles');
+        }
+
+        [$profile, $errors] = $this->normaliseBlogProfileInput($existingProfile);
+        if ($profile['slug'] !== '' && (int) $this->db->fetchColumn('SELECT COUNT(*) FROM blog_profiles WHERE slug = ? AND id != ?', [$profile['slug'], $profileId]) > 0) {
+            $errors['slug'] = 'A blog profile with this slug already exists.';
+        }
+
+        if ($errors) {
+            $profile['id'] = $profileId;
+            $this->renderAdmin('admin/blog/profiles/edit', [
+                'title' => 'Edit Blog Profile',
+                'profile' => $profile,
+                'errors' => $errors,
+                'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], [$existingProfile['name']]],
+            ]);
+            return;
+        }
+
+        $this->db->update('blog_profiles', [
+            'name' => $profile['name'],
+            'slug' => $profile['slug'],
+            'description' => $profile['description'],
+            'display_mode' => $profile['display_mode'],
+            'posts_per_page' => $profile['posts_per_page'],
+            'show_return_to_list' => $profile['show_return_to_list'] ? 1 : 0,
+            'show_post_navigation' => $profile['show_post_navigation'] ? 1 : 0,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$profileId]);
+
+        Auth::flash('success', 'Blog profile updated.');
+        $this->redirect('/admin/blog/profiles');
+    }
+
+    public function profileDelete(string $id): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $profile = self::readBlogProfile($this->db, (int) $id);
+        if (!$profile) {
+            Auth::flash('error', 'Blog profile not found.');
+            $this->redirect('/admin/blog/profiles');
+        }
+
+        $this->db->delete('blog_profiles', 'id = ?', [(int) $id]);
+
+        Auth::flash('success', 'Blog profile deleted.');
+        $this->redirect('/admin/blog/profiles');
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -155,6 +307,7 @@ class ArticleController extends BaseController
         $this->renderAdmin('admin/articles/index', [
             'title'       => 'Blog',
             'articles'    => $articles,
+            'blogBasePath'=> $this->adminBlogBasePath(),
             'subjects'    => $subjects,
             'search'      => $search,
             'status'      => $status,
@@ -162,7 +315,7 @@ class ArticleController extends BaseController
             'page'        => $page,
             'totalPages'  => $totalPages,
             'total'       => $total,
-            'breadcrumbs' => [['Admin', '/admin'], ['Blog']],
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts']],
         ]);
     }
 
@@ -180,9 +333,10 @@ class ArticleController extends BaseController
             'title'       => 'New Blog Post',
             'article'     => null,
             'blocks'      => [],
+            'blogBasePath'=> $this->adminBlogBasePath(),
             'subjects'    => $subjects,
             'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['New Blog Post']],
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], ['New Blog Post']],
         ]);
     }
 
@@ -194,9 +348,9 @@ class ArticleController extends BaseController
         $errors = $this->validateRequired(['title' => 'Title']);
 
         $manualSlug = trim($this->input('slug', ''));
-        $slug = $manualSlug
+        $slug = $manualSlug !== ''
             ? $this->sanitiseSlug($manualSlug)
-            : $this->generateDateSlug('articles');
+            : $this->generateTimestampSlug('articles');
 
         $existing = $this->db->fetchColumn('SELECT COUNT(*) FROM articles WHERE slug = ?', [$slug]);
         if ($existing) {
@@ -212,6 +366,7 @@ class ArticleController extends BaseController
                 'title'       => 'New Blog Post',
                 'article'     => $_POST,
                 'blocks'      => [],
+                'blogBasePath'=> $this->adminBlogBasePath(),
                 'subjects'    => $subjects,
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['New Blog Post']],
@@ -243,7 +398,7 @@ class ArticleController extends BaseController
 
         $this->logActivity('create', 'article', (int) $id, $this->input('title'));
         Auth::flash('success', 'Blog post created. Now add some content blocks.');
-        $this->redirect('/admin/article-editor/' . $id . '/edit');
+        $this->redirect('/admin/blog/editor/' . $id . '/edit');
     }
 
     /**
@@ -254,7 +409,7 @@ class ArticleController extends BaseController
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ?', [$id]);
         if (!$article) {
             Auth::flash('error', 'Blog post not found.');
-            $this->redirect('/admin/articles');
+            $this->redirect('/admin/blog/posts');
         }
 
         $blocks   = $this->getArticleBlocks((int) $id);
@@ -267,9 +422,10 @@ class ArticleController extends BaseController
             'title'       => 'Edit: ' . $article['title'],
             'article'     => $article,
             'blocks'      => $blocks,
+            'blogBasePath'=> $this->adminBlogBasePath(),
             'subjects'    => $subjects,
             'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], [$article['title']]],
+            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], [$article['title']]],
         ]);
     }
 
@@ -281,11 +437,18 @@ class ArticleController extends BaseController
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ?', [$id]);
         if (!$article) {
             Auth::flash('error', 'Blog post not found.');
-            $this->redirect('/admin/articles');
+            $this->redirect('/admin/blog/posts');
         }
 
         $errors = $this->validateRequired(['title' => 'Title']);
-        $slug   = $this->sanitiseSlug($this->input('slug') ?: $this->input('title'));
+        $manualSlug = trim((string) $this->input('slug', ''));
+        $slug = $manualSlug !== ''
+            ? $this->sanitiseSlug($manualSlug)
+            : (string) ($article['slug'] ?? '');
+
+        if ($slug === '') {
+            $slug = $this->generateTimestampSlug('articles');
+        }
 
         $existing = $this->db->fetchColumn(
             'SELECT COUNT(*) FROM articles WHERE slug = ? AND id != ?',
@@ -305,9 +468,10 @@ class ArticleController extends BaseController
                 'title'       => 'Edit: ' . $article['title'],
                 'article'     => array_merge($article, $_POST),
                 'blocks'      => $blocks,
+                'blogBasePath'=> $this->adminBlogBasePath(),
                 'subjects'    => $subjects,
                 'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], [$article['title']]],
+                'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], [$article['title']]],
             ]);
             return;
         }
@@ -336,7 +500,7 @@ class ArticleController extends BaseController
 
         $this->logActivity('update', 'article', (int) $id, $this->input('title'));
         Auth::flash('success', 'Blog post updated.');
-        $this->redirect("/admin/articles/{$id}/edit");
+        $this->redirect("/admin/blog/posts/{$id}/edit");
     }
 
     /**
@@ -347,7 +511,7 @@ class ArticleController extends BaseController
         $article = $this->db->fetch('SELECT * FROM articles WHERE id = ?', [$id]);
         if (!$article) {
             Auth::flash('error', 'Blog post not found.');
-            $this->redirect('/admin/articles');
+            $this->redirect('/admin/blog/posts');
         }
 
         $this->db->transaction(function () use ($id, $article) {
@@ -357,7 +521,7 @@ class ArticleController extends BaseController
         });
 
         Auth::flash('success', 'Blog post deleted.');
-        $this->redirect('/admin/articles');
+        $this->redirect('/admin/blog/posts');
     }
 
     /**
@@ -366,17 +530,166 @@ class ArticleController extends BaseController
      */
     public static function contentProviderBlogList(array $settings = [], array $context = []): array
     {
+        $settings = self::applyBlogProfileSettings($settings);
+        $basePath = self::normalisePublicBasePath((string) ($settings['base_path'] ?? ($context['blog_base_path'] ?? '/blog')));
+
         if (!empty($context['articles']) && is_array($context['articles'])) {
+            $articles = self::hydrateArticlePreviewData(Database::getInstance(), $context['articles']);
+            $articles = self::attachPublicUrls($articles, $basePath);
             return [
-                'articles'   => $context['articles'],
+                'articles'   => $articles,
                 'page'       => (int) ($context['page'] ?? 1),
                 'totalPages' => (int) ($context['totalPages'] ?? 1),
+                'blog_base_path' => $basePath,
             ];
         }
 
         $db = Database::getInstance();
+        return self::buildBlogListViewData($db, $basePath, $settings);
+    }
+
+    public static function contentProviderBlogContent(array $settings = [], array $context = []): array
+    {
+        $settings = self::applyBlogProfileSettings($settings);
+        $mode = strtolower(trim((string) ($settings['mode'] ?? 'both')));
+        if (!in_array($mode, ['list', 'post', 'both'], true)) {
+            $mode = 'both';
+        }
+
+        $basePath = self::normalisePublicBasePath((string) ($settings['base_path'] ?? ($context['blog_base_path'] ?? '/blog')));
+        $listData = [];
+        $postData = [];
+        $hasArticle = !empty($context['article']) && is_array($context['article']);
+        $showList = $mode === 'list' || ($mode === 'both' && !$hasArticle);
+        $showPost = $mode === 'post' || ($mode === 'both' && $hasArticle);
+
+        if ($showList) {
+            $listData = self::contentProviderBlogList(array_merge($settings, ['base_path' => $basePath]), $context);
+        }
+
+        if ($showPost && $hasArticle) {
+            $postData = self::contentProviderBlogPost(array_merge($settings, ['base_path' => $basePath]), $context);
+        }
+
+        return array_merge($listData, $postData, [
+            'show_list' => $showList,
+            'show_post' => $showPost && $hasArticle,
+            'blog_base_path' => $basePath,
+        ]);
+    }
+
+    /**
+     * Module content provider for a single blog post block.
+     */
+    public static function contentProviderBlogPost(array $settings = [], array $context = []): array
+    {
+        $article = $context['article'] ?? null;
+        if (!is_array($article) || empty($article['id'])) {
+            return [];
+        }
+
+        $settings = self::applyBlogProfileSettings($settings);
+        $basePath = self::normalisePublicBasePath((string) ($settings['base_path'] ?? ($context['blog_base_path'] ?? '/blog')));
+
+        $bodyHtml = (string) ($context['body_html'] ?? '');
+        if ($bodyHtml === '') {
+            $controller = new self();
+            $bodyHtml = $controller->renderArticleBlocks((int) $article['id']);
+        }
+
+        return self::buildBlogPostViewData($article, $bodyHtml, $basePath, $settings);
+    }
+
+    public static function resolvePublicPath(string $path, array $settings = [], string $moduleSlug = 'blog'): ?array
+    {
+        $db = Database::getInstance();
+        $blogSettings = self::readBlogSettings($db);
+        $listPageId = (int) ($blogSettings['list_page_id'] ?? 0);
+        if ($listPageId <= 0) {
+            return null;
+        }
+
+        $listPage = $db->fetch('SELECT id, slug, status FROM pages_index WHERE id = ? LIMIT 1', [$listPageId]);
+        if (!$listPage || ($listPage['status'] ?? '') !== 'published') {
+            return null;
+        }
+
+        $baseSlug = trim((string) ($listPage['slug'] ?? ''), '/');
+        if ($baseSlug === '') {
+            return null;
+        }
+
+        $normalisedPath = trim($path, '/');
+        $basePath = self::normalisePublicBasePath($baseSlug);
+
+        if ($normalisedPath === $baseSlug) {
+            return [
+                'page_id' => $listPageId,
+                'data' => self::buildBlogListViewData($db, $basePath, $settings),
+            ];
+        }
+
+        $prefix = $baseSlug . '/';
+        if (!str_starts_with($normalisedPath, $prefix)) {
+            return null;
+        }
+
+        $articleSlug = substr($normalisedPath, strlen($prefix));
+        if ($articleSlug === '' || str_contains($articleSlug, '/')) {
+            return null;
+        }
+
+        $article = self::findPublishedArticleBySlug($db, $articleSlug);
+        if (!$article) {
+            return null;
+        }
+
+        $controller = new self();
+        $bodyHtml = $controller->renderArticleBlocks((int) $article['id']);
+        $postPageId = (int) ($blogSettings['post_page_id'] ?? 0);
+
+        return [
+            'page_id' => $postPageId > 0 ? $postPageId : $listPageId,
+            'data' => self::buildBlogPostViewData($article, $bodyHtml, $basePath, $settings),
+        ];
+    }
+
+    // ── Helpers ───────────────────────────────────────────────
+
+    private function adminBlogBasePath(): string
+    {
+        $settings = self::readBlogSettings($this->db);
+        $listPageId = (int) ($settings['list_page_id'] ?? 0);
+        if ($listPageId <= 0) {
+            return '';
+        }
+
+        $slug = (string) ($this->db->fetchColumn('SELECT slug FROM pages_index WHERE id = ? LIMIT 1', [$listPageId]) ?: '');
+        return self::normalisePublicBasePath($slug);
+    }
+
+    private function generateTimestampSlug(string $table, string $column = 'slug'): string
+    {
+        $prefix = date('Y-m-d-H-i-s');
+        $sequence = 1;
+
+        do {
+            $slug = sprintf('%s-%02d', $prefix, $sequence);
+            $exists = (int) $this->db->fetchColumn(
+                "SELECT COUNT(*) FROM {$table} WHERE {$column} = ?",
+                [$slug]
+            );
+            $sequence++;
+        } while ($exists > 0);
+
+        return $slug;
+    }
+
+    private static function buildBlogListViewData(Database $db, string $basePath, array $settings = []): array
+    {
         $page = max(1, (int) ($_GET['page'] ?? 1));
-        $perPage = max(1, (int) ($settings['per_page'] ?? 10));
+        $blogSettings = self::readBlogSettings($db);
+        $perPage = self::normalisePerPage($settings['per_page'] ?? ($blogSettings['default_posts_per_page'] ?? 10));
         $offset = ($page - 1) * $perPage;
 
         $articles = $db->fetchAll(
@@ -389,56 +702,339 @@ class ArticleController extends BaseController
              LIMIT ? OFFSET ?',
             ['published', $perPage, $offset]
         );
+        $articles = self::hydrateArticlePreviewData($db, $articles);
+        $articles = self::attachPublicUrls($articles, $basePath);
 
         $totalCount = (int) $db->fetchColumn(
             'SELECT COUNT(*) FROM articles WHERE status = ? AND (published_at IS NULL OR published_at <= NOW())',
             ['published']
         );
 
-        $totalPages = (int) ceil($totalCount / $perPage);
-
         return [
-            'articles'   => $articles,
-            'page'       => $page,
-            'totalPages' => max(1, $totalPages),
+            'title' => 'Blog',
+            'articles' => $articles,
+            'page' => $page,
+            'per_page' => $perPage,
+            'totalPages' => max(1, (int) ceil($totalCount / $perPage)),
+            'canonical_url' => $basePath,
+            'blog_base_path' => $basePath,
         ];
     }
 
-    // ── Helpers ───────────────────────────────────────────────
-
-    private function getSidebarEvents(int $limit = 5): array
+    private static function buildBlogPostViewData(array $article, string $bodyHtml, string $basePath, array $settings = []): array
     {
-        try {
-            return $this->db->fetchAll(
-                'SELECT id, title, slug, date_start FROM events
-                 WHERE date_start >= NOW() AND status = ?
-                 ORDER BY date_start ASC
-                 LIMIT ?',
-                ['published', $limit]
-            );
-        } catch (\Exception $e) {
-            return [];
-        }
+        $siteUrl = \Cruinn\App::config('site.url', '');
+        $blogSettings = self::readBlogSettings(Database::getInstance());
+        $publicArticle = self::attachPublicUrl($article, $basePath);
+        $canonicalUrl = (string) ($publicArticle['public_url'] ?? $basePath);
+        $navigation = self::buildArticleNavigation(Database::getInstance(), $article, $basePath, self::normalisePerPage($settings['per_page'] ?? ($blogSettings['default_posts_per_page'] ?? 10)));
+        $showReturnToList = array_key_exists('show_return_to_list', $settings)
+            ? (bool) $settings['show_return_to_list']
+            : (bool) ($blogSettings['show_return_to_list'] ?? true);
+        $showPostNavigation = array_key_exists('show_post_navigation', $settings)
+            ? (bool) $settings['show_post_navigation']
+            : (bool) ($blogSettings['show_post_navigation'] ?? true);
+
+        return array_merge([
+            'title' => $article['title'],
+            'article' => $publicArticle,
+            'body_html' => $bodyHtml,
+            'blog_base_path' => $basePath,
+            'show_return_to_list' => $showReturnToList,
+            'show_post_navigation' => $showPostNavigation,
+            'canonical_url' => $canonicalUrl,
+            'meta_description' => $article['excerpt'] ?: truncate(strip_tags($bodyHtml), 200),
+            'og_title' => $article['title'],
+            'og_type' => 'article',
+            'og_url' => rtrim($siteUrl, '/') . $canonicalUrl,
+            'og_description' => $article['excerpt'] ?: truncate(strip_tags($bodyHtml), 200),
+        ], $navigation);
     }
 
-    /**
-     * True when a system_pages mapping exists for blog.list.
-     */
-    private function hasBlogListSystemPage(): bool
+    private static function findPublishedArticleBySlug(Database $db, string $slug): ?array
     {
-        try {
-            $row = $this->db->fetch(
-                'SELECT p.id
-                 FROM system_pages sp
-                 JOIN pages_index p ON p.id = sp.page_id
-                 WHERE sp.system_key = ?
-                 LIMIT 1',
-                ['blog.list']
-            );
-            return !empty($row);
-        } catch (\Throwable $e) {
-            return false;
+        $article = $db->fetch(
+            'SELECT a.*, u.display_name as author_name, s.title as subject_title
+             FROM articles a
+             LEFT JOIN users u ON a.author_id = u.id
+             LEFT JOIN subjects s ON a.subject_id = s.id
+             WHERE a.slug = ? AND a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
+             LIMIT 1',
+            [$slug, 'published']
+        );
+
+        return is_array($article) ? $article : null;
+    }
+
+    private static function attachPublicUrls(array $articles, string $basePath): array
+    {
+        foreach ($articles as &$article) {
+            $article = self::attachPublicUrl($article, $basePath);
         }
+        unset($article);
+
+        return $articles;
+    }
+
+    private static function attachPublicUrl(array $article, string $basePath): array
+    {
+        $article['public_url'] = rtrim($basePath, '/') . '/' . ltrim((string) ($article['slug'] ?? ''), '/');
+        return $article;
+    }
+
+    private static function normalisePublicBasePath(string $path): string
+    {
+        $trimmed = trim($path);
+        if ($trimmed === '') {
+            return '/blog';
+        }
+
+        return '/' . trim($trimmed, '/');
+    }
+
+    private static function normalisePerPage(mixed $value): int
+    {
+        return max(1, min(100, (int) $value ?: 10));
+    }
+
+    private static function readBlogSettings(?Database $db = null): array
+    {
+        $db ??= Database::getInstance();
+
+        $defaults = [
+            'list_page_id' => 0,
+            'post_page_id' => 0,
+            'default_posts_per_page' => 10,
+            'show_return_to_list' => true,
+            'show_post_navigation' => true,
+        ];
+
+        $rows = $db->fetchAll(
+            "SELECT `key`, `value` FROM settings WHERE `group` = 'blog' AND `key` IN (?, ?, ?, ?, ?)",
+            [
+                'blog.list_page_id',
+                'blog.post_page_id',
+                'blog.default_posts_per_page',
+                'blog.show_return_to_list',
+                'blog.show_post_navigation',
+            ]
+        );
+
+        $raw = [];
+        foreach ($rows as $row) {
+            $raw[(string) ($row['key'] ?? '')] = $row['value'] ?? null;
+        }
+
+        if ($raw === []) {
+            $legacyJson = $db->fetchColumn('SELECT settings FROM module_config WHERE slug = ? LIMIT 1', ['blog']);
+            $legacy = is_string($legacyJson) ? (json_decode($legacyJson, true) ?: []) : [];
+            if (is_array($legacy) && !empty($legacy)) {
+                $legacyMap = [
+                    'blog.list_page_id' => isset($legacy['blog_list_page_id']) ? (string) $legacy['blog_list_page_id'] : null,
+                    'blog.post_page_id' => isset($legacy['blog_post_page_id']) ? (string) $legacy['blog_post_page_id'] : null,
+                ];
+
+                foreach ($legacyMap as $legacyKey => $legacyValue) {
+                    if ($legacyValue === null || $legacyValue === '' || $legacyValue === '0') {
+                        continue;
+                    }
+                    $db->execute(
+                        "INSERT INTO settings (`key`, `value`, `group`) VALUES (?, ?, 'blog')"
+                        . " ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `group` = VALUES(`group`)",
+                        [$legacyKey, $legacyValue]
+                    );
+                    $raw[$legacyKey] = $legacyValue;
+                }
+            }
+        }
+
+        $settings = $defaults;
+        $settings['list_page_id'] = max(0, (int) ($raw['blog.list_page_id'] ?? 0));
+        $settings['post_page_id'] = max(0, (int) ($raw['blog.post_page_id'] ?? 0));
+        $settings['default_posts_per_page'] = self::normalisePerPage($raw['blog.default_posts_per_page'] ?? 10);
+        $settings['show_return_to_list'] = ($raw['blog.show_return_to_list'] ?? '1') === '1';
+        $settings['show_post_navigation'] = ($raw['blog.show_post_navigation'] ?? '1') === '1';
+
+        return $settings;
+    }
+
+    private static function readBlogProfiles(Database $db): array
+    {
+        $rows = $db->fetchAll(
+            'SELECT id, name, slug, description, display_mode, posts_per_page, show_return_to_list, show_post_navigation, updated_at
+             FROM blog_profiles
+             ORDER BY name ASC'
+        );
+
+        return array_map(static function (array $row): array {
+            return [
+                'id' => (int) ($row['id'] ?? 0),
+                'name' => (string) ($row['name'] ?? ''),
+                'slug' => (string) ($row['slug'] ?? ''),
+                'description' => (string) ($row['description'] ?? ''),
+                'display_mode' => (string) ($row['display_mode'] ?? 'both'),
+                'posts_per_page' => self::normalisePerPage($row['posts_per_page'] ?? 10),
+                'show_return_to_list' => (int) ($row['show_return_to_list'] ?? 1) === 1,
+                'show_post_navigation' => (int) ($row['show_post_navigation'] ?? 1) === 1,
+                'updated_at' => $row['updated_at'] ?? null,
+            ];
+        }, $rows);
+    }
+
+    private static function readBlogProfile(Database $db, int $profileId): ?array
+    {
+        if ($profileId <= 0) {
+            return null;
+        }
+
+        $row = $db->fetch(
+            'SELECT id, name, slug, description, display_mode, posts_per_page, show_return_to_list, show_post_navigation, updated_at
+             FROM blog_profiles
+             WHERE id = ?
+             LIMIT 1',
+            [$profileId]
+        );
+
+        if (!$row) {
+            return null;
+        }
+
+        return [
+            'id' => (int) ($row['id'] ?? 0),
+            'name' => (string) ($row['name'] ?? ''),
+            'slug' => (string) ($row['slug'] ?? ''),
+            'description' => (string) ($row['description'] ?? ''),
+            'display_mode' => (string) ($row['display_mode'] ?? 'both'),
+            'posts_per_page' => self::normalisePerPage($row['posts_per_page'] ?? 10),
+            'show_return_to_list' => (int) ($row['show_return_to_list'] ?? 1) === 1,
+            'show_post_navigation' => (int) ($row['show_post_navigation'] ?? 1) === 1,
+            'updated_at' => $row['updated_at'] ?? null,
+        ];
+    }
+
+    private static function applyBlogProfileSettings(array $settings, ?Database $db = null): array
+    {
+        $profileId = max(0, (int) ($settings['profile_id'] ?? 0));
+        if ($profileId <= 0) {
+            return $settings;
+        }
+
+        $db ??= Database::getInstance();
+        $profile = self::readBlogProfile($db, $profileId);
+        if (!$profile) {
+            return $settings;
+        }
+
+        if (!array_key_exists('mode', $settings) || trim((string) $settings['mode']) === '') {
+            $settings['mode'] = $profile['display_mode'];
+        }
+
+        if (!array_key_exists('per_page', $settings) || (int) $settings['per_page'] <= 0) {
+            $settings['per_page'] = $profile['posts_per_page'];
+        }
+
+        if (!array_key_exists('show_return_to_list', $settings)) {
+            $settings['show_return_to_list'] = $profile['show_return_to_list'];
+        }
+
+        if (!array_key_exists('show_post_navigation', $settings)) {
+            $settings['show_post_navigation'] = $profile['show_post_navigation'];
+        }
+
+        return $settings;
+    }
+
+    private function upsertBlogSetting(string $key, ?string $value): void
+    {
+        $this->db->execute(
+            "INSERT INTO settings (`key`, `value`, `group`) VALUES (?, ?, 'blog')"
+            . " ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `group` = VALUES(`group`)",
+            [$key, $value]
+        );
+    }
+
+    private static function buildArticleNavigation(Database $db, array $article, string $basePath, int $perPage): array
+    {
+        $publishedArticles = $db->fetchAll(
+            'SELECT id, slug, title, published_at
+             FROM articles
+             WHERE status = ? AND (published_at IS NULL OR published_at <= NOW())
+             ORDER BY published_at DESC, id DESC',
+            ['published']
+        );
+
+        $currentIndex = null;
+        $currentId = (int) ($article['id'] ?? 0);
+
+        foreach ($publishedArticles as $index => $publishedArticle) {
+            if ((int) ($publishedArticle['id'] ?? 0) === $currentId) {
+                $currentIndex = $index;
+                break;
+            }
+        }
+
+        $returnUrl = $basePath;
+        $previousArticle = null;
+        $nextArticle = null;
+
+        if ($currentIndex !== null) {
+            $returnPage = (int) floor($currentIndex / $perPage) + 1;
+            $returnUrl = $basePath;
+            if ($returnPage > 1) {
+                $returnUrl .= '?page=' . $returnPage;
+            }
+            $returnUrl .= '#blog-post-' . $currentId;
+
+            if (isset($publishedArticles[$currentIndex - 1])) {
+                $nextArticle = self::attachPublicUrl($publishedArticles[$currentIndex - 1], $basePath);
+            }
+
+            if (isset($publishedArticles[$currentIndex + 1])) {
+                $previousArticle = self::attachPublicUrl($publishedArticles[$currentIndex + 1], $basePath);
+            }
+        }
+
+        return [
+            'return_to_list_url' => $returnUrl,
+            'previous_article' => $previousArticle,
+            'next_article' => $nextArticle,
+        ];
+    }
+
+    private function normaliseBlogProfileInput(?array $existing = null): array
+    {
+        $name = trim((string) $this->input('name', $existing['name'] ?? ''));
+        $manualSlug = trim((string) $this->input('slug', $existing['slug'] ?? ''));
+        $slugSource = $manualSlug !== '' ? $manualSlug : $name;
+        $slug = $slugSource !== '' ? $this->sanitiseSlug($slugSource) : '';
+        if ($slug === '' && $name !== '') {
+            $slug = 'blog-profile-' . date('YmdHis');
+        }
+
+        $displayMode = strtolower(trim((string) $this->input('display_mode', $existing['display_mode'] ?? 'both')));
+        if (!in_array($displayMode, ['list', 'post', 'both'], true)) {
+            $displayMode = 'both';
+        }
+
+        $profile = [
+            'name' => $name,
+            'slug' => $slug,
+            'description' => trim((string) $this->input('description', $existing['description'] ?? '')),
+            'display_mode' => $displayMode,
+            'posts_per_page' => self::normalisePerPage($this->input('posts_per_page', $existing['posts_per_page'] ?? 10)),
+            'show_return_to_list' => $this->input('show_return_to_list', !empty($existing['show_return_to_list']) ? '1' : '0') === '1',
+            'show_post_navigation' => $this->input('show_post_navigation', !empty($existing['show_post_navigation']) ? '1' : '0') === '1',
+        ];
+
+        $errors = [];
+        if ($profile['name'] === '') {
+            $errors['name'] = 'Profile name is required.';
+        }
+        if ($profile['slug'] === '') {
+            $errors['slug'] = 'Profile slug is required.';
+        }
+
+        return [$profile, $errors];
     }
 
     /**
@@ -516,5 +1112,65 @@ class ArticleController extends BaseController
     private function getBlocks(int $articleId): array
     {
         return $this->getArticleBlocks($articleId);
+    }
+
+    /**
+     * Populate excerptless list items with teaser text derived from article blocks.
+     */
+    private static function hydrateArticlePreviewData(Database $db, array $articles): array
+    {
+        if (empty($articles)) {
+            return [];
+        }
+
+        $articleIds = [];
+        foreach ($articles as $article) {
+            $articleId = (int) ($article['id'] ?? 0);
+            if ($articleId > 0) {
+                $articleIds[] = $articleId;
+            }
+        }
+
+        $articleIds = array_values(array_unique($articleIds));
+        if (empty($articleIds)) {
+            return $articles;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($articleIds), '?'));
+        $rows = $db->fetchAll(
+            "SELECT article_id, GROUP_CONCAT(COALESCE(inner_html, '') ORDER BY sort_order ASC SEPARATOR ' ') AS preview_source
+             FROM article_blocks
+             WHERE article_id IN ({$placeholders}) AND parent_block_id IS NULL
+             GROUP BY article_id",
+            $articleIds
+        );
+
+        $previewByArticle = [];
+        foreach ($rows as $row) {
+            $previewByArticle[(int) $row['article_id']] = self::buildPreviewText((string) ($row['preview_source'] ?? ''));
+        }
+
+        foreach ($articles as &$article) {
+            $articleId = (int) ($article['id'] ?? 0);
+            $excerpt = trim((string) ($article['excerpt'] ?? ''));
+            $article['preview_text'] = $excerpt !== ''
+                ? $excerpt
+                : ($previewByArticle[$articleId] ?? '');
+        }
+        unset($article);
+
+        return $articles;
+    }
+
+    private static function buildPreviewText(string $html): string
+    {
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text ?? '') ?? '';
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        return truncate($text, 250);
     }
 }

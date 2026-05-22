@@ -307,7 +307,7 @@ class ArticleEditorController extends BaseController
 
         $this->json([
             'success' => true,
-            'redirect' => '/admin/article-editor/' . $articleId . '/edit',
+            'redirect' => '/admin/blog/editor/' . $articleId . '/edit',
         ]);
     }
 

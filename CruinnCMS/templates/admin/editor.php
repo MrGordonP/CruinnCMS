@@ -33,6 +33,7 @@ $_editorPageHrefFrom = function(int $targetId) use ($page, $_editorPageHref): st
 <?php
 $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($templateCanvasCss ?? '');
 $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegistry::contentProviderCatalog();
+$blogProfiles = $blogProfiles ?? [];
 ?>
 <?php if (!empty($_contextCss)): ?>
 <style id="editor-zone-context-styles"><?= $_contextCss ?></style>
@@ -51,6 +52,7 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
     data-module-widgets="<?= htmlspecialchars(json_encode($moduleWidgets ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-available-zone-canvases="<?= htmlspecialchars(json_encode($availableZoneCanvases ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-content-providers="<?= htmlspecialchars(json_encode($moduleContentProviders ?? []), ENT_QUOTES, 'UTF-8') ?>"
+    data-blog-profiles="<?= htmlspecialchars(json_encode($blogProfiles), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
@@ -311,12 +313,12 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                         <span class="editor-site-nav-label">Blog Posts <span class="editor-group-chevron">▾</span></span>
                         <div class="editor-site-nav-list">
                             <?php foreach ($navArticles as $_art): ?>
-                            <a href="<?= e('/admin/article-editor/' . (int)$_art['id'] . '/edit') ?>"
+                            <a href="<?= e('/admin/blog/posts/' . (int)$_art['id'] . '/edit') ?>"
                                class="editor-site-nav-link<?= $page && isset($page['_is_article']) && (int)$_art['id'] === (int)$page['id'] ? ' active' : '' ?>">
                                 <?= e($_art['title']) ?>
                             </a>
                             <?php endforeach; ?>
-                            <a href="<?= url('/admin/articles') ?>" class="editor-site-nav-link editor-site-nav-manage">Manage posts →</a>
+                            <a href="<?= url('/admin/blog/posts') ?>" class="editor-site-nav-link editor-site-nav-manage">Manage posts →</a>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -922,6 +924,152 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                 </div>
             </div>
 
+            <!-- Content group (dynamic blocks only) -->
+            <div class="editor-accordion collapsed" data-group="content" style="display:none">
+                <button class="editor-accordion-toggle">Content</button>
+                <div class="editor-accordion-body">
+                    <!-- event-list config -->
+                    <div class="editor-content-group" data-content-type="event-list">
+                        <div class="editor-prop-row">
+                            <label>Count</label>
+                            <input type="number" class="editor-prop-input" data-config="count" min="1" max="50">
+                        </div>
+                        <div class="editor-prop-row">
+                            <label>Filter</label>
+                            <select class="editor-prop-input" data-config="filter">
+                                <option value="upcoming">Upcoming</option>
+                                <option value="past">Past</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- nav-menu config -->
+                    <div class="editor-content-group" data-content-type="nav-menu" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Menu</label>
+                            <select class="editor-prop-input" data-config="menu_id">
+                                <option value="">— Select —</option>
+                                <?php foreach ($menus as $menu): ?>
+                                <option value="<?= (int) $menu['id'] ?>"><?= htmlspecialchars($menu['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- php-include config -->
+                    <div class="editor-content-group" data-content-type="php-include" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Template</label>
+                            <select class="editor-prop-input php-include-tpl-picker">
+                                <option value="">— Select template —</option>
+                                <?php
+                                $piGrpLabels = ['root' => 'Root', 'public' => 'Public', 'components' => 'Components', 'council' => 'Council', 'errors' => 'Errors'];
+                                foreach ($navPhpGroups as $_piGrp => $_piFiles):
+                                ?>
+                                <optgroup label="<?= htmlspecialchars($piGrpLabels[$_piGrp] ?? ucfirst($_piGrp), ENT_QUOTES, 'UTF-8') ?>">
+                                    <?php foreach ($_piFiles as $_piRel): ?>
+                                    <option value="<?= htmlspecialchars($_piRel, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_piGrp === 'root' ? basename($_piRel) : substr($_piRel, strlen($_piGrp) + 1), ENT_QUOTES, 'UTF-8') ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="php-include-vars" style="margin-top: 0.5rem">
+                            <p class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Select a template to see its variables.</p>
+                        </div>
+                        <div class="editor-prop-row" style="margin-top:0.75rem">
+                            <button type="button" id="prop-php-edit-source-btn" class="btn btn-small btn-outline" style="width:100%">&lt;/&gt; Edit Template Source</button>
+                        </div>
+                    </div>
+                    <!-- data-list config -->
+                    <div class="editor-content-group" data-content-type="data-list" style="display:none">
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
+                            <label>Content Set &nbsp;<a href="<?= url('/admin/content') ?>" target="_blank" style="font-size:0.72rem;font-weight:400">Manage ↗</a></label>
+                            <select class="editor-prop-input" data-config="set_slug" id="prop-data-list-set" style="width:100%">
+                                <option value="">&mdash; Select set &mdash;</option>
+                                <?php foreach ($contentSets as $_cs): ?>
+                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?><?= ($_cs['type'] ?? 'manual') === 'query' ? ' (Query)' : '' ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" style="margin-top:0.5rem">
+                            <label>View</label>
+                            <select class="editor-prop-input" data-config="view" id="prop-data-list-view">
+                                <option value="continuous">Continuous (all rows)</option>
+                                <option value="single">Single (first row)</option>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem;margin-top:0.5rem">
+                            <label>Content Template &nbsp;<small style="font-weight:400;color:#9ca3af">(optional — overrides card HTML)</small></label>
+                            <select class="editor-prop-input" data-config="template_slug" id="prop-data-list-template" style="width:100%">
+                                <option value="">&mdash; Use card HTML &mdash;</option>
+                                <?php foreach ($contentTemplates ?? [] as $_ct): ?>
+                                <option value="<?= htmlspecialchars($_ct['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_ct['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div id="prop-data-list-card-wrap" style="margin-top:0.25rem">
+                            <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem">
+                                <label>Card HTML &nbsp;<small style="font-weight:400;color:#9ca3af">Use {{field}} tokens</small></label>
+                                <textarea class="editor-prop-input" data-config="card_html" id="prop-data-list-card"
+                                          rows="8" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
+                                          placeholder="<h3>{{name}}</h3>&#10;<p>{{bio}}</p>"></textarea>
+                                <div id="prop-data-list-tokens" style="font-size:0.72rem;color:#6b7280;line-height:1.8"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- module-widget config -->
+                    <div class="editor-content-group" data-content-type="module-widget" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Widget</label>
+                            <select class="editor-prop-input" id="prop-module-widget-key" data-config="widget_key">
+                                <option value="">— Select widget —</option>
+                                <?php foreach (($moduleWidgets ?? []) as $_mw): ?>
+                                <option value="<?= e($_mw['key'] ?? '') ?>"><?= e(($_mw['module'] ?? 'module') . ' — ' . ($_mw['title'] ?? ($_mw['key'] ?? 'Widget'))) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- module-content config -->
+                    <div class="editor-content-group" data-content-type="module-content" style="display:none">
+                        <div class="editor-prop-row">
+                            <label>Provider</label>
+                            <select class="editor-prop-input" id="prop-module-content-provider" data-config="provider_key">
+                                <option value="">— Select provider —</option>
+                                <?php foreach (($moduleContentProviders ?? []) as $_mcp): ?>
+                                <option value="<?= e($_mcp['key'] ?? '') ?>"><?= e(($_mcp['module'] ?? 'module') . ' — ' . ($_mcp['title'] ?? ($_mcp['key'] ?? 'Provider'))) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" id="prop-module-content-mode-row" style="display:none">
+                            <label>Display Mode</label>
+                            <select class="editor-prop-input" id="prop-module-content-mode" data-config="display_mode">
+                                <option value="both">List and single post</option>
+                                <option value="list">List only</option>
+                                <option value="post">Single post only</option>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" id="prop-module-content-per-page-row" style="display:none">
+                            <label>Posts per page</label>
+                            <input type="number" class="editor-prop-input" id="prop-module-content-per-page" data-config="per_page" min="1" max="100" placeholder="10">
+                        </div>
+                        <div class="editor-prop-row" id="prop-module-content-blog-profile-row" style="display:none">
+                            <label>Blog Profile <small style="font-weight:400;"><a href="<?= url('/admin/blog/profiles') ?>" target="_blank">Manage ↗</a></small></label>
+                            <select class="editor-prop-input" id="prop-module-content-blog-profile" data-config="blog_profile_id">
+                                <option value="">— None —</option>
+                                <?php foreach (($blogProfiles ?? []) as $_blogProfile): ?>
+                                <option value="<?= (int) ($_blogProfile['id'] ?? 0) ?>"><?= e($_blogProfile['name'] ?? 'Profile') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.35rem">
+                            <label>Settings JSON <small style="font-weight:400;color:#9ca3af">(optional)</small></label>
+                            <textarea class="editor-prop-input" id="prop-module-content-settings" data-config="settings_json"
+                                      rows="5" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
+                                      placeholder="{}"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Typography group -->
             <div class="editor-accordion collapsed" data-group="typography">
                 <button class="editor-accordion-toggle">Typography</button>
@@ -1487,130 +1635,6 @@ $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegis
                 </div>
             </div>
 
-            <!-- Content group (dynamic blocks only) -->
-            <div class="editor-accordion collapsed" data-group="content" style="display:none">
-                <button class="editor-accordion-toggle">Content</button>
-                <div class="editor-accordion-body">
-                    <!-- event-list config -->
-                    <div class="editor-content-group" data-content-type="event-list">
-                        <div class="editor-prop-row">
-                            <label>Count</label>
-                            <input type="number" class="editor-prop-input" data-config="count" min="1" max="50">
-                        </div>
-                        <div class="editor-prop-row">
-                            <label>Filter</label>
-                            <select class="editor-prop-input" data-config="filter">
-                                <option value="upcoming">Upcoming</option>
-                                <option value="past">Past</option>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- nav-menu config -->
-                    <div class="editor-content-group" data-content-type="nav-menu" style="display:none">
-                        <div class="editor-prop-row">
-                            <label>Menu</label>
-                            <select class="editor-prop-input" data-config="menu_id">
-                                <option value="">— Select —</option>
-                                <?php foreach ($menus as $menu): ?>
-                                <option value="<?= (int) $menu['id'] ?>"><?= htmlspecialchars($menu['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- php-include config -->
-                    <div class="editor-content-group" data-content-type="php-include" style="display:none">
-                        <div class="editor-prop-row">
-                            <label>Template</label>
-                            <select class="editor-prop-input php-include-tpl-picker">
-                                <option value="">— Select template —</option>
-                                <?php
-                                $piGrpLabels = ['root' => 'Root', 'public' => 'Public', 'components' => 'Components', 'council' => 'Council', 'errors' => 'Errors'];
-                                foreach ($navPhpGroups as $_piGrp => $_piFiles):
-                                ?>
-                                <optgroup label="<?= htmlspecialchars($piGrpLabels[$_piGrp] ?? ucfirst($_piGrp), ENT_QUOTES, 'UTF-8') ?>">
-                                    <?php foreach ($_piFiles as $_piRel): ?>
-                                    <option value="<?= htmlspecialchars($_piRel, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_piGrp === 'root' ? basename($_piRel) : substr($_piRel, strlen($_piGrp) + 1), ENT_QUOTES, 'UTF-8') ?></option>
-                                    <?php endforeach; ?>
-                                </optgroup>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="php-include-vars" style="margin-top: 0.5rem">
-                            <p class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Select a template to see its variables.</p>
-                        </div>
-                        <div class="editor-prop-row" style="margin-top:0.75rem">
-                            <button type="button" id="prop-php-edit-source-btn" class="btn btn-small btn-outline" style="width:100%">&lt;/&gt; Edit Template Source</button>
-                        </div>
-                    </div>
-                    <!-- data-list config -->
-                    <div class="editor-content-group" data-content-type="data-list" style="display:none">
-                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
-                            <label>Content Set &nbsp;<a href="<?= url('/admin/content') ?>" target="_blank" style="font-size:0.72rem;font-weight:400">Manage ↗</a></label>
-                            <select class="editor-prop-input" data-config="set_slug" id="prop-data-list-set" style="width:100%">
-                                <option value="">&mdash; Select set &mdash;</option>
-                                <?php foreach ($contentSets as $_cs): ?>
-                                <option value="<?= htmlspecialchars($_cs['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_cs['name'], ENT_QUOTES, 'UTF-8') ?><?= ($_cs['type'] ?? 'manual') === 'query' ? ' (Query)' : '' ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="editor-prop-row" style="margin-top:0.5rem">
-                            <label>View</label>
-                            <select class="editor-prop-input" data-config="view" id="prop-data-list-view">
-                                <option value="continuous">Continuous (all rows)</option>
-                                <option value="single">Single (first row)</option>
-                            </select>
-                        </div>
-                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem;margin-top:0.5rem">
-                            <label>Content Template &nbsp;<small style="font-weight:400;color:#9ca3af">(optional — overrides card HTML)</small></label>
-                            <select class="editor-prop-input" data-config="template_slug" id="prop-data-list-template" style="width:100%">
-                                <option value="">&mdash; Use card HTML &mdash;</option>
-                                <?php foreach ($contentTemplates ?? [] as $_ct): ?>
-                                <option value="<?= htmlspecialchars($_ct['slug'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($_ct['name'], ENT_QUOTES, 'UTF-8') ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div id="prop-data-list-card-wrap" style="margin-top:0.25rem">
-                            <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.4rem">
-                                <label>Card HTML &nbsp;<small style="font-weight:400;color:#9ca3af">Use {{field}} tokens</small></label>
-                                <textarea class="editor-prop-input" data-config="card_html" id="prop-data-list-card"
-                                          rows="8" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
-                                          placeholder="<h3>{{name}}</h3>&#10;<p>{{bio}}</p>"></textarea>
-                                <div id="prop-data-list-tokens" style="font-size:0.72rem;color:#6b7280;line-height:1.8"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- module-widget config -->
-                    <div class="editor-content-group" data-content-type="module-widget" style="display:none">
-                        <div class="editor-prop-row">
-                            <label>Widget</label>
-                            <select class="editor-prop-input" id="prop-module-widget-key" data-config="widget_key">
-                                <option value="">— Select widget —</option>
-                                <?php foreach (($moduleWidgets ?? []) as $_mw): ?>
-                                <option value="<?= e($_mw['key'] ?? '') ?>"><?= e(($_mw['module'] ?? 'module') . ' — ' . ($_mw['title'] ?? ($_mw['key'] ?? 'Widget'))) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- module-content config -->
-                    <div class="editor-content-group" data-content-type="module-content" style="display:none">
-                        <div class="editor-prop-row">
-                            <label>Provider</label>
-                            <select class="editor-prop-input" id="prop-module-content-provider" data-config="provider_key">
-                                <option value="">— Select provider —</option>
-                                <?php foreach (($moduleContentProviders ?? []) as $_mcp): ?>
-                                <option value="<?= e($_mcp['key'] ?? '') ?>"><?= e(($_mcp['module'] ?? 'module') . ' — ' . ($_mcp['title'] ?? ($_mcp['key'] ?? 'Provider'))) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.35rem">
-                            <label>Settings JSON <small style="font-weight:400;color:#9ca3af">(optional)</small></label>
-                            <textarea class="editor-prop-input" id="prop-module-content-settings" data-config="settings_json"
-                                      rows="5" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
-                                      placeholder="{}"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
             <?php endif; ?><!-- /isThemePage else -->
             </div><!-- /.pl-panel-body -->
         </div><!-- /#editor-props -->

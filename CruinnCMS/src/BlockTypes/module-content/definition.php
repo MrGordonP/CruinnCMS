@@ -31,6 +31,21 @@ BlockRegistry::register([
             }
         }
 
+        $displayMode = trim((string) ($config['display_mode'] ?? ''));
+        if ($displayMode !== '') {
+            $settings['mode'] = $displayMode;
+        }
+
+        $perPage = (int) ($config['per_page'] ?? 0);
+        if ($perPage > 0) {
+            $settings['per_page'] = $perPage;
+        }
+
+        $blogProfileId = (int) ($config['blog_profile_id'] ?? 0);
+        if ($blogProfileId > 0) {
+            $settings['profile_id'] = $blogProfileId;
+        }
+
         $html = ModuleRegistry::renderContentByKey($providerKey, $settings, $context);
         if ($html === '') {
             return '<p class="cruinn-module-content-empty">Module content not found: '

@@ -23,6 +23,15 @@ use Cruinn\Platform\PlatformAuth;
 
 class CruinnController extends BaseController
 {
+    private function loadBlogProfiles(): array
+    {
+        try {
+            return $this->db->fetchAll('SELECT id, name, slug FROM blog_profiles ORDER BY name ASC');
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     /**
      * Accept either instance admin auth or platform auth for editor AJAX.
      * Platform editor routes share the same controller methods.
@@ -167,6 +176,7 @@ class CruinnController extends BaseController
         } catch (\Throwable $e) {
             $moduleWidgets = [];
         }
+        $blogProfiles = $this->loadBlogProfiles();
 
         $allTemplates = $this->db->fetchAll(
             'SELECT id, slug, name FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
@@ -187,6 +197,7 @@ class CruinnController extends BaseController
             'menus'           => $this->db->fetchAll('SELECT id, name FROM menus ORDER BY name ASC'),
             'contentSets'     => $openEditorContentSets,
             'moduleWidgets'   => $moduleWidgets,
+            'blogProfiles'    => $blogProfiles,
             'templates'       => $allTemplates,
             'isZonePage'      => false,
             'zoneName'        => null,
@@ -371,6 +382,7 @@ class CruinnController extends BaseController
         } catch (\Throwable $e) {
             $moduleWidgets = [];
         }
+        $blogProfiles = $this->loadBlogProfiles();
 
         // Detect zone and template-shell canvas pages via canvas_type column.
         // Fall back to slug prefix convention for instances that haven't run migration 011 yet.
@@ -679,6 +691,7 @@ class CruinnController extends BaseController
             'contentSets'       => $contentSets,
             'contentTemplates'  => $contentTemplates,
             'moduleWidgets'     => $moduleWidgets,
+            'blogProfiles'      => $blogProfiles,
             'templates'         => $allTemplates,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
@@ -987,6 +1000,7 @@ class CruinnController extends BaseController
         } catch (\Throwable $e) {
             $moduleWidgets = [];
         }
+        $blogProfiles = $this->loadBlogProfiles();
         try {
             $navArticles = $this->db->fetchAll('SELECT id, title, slug FROM articles ORDER BY updated_at DESC LIMIT 100');
         } catch (\Throwable $e) {
@@ -1019,6 +1033,7 @@ class CruinnController extends BaseController
             'contentSets'         => $contentSets,
             'contentTemplates'    => $contentTemplates,
             'moduleWidgets'       => $moduleWidgets,
+            'blogProfiles'        => $blogProfiles,
             'templates'           => $allTemplates,
             'isZonePage'          => false,
             'zoneName'            => null,

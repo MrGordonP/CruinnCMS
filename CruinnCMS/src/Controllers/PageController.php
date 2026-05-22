@@ -9,6 +9,7 @@
 namespace Cruinn\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\Modules\ModuleRegistry;
 use Cruinn\Template;
 use Cruinn\Services\CruinnRenderService;
 
@@ -68,6 +69,19 @@ class PageController extends BaseController
      */
     public function show(string $slug): void
     {
+        $virtual = ModuleRegistry::resolvePublicPath($slug);
+        if (is_array($virtual) && !empty($virtual['page_id'])) {
+            $page = $this->db->fetch(
+                'SELECT * FROM pages_index WHERE id = ? AND status = ? LIMIT 1',
+                [(int) $virtual['page_id'], 'published']
+            );
+
+            if ($page) {
+                $this->renderPublishedPage($page, is_array($virtual['data'] ?? null) ? $virtual['data'] : []);
+                return;
+            }
+        }
+
         $page = $this->db->fetch(
             'SELECT * FROM pages_index WHERE slug = ? AND status = ? LIMIT 1',
             [$slug, 'published']
@@ -79,9 +93,13 @@ class PageController extends BaseController
             return;
         }
 
+        $this->renderPublishedPage($page);
+    }
+
+    private function renderPublishedPage(array $page, array $data = []): void
+    {
         $renderMode = $page['render_mode'] ?? 'block';
 
-        // ── File mode: serve raw static HTML file, no layout wrapping ──────
         if ($renderMode === 'file') {
             $filePath = $page['render_file'] ?? '';
             $absPath  = CRUINN_PUBLIC . $filePath;
@@ -97,55 +115,53 @@ class PageController extends BaseController
 
         $tpl    = $this->getTemplate($page['template'] ?? 'default');
         $cruinn = new CruinnRenderService();
+        $cruinn->setContext($data);
         Template::addGlobal('page_tpl', $tpl);
 
-        $templateId    = (int)($tpl['id'] ?? 0);
-        $pageZone      = (string)($page['page_zone'] ?? 'main');
+        $templateId = (int) ($tpl['id'] ?? 0);
+        $pageZone   = (string) ($page['page_zone'] ?? 'main');
 
-        // ── HTML mode: raw body HTML, injected into template layout ─────────
         if ($renderMode === 'html') {
             if ($templateId > 0) {
                 $merged = $cruinn->buildWithTemplate($templateId, $pageZone, null, $page['body_html'] ?? '');
                 Template::addGlobal('cruinn_css', $merged['css']);
-                $this->render('public/cruinn-page', [
-                    'title'            => $page['title'],
-                    'meta_description' => $page['meta_description'] ?? '',
+                $this->render('public/cruinn-page', array_merge($data, [
+                    'title'            => $data['title'] ?? $page['title'],
+                    'meta_description' => $data['meta_description'] ?? ($page['meta_description'] ?? ''),
                     'page'             => $page,
                     'content'          => $merged['html'],
-                ]);
+                ]));
             } else {
-                $this->render('public/html-page', [
-                    'title'            => $page['title'],
-                    'meta_description' => $page['meta_description'] ?? '',
+                $this->render('public/html-page', array_merge($data, [
+                    'title'            => $data['title'] ?? $page['title'],
+                    'meta_description' => $data['meta_description'] ?? ($page['meta_description'] ?? ''),
                     'page'             => $page,
                     'body_html'        => $page['body_html'] ?? '',
-                ]);
+                ]));
             }
             return;
         }
 
-        $blocks = $this->getBlocks($page['id']);
-
-        // ── Cruinn mode: block renderer ──────────────────────────────────────
+        $blocks = $this->getBlocks((int) $page['id']);
         if ($cruinn->hasPublished((int) $page['id'])) {
             $merged = $cruinn->buildWithTemplate($templateId, $pageZone, (int) $page['id']);
             Template::addGlobal('cruinn_css', $merged['css']);
-            $this->render('public/cruinn-page', [
-                'title'            => $page['title'],
-                'meta_description' => $page['meta_description'] ?? '',
+            $this->render('public/cruinn-page', array_merge($data, [
+                'title'            => $data['title'] ?? $page['title'],
+                'meta_description' => $data['meta_description'] ?? ($page['meta_description'] ?? ''),
                 'page'             => $page,
                 'content'          => $merged['html'],
-            ]);
+            ]));
             return;
         }
 
-        $this->render('public/page', [
-            'title'            => $page['title'],
-            'meta_description' => $page['meta_description'] ?? '',
+        $this->render('public/page', array_merge($data, [
+            'title'            => $data['title'] ?? $page['title'],
+            'meta_description' => $data['meta_description'] ?? ($page['meta_description'] ?? ''),
             'page'             => $page,
             'blocks'           => $blocks,
             'page_tpl'         => $tpl,
-        ]);
+        ]));
     }
 
     /**

@@ -32,6 +32,9 @@ $allAvailable = array_merge($available ?? [], []);
                 <span class="module-status-badge <?= $isActive ? 'status-active' : 'status-offline' ?>"><?= $isActive ? 'Active' : 'Offline' ?></span>
             </div>
             <div class="module-card-actions">
+                <?php if ($slug === 'blog'): ?>
+                <a href="<?= url('/admin/blog') ?>" class="btn btn-secondary btn-small">Open Blog</a>
+                <?php endif; ?>
                 <?php if ($mig['pending'] > 0): ?>
                 <form method="post" action="<?= url('/admin/settings/modules/' . $slug . '/migrate') ?>" style="display:inline">
                     <?= csrf_field() ?>
@@ -108,7 +111,13 @@ $allAvailable = array_merge($available ?? [], []);
             </form>
         </div>
 
-        <?php if (!empty($def['settings_schema'])): ?>
+        <?php if ($slug === 'blog'): ?>
+        <div class="module-settings-panel">
+            <strong>Control Centre</strong>
+            <p class="module-description" style="margin-top:0.5rem;">Editorial settings for Blog now live in the Blog control centre.</p>
+            <a href="<?= url('/admin/blog/settings') ?>" class="btn btn-primary btn-small">Open Blog Settings</a>
+        </div>
+        <?php elseif (!empty($def['settings_schema'])): ?>
         <details class="module-settings-panel" <?= !empty($settings) ? 'open' : '' ?>>
             <summary>Settings</summary>
             <form method="post" action="<?= url('/admin/settings/modules/' . $slug . '/settings') ?>" class="module-settings-form">

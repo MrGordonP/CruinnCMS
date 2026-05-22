@@ -38,6 +38,9 @@ $_pageContent = $content ?? '';
     <?php endif; ?>
 
     <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
+    <?php foreach (\Cruinn\Template::flushCss() as $_cssFile): ?>
+    <link rel="stylesheet" href="<?= url('/css/' . ltrim($_cssFile, '/')) ?>">
+    <?php endforeach; ?>
     <?php
     $_activeTheme = \Cruinn\App::config('site.active_theme', 'default');
     $_themeFile = CRUINN_PUBLIC . '/css/themes/' . preg_replace('/[^a-z0-9_-]/i', '', $_activeTheme) . '.css';

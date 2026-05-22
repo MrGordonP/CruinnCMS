@@ -734,6 +734,24 @@ class AcpSystemController extends BaseController
             $status   = $row['status']   ?? 'discovered';
             $settings = json_decode($row['settings'] ?? '{}', true) ?? [];
 
+            if ($slug === 'blog' && !empty($def['settings_schema'])) {
+                $pageRows = $this->db->fetchAll(
+                    "SELECT id, title, slug FROM pages_index WHERE canvas_type = 'content' ORDER BY title ASC"
+                );
+                $pageOptions = ['' => '— Select page —'];
+                foreach ($pageRows as $pageRow) {
+                    $pageOptions[(string) ($pageRow['id'] ?? '')] = (string) ($pageRow['title'] ?? 'Untitled') . ' (' . (string) ($pageRow['slug'] ?? '') . ')';
+                }
+
+                foreach ($def['settings_schema'] as &$field) {
+                    if (in_array((string) ($field['key'] ?? ''), ['blog_list_page_id', 'blog_post_page_id'], true)) {
+                        $field['type'] = 'select';
+                        $field['options'] = $pageOptions;
+                    }
+                }
+                unset($field);
+            }
+
             $totalMigrations   = count($def['migrations']);
             $appliedMigrations = 0;
             $pendingMigrations = 0;
@@ -859,8 +877,6 @@ class AcpSystemController extends BaseController
             }
         }
 
-        $mappingWarning = null;
-
         try {
             $row = $this->db->fetch(
                 'SELECT id FROM module_config WHERE slug = ?', [$slug]
@@ -877,21 +893,7 @@ class AcpSystemController extends BaseController
                 );
             }
 
-            if ($slug === 'blog') {
-                $rawPageId = trim((string) ($new['blog_list_page_id'] ?? ''));
-                $pageId = ctype_digit($rawPageId) ? (int) $rawPageId : null;
-                try {
-                    $this->syncSystemPageMapping('blog.list', $pageId ?: null);
-                } catch (\Throwable $e) {
-                    $mappingWarning = $e->getMessage();
-                }
-            }
-
-            if ($mappingWarning !== null) {
-                Auth::flash('warning', "Settings for '{$def['name']}' saved, but blog.list mapping was not updated: {$mappingWarning}");
-            } else {
-                Auth::flash('success', "Settings for '{$def['name']}' saved.");
-            }
+            Auth::flash('success', "Settings for '{$def['name']}' saved.");
         } catch (\Throwable $e) {
             Auth::flash('error', 'Failed to save settings: ' . $e->getMessage());
         }
@@ -1181,44 +1183,4 @@ class AcpSystemController extends BaseController
         }
     }
 
-    /**
-     * Sync a system_pages mapping for the given system key.
-     * Pass null to remove the mapping.
-     */
-    private function syncSystemPageMapping(string $systemKey, ?int $pageId): void
-    {
-        if ($pageId !== null && $pageId > 0) {
-            $page = $this->db->fetch('SELECT id FROM pages_index WHERE id = ? LIMIT 1', [$pageId]);
-            if (!$page) {
-                throw new \RuntimeException('Selected page ID does not exist in pages_index.');
-            }
-
-            $existing = $this->db->fetch(
-                'SELECT system_key FROM system_pages WHERE page_id = ? LIMIT 1',
-                [$pageId]
-            );
-            if ($existing && (string) $existing['system_key'] !== $systemKey) {
-                throw new \RuntimeException('Selected page is already assigned to another system key.');
-            }
-
-            $row = $this->db->fetch(
-                'SELECT system_key FROM system_pages WHERE system_key = ? LIMIT 1',
-                [$systemKey]
-            );
-            if ($row) {
-                $this->db->execute(
-                    'UPDATE system_pages SET page_id = ? WHERE system_key = ?',
-                    [$pageId, $systemKey]
-                );
-            } else {
-                $this->db->execute(
-                    'INSERT INTO system_pages (system_key, page_id) VALUES (?, ?)',
-                    [$systemKey, $pageId]
-                );
-            }
-            return;
-        }
-
-        $this->db->execute('DELETE FROM system_pages WHERE system_key = ?', [$systemKey]);
-    }
 }
