@@ -278,6 +278,7 @@ class ModuleRegistry
                     'key'    => $fullKey,
                     'module' => $slug,
                     'title'  => $title,
+                    'editor' => is_array($provider['editor'] ?? null) ? $provider['editor'] : null,
                 ];
             }
         }

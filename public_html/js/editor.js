@@ -561,13 +561,122 @@
         return names;
     }
 
+    function getModuleContentProvider(providerKey) {
+        return MODULE_CONTENT_PROVIDERS.find(function (provider) {
+            return (provider.key || '').toString() === (providerKey || '').toString();
+        }) || null;
+    }
+
+    function getModuleContentDisplayModeMeta(providerKey) {
+        var provider = getModuleContentProvider(providerKey);
+        var editor = provider && provider.editor && typeof provider.editor === 'object'
+            ? provider.editor
+            : null;
+        var displayMode = editor && editor.display_mode && typeof editor.display_mode === 'object'
+            ? editor.display_mode
+            : null;
+
+        if (displayMode && Array.isArray(displayMode.options) && displayMode.options.length > 0) {
+            return displayMode;
+        }
+
+        if (['blog:content', 'events:content'].indexOf((providerKey || '').toString()) !== -1) {
+            return {
+                label: 'Display Mode',
+                default: 'both',
+                options: [
+                    { value: 'both', label: 'List and detail' },
+                    { value: 'list', label: 'List only' },
+                    { value: 'post', label: 'Post only' },
+                    { value: 'detail', label: 'Detail only' }
+                ]
+            };
+        }
+
+        return null;
+    }
+
+    function syncModuleContentModeControl(providerKey, selectedValue) {
+        var row = document.getElementById('prop-module-content-mode-row');
+        var select = document.getElementById('prop-module-content-mode');
+        var meta = getModuleContentDisplayModeMeta(providerKey);
+        var label = row ? row.querySelector('label') : null;
+        var resolvedValue = (selectedValue || '').toString();
+
+        if (!row || !select) {
+            return resolvedValue;
+        }
+
+        if (!meta) {
+            row.style.display = 'none';
+            if (label) {
+                label.textContent = 'Display Mode';
+            }
+            return resolvedValue;
+        }
+
+        row.style.display = '';
+        if (label) {
+            label.textContent = (meta.label || 'Display Mode').toString();
+        }
+
+        select.innerHTML = '';
+        meta.options.forEach(function (option) {
+            var opt = document.createElement('option');
+            opt.value = (option.value || '').toString();
+            opt.textContent = (option.label || option.value || '').toString();
+            select.appendChild(opt);
+        });
+
+        var hasSelectedValue = Array.from(select.options).some(function (option) {
+            return option.value === resolvedValue;
+        });
+
+        if (!hasSelectedValue) {
+            resolvedValue = meta.default !== undefined
+                ? (meta.default || '').toString()
+                : (meta.options[0].value || '').toString();
+        }
+
+        if (!Array.from(select.options).some(function (option) { return option.value === resolvedValue; })) {
+            resolvedValue = (meta.options[0].value || '').toString();
+        }
+
+        select.value = resolvedValue;
+        return resolvedValue;
+    }
+
+    function getModuleContentModeLabel(providerKey, modeValue) {
+        var meta = getModuleContentDisplayModeMeta(providerKey);
+        var resolvedMode = (modeValue || '').toString();
+
+        if (!meta || !Array.isArray(meta.options)) {
+            return resolvedMode;
+        }
+
+        var hit = meta.options.find(function (option) {
+            return (option.value || '').toString() === resolvedMode;
+        });
+
+        if (hit) {
+            return (hit.label || hit.value || '').toString();
+        }
+
+        if (meta.default !== undefined) {
+            hit = meta.options.find(function (option) {
+                return (option.value || '').toString() === (meta.default || '').toString();
+            });
+            if (hit) {
+                return (hit.label || hit.value || '').toString();
+            }
+        }
+
+        return resolvedMode;
+    }
+
     function loadProps(block) {
         var type = block.dataset.blockType;
         var cs = getComputedStyle(block); // computed styles for reading actual CSS values
-
-        function usesCombinedContentMode(providerKey) {
-            return ['blog:content', 'events:content'].indexOf((providerKey || '').toString()) !== -1;
-        }
 
         function usesPagedContent(providerKey) {
             return ['blog:list', 'blog:content', 'events:list', 'events:content'].indexOf((providerKey || '').toString()) !== -1;
@@ -924,9 +1033,7 @@
                     mcSel.appendChild(staleProvider);
                 }
                 mcSel.value = selectedProvider;
-                if (mcModeRow) {
-                    mcModeRow.style.display = usesCombinedContentMode(selectedProvider) ? '' : 'none';
-                }
+                var resolvedDisplayMode = syncModuleContentModeControl(selectedProvider, (config.display_mode || '').toString());
                 if (mcPerPageRow) {
                     mcPerPageRow.style.display = usesPagedContent(selectedProvider) ? '' : 'none';
                 }
@@ -936,9 +1043,13 @@
                 if (mcEventProfileRow) {
                     mcEventProfileRow.style.display = usesEventProfile(selectedProvider) ? '' : 'none';
                 }
+                if (resolvedDisplayMode !== (config.display_mode || '').toString()) {
+                    config.display_mode = resolvedDisplayMode;
+                    block.dataset.blockConfig = JSON.stringify(config);
+                }
             }
-            if (mcModeSel) {
-                mcModeSel.value = (config.display_mode || 'both').toString();
+            if (mcModeSel && mcModeRow && mcModeRow.style.display !== 'none') {
+                mcModeSel.value = (config.display_mode || mcModeSel.value || '').toString();
             }
             if (mcPerPageInp) {
                 mcPerPageInp.value = (config.per_page || 10).toString();
@@ -1276,13 +1387,15 @@
             }
             if (inp.tagName === 'SELECT' && inp.dataset.config === 'provider_key' && block.dataset.blockType === 'module-content') {
                 inp.onchange = function () {
-                    var modeRow = document.getElementById('prop-module-content-mode-row');
                     var perPageRow = document.getElementById('prop-module-content-per-page-row');
                     var blogProfileRow = document.getElementById('prop-module-content-blog-profile-row');
                     var eventProfileRow = document.getElementById('prop-module-content-event-profile-row');
                     writeConfig(block, 'provider_key', inp.value);
-                    if (modeRow) {
-                        modeRow.style.display = (inp.value === 'blog:content' || inp.value === 'events:content') ? '' : 'none';
+                    var cfg = {};
+                    try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+                    var resolvedMode = syncModuleContentModeControl(inp.value, (cfg.display_mode || '').toString());
+                    if (resolvedMode !== (cfg.display_mode || '').toString()) {
+                        writeConfig(block, 'display_mode', resolvedMode);
                     }
                     if (perPageRow) {
                         perPageRow.style.display = (inp.value === 'blog:list' || inp.value === 'blog:content' || inp.value === 'events:list' || inp.value === 'events:content') ? '' : 'none';
@@ -1969,8 +2082,9 @@
             profileLabel += hitEventProfile ? (' - Events Profile: ' + (hitEventProfile.name || hitEventProfile.slug || cfg.event_profile_id)) : (' - Events Profile #' + cfg.event_profile_id);
         }
         var label = 'Module Content: ' + (hit.module || 'module') + ' - ' + (hit.title || key);
-        if (key === 'blog:content' || key === 'events:content') {
-            label += ' (' + mode + ')';
+        var modeLabel = getModuleContentModeLabel(key, mode);
+        if (modeLabel) {
+            label += ' (' + modeLabel + ')';
         }
         label += profileLabel;
         block.innerHTML = '<p class="editor-dynamic-placeholder">' + label + '</p>';

@@ -373,6 +373,11 @@ class ForumController extends BaseController
     public static function contentProviderForumContent(array $settings = [], array $context = []): array
     {
         $basePath = trim((string) ($context['forum_base_path'] ?? self::publicBasePath(null, $settings)));
+        $mode = trim((string) ($settings['mode'] ?? ''));
+
+        if ($mode === 'subject-thread') {
+            return self::buildSubjectThreadViewData(self::resolveSubjectId($settings, $context), $basePath, $context);
+        }
 
         if (!isset($context['forum_view'])) {
             return self::buildIndexViewData($basePath);
@@ -645,9 +650,68 @@ class ForumController extends BaseController
         ]);
     }
 
+    private static function buildSubjectThreadViewData(int $subjectId, string $basePath, array $context = []): array
+    {
+        $discussionTitle = trim((string) ($context['discussion_title'] ?? 'Discussion'));
+
+        if ($subjectId <= 0) {
+            return array_merge(self::templateGlobals($basePath), [
+                'title' => $discussionTitle,
+                'forum_view' => 'subject-empty',
+                'discussion_title' => $discussionTitle,
+            ]);
+        }
+
+        $thread = ForumManager::provider()->getThreadBySubjectId($subjectId, Auth::roleLevel());
+        if (!$thread) {
+            return array_merge(self::templateGlobals($basePath), [
+                'title' => $discussionTitle,
+                'forum_view' => 'subject-empty',
+                'discussion_title' => $discussionTitle,
+            ]);
+        }
+
+        $data = self::buildThreadViewData((int) $thread['id'], $basePath);
+        if (!is_array($data)) {
+            return array_merge(self::templateGlobals($basePath), [
+                'title' => $discussionTitle,
+                'forum_view' => 'subject-empty',
+                'discussion_title' => $discussionTitle,
+            ]);
+        }
+
+        $data['discussion_title'] = $discussionTitle;
+        return $data;
+    }
+
     private function forumBasePath(): string
     {
         return self::publicBasePath($this->db);
+    }
+
+    private static function resolveSubjectId(array $settings = [], array $context = []): int
+    {
+        $subjectId = (int) ($settings['subject_id'] ?? 0);
+        if ($subjectId > 0) {
+            return $subjectId;
+        }
+
+        $subjectId = (int) ($context['subject_id'] ?? 0);
+        if ($subjectId > 0) {
+            return $subjectId;
+        }
+
+        $article = $context['article'] ?? null;
+        if (is_array($article) && !empty($article['subject_id'])) {
+            return (int) $article['subject_id'];
+        }
+
+        $event = $context['event'] ?? null;
+        if (is_array($event) && !empty($event['subject_id'])) {
+            return (int) $event['subject_id'];
+        }
+
+        return 0;
     }
 
     private static function templateGlobals(string $basePath): array

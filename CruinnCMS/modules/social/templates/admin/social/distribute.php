@@ -31,10 +31,10 @@
             <!-- Hidden data for JS to populate content_id dropdown -->
             <script>
             var distributeArticles = <?= json_encode(array_map(function($a) {
-                return ['id' => $a['id'], 'title' => $a['title'], 'image' => $a['featured_image'] ?? ''];
+                return ['id' => $a['id'], 'title' => $a['title'], 'image' => $a['featured_image'] ?? '', 'subject_id' => $a['subject_id'] ?? null];
             }, $articles)) ?>;
             var distributeEvents = <?= json_encode(array_map(function($e) {
-                return ['id' => $e['id'], 'title' => $e['title'], 'image' => $e['image'] ?? ''];
+                return ['id' => $e['id'], 'title' => $e['title'], 'image' => $e['image'] ?? '', 'subject_id' => $e['subject_id'] ?? null];
             }, $events)) ?>;
             <?php if ($selectedContent): ?>
             var preselectedId = <?= (int)$selectedContent['id'] ?>;
@@ -46,6 +46,12 @@
             <?php if ($selectedContent): ?>
             <div class="content-preview">
                 <strong>Selected:</strong> <?= e($selectedContent['title'] ?? '') ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($selectedContent) && !empty($selectedContent['subject_id'])): ?>
+            <div class="content-preview">
+                <strong>Subject link:</strong> Subject #<?= (int) $selectedContent['subject_id'] ?>
             </div>
             <?php endif; ?>
         </div>
@@ -103,6 +109,28 @@
                         <?php endif; ?>
                     </label>
                     <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($forumEnabled)): ?>
+            <div class="channel-section">
+                <h3>Forum</h3>
+                <div class="channel-checkboxes">
+                    <label class="checkbox-label channel-option">
+                        <input type="checkbox" name="forum_actions[create_thread]" value="1">
+                        Connect:Forum:Thread Create Thread
+                    </label>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="forumCategoryId">Forum Category</label>
+                    <select name="forum_category_id" id="forumCategoryId" class="form-control">
+                        <option value="">Choose category...</option>
+                        <?php foreach ($forumCategories as $category): ?>
+                        <option value="<?= (int) $category['id'] ?>"><?= e($category['title']) ?> (<?= e($category['access_role']) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small>A linked thread will be created once per subject and reused on later distributions.</small>
                 </div>
             </div>
             <?php endif; ?>

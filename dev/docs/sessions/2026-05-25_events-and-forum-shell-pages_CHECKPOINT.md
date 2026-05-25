@@ -6,13 +6,17 @@ Status: working tree
 
 ## Scope
 
-This checkpoint captures the Events and Forum follow-up slice after the Blog control-centre work on beta.15:
+This checkpoint captures the Events, Forum, and linked-discussion follow-up slice after the Blog control-centre work on beta.15:
 
 - Events expanded to the newer shell-page and profile-driven pattern already used by Blog
 - remaining hard-coded public `/events` assumptions removed from Events public/admin rendering paths
 - Forum public GET rendering moved off legacy hard-coded `/forum` page ownership and onto a resolver-backed shell page
 - shared editor and module-content plumbing extended so Events and Forum can participate in the modern module-content flow
 - final Forum follow-up hotfixes aligned stale admin/provider auth calls and ensured the forum content widget can populate index data when rendered directly
+- subject-linked Forum threads added as a comments substitute for blog posts, events, and other subject-owned content
+- Social distribute extended so linked Forum threads can be created or reused directly from the distribution screen
+- hard-wired discussion rendering removed from Blog and Events templates so discussion display remains block-driven and template-layout controlled
+- Module Content editor integration completed so `forum:content` can be configured as a linked subject-thread block without template coupling
 
 ## What changed
 
@@ -67,9 +71,37 @@ This checkpoint captures the Events and Forum follow-up slice after the Blog con
 - `contentProviderForumContent()` now falls back to `buildIndexViewData()` when a Forum content block is rendered directly without resolver-supplied `forum_view` context.
 - This fixes the direct widget case where the shell-page Forum block was rendering `No forum categories are available yet.` despite active categories existing.
 
+### 9) Subject-linked discussion threads were added
+
+- Forum threads can now optionally own a `subject_id`, with a unique constraint so one subject maps to one discussion thread.
+- The Forum provider contract and native provider now support looking up and reusing a thread by subject.
+- `contentProviderForumContent()` supports a `subject-thread` mode that resolves the current subject from render context and shows either the linked thread or an empty discussion state.
+- Events now carry `subject_id` in admin create/edit flows so they can participate in the same subject-owned discussion model as articles.
+
+### 10) Social distribute can now create or reuse linked Forum discussions
+
+- The Social distribute screen now loads content subject IDs and available Forum categories.
+- Admins can select a Forum thread action alongside social and email channels.
+- When requested, Social distribute creates the linked thread once per subject and reuses it on later distributions.
+- Distribution history records the Forum thread destination as a sent channel alongside other distribution outputs.
+
+### 11) Template coupling was removed from discussion display
+
+- An initial hard-wired discussion injection under Blog post and Event detail templates was deliberately backed out.
+- Discussion display is no longer owned by `post.php` or `show.php` templates.
+- The containing page template must place a Module Content block if discussion should appear, keeping layout ownership in the page/template system.
+
+### 12) Module Content editor integration was completed for Forum discussion blocks
+
+- Module content provider catalog entries can now declare editor metadata.
+- The Forum module declares a provider-specific editor mode for `forum:content` so the editor exposes `Linked subject thread` cleanly.
+- The editor inspector now renders provider-driven Module Content mode options instead of only hard-coded Blog/Events combinations.
+- The canvas preview label also reflects provider-defined mode labels, so Forum discussion blocks remain understandable in-editor.
+
 ## Files included in this checkpoint
 
 - CruinnCMS/modules/events/migrations/004_event_profiles.sql
+- CruinnCMS/modules/events/migrations/005_event_subject_id.sql
 - CruinnCMS/modules/events/module.php
 - CruinnCMS/modules/events/src/Controllers/EventController.php
 - CruinnCMS/modules/events/templates/admin/events/_nav.php
@@ -90,6 +122,8 @@ This checkpoint captures the Events and Forum follow-up slice after the Blog con
 - CruinnCMS/modules/forum/src/Controllers/ForumAdminController.php
 - CruinnCMS/modules/forum/src/Controllers/ForumController.php
 - CruinnCMS/modules/forum/src/Forum/ForumProviderInterface.php
+- CruinnCMS/modules/forum/src/Forum/NativeForumProvider.php
+- CruinnCMS/modules/forum/migrations/019_subject_threads.sql
 - CruinnCMS/modules/forum/templates/admin/forum/edit-post.php
 - CruinnCMS/modules/forum/templates/admin/forum/index.php
 - CruinnCMS/modules/forum/templates/admin/forum/move-thread.php
@@ -103,10 +137,14 @@ This checkpoint captures the Events and Forum follow-up slice after the Blog con
 - CruinnCMS/modules/forum/templates/public/forum/search.php
 - CruinnCMS/modules/forum/templates/public/forum/thread.php
 - CruinnCMS/modules/forum/templates/public/forum/module-content/content.php
+- CruinnCMS/modules/social/src/Controllers/SocialController.php
+- CruinnCMS/modules/social/templates/admin/social/distribute.php
 - CruinnCMS/src/Admin/Controllers/AcpSystemController.php
 - CruinnCMS/src/BlockTypes/module-content/definition.php
 - CruinnCMS/src/Controllers/CruinnController.php
+- CruinnCMS/src/Modules/ModuleRegistry.php
 - CruinnCMS/templates/admin/editor.php
+- CruinnCMS/modules/blog/templates/public/articles/module-content/post.php
 - public_html/js/editor.js
 
 ## Validation
@@ -114,7 +152,9 @@ This checkpoint captures the Events and Forum follow-up slice after the Blog con
 - PHP lint passed during the slice on the touched Events and Forum controllers, templates, and shared PHP integration files checked immediately after editing.
 - PHP lint also passed on the Forum provider contract files after aligning `ForumProviderInterface` with `NativeForumProvider`.
 - PHP lint also passed on the final Forum hotfix files after correcting the stale admin provider call and the direct widget index-data fallback.
+- PHP lint passed on the subject-thread follow-up PHP files, including the Forum provider/controller layer, Social distribute controller/template, Events subject integration, and the final template decoupling cleanup.
 - `node --check public_html/js/editor.js` passed after repairing the editor syntax regression introduced during the Events work.
+- `node --check public_html/js/editor.js` also passed after the provider-driven Module Content editor integration for Forum discussion blocks.
 - A residual Forum hard-code scan confirmed that remaining literal `/forum` references are limited to the intentional fixed POST action endpoints and their matching action-base defaults.
 - A focused Forum auth sweep found no further stale `viewerRole` contract remnants beyond the interface mismatch.
 - Diagnostics reported no relevant new errors in the checked Forum files during the final focused sweep.
@@ -123,4 +163,6 @@ This checkpoint captures the Events and Forum follow-up slice after the Blog con
 
 - Forum now requires a published shell page to be selected via `forum_list_page_id` in module settings.
 - That shell page must contain a `forum:content` module-content block for the resolver-backed Forum views to render.
+- To show linked discussion beneath a post or event, place a Module Content block on the containing page template, choose `forum:content`, and set the Forum view to `Linked subject thread`.
+- The linked-thread flow depends on `subject_id` being populated on the owning article or event and on the new Forum/Events migrations being applied.
 - Runtime browser verification of the new Forum shell-page flow has not yet been completed in this checkpoint.

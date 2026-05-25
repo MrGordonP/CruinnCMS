@@ -200,6 +200,25 @@ class NativeForumProvider implements ForumProviderInterface
         return $thread ?: null;
     }
 
+    public function getThreadBySubjectId(int $subjectId, ?int $viewerLevel = null): ?array
+    {
+        if ($subjectId <= 0) {
+            return null;
+        }
+
+        $thread = $this->fetchThreadBySubjectId($subjectId);
+        if (!$thread) {
+            return null;
+        }
+
+        $level = $viewerLevel ?? Auth::roleLevel();
+        if ($level < $this->roleSlugToLevel((string) ($thread['access_role'] ?? 'public'))) {
+            return null;
+        }
+
+        return $thread;
+    }
+
     public function listPosts(int $threadId, int $page = 1, int $perPage = 50): array
     {
         $offset = max(0, ($page - 1) * $perPage);
@@ -309,13 +328,28 @@ class NativeForumProvider implements ForumProviderInterface
         );
     }
 
-    public function createThread(int $categoryId, int $userId, string $title, string $bodyHtml): int
+    public function createThread(int $categoryId, int $userId, string $title, string $bodyHtml, ?int $subjectId = null): int
     {
         $slug = $this->slugify($title);
 
-        return $this->db->transaction(function () use ($categoryId, $userId, $title, $slug, $bodyHtml) {
+        if (($subjectId ?? 0) > 0) {
+            $existingThread = $this->fetchThreadBySubjectId((int) $subjectId);
+            if ($existingThread) {
+                return (int) $existingThread['id'];
+            }
+        }
+
+        return $this->db->transaction(function () use ($categoryId, $userId, $title, $slug, $bodyHtml, $subjectId) {
+            if (($subjectId ?? 0) > 0) {
+                $existingThread = $this->fetchThreadBySubjectId((int) $subjectId);
+                if ($existingThread) {
+                    return (int) $existingThread['id'];
+                }
+            }
+
             $threadId = (int)$this->db->insert('forum_threads', [
                 'category_id' => $categoryId,
+                'subject_id' => ($subjectId ?? 0) > 0 ? (int) $subjectId : null,
                 'user_id' => $userId,
                 'title' => $title,
                 'slug' => $slug,
@@ -428,6 +462,21 @@ class NativeForumProvider implements ForumProviderInterface
     {
         $level = $viewerLevel ?? Auth::roleLevel();
         return $level >= $this->roleSlugToLevel($accessRole);
+    }
+
+    private function fetchThreadBySubjectId(int $subjectId): ?array
+    {
+        $thread = $this->db->fetch(
+            'SELECT t.*, c.title AS category_title, c.slug AS category_slug, c.access_role, u.display_name AS author_name
+             FROM forum_threads t
+             JOIN forum_categories c ON c.id = t.category_id
+             JOIN users u ON u.id = t.user_id
+             WHERE t.subject_id = ?
+             LIMIT 1',
+            [$subjectId]
+        );
+
+        return $thread ?: null;
     }
 
     private function slugify(string $value): string

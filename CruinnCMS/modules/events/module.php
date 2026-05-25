@@ -42,6 +42,7 @@ return [
         __DIR__ . '/migrations/002_external_form_url.sql',
         __DIR__ . '/migrations/003_related_article_id.sql',
         __DIR__ . '/migrations/004_event_profiles.sql',
+        __DIR__ . '/migrations/005_event_subject_id.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',

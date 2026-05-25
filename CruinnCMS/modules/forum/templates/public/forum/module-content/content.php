@@ -25,6 +25,16 @@
     case 'search':
         include dirname(__DIR__) . '/search.php';
         break;
+    case 'subject-empty':
+        ?>
+        <section class="container forum-page forum-page--discussion-empty">
+            <header class="forum-header">
+                <h1><?= e($discussion_title ?? 'Discussion') ?></h1>
+            </header>
+            <p>No discussion thread has been linked to this subject yet.</p>
+        </section>
+        <?php
+        break;
     case 'forbidden':
         ?>
         <section class="container forum-page">

@@ -128,6 +128,17 @@
                     </select>
                     <small class="help-text">Shown on the public event page as a "Read more" link.</small>
                 </div>
+
+                <div class="form-group">
+                    <label for="subject_id">Subject</label>
+                    <select id="subject_id" name="subject_id" class="form-input">
+                        <option value="">— None —</option>
+                        <?php foreach ($subjects ?? [] as $subject): ?>
+                            <option value="<?= (int) $subject['id'] ?>" <?= (int) ($event['subject_id'] ?? 0) === (int) $subject['id'] ? 'selected' : '' ?>><?= e($subject['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small class="help-text">Used to link this event to its discussion thread and other subject-owned content.</small>
+                </div>
             </div>
         </div>
 

@@ -20,11 +20,13 @@ interface ForumProviderInterface
 
     public function getThread(int $threadId): ?array;
 
+    public function getThreadBySubjectId(int $subjectId, ?int $viewerLevel = null): ?array;
+
     public function listPosts(int $threadId, int $page = 1, int $perPage = 50): array;
 
     public function countPosts(int $threadId): int;
 
-    public function createThread(int $categoryId, int $userId, string $title, string $bodyHtml): int;
+    public function createThread(int $categoryId, int $userId, string $title, string $bodyHtml, ?int $subjectId = null): int;
 
     public function createReply(int $threadId, int $userId, string $bodyHtml): int;
 }

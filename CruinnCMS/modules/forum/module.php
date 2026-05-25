@@ -22,6 +22,7 @@ return [
 
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/019_subject_threads.sql',
     ],
 
     'routes' => static function (object $router): void {
@@ -89,6 +90,18 @@ return [
             'title'    => 'Forum Content',
             'provider' => ForumController::class . '::contentProviderForumContent',
             'template' => 'public/forum/module-content/content',
+            'editor'   => [
+                'display_mode' => [
+                    'label'   => 'Forum View',
+                    'default' => 'subject-thread',
+                    'options' => [
+                        [
+                            'value' => 'subject-thread',
+                            'label' => 'Linked subject thread',
+                        ],
+                    ],
+                ],
+            ],
         ],
     ],
 ];

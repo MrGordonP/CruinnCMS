@@ -629,10 +629,12 @@ class EventController extends BaseController
         Auth::requireAdmin();
 
         $articles = $this->fetchPublishedArticles();
+        $subjects = $this->fetchSubjects();
         $this->renderAdmin('admin/events/edit', [
             'title'       => 'New Event',
             'event'       => null,
             'articles'    => $articles,
+            'subjects'    => $subjects,
             'eventBasePath' => $this->adminEventBasePath(),
             'breadcrumbs' => [['Admin', '/admin'], ['Events', '/admin/events'], ['New Event']],
         ]);
@@ -661,10 +663,12 @@ class EventController extends BaseController
 
         $dateStartRaw = $this->input('date_start');
         $dateEndRaw   = $this->input('date_end') ?: null;
+        $subjectId = $this->normaliseSubjectId($this->input('subject_id'));
 
         $id = $this->db->insert('events', [
             'title'             => $this->input('title'),
             'slug'              => $slug,
+            'subject_id'        => $subjectId,
             'event_type'        => $this->input('event_type'),
             'description'       => $this->input('description') ?: null,
             'date_start'        => $dateStartRaw,
@@ -708,10 +712,12 @@ class EventController extends BaseController
         }
 
         $articles = $this->fetchPublishedArticles();
+        $subjects = $this->fetchSubjects();
         $this->renderAdmin('admin/events/edit', [
             'title'       => 'Edit: ' . $event['title'],
             'event'       => $event,
             'articles'    => $articles,
+            'subjects'    => $subjects,
             'eventBasePath' => $this->adminEventBasePath(),
             'breadcrumbs' => [['Admin', '/admin'], ['Events', '/admin/events'], [$event['title']]],
         ]);
@@ -749,10 +755,12 @@ class EventController extends BaseController
 
         $dateStartRaw = $this->input('date_start');
         $dateEndRaw   = $this->input('date_end') ?: null;
+        $subjectId = $this->normaliseSubjectId($this->input('subject_id'));
 
         $this->db->update('events', [
             'title'             => $this->input('title'),
             'slug'              => $slug,
+            'subject_id'        => $subjectId,
             'event_type'        => $this->input('event_type'),
             'description'       => $this->input('description') ?: null,
             'date_start'        => $dateStartRaw,
@@ -1097,6 +1105,23 @@ class EventController extends BaseController
         } catch (\Throwable $e) {
             return [];
         }
+    }
+
+    private function fetchSubjects(): array
+    {
+        try {
+            return $this->db->fetchAll(
+                'SELECT id, title FROM subjects ORDER BY title ASC'
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    private function normaliseSubjectId(mixed $value): ?int
+    {
+        $subjectId = (int) $value;
+        return $subjectId > 0 ? $subjectId : null;
     }
 
     private function canRegister(array $event, ?int $spotsRemaining): bool
