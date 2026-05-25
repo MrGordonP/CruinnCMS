@@ -1,12 +1,17 @@
 <?php \Cruinn\Template::requireCss('admin-events.css'); ?>
+<?php $eventNav = 'events'; ?>
+<?php include __DIR__ . '/_nav.php'; ?>
+
+<?php $eventBasePath = trim((string) ($eventBasePath ?? '')); ?>
+
 <div class="admin-events">
     <div class="admin-header-row">
-        <h1>Events <span class="count">(<?= (int) $totalCount ?>)</span></h1>
+        <h1>Event List <span class="count">(<?= (int) $totalCount ?>)</span></h1>
         <a href="/admin/events/new" class="btn btn-primary">+ New Event</a>
     </div>
 
     <!-- Search & Filters -->
-    <form class="admin-search-bar" method="get" action="/admin/events">
+    <form class="admin-search-bar" method="get" action="/admin/events/list">
         <input type="text" name="q" value="<?= e($search) ?>" placeholder="Search events…">
         <select name="status">
             <option value="">All Statuses</option>
@@ -22,7 +27,7 @@
         </select>
         <button type="submit" class="btn btn-small">Filter</button>
         <?php if ($search || $status || $type): ?>
-            <a href="/admin/events" class="btn btn-small btn-outline">Clear</a>
+            <a href="/admin/events/list" class="btn btn-small btn-outline">Clear</a>
         <?php endif; ?>
     </form>
 
@@ -63,7 +68,11 @@
                 </td>
                 <td><span class="badge badge-<?= e($event['status']) ?>"><?= e(ucfirst($event['status'])) ?></span></td>
                 <td>
+                    <a href="/admin/events/<?= (int) $event['id'] ?>" class="btn btn-small btn-outline">View</a>
                     <a href="/admin/events/<?= (int) $event['id'] ?>/edit" class="btn btn-small">Edit</a>
+                    <?php if ($event['status'] === 'published' && $eventBasePath !== ''): ?>
+                        <a href="<?= e($eventBasePath . '/' . ($event['slug'] ?? '')) ?>" target="_blank" class="btn btn-small btn-outline">Public</a>
+                    <?php endif; ?>
                 </td>
             </tr>
             <?php endforeach; ?>

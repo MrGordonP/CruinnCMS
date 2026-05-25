@@ -4,13 +4,13 @@ namespace Cruinn\Module\Forum\Forum;
 
 interface ForumProviderInterface
 {
-    public function listCategories(?string $viewerRole = null): array;
+    public function listCategories(?int $viewerLevel = null): array;
 
-    public function listCategoriesHierarchical(?string $viewerRole = null): array;
+    public function listCategoriesHierarchical(?int $viewerLevel = null): array;
 
-    public function getCategoryBySlug(string $slug, ?string $viewerRole = null): ?array;
+    public function getCategoryBySlug(string $slug, ?int $viewerLevel = null): ?array;
 
-    public function getSubcategories(int $parentId, ?string $viewerRole = null): array;
+    public function getSubcategories(int $parentId, ?int $viewerLevel = null): array;
 
     public function getCategoryBreadcrumbs(int $categoryId): array;
 

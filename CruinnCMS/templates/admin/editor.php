@@ -34,6 +34,7 @@ $_editorPageHrefFrom = function(int $targetId) use ($page, $_editorPageHref): st
 $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($templateCanvasCss ?? '');
 $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegistry::contentProviderCatalog();
 $blogProfiles = $blogProfiles ?? [];
+$eventProfiles = $eventProfiles ?? [];
 ?>
 <?php if (!empty($_contextCss)): ?>
 <style id="editor-zone-context-styles"><?= $_contextCss ?></style>
@@ -53,6 +54,7 @@ $blogProfiles = $blogProfiles ?? [];
     data-available-zone-canvases="<?= htmlspecialchars(json_encode($availableZoneCanvases ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-module-content-providers="<?= htmlspecialchars(json_encode($moduleContentProviders ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-blog-profiles="<?= htmlspecialchars(json_encode($blogProfiles), ENT_QUOTES, 'UTF-8') ?>"
+    data-event-profiles="<?= htmlspecialchars(json_encode($eventProfiles), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
@@ -1042,13 +1044,14 @@ $blogProfiles = $blogProfiles ?? [];
                         <div class="editor-prop-row" id="prop-module-content-mode-row" style="display:none">
                             <label>Display Mode</label>
                             <select class="editor-prop-input" id="prop-module-content-mode" data-config="display_mode">
-                                <option value="both">List and single post</option>
+                                <option value="both">List and detail</option>
                                 <option value="list">List only</option>
-                                <option value="post">Single post only</option>
+                                <option value="post">Post only</option>
+                                <option value="detail">Detail only</option>
                             </select>
                         </div>
                         <div class="editor-prop-row" id="prop-module-content-per-page-row" style="display:none">
-                            <label>Posts per page</label>
+                            <label>Items per page</label>
                             <input type="number" class="editor-prop-input" id="prop-module-content-per-page" data-config="per_page" min="1" max="100" placeholder="10">
                         </div>
                         <div class="editor-prop-row" id="prop-module-content-blog-profile-row" style="display:none">
@@ -1057,6 +1060,15 @@ $blogProfiles = $blogProfiles ?? [];
                                 <option value="">— None —</option>
                                 <?php foreach (($blogProfiles ?? []) as $_blogProfile): ?>
                                 <option value="<?= (int) ($_blogProfile['id'] ?? 0) ?>"><?= e($_blogProfile['name'] ?? 'Profile') ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" id="prop-module-content-event-profile-row" style="display:none">
+                            <label>Events Profile <small style="font-weight:400;"><a href="<?= url('/admin/events/profiles') ?>" target="_blank">Manage ↗</a></small></label>
+                            <select class="editor-prop-input" id="prop-module-content-event-profile" data-config="event_profile_id">
+                                <option value="">— None —</option>
+                                <?php foreach (($eventProfiles ?? []) as $_eventProfile): ?>
+                                <option value="<?= (int) ($_eventProfile['id'] ?? 0) ?>"><?= e($_eventProfile['name'] ?? 'Profile') ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

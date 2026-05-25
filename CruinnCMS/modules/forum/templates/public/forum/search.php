@@ -1,14 +1,17 @@
+<?php $forumBasePath = trim((string) ($forum_base_path ?? '')); ?>
+<?php $forumSearchUrl = trim((string) ($forum_search_url ?? ($forumBasePath !== '' ? rtrim($forumBasePath, '/') . '/search' : ''))); ?>
+
 <section class="container forum-page">
     <header class="forum-header">
         <nav class="forum-breadcrumbs">
-            <a href="<?= url('/forum') ?>">Forum</a>
+            <a href="<?= e($forumBasePath) ?>">Forum</a>
             <span class="sep">›</span>
             <span class="current">Search</span>
         </nav>
         <h1>Forum Search</h1>
     </header>
 
-    <form method="get" action="<?= url('/forum/search') ?>" class="forum-search-form">
+    <form method="get" action="<?= e($forumSearchUrl) ?>" class="forum-search-form">
         <div class="forum-search-fields">
             <input type="search" name="q" value="<?= e($q) ?>" placeholder="Search posts and threads…" class="forum-search-input" autofocus>
             <select name="category_id" class="form-input forum-search-cat">
@@ -35,7 +38,7 @@
             <?php foreach ($results as $r): ?>
                 <article class="forum-search-result">
                     <div class="forum-search-result__thread">
-                        <a href="<?= url('/forum/thread/' . (int)$r['thread_id'] . '#post-' . (int)$r['post_id']) ?>">
+                        <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $r['thread_id'] . '#post-' . (int) $r['post_id']) ?>">
                             <?= e($r['thread_title']) ?>
                         </a>
                         <span class="forum-meta">in <?= e($r['category_title']) ?></span>

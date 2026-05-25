@@ -1,3 +1,5 @@
+<?php $forumBasePath = trim((string) ($forumBasePath ?? '')); ?>
+
 <div class="admin-page">
     <header class="admin-page-header">
         <h1>Post Reports</h1>
@@ -27,7 +29,13 @@
                 <?php foreach ($reports as $report): ?>
                     <tr>
                         <td><?= e(format_date($report['created_at'], 'j M Y H:i')) ?></td>
-                        <td><a href="<?= url('/forum/thread/' . (int)$report['thread_id'] . '#post-' . (int)$report['post_id']) ?>"><?= e($report['thread_title']) ?></a></td>
+                        <td>
+                            <?php if ($forumBasePath !== ''): ?>
+                            <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $report['thread_id'] . '#post-' . (int) $report['post_id']) ?>"><?= e($report['thread_title']) ?></a>
+                            <?php else: ?>
+                            <?= e($report['thread_title']) ?>
+                            <?php endif; ?>
+                        </td>
                         <td><?= e($report['reporter_name']) ?></td>
                         <td><?= e(ucfirst($report['reason'])) ?></td>
                         <td><span class="badge badge-<?= e($report['status']) ?>"><?= e(ucfirst($report['status'])) ?></span></td>

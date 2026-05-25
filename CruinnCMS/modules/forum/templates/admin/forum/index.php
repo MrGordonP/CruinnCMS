@@ -1,3 +1,5 @@
+<?php $forumBasePath = trim((string) ($forumBasePath ?? '')); ?>
+
 <div class="admin-page-header">
     <div>
         <h1>Forum Moderation</h1>
@@ -16,9 +18,13 @@
             <div class="forum-category-section">
                 <div class="forum-category-header">
                     <h3 style="margin: 0; font-size: 1rem;">
-                        <a href="<?= url('/forum/' . $category['slug']) ?>" target="_blank">
+                        <?php if ($forumBasePath !== ''): ?>
+                        <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>" target="_blank">
                             <?= e($category['title']) ?>
                         </a>
+                        <?php else: ?>
+                        <?= e($category['title']) ?>
+                        <?php endif; ?>
                     </h3>
                     <?php if (!empty($category['description'])): ?>
                         <p class="forum-category-desc"><?= e($category['description']) ?></p>
@@ -36,9 +42,13 @@
                             </div>
                             <div class="forum-info">
                                 <h4 class="forum-title" style="margin: 0 0 0.25rem;">
-                                    <a href="<?= url('/forum/' . $category['slug']) ?>" target="_blank">
+                                    <?php if ($forumBasePath !== ''): ?>
+                                    <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>" target="_blank">
                                         <?= e($category['title']) ?>
                                     </a>
+                                    <?php else: ?>
+                                    <?= e($category['title']) ?>
+                                    <?php endif; ?>
                                 </h4>
                                 <?php if (!empty($category['description'])): ?>
                                     <p class="forum-desc" style="margin: 0;"><?= e($category['description']) ?></p>
@@ -56,9 +66,13 @@
                                 <?php if (!empty($category['last_post_at'])): ?>
                                     <div class="last-post-info">
                                         <?php if (!empty($category['last_thread_title'])): ?>
-                                            <a href="<?= url('/forum/thread/' . (int)$category['last_thread_id']) ?>" class="last-post-thread" target="_blank">
+                                            <?php if ($forumBasePath !== ''): ?>
+                                            <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $category['last_thread_id']) ?>" class="last-post-thread" target="_blank">
                                                 <?= e($category['last_thread_title']) ?>
                                             </a>
+                                            <?php else: ?>
+                                            <span class="last-post-thread"><?= e($category['last_thread_title']) ?></span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                         <span class="last-post-meta">
                                             <?= e(format_date($category['last_post_at'], 'j M Y, H:i')) ?>
@@ -83,9 +97,13 @@
                                 </div>
                                 <div class="forum-info">
                                     <h4 class="forum-title" style="margin: 0 0 0.25rem;">
-                                        <a href="<?= url('/forum/' . $subforum['slug']) ?>" target="_blank">
+                                        <?php if ($forumBasePath !== ''): ?>
+                                        <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($subforum['slug'] ?? ''), '/')) ?>" target="_blank">
                                             <?= e($subforum['title']) ?>
                                         </a>
+                                        <?php else: ?>
+                                        <?= e($subforum['title']) ?>
+                                        <?php endif; ?>
                                     </h4>
                                     <?php if (!empty($subforum['description'])): ?>
                                         <p class="forum-desc" style="margin: 0;"><?= e($subforum['description']) ?></p>
@@ -103,9 +121,13 @@
                                     <?php if (!empty($subforum['last_post_at'])): ?>
                                         <div class="last-post-info">
                                             <?php if (!empty($subforum['last_thread_title'])): ?>
-                                                <a href="<?= url('/forum/thread/' . (int)$subforum['last_thread_id']) ?>" class="last-post-thread" target="_blank">
+                                                <?php if ($forumBasePath !== ''): ?>
+                                                <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $subforum['last_thread_id']) ?>" class="last-post-thread" target="_blank">
                                                     <?= e($subforum['last_thread_title']) ?>
                                                 </a>
+                                                <?php else: ?>
+                                                <span class="last-post-thread"><?= e($subforum['last_thread_title']) ?></span>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                             <span class="last-post-meta">
                                                 <?= e(format_date($subforum['last_post_at'], 'j M Y, H:i')) ?>
@@ -189,9 +211,13 @@
                 <?php foreach ($threads as $thread): ?>
                     <tr>
                         <td>
-                            <a href="/forum/thread/<?= (int)$thread['id'] ?>" target="_blank" rel="noopener noreferrer">
+                            <?php if ($forumBasePath !== ''): ?>
+                            <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $thread['id']) ?>" target="_blank" rel="noopener noreferrer">
                                 <?= e($thread['title']) ?>
                             </a>
+                            <?php else: ?>
+                            <?= e($thread['title']) ?>
+                            <?php endif; ?>
                         </td>
                         <td><?= e($thread['category_title']) ?></td>
                         <td><?= e($thread['author_name']) ?></td>

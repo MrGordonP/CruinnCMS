@@ -1,12 +1,17 @@
 <?php \Cruinn\Template::requireCss('admin-events.css'); ?>
+<?php $eventNav = 'events'; ?>
+<?php include __DIR__ . '/_nav.php'; ?>
+
+<?php $eventBasePath = trim((string) ($eventBasePath ?? '')); ?>
+
 <div class="admin-event-detail">
     <div class="admin-header-row">
         <h1><?= e($event['title']) ?></h1>
         <div class="header-actions">
             <a href="/admin/events/<?= (int) $event['id'] ?>/edit" class="btn btn-primary">Edit Event</a>
             <a href="/admin/events/<?= (int) $event['id'] ?>/export" class="btn btn-outline">Export CSV</a>
-            <?php if ($event['status'] === 'published'): ?>
-                <a href="/events/<?= e($event['slug']) ?>" class="btn btn-small" target="_blank">View Public</a>
+            <?php if ($event['status'] === 'published' && $eventBasePath !== ''): ?>
+                <a href="<?= e($eventBasePath . '/' . ($event['slug'] ?? '')) ?>" class="btn btn-small" target="_blank">View Public</a>
             <?php endif; ?>
         </div>
     </div>
@@ -175,5 +180,5 @@
         </form>
     </div>
 
-    <p><a href="/admin/events">&larr; Back to events</a></p>
+    <p><a href="/admin/events/list">&larr; Back to events</a></p>
 </div>

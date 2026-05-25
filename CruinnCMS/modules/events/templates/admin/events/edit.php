@@ -1,4 +1,7 @@
 <?php \Cruinn\Template::requireCss('admin-events.css'); ?>
+<?php $eventNav = 'events'; ?>
+<?php include __DIR__ . '/_nav.php'; ?>
+
 <div class="admin-event-edit">
     <h1><?= e($title) ?></h1>
 
@@ -130,7 +133,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary"><?= $event ? 'Update Event' : 'Create Event' ?></button>
-            <a href="<?= $event ? '/admin/events/' . (int) $event['id'] : '/admin/events' ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= $event ? '/admin/events/' . (int) $event['id'] : '/admin/events/list' ?>" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </div>

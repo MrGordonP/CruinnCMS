@@ -12,6 +12,8 @@ class ForumAdminController extends BaseController
     {
         Auth::requireAdmin();
 
+        $forumBasePath = $this->forumBasePath();
+
         $search = trim((string)$this->query('q', ''));
         $categoryId = (int)$this->query('category_id', 0);
         $status = (string)$this->query('status', 'all');
@@ -57,13 +59,14 @@ class ForumAdminController extends BaseController
             'SELECT id, title FROM forum_categories ORDER BY sort_order ASC, title ASC'
         );
 
-        $categoriesHierarchical = ForumManager::provider()->listCategoriesHierarchical('admin');
+        $categoriesHierarchical = ForumManager::provider()->listCategoriesHierarchical(Auth::roleLevel());
 
         $this->renderAdmin('admin/forum/index', [
             'title' => 'Forum Moderation',
             'threads' => $threads,
             'categories' => $categories,
             'categoriesHierarchical' => $categoriesHierarchical,
+            'forumBasePath' => $forumBasePath,
             'filters' => [
                 'q' => $search,
                 'category_id' => $categoryId,
@@ -164,7 +167,7 @@ class ForumAdminController extends BaseController
         $newTitle = trim((string)$this->input('title', ''));
         if (mb_strlen($newTitle) < 5) {
             Auth::flash('error', 'Title must be at least 5 characters.');
-            $this->redirect('/forum/thread/' . (int)$id);
+            $this->redirect($this->publicThreadPath((int) $id));
         }
 
         $this->db->execute(
@@ -174,7 +177,7 @@ class ForumAdminController extends BaseController
         $this->logActivity('update', 'forum_thread', (int)$id, 'Admin edited title: ' . $newTitle);
 
         Auth::flash('success', 'Thread title updated.');
-        $this->redirect('/forum/thread/' . (int)$id);
+        $this->redirect($this->publicThreadPath((int) $id));
     }
 
     // ── Admin: edit any post ──────────────────────────────────────
@@ -186,7 +189,7 @@ class ForumAdminController extends BaseController
         $post = $this->db->fetch(
             'SELECT p.*, t.title AS thread_title, t.category_id FROM forum_posts p
              JOIN forum_threads t ON t.id = p.thread_id WHERE p.id = ? LIMIT 1',
-            [$postId]
+            [(int) $id]
         );
 
         if (!$post) {
@@ -197,6 +200,7 @@ class ForumAdminController extends BaseController
         $this->renderAdmin('admin/forum/edit-post', [
             'title'       => 'Edit Post',
             'post'        => $post,
+            'forumBasePath' => $this->forumBasePath(),
             'breadcrumbs' => [['Admin', '/admin'], ['Forum', '/admin/forum'], ['Edit Post']],
         ]);
     }
@@ -205,7 +209,7 @@ class ForumAdminController extends BaseController
     {
         Auth::requireAdmin();
 
-        $post = $this->db->fetch('SELECT id, thread_id FROM forum_posts WHERE id = ? LIMIT 1', [$postId]);
+        $post = $this->db->fetch('SELECT id, thread_id FROM forum_posts WHERE id = ? LIMIT 1', [(int) $id]);
         if (!$post) {
             Auth::flash('error', 'Post not found.');
             $this->redirect('/admin/forum');
@@ -224,7 +228,7 @@ class ForumAdminController extends BaseController
 
         $this->logActivity('update', 'forum_post', (int)$id, 'Admin edited post #' . (int)$id);
         Auth::flash('success', 'Post updated.');
-        $this->redirect('/forum/thread/' . (int)$post['thread_id'] . '#post-' . (int)$id);
+        $this->redirect($this->publicThreadPath((int) $post['thread_id']) . '#post-' . (int) $id);
     }
 
     // ── Admin: delete any post ────────────────────────────────────
@@ -233,7 +237,7 @@ class ForumAdminController extends BaseController
     {
         Auth::requireAdmin();
 
-        $post = $this->db->fetch('SELECT id, thread_id FROM forum_posts WHERE id = ? LIMIT 1', [$postId]);
+        $post = $this->db->fetch('SELECT id, thread_id FROM forum_posts WHERE id = ? LIMIT 1', [(int) $id]);
         if (!$post) {
             Auth::flash('error', 'Post not found.');
             $this->redirect('/admin/forum');
@@ -246,7 +250,7 @@ class ForumAdminController extends BaseController
 
         $this->logActivity('delete', 'forum_post', (int)$id, 'Admin deleted post #' . (int)$id);
         Auth::flash('success', 'Post deleted.');
-        $this->redirect('/forum/thread/' . (int)$post['thread_id']);
+        $this->redirect($this->publicThreadPath((int) $post['thread_id']));
     }
 
     // ── Admin: move thread ────────────────────────────────────────
@@ -269,6 +273,7 @@ class ForumAdminController extends BaseController
             'title'       => 'Move Thread',
             'thread'      => $thread,
             'categories'  => $categories,
+            'forumBasePath' => $this->forumBasePath(),
             'breadcrumbs' => [['Admin', '/admin'], ['Forum', '/admin/forum'], ['Move Thread']],
         ]);
     }
@@ -302,7 +307,7 @@ class ForumAdminController extends BaseController
 
         $this->logActivity('update', 'forum_thread', (int)$thread['id'], 'Moved thread: ' . $thread['title']);
         Auth::flash('success', 'Thread moved.');
-        $this->redirect('/forum/thread/' . (int)$id);
+        $this->redirect($this->publicThreadPath((int) $id));
     }
 
     // ── Admin: post reports ───────────────────────────────────────
@@ -334,6 +339,7 @@ class ForumAdminController extends BaseController
             'title'       => 'Post Reports',
             'reports'     => $reports,
             'status'      => $status,
+            'forumBasePath' => $this->forumBasePath(),
             'breadcrumbs' => [['Admin', '/admin'], ['Forum', '/admin/forum'], ['Post Reports']],
         ]);
     }
@@ -342,7 +348,7 @@ class ForumAdminController extends BaseController
     {
         Auth::requireAdmin();
 
-        $report = $this->db->fetch('SELECT id FROM forum_post_reports WHERE id = ? LIMIT 1', [$reportId]);
+        $report = $this->db->fetch('SELECT id FROM forum_post_reports WHERE id = ? LIMIT 1', [(int) $id]);
         if (!$report) {
             Auth::flash('error', 'Report not found.');
             $this->redirect('/admin/forum/reports');
@@ -374,5 +380,20 @@ class ForumAdminController extends BaseController
         }
 
         return '/admin/forum';
+    }
+
+    private function forumBasePath(): string
+    {
+        return ForumController::publicBasePath($this->db);
+    }
+
+    private function publicThreadPath(int $threadId): string
+    {
+        $basePath = $this->forumBasePath();
+        if ($basePath === '') {
+            return '/';
+        }
+
+        return rtrim($basePath, '/') . '/thread/' . $threadId;
     }
 }

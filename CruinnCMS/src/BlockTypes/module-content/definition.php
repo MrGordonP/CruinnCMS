@@ -46,6 +46,11 @@ BlockRegistry::register([
             $settings['profile_id'] = $blogProfileId;
         }
 
+        $eventProfileId = (int) ($config['event_profile_id'] ?? 0);
+        if ($eventProfileId > 0) {
+            $settings['event_profile_id'] = $eventProfileId;
+        }
+
         $html = ModuleRegistry::renderContentByKey($providerKey, $settings, $context);
         if ($html === '') {
             return '<p class="cruinn-module-content-empty">Module content not found: '

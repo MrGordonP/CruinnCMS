@@ -1,16 +1,19 @@
+<?php $forumBasePath = trim((string) ($forum_base_path ?? '')); ?>
+<?php $forumActionBasePath = trim((string) ($forum_action_base_path ?? '/forum')); ?>
+
 <section class="container forum-page">
     <header class="forum-header">
         <nav class="forum-breadcrumbs">
-            <a href="<?= url('/forum') ?>">Forum</a>
+            <a href="<?= e($forumBasePath) ?>">Forum</a>
             <?php foreach ($breadcrumbs as $crumb): ?>
                 <span class="sep">›</span>
-                <a href="<?= url('/forum/' . $crumb['slug']) ?>"><?= e($crumb['title']) ?></a>
+                <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($crumb['slug'] ?? ''), '/')) ?>"><?= e($crumb['title']) ?></a>
             <?php endforeach; ?>
         </nav>
         <h1>New Thread</h1>
     </header>
 
-    <form method="post" action="<?= url('/forum/' . $category['slug'] . '/new') ?>" class="form-register forum-thread-form">
+    <form method="post" action="<?= e($forumActionBasePath . '/' . ltrim((string) ($category['slug'] ?? ''), '/') . '/new') ?>" class="form-register forum-thread-form">
         <?= csrf_field() ?>
 
         <div class="form-group">
@@ -27,7 +30,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Create Thread</button>
-            <a href="<?= url('/forum/' . $category['slug']) ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </section>

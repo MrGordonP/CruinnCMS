@@ -1,3 +1,6 @@
+<?php $forumBasePath = trim((string) ($forum_base_path ?? '')); ?>
+<?php $forumActionBasePath = trim((string) ($forum_action_base_path ?? '/forum')); ?>
+
 <section class="container forum-page">
     <header class="forum-header">
         <h1>Report Post</h1>
@@ -10,7 +13,7 @@
         </div>
     </div>
 
-    <form method="post" action="<?= url('/forum/post/' . (int)$post['id'] . '/report') ?>" class="forum-report-form">
+    <form method="post" action="<?= e($forumActionBasePath . '/post/' . (int) $post['id'] . '/report') ?>" class="forum-report-form">
         <?= csrf_field() ?>
 
         <div class="form-group">
@@ -32,7 +35,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Submit Report</button>
-            <a href="<?= url('/forum/thread/' . (int)$post['thread_id']) ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $post['thread_id']) ?>" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </section>

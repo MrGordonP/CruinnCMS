@@ -1,4 +1,31 @@
+<?php $eventBasePath = trim((string) ($event_base_path ?? '')); ?>
+<?php $returnToListUrl = trim((string) ($return_to_list_url ?? $eventBasePath)); ?>
+<?php $registerUrl = trim((string) ($register_url ?? '')); ?>
+
 <div class="container">
+    <?php if (!empty($show_return_to_list) && $returnToListUrl !== ''): ?>
+    <nav class="event-post-return event-post-return-top" aria-label="Return to events list">
+        <a href="<?= e($returnToListUrl) ?>">&larr; Return to events list</a>
+    </nav>
+    <?php endif; ?>
+
+    <?php if (!empty($show_event_navigation) && (!empty($previous_event) || !empty($next_event))): ?>
+    <nav class="blog-post-nav blog-post-nav-top" aria-label="Event navigation">
+        <?php if (!empty($previous_event)): ?>
+        <a href="<?= e($previous_event['public_url'] ?? '#') ?>" class="blog-post-nav-link blog-post-nav-link-prev">
+            <span class="blog-post-nav-label">&laquo;&laquo; Earlier event</span>
+            <strong class="blog-post-nav-title"><?= e($previous_event['title'] ?? '') ?></strong>
+        </a>
+        <?php endif; ?>
+        <?php if (!empty($next_event)): ?>
+        <a href="<?= e($next_event['public_url'] ?? '#') ?>" class="blog-post-nav-link blog-post-nav-link-next">
+            <span class="blog-post-nav-label">Later event &raquo;&raquo;</span>
+            <strong class="blog-post-nav-title"><?= e($next_event['title'] ?? '') ?></strong>
+        </a>
+        <?php endif; ?>
+    </nav>
+    <?php endif; ?>
+
     <article class="event-detail">
         <header class="event-header">
             <p class="event-type-badge"><?= e(ucfirst($event['event_type'])) ?></p>
@@ -52,17 +79,43 @@
             <div class="event-registered-notice">
                 <strong>&#10003; You are registered</strong>
             </div>
-            <?php elseif (!empty($canRegister)): ?>
-            <a href="/events/<?= e($event['slug']) ?>/register" class="btn btn-primary btn-block">Register</a>
+            <?php elseif (!empty($canRegister) && $registerUrl !== ''): ?>
+            <a href="<?= e($registerUrl) ?>" class="btn btn-primary btn-block">Register</a>
             <?php elseif ($spotsRemaining !== null && $spotsRemaining <= 0): ?>
             <p class="event-full">This event is fully booked.</p>
             <?php else: ?>
             <p class="event-closed">Registration is closed.</p>
+            <?php endif; ?>
+
+            <?php if (!empty($relatedArticle)): ?>
+            <div class="event-related-article">
+                <strong>Related post:</strong>
+                <a href="<?= e('/blog/' . ($relatedArticle['slug'] ?? '')) ?>"><?= e($relatedArticle['title'] ?? 'Read more') ?></a>
+            </div>
             <?php endif; ?>
         </aside>
 
         <?php include __DIR__ . '/../../components/share.php'; ?>
     </article>
 
-    <p><a href="/events">&larr; Back to events</a></p>
+    <?php if (!empty($show_event_navigation) && (!empty($previous_event) || !empty($next_event))): ?>
+    <nav class="blog-post-nav" aria-label="Event navigation">
+        <?php if (!empty($previous_event)): ?>
+        <a href="<?= e($previous_event['public_url'] ?? '#') ?>" class="blog-post-nav-link blog-post-nav-link-prev">
+            <span class="blog-post-nav-label">&laquo;&laquo; Earlier event</span>
+            <strong class="blog-post-nav-title"><?= e($previous_event['title'] ?? '') ?></strong>
+        </a>
+        <?php endif; ?>
+        <?php if (!empty($next_event)): ?>
+        <a href="<?= e($next_event['public_url'] ?? '#') ?>" class="blog-post-nav-link blog-post-nav-link-next">
+            <span class="blog-post-nav-label">Later event &raquo;&raquo;</span>
+            <strong class="blog-post-nav-title"><?= e($next_event['title'] ?? '') ?></strong>
+        </a>
+        <?php endif; ?>
+    </nav>
+    <?php endif; ?>
+
+    <?php if (!empty($show_return_to_list) && $returnToListUrl !== ''): ?>
+    <p><a href="<?= e($returnToListUrl) ?>">&larr; Back to events</a></p>
+    <?php endif; ?>
 </div>

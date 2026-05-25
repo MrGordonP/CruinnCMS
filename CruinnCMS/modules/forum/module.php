@@ -25,20 +25,12 @@ return [
     ],
 
     'routes' => static function (object $router): void {
-        // Public forum routes
-        $router->get('/forum',                          [ForumController::class, 'index']);
-        $router->get('/forum/search',                   [ForumController::class, 'search']);
-        $router->get('/forum/{slug}',                   [ForumController::class, 'category']);
-        $router->get('/forum/{slug}/new',               [ForumController::class, 'newThreadForm']);
+        // Public forum action routes
         $router->post('/forum/{slug}/new',              [ForumController::class, 'createThread']);
-        $router->get('/forum/thread/{id}',              [ForumController::class, 'thread']);
         $router->post('/forum/thread/{id}/reply',       [ForumController::class, 'reply']);
-        $router->get('/forum/thread/{id}/edit-title',   [ForumController::class, 'editThreadTitleForm']);
         $router->post('/forum/thread/{id}/edit-title',  [ForumController::class, 'updateThreadTitle']);
-        $router->get('/forum/post/{id}/edit',           [ForumController::class, 'editPostForm']);
         $router->post('/forum/post/{id}/edit',          [ForumController::class, 'updatePost']);
         $router->post('/forum/post/{id}/delete',        [ForumController::class, 'deletePost']);
-        $router->get('/forum/post/{id}/report',         [ForumController::class, 'reportPostForm']);
         $router->post('/forum/post/{id}/report',        [ForumController::class, 'reportPost']);
 
         // Admin forum moderation routes
@@ -75,11 +67,28 @@ return [
             'default' => 'native',
             'options' => ['native' => 'Native (built-in)'],
         ],
+        [
+            'key'     => 'forum_list_page_id',
+            'type'    => 'select',
+            'label'   => 'Forum Shell Page',
+            'hint'    => 'Published content page that owns the public forum path.',
+            'default' => '',
+            'options' => ['' => '— Select page —'],
+        ],
     ],
 
     'provides' => ['forum'],
 
-    'public_routes' => [
-        ['route' => '/forum', 'label' => 'Forum'],
+    'public_routes' => [],
+
+    'public_path_resolver' => ForumController::class . '::resolvePublicPath',
+
+    'content_providers' => [
+        [
+            'slug'     => 'content',
+            'title'    => 'Forum Content',
+            'provider' => ForumController::class . '::contentProviderForumContent',
+            'template' => 'public/forum/module-content/content',
+        ],
     ],
 ];

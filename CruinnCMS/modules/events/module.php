@@ -16,7 +16,16 @@ return [
 
     'routes' => function (Router $router): void {
         // Admin
-        $router->get('/admin/events',                 [EventController::class, 'adminList']);
+        $router->get('/admin/events',                 [EventController::class, 'dashboard']);
+        $router->get('/admin/events/settings',        [EventController::class, 'settings']);
+        $router->post('/admin/events/settings',       [EventController::class, 'saveSettings']);
+        $router->get('/admin/events/profiles',        [EventController::class, 'profiles']);
+        $router->get('/admin/events/profiles/new',    [EventController::class, 'profileNew']);
+        $router->post('/admin/events/profiles',       [EventController::class, 'profileCreate']);
+        $router->get('/admin/events/profiles/{id}/edit', [EventController::class, 'profileEdit']);
+        $router->post('/admin/events/profiles/{id}',  [EventController::class, 'profileUpdate']);
+        $router->post('/admin/events/profiles/{id}/delete', [EventController::class, 'profileDelete']);
+        $router->get('/admin/events/list',            [EventController::class, 'adminList']);
         $router->get('/admin/events/new',             [EventController::class, 'adminNew']);
         $router->post('/admin/events',                [EventController::class, 'adminCreate']);
         $router->get('/admin/events/{id}',            [EventController::class, 'adminShow']);
@@ -26,19 +35,13 @@ return [
         $router->get('/admin/events/{id}/export',     [EventController::class, 'adminExportRegistrations']);
         $router->post('/admin/events/{id}/registrations/{regId}/cancel',  [EventController::class, 'adminCancelRegistration']);
         $router->post('/admin/events/{id}/registrations/{regId}/payment', [EventController::class, 'adminMarkPaid']);
-
-        // Public
-        $router->get('/events',                      [EventController::class, 'index']);
-        $router->get('/events/{slug}',               [EventController::class, 'show']);
-        $router->get('/events/{slug}/register',      [EventController::class, 'showRegisterForm']);
-        $router->post('/events/{slug}/register',     [EventController::class, 'register']);
-        $router->get('/events/{slug}/cancel/{token}',[EventController::class, 'cancelRegistration']);
     },
 
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
         __DIR__ . '/migrations/002_external_form_url.sql',
         __DIR__ . '/migrations/003_related_article_id.sql',
+        __DIR__ . '/migrations/004_event_profiles.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
@@ -53,13 +56,35 @@ return [
 
     'provides' => ['events'],
 
-    'public_routes' => [
-        ['route' => '/events', 'label' => 'Events'],
+    'public_routes' => [],
+
+    'public_path_resolver' => EventController::class . '::resolvePublicPath',
+
+    'content_providers' => [
+        [
+            'slug'     => 'list',
+            'title'    => 'Events List',
+            'provider' => EventController::class . '::contentProviderEventsList',
+            'template' => 'public/events/module-content/list',
+        ],
+        [
+            'slug'     => 'content',
+            'title'    => 'Events Content',
+            'provider' => EventController::class . '::contentProviderEventsContent',
+            'template' => 'public/events/module-content/content',
+        ],
+        [
+            'slug'     => 'detail',
+            'title'    => 'Event Detail',
+            'provider' => EventController::class . '::contentProviderEventDetail',
+            'template' => 'public/events/module-content/detail',
+        ],
     ],
 
     'widgets' => function (): array {
         try {
             $db = \Cruinn\Database::getInstance();
+            $eventsBasePath = EventController::publicBasePath($db);
 
             // ── Upcoming Events widget ─────────────────────────────────────
             $upcoming = $db->fetchAll(
@@ -78,16 +103,24 @@ return [
                 foreach ($upcoming as $ev) {
                     $date  = date('j M Y', strtotime($ev['date_start']));
                     $title = htmlspecialchars($ev['title'], ENT_QUOTES, 'UTF-8');
-                    $slug  = htmlspecialchars($ev['slug'],  ENT_QUOTES, 'UTF-8');
                     $loc   = $ev['location'] ? ' <span class="widget-event-loc">' . htmlspecialchars($ev['location'], ENT_QUOTES, 'UTF-8') . '</span>' : '';
+                    $publicUrl = $eventsBasePath !== ''
+                        ? htmlspecialchars(rtrim($eventsBasePath, '/') . '/' . ltrim((string) ($ev['slug'] ?? ''), '/'), ENT_QUOTES, 'UTF-8')
+                        : '';
+                    $titleHtml = $publicUrl !== ''
+                        ? '<a href="' . $publicUrl . '" class="widget-event-title">' . $title . '</a>'
+                        : '<span class="widget-event-title">' . $title . '</span>';
                     $eventsHtml .= "<li class=\"widget-event-item\">"
                         . "<time class=\"widget-event-date\">{$date}</time>"
-                        . "<a href=\"/events/{$slug}\" class=\"widget-event-title\">{$title}</a>"
+                        . $titleHtml
                         . $loc
                         . "</li>";
                 }
             }
-            $eventsHtml .= '</ul><a href="/events" class="widget-more">All events &rarr;</a>';
+            $eventsHtml .= '</ul>';
+            if ($eventsBasePath !== '') {
+                $eventsHtml .= '<a href="' . htmlspecialchars($eventsBasePath, ENT_QUOTES, 'UTF-8') . '" class="widget-more">All events &rarr;</a>';
+            }
 
             // ── Mini Calendar widget ───────────────────────────────────────
             $year  = (int) date('Y');

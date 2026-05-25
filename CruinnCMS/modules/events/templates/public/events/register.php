@@ -1,3 +1,7 @@
+<?php $eventBasePath = trim((string) ($event_base_path ?? '')); ?>
+<?php $eventPublicUrl = (string) ($event['public_url'] ?? ($eventBasePath !== '' ? rtrim($eventBasePath, '/') . '/' . ltrim((string) ($event['slug'] ?? ''), '/') : '/')); ?>
+<?php $registerUrl = trim((string) ($register_url ?? '')); ?>
+
 <div class="container">
     <div class="register-page">
         <h1>Register for <?= e($event['title']) ?></h1>
@@ -16,7 +20,7 @@
             <?php endif; ?>
         </div>
 
-        <form method="post" action="/events/<?= e($event['slug']) ?>/register" class="register-form">
+        <form method="post" action="<?= e($registerUrl !== '' ? $registerUrl : '#') ?>" class="register-form">
             <?= csrf_field() ?>
 
             <div class="register-details-block">
@@ -61,7 +65,7 @@
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Confirm Registration</button>
-                <a href="/events/<?= e($event['slug']) ?>" class="btn btn-outline">Cancel</a>
+                <a href="<?= e($eventPublicUrl) ?>" class="btn btn-outline">Cancel</a>
             </div>
         </form>
     </div>

@@ -1,3 +1,5 @@
+<?php $forumBasePath = trim((string) ($forumBasePath ?? '')); ?>
+
 <div class="admin-page">
     <header class="admin-page-header">
         <h1>Move Thread</h1>
@@ -20,7 +22,7 @@
         </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Move Thread</button>
-            <a href="<?= url('/forum/thread/' . (int)$thread['id']) ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= e($forumBasePath !== '' ? rtrim($forumBasePath, '/') . '/thread/' . (int) $thread['id'] : '/admin/forum') ?>" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </div>

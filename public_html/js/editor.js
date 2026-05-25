@@ -54,6 +54,10 @@
         try { return JSON.parse(wrap.dataset.blogProfiles || '[]'); } catch (e) { return []; }
     }());
 
+    var EVENT_PROFILES = (function () {
+        try { return JSON.parse(wrap.dataset.eventProfiles || '[]'); } catch (e) { return []; }
+    }());
+
     var inlineFocusOverlay = null;
     var inlineFocusFrame = null;
     var inlineFocusTitle = null;
@@ -561,16 +565,20 @@
         var type = block.dataset.blockType;
         var cs = getComputedStyle(block); // computed styles for reading actual CSS values
 
-        function usesBlogContentMode(providerKey) {
-            return (providerKey || '').toString() === 'blog:content';
+        function usesCombinedContentMode(providerKey) {
+            return ['blog:content', 'events:content'].indexOf((providerKey || '').toString()) !== -1;
         }
 
-        function usesBlogPerPage(providerKey) {
-            return ['blog:list', 'blog:content'].indexOf((providerKey || '').toString()) !== -1;
+        function usesPagedContent(providerKey) {
+            return ['blog:list', 'blog:content', 'events:list', 'events:content'].indexOf((providerKey || '').toString()) !== -1;
         }
 
         function usesBlogProfile(providerKey) {
             return ['blog:list', 'blog:content', 'blog:post'].indexOf((providerKey || '').toString()) !== -1;
+        }
+
+        function usesEventProfile(providerKey) {
+            return ['events:list', 'events:content', 'events:detail'].indexOf((providerKey || '').toString()) !== -1;
         }
 
         // Show/hide groups
@@ -595,7 +603,6 @@
             var parentBlockEl = block.parentElement ? block.parentElement.closest('[data-block]') : null;
             var isRootBlock = !parentBlockEl;
             if (TEMPLATE_ZONES.length > 0 && isRootBlock && ZONE_TYPES.indexOf(type) === -1) {
-                // Populate options
                 zoneAssignSel.innerHTML = '';
                 TEMPLATE_ZONES.forEach(function (zn) {
                     var opt = document.createElement('option');
@@ -603,7 +610,6 @@
                     opt.textContent = zn;
                     zoneAssignSel.appendChild(opt);
                 });
-                // Read current zone_name from block_config
                 var bCfg = {};
                 try { bCfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
                 zoneAssignSel.value = bCfg.zone_name || PAGE_ZONE || TEMPLATE_ZONES[0] || 'main';
@@ -897,6 +903,8 @@
             var mcPerPageInp = document.getElementById('prop-module-content-per-page');
             var mcBlogProfileRow = document.getElementById('prop-module-content-blog-profile-row');
             var mcBlogProfileSel = document.getElementById('prop-module-content-blog-profile');
+            var mcEventProfileRow = document.getElementById('prop-module-content-event-profile-row');
+            var mcEventProfileSel = document.getElementById('prop-module-content-event-profile');
             var mcSettings = document.getElementById('prop-module-content-settings');
             if (mcSel) {
                 var selectedProvider = (config.provider_key || '').toString();
@@ -917,13 +925,16 @@
                 }
                 mcSel.value = selectedProvider;
                 if (mcModeRow) {
-                    mcModeRow.style.display = usesBlogContentMode(selectedProvider) ? '' : 'none';
+                    mcModeRow.style.display = usesCombinedContentMode(selectedProvider) ? '' : 'none';
                 }
                 if (mcPerPageRow) {
-                    mcPerPageRow.style.display = usesBlogPerPage(selectedProvider) ? '' : 'none';
+                    mcPerPageRow.style.display = usesPagedContent(selectedProvider) ? '' : 'none';
                 }
                 if (mcBlogProfileRow) {
                     mcBlogProfileRow.style.display = usesBlogProfile(selectedProvider) ? '' : 'none';
+                }
+                if (mcEventProfileRow) {
+                    mcEventProfileRow.style.display = usesEventProfile(selectedProvider) ? '' : 'none';
                 }
             }
             if (mcModeSel) {
@@ -950,6 +961,25 @@
                     mcBlogProfileSel.appendChild(staleProfile);
                 }
                 mcBlogProfileSel.value = selectedProfile;
+            }
+            if (mcEventProfileSel) {
+                var selectedEventProfile = (config.event_profile_id || '').toString();
+                mcEventProfileSel.innerHTML = '<option value="">- None -</option>';
+                EVENT_PROFILES.forEach(function (profile) {
+                    var profileId = (profile.id || '').toString();
+                    if (!profileId) { return; }
+                    var opt = document.createElement('option');
+                    opt.value = profileId;
+                    opt.textContent = profile.name || ('Profile ' + profileId);
+                    mcEventProfileSel.appendChild(opt);
+                });
+                if (selectedEventProfile && !Array.from(mcEventProfileSel.options).some(function (o) { return o.value === selectedEventProfile; })) {
+                    var staleEventProfile = document.createElement('option');
+                    staleEventProfile.value = selectedEventProfile;
+                    staleEventProfile.textContent = '(missing) Profile ' + selectedEventProfile;
+                    mcEventProfileSel.appendChild(staleEventProfile);
+                }
+                mcEventProfileSel.value = selectedEventProfile;
             }
             if (mcSettings) {
                 mcSettings.value = (config.settings_json || '').toString();
@@ -1249,15 +1279,19 @@
                     var modeRow = document.getElementById('prop-module-content-mode-row');
                     var perPageRow = document.getElementById('prop-module-content-per-page-row');
                     var blogProfileRow = document.getElementById('prop-module-content-blog-profile-row');
+                    var eventProfileRow = document.getElementById('prop-module-content-event-profile-row');
                     writeConfig(block, 'provider_key', inp.value);
                     if (modeRow) {
-                        modeRow.style.display = inp.value === 'blog:content' ? '' : 'none';
+                        modeRow.style.display = (inp.value === 'blog:content' || inp.value === 'events:content') ? '' : 'none';
                     }
                     if (perPageRow) {
-                        perPageRow.style.display = (inp.value === 'blog:list' || inp.value === 'blog:content') ? '' : 'none';
+                        perPageRow.style.display = (inp.value === 'blog:list' || inp.value === 'blog:content' || inp.value === 'events:list' || inp.value === 'events:content') ? '' : 'none';
                     }
                     if (blogProfileRow) {
                         blogProfileRow.style.display = (inp.value === 'blog:list' || inp.value === 'blog:content' || inp.value === 'blog:post') ? '' : 'none';
+                    }
+                    if (eventProfileRow) {
+                        eventProfileRow.style.display = (inp.value === 'events:list' || inp.value === 'events:content' || inp.value === 'events:detail') ? '' : 'none';
                     }
                     refreshModuleContentPreview(block);
                 };
@@ -1277,6 +1311,12 @@
             if (inp.tagName === 'SELECT' && inp.dataset.config === 'blog_profile_id' && block.dataset.blockType === 'module-content') {
                 inp.onchange = function () {
                     writeConfig(block, 'blog_profile_id', inp.value);
+                    refreshModuleContentPreview(block);
+                };
+            }
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'event_profile_id' && block.dataset.blockType === 'module-content') {
+                inp.onchange = function () {
+                    writeConfig(block, 'event_profile_id', inp.value);
                     refreshModuleContentPreview(block);
                 };
             }
@@ -1924,8 +1964,12 @@
             var hitProfile = BLOG_PROFILES.find(function (p) { return String(p.id || '') === String(cfg.blog_profile_id || ''); });
             profileLabel = hitProfile ? (' - Profile: ' + (hitProfile.name || hitProfile.slug || cfg.blog_profile_id)) : (' - Profile #' + cfg.blog_profile_id);
         }
+        if (cfg.event_profile_id) {
+            var hitEventProfile = EVENT_PROFILES.find(function (p) { return String(p.id || '') === String(cfg.event_profile_id || ''); });
+            profileLabel += hitEventProfile ? (' - Events Profile: ' + (hitEventProfile.name || hitEventProfile.slug || cfg.event_profile_id)) : (' - Events Profile #' + cfg.event_profile_id);
+        }
         var label = 'Module Content: ' + (hit.module || 'module') + ' - ' + (hit.title || key);
-        if (key === 'blog:content') {
+        if (key === 'blog:content' || key === 'events:content') {
             label += ' (' + mode + ')';
         }
         label += profileLabel;
@@ -2012,7 +2056,7 @@
         'event-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Event list G�� visible on live page.</p>', dynamic: true, defaultConfig: { count: 5, filter: 'upcoming' }, initCss: PORTRAIT_INIT },
         'data-list': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Data List G�� visible on live page.</p>', dynamic: true, defaultConfig: { set_slug: '', view: 'continuous', card_html: '' }, initCss: PORTRAIT_INIT },
         'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget G�� select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
-        'module-content': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Content - select provider in Content settings.</p>', dynamic: true, defaultConfig: { provider_key: '', display_mode: 'both', per_page: 10, blog_profile_id: '', settings_json: '' }, initCss: PORTRAIT_INIT },
+        'module-content': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Content - select provider in Content settings.</p>', dynamic: true, defaultConfig: { provider_key: '', display_mode: 'both', per_page: 10, blog_profile_id: '', event_profile_id: '', settings_json: '' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include G�� visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },

@@ -32,6 +32,15 @@ class CruinnController extends BaseController
         }
     }
 
+    private function loadEventProfiles(): array
+    {
+        try {
+            return $this->db->fetchAll('SELECT id, name, slug FROM event_profiles ORDER BY name ASC');
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     /**
      * Accept either instance admin auth or platform auth for editor AJAX.
      * Platform editor routes share the same controller methods.
@@ -177,6 +186,7 @@ class CruinnController extends BaseController
             $moduleWidgets = [];
         }
         $blogProfiles = $this->loadBlogProfiles();
+        $eventProfiles = $this->loadEventProfiles();
 
         $allTemplates = $this->db->fetchAll(
             'SELECT id, slug, name FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
@@ -198,6 +208,7 @@ class CruinnController extends BaseController
             'contentSets'     => $openEditorContentSets,
             'moduleWidgets'   => $moduleWidgets,
             'blogProfiles'    => $blogProfiles,
+            'eventProfiles'   => $eventProfiles,
             'templates'       => $allTemplates,
             'isZonePage'      => false,
             'zoneName'        => null,
@@ -383,6 +394,7 @@ class CruinnController extends BaseController
             $moduleWidgets = [];
         }
         $blogProfiles = $this->loadBlogProfiles();
+        $eventProfiles = $this->loadEventProfiles();
 
         // Detect zone and template-shell canvas pages via canvas_type column.
         // Fall back to slug prefix convention for instances that haven't run migration 011 yet.
@@ -692,6 +704,7 @@ class CruinnController extends BaseController
             'contentTemplates'  => $contentTemplates,
             'moduleWidgets'     => $moduleWidgets,
             'blogProfiles'      => $blogProfiles,
+            'eventProfiles'     => $eventProfiles,
             'templates'         => $allTemplates,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
@@ -1001,6 +1014,7 @@ class CruinnController extends BaseController
             $moduleWidgets = [];
         }
         $blogProfiles = $this->loadBlogProfiles();
+        $eventProfiles = $this->loadEventProfiles();
         try {
             $navArticles = $this->db->fetchAll('SELECT id, title, slug FROM articles ORDER BY updated_at DESC LIMIT 100');
         } catch (\Throwable $e) {
@@ -1034,6 +1048,7 @@ class CruinnController extends BaseController
             'contentTemplates'    => $contentTemplates,
             'moduleWidgets'       => $moduleWidgets,
             'blogProfiles'        => $blogProfiles,
+            'eventProfiles'       => $eventProfiles,
             'templates'           => $allTemplates,
             'isZonePage'          => false,
             'zoneName'            => null,
@@ -1998,6 +2013,26 @@ class CruinnController extends BaseController
                 ['key' => 'articles',   'label' => 'Articles (list)',  'type' => 'collection'],
                 ['key' => 'page',       'label' => 'Current Page',     'type' => 'number'],
                 ['key' => 'totalPages', 'label' => 'Total Pages',      'type' => 'number'],
+            ],
+            'events.detail' => [
+                ['key' => 'title',              'label' => 'Event Title',         'type' => 'text'],
+                ['key' => 'description',        'label' => 'Description',         'type' => 'html'],
+                ['key' => 'location',           'label' => 'Location',            'type' => 'text'],
+                ['key' => 'date_start',         'label' => 'Start Date',          'type' => 'date'],
+                ['key' => 'date_end',           'label' => 'End Date',            'type' => 'date'],
+                ['key' => 'event_type',         'label' => 'Event Type',          'type' => 'text'],
+                ['key' => 'price',              'label' => 'Price',               'type' => 'number'],
+                ['key' => 'currency',           'label' => 'Currency',            'type' => 'text'],
+                ['key' => 'capacity',           'label' => 'Capacity',            'type' => 'number'],
+                ['key' => 'registrationCount',  'label' => 'Registrations',       'type' => 'number'],
+                ['key' => 'spotsRemaining',     'label' => 'Spots Remaining',     'type' => 'number'],
+                ['key' => 'slug',               'label' => 'Event Slug',          'type' => 'text'],
+            ],
+            'events.list' => [
+                ['key' => 'events',      'label' => 'Events (list)',      'type' => 'collection'],
+                ['key' => 'page',        'label' => 'Current Page',       'type' => 'number'],
+                ['key' => 'totalPages',  'label' => 'Total Pages',        'type' => 'number'],
+                ['key' => 'filter',      'label' => 'Current Filter',     'type' => 'text'],
             ],
         ];
 

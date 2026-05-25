@@ -1,7 +1,12 @@
+<?php $forumBasePath = trim((string) ($forum_base_path ?? '')); ?>
+<?php $forumSearchUrl = trim((string) ($forum_search_url ?? ($forumBasePath !== '' ? rtrim($forumBasePath, '/') . '/search' : ''))); ?>
+
 <section class="container forum-page">
     <header class="forum-header forum-header-row">
         <h1>Forum</h1>
-        <a class="btn btn-outline btn-small" href="<?= url('/forum/search') ?>">&#128269; Search</a>
+        <?php if ($forumSearchUrl !== ''): ?>
+        <a class="btn btn-outline btn-small" href="<?= e($forumSearchUrl) ?>">&#128269; Search</a>
+        <?php endif; ?>
     </header>
 
     <?php if (empty($categories)): ?>
@@ -12,7 +17,7 @@
                 <div class="forum-category-section">
                     <div class="forum-category-header">
                         <h2>
-                            <a href="<?= url('/forum/' . $category['slug']) ?>">
+                            <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>">
                                 <?= e($category['title']) ?>
                             </a>
                         </h2>
@@ -32,7 +37,7 @@
                                 </div>
                                 <div class="forum-info">
                                     <h3 class="forum-title">
-                                        <a href="<?= url('/forum/' . $category['slug']) ?>">
+                                        <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>">
                                             <?= e($category['title']) ?>
                                         </a>
                                     </h3>
@@ -52,7 +57,7 @@
                                     <?php if (!empty($category['last_post_at'])): ?>
                                         <div class="last-post-info">
                                             <?php if (!empty($category['last_thread_title'])): ?>
-                                                <a href="<?= url('/forum/thread/' . (int)$category['last_thread_id']) ?>" class="last-post-thread">
+                                                <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $category['last_thread_id']) ?>" class="last-post-thread">
                                                     <?= e($category['last_thread_title']) ?>
                                                 </a>
                                             <?php endif; ?>
@@ -79,7 +84,7 @@
                                     </div>
                                     <div class="forum-info">
                                         <h3 class="forum-title">
-                                            <a href="<?= url('/forum/' . $subforum['slug']) ?>">
+                                            <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($subforum['slug'] ?? ''), '/')) ?>">
                                                 <?= e($subforum['title']) ?>
                                             </a>
                                         </h3>
@@ -99,7 +104,7 @@
                                         <?php if (!empty($subforum['last_post_at'])): ?>
                                             <div class="last-post-info">
                                                 <?php if (!empty($subforum['last_thread_title'])): ?>
-                                                    <a href="<?= url('/forum/thread/' . (int)$subforum['last_thread_id']) ?>" class="last-post-thread">
+                                                    <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $subforum['last_thread_id']) ?>" class="last-post-thread">
                                                         <?= e($subforum['last_thread_title']) ?>
                                                     </a>
                                                 <?php endif; ?>

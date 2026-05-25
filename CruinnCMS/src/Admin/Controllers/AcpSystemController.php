@@ -734,7 +734,7 @@ class AcpSystemController extends BaseController
             $status   = $row['status']   ?? 'discovered';
             $settings = json_decode($row['settings'] ?? '{}', true) ?? [];
 
-            if ($slug === 'blog' && !empty($def['settings_schema'])) {
+            if (in_array($slug, ['blog', 'forum'], true) && !empty($def['settings_schema'])) {
                 $pageRows = $this->db->fetchAll(
                     "SELECT id, title, slug FROM pages_index WHERE canvas_type = 'content' ORDER BY title ASC"
                 );
@@ -744,7 +744,7 @@ class AcpSystemController extends BaseController
                 }
 
                 foreach ($def['settings_schema'] as &$field) {
-                    if (in_array((string) ($field['key'] ?? ''), ['blog_list_page_id', 'blog_post_page_id'], true)) {
+                    if (in_array((string) ($field['key'] ?? ''), ['blog_list_page_id', 'blog_post_page_id', 'forum_list_page_id'], true)) {
                         $field['type'] = 'select';
                         $field['options'] = $pageOptions;
                     }
