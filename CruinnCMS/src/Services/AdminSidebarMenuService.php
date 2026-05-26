@@ -51,77 +51,56 @@ class AdminSidebarMenuService
             ],
         ];
 
-        $moduleGroups = [];
-        $menuIndexByLabel = [];
-        foreach ($menu as $idx => $item) {
-            $menuIndexByLabel[(string) ($item['label'] ?? '')] = $idx;
-        }
-
-        $reservedGroups = [
-            'Content' => true,
-            'People' => true,
-            'Settings' => true,
-            'Site Builder' => true,
-        ];
-
-        foreach (ModuleRegistry::acpSections() as $section) {
-            $group = trim((string) ($section['group'] ?? ''));
-            $label = trim((string) ($section['label'] ?? ''));
-            $url = trim((string) ($section['url'] ?? ''));
-
-            if ($group === '' || $label === '' || $url === '') {
+        $moduleMenus = [];
+        foreach (ModuleRegistry::all() as $slug => $def) {
+            if (!ModuleRegistry::isActive((string) $slug)) {
                 continue;
             }
 
-            // Merge module links into existing core groups where applicable.
-            if (isset($menuIndexByLabel[$group]) && $group !== 'People' && $group !== 'Settings') {
-                $menuIdx = $menuIndexByLabel[$group];
+            $children = [];
+            foreach ((array) ($def['acp_sections'] ?? []) as $section) {
+                $label = trim((string) ($section['label'] ?? ''));
+                $url = trim((string) ($section['url'] ?? ''));
+                if ($label === '' || $url === '') {
+                    continue;
+                }
+
                 $exists = false;
-                foreach ($menu[$menuIdx]['children'] as $child) {
+                foreach ($children as $child) {
                     if ($child['url'] === $url) {
                         $exists = true;
                         break;
                     }
                 }
                 if (!$exists) {
-                    $menu[$menuIdx]['children'][] = [
+                    $children[] = [
                         'label' => $label,
                         'url' => $url,
                     ];
                 }
+            }
+
+            if (empty($children)) {
                 continue;
             }
 
-            if (isset($reservedGroups[$group])) {
-                continue;
+            $moduleLabel = trim((string) ($def['name'] ?? ''));
+            if ($moduleLabel === '') {
+                $moduleLabel = ucfirst((string) $slug);
             }
 
-            if (!isset($moduleGroups[$group])) {
-                $moduleGroups[$group] = [
-                    'label' => $group,
-                    'url' => $url,
-                    'children' => [],
-                ];
-            }
-
-            $exists = false;
-            foreach ($moduleGroups[$group]['children'] as $child) {
-                if ($child['url'] === $url) {
-                    $exists = true;
-                    break;
-                }
-            }
-            if (!$exists) {
-                $moduleGroups[$group]['children'][] = [
-                    'label' => $label,
-                    'url' => $url,
-                ];
-            }
+            $moduleMenus[] = [
+                'label' => $moduleLabel,
+                'url' => $children[0]['url'],
+                'children' => $children,
+            ];
         }
 
-        ksort($moduleGroups);
-        foreach ($moduleGroups as $group) {
-            $menu[] = $group;
+        usort($moduleMenus, static function (array $a, array $b): int {
+            return strcasecmp((string) ($a['label'] ?? ''), (string) ($b['label'] ?? ''));
+        });
+        foreach ($moduleMenus as $moduleMenu) {
+            $menu[] = $moduleMenu;
         }
 
         $peopleChildren = [
