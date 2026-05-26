@@ -44,6 +44,9 @@ Uploading a hero image via the media browser modal showed no feedback — the bu
 
 ## Platform / General
 
+### [PINNED] Named Blocks — dedicated management page still needed
+Current state: `/admin/blocks/named` is an API endpoint, not a full management UI. We need a proper ACP management page for listing, editing, deleting, and creating named blocks, and nav links should target that page rather than raw JSON routes.
+
 ### [PINNED] Reduce storage JSON usage (low QoL impact, high maintenance value)
 This is a large engine-level tidy-up rather than an urgent bug fix. Keep JSON where structure is genuinely variable (editor block configs/style payloads), but progressively move relational/business data out of JSON blobs into proper tables/columns.
 

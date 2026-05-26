@@ -16,13 +16,21 @@ use Cruinn\Services\HtmlImportService;
  */
 class AdminImportController extends \Cruinn\Controllers\BaseController
 {
-    private HtmlImportService $importer;
+    private ?HtmlImportService $importer = null;
     private Database $db;
 
     public function __construct()
     {
-        $this->importer = new HtmlImportService();
         $this->db       = Database::getInstance();
+    }
+
+    private function importer(): HtmlImportService
+    {
+        if ($this->importer === null) {
+            $this->importer = new HtmlImportService();
+        }
+
+        return $this->importer;
     }
 
     // ── Step 1: Upload form ───────────────────────────────────────
@@ -81,7 +89,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
         if ($ext === 'zip') {
             try {
-                $pages = $this->importer->parseZip($tmp);
+                $pages = $this->importer()->parseZip($tmp);
             } catch (\RuntimeException $e) {
                 $errors[] = $e->getMessage();
             }
@@ -159,7 +167,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
                 $pageId = $this->importAsCruinn($slug, $title, $content);
                 $imported[] = ['slug' => $slug, 'title' => $title, 'mode' => 'cruinn', 'id' => $pageId];
             } else {
-                $meta = $this->importer->importAsFile($content, $slug, $rootPub);
+                $meta = $this->importer()->importAsFile($content, $slug, $rootPub);
                 $pageId = $this->createPageRecord($meta['slug'], $meta['title'], 'file', $meta['file_path']);
                 $imported[] = ['slug' => $meta['slug'], 'title' => $meta['title'], 'mode' => 'file', 'id' => $pageId];
             }
@@ -179,7 +187,7 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
 
     private function importAsCruinn(string $slug, string $title, string $html): int
     {
-        $blocks = $this->importer->convertToCruinnBlocks($html);
+        $blocks = $this->importer()->convertToCruinnBlocks($html);
 
         $pageId = $this->createPageRecord($slug, $title, 'block', null);
 

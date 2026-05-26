@@ -20,6 +20,7 @@
     }
 
     var currentPath = window.location.pathname;
+    var currentQuery = window.location.search || '';
     document.querySelectorAll('.admin-sidebar-group').forEach(function (group) {
         var flyout = group.querySelector('.admin-sidebar-flyout');
         var parent = group.querySelector('.admin-sidebar-parent');
@@ -29,7 +30,23 @@
         var links = flyout.querySelectorAll('a[href]');
         var shouldOpen = Array.from(links).some(function (link) {
             var href = link.getAttribute('href');
-            return currentPath === href || currentPath.startsWith(href + '/');
+            if (!href) return false;
+
+            // Normalize link URLs so query-string tabs (e.g. ?panel=...) are matched.
+            try {
+                var parsed = new URL(href, window.location.origin);
+                if (parsed.pathname !== currentPath && !currentPath.startsWith(parsed.pathname + '/')) {
+                    return false;
+                }
+
+                if (!parsed.search) {
+                    return true;
+                }
+
+                return parsed.search === currentQuery;
+            } catch (e) {
+                return currentPath === href || currentPath.startsWith(href + '/');
+            }
         });
 
         if (shouldOpen) {
