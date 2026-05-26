@@ -796,6 +796,8 @@
         if (typeInput) { typeInput.value = type || ''; }
         var classInput = panel.querySelector('[data-prop-class]');
         if (classInput) { classInput.value = block.className.replace(/\b(active|collapsed)\b/g, '').replace(/\s+/g, ' ').trim(); }
+        var anchorHrefRow = document.getElementById('prop-anchor-href-row');
+        var anchorHrefInput = document.getElementById('prop-anchor-href');
 
         // Collapsed checkbox
         var collapsedCb = document.getElementById('prop-collapsed');
@@ -806,6 +808,16 @@
         try {
             config = JSON.parse(block.dataset.blockConfig || '{}');
         } catch (e) { /* ignore */ }
+
+        if (anchorHrefRow && anchorHrefInput) {
+            if (type === 'anchor') {
+                anchorHrefInput.value = (config.href || block.getAttribute('href') || '').toString();
+                anchorHrefRow.style.display = '';
+            } else {
+                anchorHrefInput.value = '';
+                anchorHrefRow.style.display = 'none';
+            }
+        }
 
         // Zone block naming: dropdown-first with optional custom value
         if (type === 'zone') {
@@ -1434,6 +1446,18 @@
                 };
             }
         });
+
+        if (anchorHrefInput && block.dataset.blockType === 'anchor') {
+            anchorHrefInput.oninput = function () {
+                var href = anchorHrefInput.value.trim();
+                writeConfig(block, 'href', href);
+                if (href) {
+                    block.setAttribute('href', href);
+                } else {
+                    block.removeAttribute('href');
+                }
+            };
+        }
 
         // Zone name selector (dropdown + optional custom): updates block_config.zone_name
         var zoneNameSel2 = document.getElementById('prop-zone-name');

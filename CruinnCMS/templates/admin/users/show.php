@@ -119,7 +119,7 @@
             </tr>
             <tr>
                 <th>Status</th>
-                <td><span class="badge badge-<?= e($member['status']) ?>"><?= e(ucfirst($member['status'])) ?></span></td>
+                <td><span class="badge badge-<?= e((string) ($member['status'] ?? 'unknown')) ?>"><?= e(ucfirst((string) ($member['status'] ?? 'unknown'))) ?></span></td>
             </tr>
         </table>
         <form method="post" action="/admin/users/<?= (int)$user['id'] ?>/unlink-member">
@@ -168,8 +168,8 @@
                 <?php foreach ($activity as $a): ?>
                 <tr>
                     <td><time datetime="<?= e($a['created_at']) ?>"><?= format_date($a['created_at'], 'j M H:i') ?></time></td>
-                    <td><span class="badge badge-<?= e($a['action']) ?>"><?= e(ucfirst($a['action'])) ?></span></td>
-                    <td><?= e(ucfirst($a['entity_type'])) ?> <?= $a['entity_id'] ? '#' . $a['entity_id'] : '' ?></td>
+                    <td><span class="badge badge-<?= e((string) ($a['action'] ?? 'unknown')) ?>"><?= e(ucfirst((string) ($a['action'] ?? 'unknown'))) ?></span></td>
+                    <td><?= e(ucfirst((string) ($a['entity_type'] ?? ''))) ?> <?= $a['entity_id'] ? '#' . $a['entity_id'] : '' ?></td>
                     <td><?= e(truncate($a['details'] ?? '', 80)) ?></td>
                     <td class="text-muted"><?= e($a['ip_address'] ?? '') ?></td>
                 </tr>

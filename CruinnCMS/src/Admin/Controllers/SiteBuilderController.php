@@ -99,6 +99,18 @@ class SiteBuilderController extends BaseController
         $this->renderAdmin('admin/site-builder/templates', $data);
     }
 
+    public function builderEditTemplate(string $id): void
+    {
+        Auth::requireAdmin();
+        $tpl = $this->db->fetch('SELECT * FROM page_templates WHERE id = ?', [(int) $id]);
+        if (!$tpl) {
+            Auth::flash('error', 'Template not found.');
+            $this->redirect('/admin/templates');
+        }
+
+        $this->builderEnsureCanvas($id);
+    }
+
     public function builderCreateTemplate(): void
     {
         $name         = trim($this->input('name', ''));
@@ -1101,6 +1113,81 @@ class SiteBuilderController extends BaseController
              FROM named_blocks ORDER BY name ASC'
         );
         $this->json(['success' => true, 'blocks' => $rows]);
+    }
+
+    private function getTemplateZoneAssignments(int $templateId): array
+    {
+        if ($templateId <= 0) {
+            return [];
+        }
+
+        $rows = $this->db->fetchAll(
+            "SELECT block_id, block_config, sort_order
+             FROM pages
+             WHERE template_id = ? AND block_type = 'zone' AND parent_block_id IS NULL
+             ORDER BY sort_order ASC",
+            [$templateId]
+        );
+
+        $zones = [];
+        foreach ($rows as $row) {
+            $cfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            $zoneName = $cfg['zone_name'] ?? null;
+            if (!$zoneName || !preg_match('/^[a-z0-9_-]+$/', (string) $zoneName)) {
+                continue;
+            }
+            $zones[(string) $zoneName] = $cfg + [
+                'block_id' => $row['block_id'],
+                'sort_order' => (int) ($row['sort_order'] ?? 0),
+            ];
+        }
+
+        return $zones;
+    }
+
+    private function getTemplateDisplayZones(int $templateId, int $layoutPageId): array
+    {
+        $layoutZones = $this->getLayoutZonesForTemplate($layoutPageId);
+        if (!empty($layoutZones)) {
+            return $layoutZones;
+        }
+
+        $assignments = $this->getTemplateZoneAssignments($templateId);
+
+        $zones = [];
+        foreach ($assignments as $zoneName => $cfg) {
+            $zones[] = [
+                'block_id' => $cfg['block_id'] ?? ('zone-' . $zoneName),
+                'block_config' => json_encode($cfg),
+                'sort_order' => (int) ($cfg['sort_order'] ?? 0),
+                'zone_name' => $zoneName,
+            ];
+        }
+
+        return $zones;
+    }
+
+    private function getTemplateZonesByTemplateId(int $templateId): array
+    {
+        if ($templateId <= 0) {
+            return ['main'];
+        }
+
+        $layoutPageId = (int) ($this->db->fetchColumn(
+            'SELECT layout_page_id FROM page_templates WHERE id = ? LIMIT 1',
+            [$templateId]
+        ) ?: 0);
+
+        $zones = $this->getTemplateDisplayZones($templateId, $layoutPageId);
+        $names = [];
+        foreach ($zones as $zone) {
+            $zn = (string) ($zone['zone_name'] ?? '');
+            if ($zn !== '' && !in_array($zn, $names, true)) {
+                $names[] = $zn;
+            }
+        }
+
+        return !empty($names) ? $names : ['main'];
     }
 
     public function namedBlockSave(): void

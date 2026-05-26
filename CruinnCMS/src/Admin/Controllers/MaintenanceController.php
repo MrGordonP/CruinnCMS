@@ -67,20 +67,25 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
             }
         }
 
-        // 2. Collect links from pages (properties JSON and content)
-        $blocks = $this->db->fetchAll("SELECT id, page_id, block_type, properties, content FROM pages_index WHERE status = 'published'");
+        // 2. Collect links from published blocks (config JSON and inner_html)
+        $blocks = $this->db->fetchAll(
+            "SELECT b.block_id, b.page_id, b.block_type, b.block_config, b.inner_html, p.slug
+             FROM pages b
+             JOIN pages_index p ON p.id = b.page_id
+             WHERE p.status = 'published'"
+        );
         foreach ($blocks as $b) {
-            $pageSlug = $this->getPageSlug((int)$b['page_id'], $pages);
-            $source   = "block #{$b['id']} ({$b['block_type']}) on {$pageSlug}";
+            $pageSlug = $b['slug'] ?? $this->getPageSlug((int)$b['page_id'], $pages);
+            $source   = "block #{$b['block_id']} ({$b['block_type']}) on {$pageSlug}";
 
-            $props = json_decode($b['properties'] ?? '{}', true) ?? [];
+            $props = json_decode($b['block_config'] ?? '{}', true) ?? [];
             foreach ($this->extractHrefsFromProps($props) as $href) {
-                $links[] = ['source' => $source, 'source_id' => (int)$b['id'], 'href' => $href, 'type' => 'block_props'];
+                $links[] = ['source' => $source, 'source_id' => (int)$b['page_id'], 'href' => $href, 'type' => 'block_props'];
             }
 
-            if (!empty($b['content'])) {
-                foreach ($this->extractHrefs($b['content']) as $href) {
-                    $links[] = ['source' => $source, 'source_id' => (int)$b['id'], 'href' => $href, 'type' => 'block_content'];
+            if (!empty($b['inner_html'])) {
+                foreach ($this->extractHrefs($b['inner_html']) as $href) {
+                    $links[] = ['source' => $source, 'source_id' => (int)$b['page_id'], 'href' => $href, 'type' => 'block_content'];
                 }
             }
         }
@@ -148,7 +153,7 @@ class MaintenanceController extends \Cruinn\Controllers\BaseController
         }
 
         // Module routes: /news, /events, /forum etc. — don't flag these
-        $moduleRoots = ['news', 'events', 'forum', 'files', 'forms', 'admin', 'login', 'logout', 'register',
+        $moduleRoots = ['news', 'events', 'forum', 'files', 'forms', 'mail', 'mailbox', 'mailout', 'admin', 'login', 'logout', 'register',
                         'members', 'council', 'reset-password', 'forgot-password', 'notifications', 'mailing-lists',
                         'directory', 'subjects', 'storage', 'uploads', 'brand', 'cms', 'install.php'];
         $firstSegment = explode('/', $slug)[0];

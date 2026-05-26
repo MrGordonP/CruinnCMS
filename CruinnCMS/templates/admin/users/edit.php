@@ -201,7 +201,7 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
                 <?php if (!empty($member['membership_number'])): ?>
                 <span class="text-muted"> #<?= e($member['membership_number']) ?></span>
                 <?php endif; ?>
-                <br><span class="badge badge-<?= e($member['status']) ?>" style="font-size:0.75rem"><?= e(ucfirst($member['status'])) ?></span>
+                <br><span class="badge badge-<?= e((string) ($member['status'] ?? 'unknown')) ?>" style="font-size:0.75rem"><?= e(ucfirst((string) ($member['status'] ?? 'unknown'))) ?></span>
             </p>
             <form method="post" action="/admin/users/<?= (int)$user['id'] ?>/unlink-member">
                 <?= csrf_field() ?>
@@ -264,8 +264,8 @@ $formAction = $isNew ? '/admin/users' : '/admin/users/' . (int)$user['id'];
         <?php foreach ($activity as $a): ?>
         <tr>
             <td><time datetime="<?= e($a['created_at']) ?>"><?= format_date($a['created_at'], 'j M H:i') ?></time></td>
-            <td><span class="badge badge-<?= e($a['action']) ?>"><?= e(ucfirst($a['action'])) ?></span></td>
-            <td><?= e(ucfirst($a['entity_type'])) ?><?= $a['entity_id'] ? ' #'.$a['entity_id'] : '' ?></td>
+            <td><span class="badge badge-<?= e((string) ($a['action'] ?? 'unknown')) ?>"><?= e(ucfirst((string) ($a['action'] ?? 'unknown'))) ?></span></td>
+            <td><?= e(ucfirst((string) ($a['entity_type'] ?? ''))) ?><?= $a['entity_id'] ? ' #'.$a['entity_id'] : '' ?></td>
             <td><?= e(truncate($a['details'] ?? '', 80)) ?></td>
             <td class="text-muted"><?= e($a['ip_address'] ?? '') ?></td>
         </tr>

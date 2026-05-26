@@ -299,6 +299,7 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/site-builder',                       [SiteBuilderController::class, 'builderPages']);
     $router->get('/admin/site-builder/pages',                 [SiteBuilderController::class, 'builderPages']);
     $router->get('/admin/templates',                          [SiteBuilderController::class, 'builderTemplates']);
+    $router->get('/admin/templates/{id}/edit',                [SiteBuilderController::class, 'builderEditTemplate']);
     $router->post('/admin/templates',                         [SiteBuilderController::class, 'builderCreateTemplate']);
     $router->post('/admin/templates/layouts/new',             [SiteBuilderController::class, 'builderCreateTemplateLayout']);
     $router->post('/admin/templates/layouts/{id}/delete',     [SiteBuilderController::class, 'builderDeleteTemplateLayout']);

@@ -823,6 +823,11 @@ $eventProfiles = $eventProfiles ?? [];
                         <label>CSS Class</label>
                         <input type="text" id="prop-class" class="editor-prop-input" data-prop-class>
                     </div>
+                    <div class="editor-prop-row" id="prop-anchor-href-row" style="display:none">
+                        <label>Link URL</label>
+                        <input type="text" id="prop-anchor-href" class="editor-prop-input" placeholder="/page-or-url">
+                        <span class="editor-label-hint">Target URL for anchor blocks.</span>
+                    </div>
                     <div class="editor-prop-row">
                         <label>
                             <input type="checkbox" id="prop-collapsed">

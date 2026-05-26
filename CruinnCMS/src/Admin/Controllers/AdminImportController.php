@@ -46,7 +46,10 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
         $this->requireCsrf();
 
         $file    = $_FILES['import_file'] ?? null;
-        $mode    = $_POST['import_mode'] ?? 'file';   // 'file' or 'block'
+        $mode    = $_POST['import_mode'] ?? 'file';   // 'file' or 'cruinn'
+        if (!in_array($mode, ['file', 'cruinn'], true)) {
+            $mode = 'file';
+        }
         $errors  = [];
 
         if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
@@ -152,9 +155,9 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
             // Deduplicate slug against pages table
             $slug = $this->ensureUniqueSlug($slug);
 
-            if ($mode === 'block') {
+            if ($mode === 'cruinn') {
                 $pageId = $this->importAsCruinn($slug, $title, $content);
-                $imported[] = ['slug' => $slug, 'title' => $title, 'mode' => 'block', 'id' => $pageId];
+                $imported[] = ['slug' => $slug, 'title' => $title, 'mode' => 'cruinn', 'id' => $pageId];
             } else {
                 $meta = $this->importer->importAsFile($content, $slug, $rootPub);
                 $pageId = $this->createPageRecord($meta['slug'], $meta['title'], 'file', $meta['file_path']);
@@ -181,17 +184,20 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
         $pageId = $this->createPageRecord($slug, $title, 'block', null);
 
         $stmt = $this->db->prepare(
-            'INSERT INTO pages (page_id, block_type, content, properties, sort_order)
-             VALUES (:pid, :bt, :c, :p, :so)'
+            'INSERT INTO pages (block_id, page_id, block_type, inner_html, css_props, block_config, sort_order, parent_block_id)
+             VALUES (:block_id, :page_id, :block_type, :inner_html, :css_props, :block_config, :sort_order, :parent_block_id)'
         );
 
         foreach ($blocks as $block) {
             $stmt->execute([
-                'pid' => $pageId,
-                'bt'  => $block['block_type'],
-                'c'   => $block['content'] ?? '',
-                'p'   => json_encode($block['properties'] ?? new \stdClass()),
-                'so'  => $block['sort_order'] ?? 0,
+                'block_id'        => bin2hex(random_bytes(10)),
+                'page_id'         => $pageId,
+                'block_type'      => $block['block_type'],
+                'inner_html'      => $block['content'] ?? null,
+                'css_props'       => null,
+                'block_config'    => json_encode($block['properties'] ?? new \stdClass()),
+                'sort_order'      => $block['sort_order'] ?? 0,
+                'parent_block_id' => null,
             ]);
         }
 
@@ -201,14 +207,20 @@ class AdminImportController extends \Cruinn\Controllers\BaseController
     private function createPageRecord(string $slug, string $title, string $renderMode, ?string $renderFile): int
     {
         $stmt = $this->db->prepare(
-            'INSERT INTO pages (slug, title, render_mode, render_file, is_published, created_at)
-             VALUES (:slug, :title, :render_mode, :render_file, 1, NOW())'
+            'INSERT INTO pages_index (slug, title, status, template, page_zone, editor_mode, render_mode, body_html, render_file, created_by, created_at, updated_at)
+             VALUES (:slug, :title, :status, :template, :page_zone, :editor_mode, :render_mode, :body_html, :render_file, :created_by, NOW(), NOW())'
         );
         $stmt->execute([
             'slug'        => $slug,
             'title'       => $title,
-            'render_mode' => $renderMode,
+            'status'      => 'published',
+            'template'    => 'default',
+            'page_zone'   => 'main',
+            'editor_mode' => $renderMode === 'file' ? 'freeform' : 'structured',
+            'render_mode' => $renderMode === 'file' ? 'file' : 'block',
+            'body_html'   => null,
             'render_file' => $renderFile,
+            'created_by'  => Auth::userId(),
         ]);
         return (int) $this->db->lastInsertId();
     }
