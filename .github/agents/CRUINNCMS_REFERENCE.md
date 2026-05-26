@@ -2,6 +2,10 @@
 
 Reference documentation for the CruinnCMS platform engine. This file is for context lookup — the agent reads it when architectural knowledge is needed.
 
+**Current version:** `v1.0.0-beta.15` (follow-up work in progress)
+**HEAD:** `3d98e5c` — fix(editor,social,forum): conversion safety and boundary-owned subject threads [v1.0.0-beta.15]
+**Schema:** `CruinnCMS/schema/platform.sql` + `CruinnCMS/schema/instance_core.sql`
+
 ---
 
 ## Core Engine Principles
@@ -197,3 +201,13 @@ Apache: `public_html/.htaccess` handles rewrites + directory listing protection 
 - **v1.0.0-beta.5** — Editor UX: Properties panel accordions start collapsed (except Identity), code view shows clean publishable HTML (block→tag serialization via `blocksToHtml()`), CSS class persistence through `css_props._class`, Collapsed checkbox in Identity panel.
 - **v1.0.0-beta.6** — User profile (`/profile` GET/POST), cross-domain passthrough tokens (HMAC-signed, 60s validity), editor visible outlines + layout container min-sizes + resize handles, module migration renumbering to `001_*_core.sql`, ImportService fragment file support, MySQL 8 information_schema case fix.
 - **v1.0.0-beta.7** (`cf8fda1`) — Theme system: `public_html/css/themes/{name}.css`, `ThemeController`, Theme Editor integrated into block editor (canvas=live preview, right panel=controls), `site.active_theme` settings seed. Module path fixes (documents, drivespace). `setHomePage` UPSERT fix. Platform migrations re-run feature.
+- **v1.0.0-beta.8** — OAuth expansion (GitHub, Microsoft, LinkedIn), user registration + email verification, IMAP webmail module (Mailbox), editor zone refactor Stage 4 (template blocks via `template_id`, context zone rendering).
+- **v1.0.0-beta.9** — Content Sets engine + `data-list` block type, Google Drive integration (Drivespace), mobile nav + tablet accordion, role/capability refactor completion.
+- **v1.0.0-beta.10** (`faad399`) — Media uploads namespaced per instance slug under `public_html/storage/{slug}/`.
+- **v1.0.0-beta.11** (`26d20bb`) — Template syntax fixes (`<?php` duplication, `IGA\Router` → `Cruinn\Router`).
+- **v1.0.0-beta.12** (`28bafcc`) — Role & capability refactor documentation and integration complete.
+- **v1.0.0-beta.13** (`57dd9f8`) — Template zone/layout separation fix, `module-content` provider wiring, system pages editable via block editor, migrations 017-019.
+- **v1.0.0-beta.14** — Template-layout architecture corrections and recovery after partial zone/template slice failure.
+- **v1.0.0-beta.15** (`55092f7`) — Template/layout publish stability, system-page/blog mapping follow-up, blog control-centre/profile/navigation polish.
+- **v1.0.0-beta.15** (`7882387`) — Subject-linked discussion flow landed across forum/social integration baseline.
+- **v1.0.0-beta.15 follow-up** (`3d98e5c`) — Conversion safety fix (defer html->block switch to publish), social boundary reset (remove forum thread provisioning from Social), and core publish-time subject-thread provisioning service wired to Blog/Events with forum category configuration support.

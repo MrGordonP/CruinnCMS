@@ -14,8 +14,13 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
 **Current version:** `v1.0.0-beta.15` (follow-up work in progress)
-**HEAD:** `7882387` — feat(forum,social): add subject-linked discussion flow [v1.0.0-beta.15]
+**HEAD:** `3d98e5c` — fix(editor,social,forum): conversion safety and boundary-owned subject threads [v1.0.0-beta.15]
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
+
+**Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
+
+Use this agent file for behavioral rules and workflow constraints.
+Use the reference document for architecture maps, platform internals, theme/editor details, and extended version notes.
 
 ---
 
@@ -49,163 +54,13 @@ These apply before every action. No exceptions.
 
 ---
 
-## Architecture
+## Technical Reference
 
-- **No frameworks.** Custom PHP, custom router (~200 lines), PDO + MySQL 8, no ORM.
-- **Namespace:** `Cruinn\` → `src/` (Composer PSR-4)
-- **No JS frameworks.** Vanilla JS only. CSS Grid/Flexbox. No build step.
-- **No Composer package deps.** `composer install` generates only the autoloader. The fallback SPL autoloader in `public/index.php` covers deploys without Composer.
-- **Entry point:** `public/index.php` → `src/App.php` → `src/Router.php` → Controller → Template
+Detailed architecture, directory maps, platform/editor internals, theme system, deployment notes, and extended release history are maintained in:
 
-### Directory Map
+- `.github/agents/CRUINNCMS_REFERENCE.md`
 
-```
-public/          ← Web root
-  index.php      ← Front controller (defines CRUINN_ROOT = dirname(__DIR__))
-  .htaccess      ← Apache rewrite rules + Options -Indexes
-  css/           ← Per-page CSS (admin split into multiple files)
-  brand/         ← Cruinn CMS production web assets (logo, favicon, wordmark)
-  js/            ← editor.js, main.js, admin/ (block-editor/, block-types/)
-  storage/       ← Writable; generated files
-  uploads/       ← Writable; user uploads
-src/
-  App.php        ← Bootstrap, error handlers, middleware, uninitialized/no-instance guards
-  Router.php     ← URL routing, middleware pipeline
-  Database.php   ← PDO wrapper (getInstance connects to active instance DB)
-  Template.php   ← Template engine + helpers (?string $layout for nullable setLayout)
-  Auth.php       ← Authentication, roles, brute-force lockout
-  CSRF.php       ← CSRF token protection (field name: csrf_token; method: CSRF::getToken())
-  Mailer.php     ← PHPMailer wrapper (no Composer dep — PHPMailer must be added if mail needed)
-  Admin/
-    Controllers/ ← AcpSystemController, AcpInstanceController, SiteBuilderController,
-                   AdminPageController, BlockController, MediaController,
-                   UserAdminController, RoleAdminController, GroupController,
-                   AdminImportController, MaintenanceController
-  BlockTypes/    ← BlockRegistry.php + {slug}/definition.php × 22
-  Controllers/   ← AcpController, AdminController, AuthController, BaseController,
-                   CruinnController, MenuController, PageController, SubjectController
-  Modules/       ← ModuleRegistry.php (drop-in module system; no modules bundled)
-  Platform/      ← PlatformAuth.php + Controllers/PlatformController.php
-  Services/      ← CruinnRenderService, DashboardService, EditorRenderService,
-                   HtmlImportService, ImportService, NavService, OAuthService,
-                   RoleService, SettingsService
-config/
-  config.php              ← Defaults
-  config.local.example.php← Template for local overrides (wizard writes config.local.php)
-  CruinnCMS.example.php   ← Template for wizard-generated platform config
-  platform.example.php    ← Legacy stub (deprecated — see CruinnCMS.example.php)
-  routes.php              ← Route definitions (core + platform)
-  nginx.conf              ← VPS Nginx config
-schema/
-  platform.sql            ← Applied once by /cms/install wizard
-  instance_core.sql       ← Applied per-instance at provisioning
-instance/                 ← Per-instance config and state (gitignored at runtime)
-  .active                 ← Slug of the currently active instance (gitignored)
-  {slug}/config.php       ← Per-instance DB credentials (gitignored)
-templates/
-  layout.php              ← Public master layout
-  admin/                  ← Admin panel templates
-  platform/               ← /cms/ platform dashboard templates
-  components/             ← Reusable components (block renderer)
-  public/                 ← Public-facing page templates
-  errors/                 ← 404, 403, CSRF error pages
-tools/                    ← CLI scripts
-dev/docs/sessions/        ← Version checkpoints
-```
-
----
-
-## Platform Dashboard (/cms/)
-
-Top-level CMS layer, above all instances. File-based credential, entirely separate from instance DB.
-
-- **Auth:** `src/Platform/PlatformAuth.php` — session key `cms_platform_auth`, reads `config/CruinnCMS.php`
-- **Config file:** `config/CruinnCMS.php` — generated by install wizard (gitignored). Contains: `initialized`, `username`, `password_hash`, `db` (platform DB connection). See `config/CruinnCMS.example.php`.
-- **Uninitialized guard:** `App::run()` redirects all non-`/cms/*` requests to `/cms/install` if `PlatformAuth::isInitialized()` is false.
-- **No-instance guard:** If initialized but no `instance/.active`, all non-`/cms/*` requests redirect to `/cms/dashboard`.
-- **Routes:** GET/POST `/cms/install`, GET/POST `/cms/login`, GET `/cms/logout`, GET `/cms/dashboard`, GET/POST `/cms/settings`, GET/POST `/cms/instances/new`, POST `/cms/instances/{name}/activate`, GET `/cms/editor`, GET `/cms/database`, and DB browser sub-routes.
-- **Passthrough:** GET `/admin/platform-passthrough?to=/admin/*` — platform session → instance admin login via `Auth::loginById()`, exempt from `adminMiddleware`
-- **Brand assets:** `public/brand/` — `cruinn-logo.svg`, `cruinn-favicon.svg`, `cruinn-wordmark.svg` etc.
-- **CSS:** `public/css/platform.css` — standalone, Cruinn colour palette (`#0c1614`, `#1d9e75`, `#5dcaa5`, `#e8e4da`)
-- **Template rendering:** `setLayout(null)` — platform templates are standalone HTML, never wrapped in instance layout
-
----
-
-## Multi-Instance Architecture
-
-- `Database::getInstance()` connects to the **active instance** DB (resolved from `instance/.active` → `instance/{slug}/config.php`)
-- Platform DB (platform_settings, instances table) is a separate connection, never the instance DB
-- `instance/.active` contains the slug of the live instance; only one active at a time
-- `App::instanceDir()` returns the active instance directory path, or `null` if none set
-- Instance-specific data must stay fully isolated between instances
-- Do not hardcode instance-specific assumptions into platform-layer code
-
----
-
-## Block-Based Page Editor
-
-Pages are composed of ordered blocks. Each block has a type, properties, and optional content.
-
-**Block types (22):** `text`, `heading`, `image`, `gallery`, `html`, `section`, `columns`, `site-logo`, `site-title`, `nav-menu`, `map`, `event-list`, `php-include`, `anchor`, `document`, `element`, `form`, `inline`, `list`, `list-item`, `table`, `php-code`
-
-**Registry:** Pluggable via `src/BlockTypes/BlockRegistry.php` (PHP) and `public/js/admin/block-types/_registry.js + {slug}.js` (JS). To add a new block type: create `src/BlockTypes/{slug}/definition.php` and `public/js/admin/block-types/{slug}.js` — no changes to core editor code needed.
-
-**Render pipeline:** `CruinnRenderService` → `BlockRegistry::getTag/isDynamic/renderDynamic`
-
-**Editor JS:** `public/js/editor.js` (main canvas editor — single IIFE, handles init, selection, DnD, properties, palette, media, serialise, undo/redo, publish, code view) + `public/js/admin/block-types/{slug}.js`
-
-**Code view:** `enterCodeView()` / `exitCodeView()` in editor.js. Textarea `#editor-code-area` appended inside `#editor-canvas`. For file-mode pages (`startInCodeView=1`), the editor opens directly in code view with raw file content. CSS files, JS files, and other non-PHP/HTML files use this path.
-
-**EditorRenderService:** Single source of truth for rendering a flat block list into editor canvas HTML + CSS. Used by platform and instance admin. Inerts `script`/`style`/`noscript` as chip elements on canvas.
-
----
-
-## Key Conventions
-
-- **Controllers** handle HTTP only — validate input, call Services, render template or redirect. No DB queries in controllers.
-- **Services** hold business logic. Access DB via the `Database` PDO wrapper, not raw PDO.
-- **Templates** are plain PHP files. Use `$this->escape()` for all output. No logic beyond loops and conditionals.
-- **Schema** files are in `schema/`. Applied by the install wizard or provisioning — never edit applied schema, add new migration files.
-- **Config** uses `config.php` as defaults, `config.local.php` for local/VPS overrides, `CruinnCMS.php` for platform credentials.
-- **CSRF** tokens: field name is `csrf_token`. Use `CSRF::getToken()`.
-- **Auth** roles: `admin`, `council`, `member`, `public`. Role checks via `Auth::requireRole()` in controllers.
-- **Template layout:** `Template::$layout` is `?string` — call `setLayout(null)` for standalone pages (platform, AJAX).
-
----
-
-## Deployment Model (cPanel / Shared Hosting)
-
-`CRUINN_ROOT = dirname(__DIR__)` in `public/index.php` means the engine root is the parent of `public/`. On cPanel:
-
-- `public/` contents → `public_html/`
-- All other dirs (`src/`, `templates/`, `config/`, `schema/`, `instance/`, `vendor/`) → `/home/username/`
-- **CRUINN_PUBLIC** = `__DIR__` in `public/index.php` = the web root (`/home/username/public_html/`)
-- **CRITICAL:** `public/*` paths must resolve via `CRUINN_PUBLIC`, NOT via `CRUINN_ROOT . '/public/'` — the latter points to the engine source tree, not the deployed web root.
-
-**No Composer on the server** — build `vendor/` locally with `composer install --no-dev` and upload. The SPL fallback in `index.php` handles `Cruinn\*` if `vendor/` is absent.
-
-Apache: `public/.htaccess` handles rewrites + directory listing protection (`Options -Indexes`).
-
----
-
-## Version History
-
-- **v1.0.0-beta.1** (`95d8895`) — Initial public release: full engine extracted from IGAPortal RC. 22 block types, install wizard, multi-instance platform, block editor, DB browser, module registry stub.
-- **v1.0.0-beta.2** — Deployment fixes: remove unused Composer deps, add `Options -Indexes` to `.htaccess`, add `config/CruinnCMS.example.php`, add cPanel/shared-hosting deployment section to SETUP.md.
-- **v1.0.0-beta.3** (`bc70dd2`) — Release tooling: `dev/build-release.sh`, hostname-based instance routing, per-instance online toggle, `CRUINN_ROOT` depth fix for cPanel.
-- **v1.0.0-beta.4** — Editor overhaul: killed Editor 2 completely (deleted 11 files, stubbed `content_blocks` refs), removed council templates, platform editor CSS file editing via `?file=` handler with cPanel path resolution, code view toggle fix, code view CSS layout improvements (`:has(#editor-code-area)` rules), block tree + properties panel scroll constraints (in progress).
-- **v1.0.0-beta.5** — Editor UX: Properties panel accordions start collapsed (except Identity), code view shows clean publishable HTML (block→tag serialization via `blocksToHtml()`), CSS class persistence through `css_props._class`, Collapsed checkbox in Identity panel.
-- **v1.0.0-beta.6** — User profile (`/profile` GET/POST), cross-domain passthrough tokens (HMAC-signed, 60s validity), editor visible outlines + layout container min-sizes + resize handles, module migration renumbering to `001_*_core.sql`, ImportService fragment file support, MySQL 8 information_schema case fix.
-- **v1.0.0-beta.7** (`d8c7a5a`) — Blog editor unification (ArticleEditorController→CruinnController), article apiBase double-ID fix, upload progress indicator, 3-panel admin layout (pages/media/organisation), responsive breakpoints, mailout composition.
-- **v1.0.0-beta.8** — OAuth expansion (GitHub, Microsoft, LinkedIn), user registration + email verification, IMAP webmail module (Mailbox), editor zone refactor Stage 4 (template blocks via `template_id`, context zone rendering).
-- **v1.0.0-beta.9** — Content Sets engine + `data-list` block type, Google Drive integration (Drivespace), mobile nav + tablet accordion, Role Refactor Stages 1-6 complete (level-based Auth API, admin area grants, widget dashboards, position authorization, notifications widget, module migration).
-- **v1.0.0-beta.10** (`faad399`) — Media uploads namespaced per instance slug under `public_html/storage/{slug}/`.
-- **v1.0.0-beta.11** (`26d20bb`) — Template syntax fixes (`<?php` duplication, `IGA\Router`→`Cruinn\Router`).
-- **v1.0.0-beta.12** (`28bafcc`) — Role & Capability Refactor documentation complete. All 6 stages integrated, tested, and deployed. Engine fully instance-agnostic with flexible authorization.
-- **v1.0.0-beta.13** (`57dd9f8`, pending tag) — Template zone/layout separation fix, `module-content` block type + provider registry, Blog list as first provider, system pages editable via block editor (`BaseController::renderSystemPage`), `Template::globals()` for php-include context, migrations 017-019.
-- **v1.0.0-beta.14** — Template-layout architecture corrections and follow-up recovery after the incomplete zone/template slice captured in `dev/docs/sessions/v1.0.0-beta.14_PARTIAL_FAILURE.md`.
-- **v1.0.0-beta.15** (`55092f7`) — Template/layout publish stability, system-page/blog list mapping fast follow-up, and the current follow-up working tree for Blog module ownership, Blog control-centre routing, relational Blog Profiles, module-content Blog profile selection, and single-post navigation polish/containment fixes.
-- **v1.0.0-beta.15 follow-up (2026-05-26, pending commit)** — Conversion safety fix (defer html->block mode switch to publish), Social boundary reset (remove forum thread provisioning from Social distribute), and core publish-time subject-thread provisioning service wired to Blog/Events with forum category configuration support.
+Keep this file focused on session behavior and execution workflow rules.
 
 ---
 
