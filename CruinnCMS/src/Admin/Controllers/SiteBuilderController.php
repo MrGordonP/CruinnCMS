@@ -79,14 +79,26 @@ class SiteBuilderController extends BaseController
         }
         unset($tpl);
 
-        $templateLayouts = $this->db->fetchAll(
-            "SELECT p.id, p.title, p.slug, p.status, p.updated_at,
-                    (SELECT COUNT(*) FROM page_templates pt WHERE pt.layout_page_id = p.id) AS usage_count
-             FROM pages_index p
-             WHERE p.canvas_type = 'template-shell'
-               AND p.id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
-             ORDER BY p.title"
-        );
+                try {
+                        $templateLayouts = $this->db->fetchAll(
+                                "SELECT p.id, p.title, p.slug, p.status, p.updated_at,
+                                                (SELECT COUNT(*) FROM page_templates pt WHERE pt.layout_page_id = p.id) AS usage_count
+                                 FROM pages_index p
+                                 WHERE p.canvas_type = 'template-shell'
+                                     AND p.id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+                                 ORDER BY p.title"
+                        );
+                } catch (\Throwable $e) {
+                        // Pre-canvas_type fallback: detect standalone template layouts by legacy slug prefix.
+                        $templateLayouts = $this->db->fetchAll(
+                                "SELECT p.id, p.title, p.slug, p.status, p.updated_at,
+                                                (SELECT COUNT(*) FROM page_templates pt WHERE pt.layout_page_id = p.id) AS usage_count
+                                 FROM pages_index p
+                                 WHERE p.slug LIKE '\\_layout\\_%' ESCAPE '\\\\'
+                                     AND p.id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+                                 ORDER BY p.title"
+                        );
+                }
 
         $data = [
             'title'     => 'Page Templates',
@@ -146,13 +158,24 @@ class SiteBuilderController extends BaseController
                 $this->redirect('/admin/templates?panel=page-templates');
             }
 
-            $layoutValid = $this->db->fetch(
-                "SELECT id FROM pages_index
-                 WHERE id = ? AND canvas_type = 'template-shell'
-                   AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
-                 LIMIT 1",
-                [$layoutPageId]
-            );
+                        try {
+                                $layoutValid = $this->db->fetch(
+                                        "SELECT id FROM pages_index
+                                         WHERE id = ? AND canvas_type = 'template-shell'
+                                             AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+                                         LIMIT 1",
+                                        [$layoutPageId]
+                                );
+                        } catch (\Throwable $e) {
+                                $layoutValid = $this->db->fetch(
+                                        "SELECT id FROM pages_index
+                                         WHERE id = ?
+                                             AND slug LIKE '\\_layout\\_%' ESCAPE '\\\\'
+                                             AND id NOT IN (SELECT canvas_page_id FROM page_templates WHERE canvas_page_id IS NOT NULL)
+                                         LIMIT 1",
+                                        [$layoutPageId]
+                                );
+                        }
             if (!$layoutValid) {
                 Auth::flash('error', 'Selected Template Layout is invalid.');
                 $this->redirect('/admin/templates?panel=page-templates');
@@ -290,18 +313,31 @@ class SiteBuilderController extends BaseController
         }
 
         // Create a new zone canvas page
-        $this->db->execute(
-            'INSERT INTO pages_index (title, slug, status, template, editor_mode, canvas_type, zone_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [
-                ucfirst($zoneName) . ' — ' . $tpl['name'],
-                '_zone_' . $tpl['slug'] . '_' . $zoneName,
-                'published',
-                'none',
-                'freeform',
-                'zone',
-                $zoneName,
-            ]
-        );
+        try {
+            $this->db->execute(
+                'INSERT INTO pages_index (title, slug, status, template, editor_mode, canvas_type, zone_name) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [
+                    ucfirst($zoneName) . ' — ' . $tpl['name'],
+                    '_zone_' . $tpl['slug'] . '_' . $zoneName,
+                    'published',
+                    'none',
+                    'freeform',
+                    'zone',
+                    $zoneName,
+                ]
+            );
+        } catch (\Throwable $e) {
+            $this->db->execute(
+                'INSERT INTO pages_index (title, slug, status, template, editor_mode) VALUES (?, ?, ?, ?, ?)',
+                [
+                    ucfirst($zoneName) . ' — ' . $tpl['name'],
+                    '_zone_' . $tpl['slug'] . '_' . $zoneName,
+                    'published',
+                    'none',
+                    'freeform',
+                ]
+            );
+        }
         $canvasPageId = (int) $this->db->pdo()->lastInsertId();
 
         if ($zoneBlock) {
@@ -406,15 +442,27 @@ class SiteBuilderController extends BaseController
             $suffix++;
         }
 
-        $pageId = (int) $this->db->insert('pages_index', [
-            'title'       => $title,
-            'slug'        => $slug,
-            'status'      => 'published',
-            'template'    => 'none',
-            'editor_mode' => 'freeform',
-            'canvas_type' => 'template-shell',
-            'created_by'  => Auth::userId(),
-        ]);
+        try {
+            $pageId = (int) $this->db->insert('pages_index', [
+                'title'       => $title,
+                'slug'        => $slug,
+                'status'      => 'published',
+                'template'    => 'none',
+                'editor_mode' => 'freeform',
+                'canvas_type' => 'template-shell',
+                'created_by'  => Auth::userId(),
+            ]);
+        } catch (\Throwable $e) {
+            // Pre-canvas_type fallback.
+            $pageId = (int) $this->db->insert('pages_index', [
+                'title'       => $title,
+                'slug'        => $slug,
+                'status'      => 'published',
+                'template'    => 'none',
+                'editor_mode' => 'freeform',
+                'created_by'  => Auth::userId(),
+            ]);
+        }
 
         Auth::flash('success', "Template layout '{$title}' created.");
         $this->redirect('/admin/editor/' . $pageId . '/edit');
@@ -428,11 +476,29 @@ class SiteBuilderController extends BaseController
     {
         $layoutId = (int) $id;
 
-        $layout = $this->db->fetch(
-            "SELECT id, title, canvas_type FROM pages_index WHERE id = ? LIMIT 1",
-            [$layoutId]
-        );
-        if (!$layout || ($layout['canvas_type'] ?? '') !== 'template-shell') {
+        $layout = null;
+        $hasCanvasType = true;
+        try {
+            $layout = $this->db->fetch(
+                "SELECT id, title, slug, canvas_type FROM pages_index WHERE id = ? LIMIT 1",
+                [$layoutId]
+            );
+        } catch (\Throwable $e) {
+            $hasCanvasType = false;
+            $layout = $this->db->fetch(
+                "SELECT id, title, slug FROM pages_index WHERE id = ? LIMIT 1",
+                [$layoutId]
+            );
+        }
+        if (!$layout) {
+            Auth::flash('error', 'Template layout not found.');
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+        if ($hasCanvasType && ($layout['canvas_type'] ?? '') !== 'template-shell') {
+            Auth::flash('error', 'Template layout not found.');
+            $this->redirect('/admin/templates?panel=template-layouts');
+        }
+        if (!$hasCanvasType && !str_starts_with((string) ($layout['slug'] ?? ''), '_layout_')) {
             Auth::flash('error', 'Template layout not found.');
             $this->redirect('/admin/templates?panel=template-layouts');
         }
@@ -455,8 +521,9 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/templates?panel=template-layouts');
         }
 
-        $this->db->delete('blocks_published', 'page_id = ?', [$layoutId]);
-        $this->db->delete('blocks_draft', 'page_id = ?', [$layoutId]);
+        // Delete page-owned blocks for both current and transitional schemas.
+        $this->db->delete('pages_draft', 'page_id = ?', [$layoutId]);
+        $this->db->delete('pages', 'page_id = ?', [$layoutId]);
         $this->db->delete('pages_index', 'id = ?', [$layoutId]);
 
         Auth::flash('success', "Template layout '{$layout['title']}' deleted.");
@@ -978,9 +1045,28 @@ class SiteBuilderController extends BaseController
         );
 
         // Zone canvas pages (header, footer, sidebar etc.)
-        $zoneCanvases = $this->db->fetchAll(
-            "SELECT id, title, slug, zone_name FROM pages_index WHERE canvas_type = 'zone' ORDER BY slug"
-        );
+        try {
+            $zoneCanvases = $this->db->fetchAll(
+                "SELECT id, title, slug, zone_name FROM pages_index WHERE canvas_type = 'zone' ORDER BY slug"
+            );
+        } catch (\Throwable $e) {
+            $zoneCanvases = $this->db->fetchAll(
+                "SELECT id, title, slug, NULL AS zone_name
+                 FROM pages_index
+                 WHERE slug LIKE '\\_zone\\_%' ESCAPE '\\\\'
+                 ORDER BY slug"
+            );
+        }
+        foreach ($zoneCanvases as &$zoneCanvas) {
+            if (!empty($zoneCanvas['zone_name'])) {
+                continue;
+            }
+            $slug = (string) ($zoneCanvas['slug'] ?? '');
+            if (str_starts_with($slug, '_zone_')) {
+                $zoneCanvas['zone_name'] = substr($slug, 6);
+            }
+        }
+        unset($zoneCanvas);
 
         // Menus with item counts
         $menus = $this->db->fetchAll('SELECT * FROM menus ORDER BY location');
@@ -1039,12 +1125,24 @@ class SiteBuilderController extends BaseController
     public function builderZones(): void
     {
         Auth::requireAdmin();
-        $zones = $this->db->fetchAll(
-            "SELECT id, title, zone_name, status, updated_at
-               FROM pages_index
-              WHERE canvas_type = 'zone'
-              ORDER BY zone_name"
-        );
+        try {
+            $zones = $this->db->fetchAll(
+                "SELECT id, title, zone_name, status, updated_at
+                   FROM pages_index
+                  WHERE canvas_type = 'zone'
+                  ORDER BY zone_name"
+            );
+        } catch (\Throwable $e) {
+            $zones = $this->db->fetchAll(
+                "SELECT id, title,
+                        SUBSTRING(slug, 7) AS zone_name,
+                        status,
+                        updated_at
+                   FROM pages_index
+                  WHERE slug LIKE '\\_zone\\_%' ESCAPE '\\\\'
+                  ORDER BY zone_name"
+            );
+        }
         $this->renderAdmin('admin/site-builder/zones', [
             'title'  => 'Zone Canvases',
             'section'=> 'builder',
@@ -1067,21 +1165,36 @@ class SiteBuilderController extends BaseController
         }
 
         // Check for duplicate zone_name
-        $existing = $this->db->fetch(
-            "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
-            [$zoneName]
-        );
+        try {
+            $existing = $this->db->fetch(
+                "SELECT id FROM pages_index WHERE canvas_type = 'zone' AND zone_name = ? LIMIT 1",
+                [$zoneName]
+            );
+        } catch (\Throwable $e) {
+            $existing = $this->db->fetch(
+                "SELECT id FROM pages_index WHERE slug = ? LIMIT 1",
+                ['_zone_' . $zoneName]
+            );
+        }
         if ($existing) {
             Auth::flash('error', 'A zone canvas with that zone name already exists.');
             $this->redirect('/admin/site-builder/zones');
         }
 
         $slug = '_zone_' . $zoneName;
-        $this->db->execute(
-            "INSERT INTO pages_index (title, slug, status, template, editor_mode, canvas_type, zone_name)
-             VALUES (?, ?, 'published', 'none', 'freeform', 'zone', ?)",
-            [$title, $slug, $zoneName]
-        );
+        try {
+            $this->db->execute(
+                "INSERT INTO pages_index (title, slug, status, template, editor_mode, canvas_type, zone_name)
+                 VALUES (?, ?, 'published', 'none', 'freeform', 'zone', ?)",
+                [$title, $slug, $zoneName]
+            );
+        } catch (\Throwable $e) {
+            $this->db->execute(
+                "INSERT INTO pages_index (title, slug, status, template, editor_mode)
+                 VALUES (?, ?, 'published', 'none', 'freeform')",
+                [$title, $slug]
+            );
+        }
         $newId = (int) $this->db->pdo()->lastInsertId();
 
         $this->redirect('/admin/editor/' . $newId . '/edit');
@@ -1112,7 +1225,17 @@ class SiteBuilderController extends BaseController
             'SELECT id, name, slug, description, root_type, thumbnail_url, created_at
              FROM named_blocks ORDER BY name ASC'
         );
-        $this->json(['success' => true, 'blocks' => $rows]);
+
+        $wantsJson = ($this->query('format', '') === 'json')
+            || (isset($_SERVER['HTTP_ACCEPT']) && str_contains((string) $_SERVER['HTTP_ACCEPT'], 'application/json'));
+
+        if ($wantsJson) {
+            $this->json(['success' => true, 'blocks' => $rows]);
+        }
+
+        // Browser navigation should not land on raw API output.
+        Auth::flash('info', 'Named Blocks currently uses a JSON API endpoint. Redirected to templates.');
+        $this->redirect('/admin/templates?panel=page-templates');
     }
 
     private function getTemplateZoneAssignments(int $templateId): array
@@ -1592,13 +1715,25 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/site-builder/dashboards');
         }
 
-        // Create a new page with canvas_type='widget-dashboard'
-        $pageId = $this->db->insert('pages_index', [
-            'title'       => $title,
-            'slug'        => $this->generateUniqueSlug($title),
-            'canvas_type' => 'widget-dashboard',
-            'created_by'  => Auth::userId(),
-        ]);
+        // Create a new page with canvas_type='widget-dashboard' where available.
+        try {
+            $pageId = $this->db->insert('pages_index', [
+                'title'       => $title,
+                'slug'        => $this->generateUniqueSlug($title),
+                'canvas_type' => 'widget-dashboard',
+                'created_by'  => Auth::userId(),
+            ]);
+        } catch (\Throwable $e) {
+            // Pre-canvas_type fallback uses slug convention for later discovery.
+            $pageId = $this->db->insert('pages_index', [
+                'title'       => $title,
+                'slug'        => '_dashboard_' . $this->generateUniqueSlug($title),
+                'status'      => 'published',
+                'template'    => 'none',
+                'editor_mode' => 'freeform',
+                'created_by'  => Auth::userId(),
+            ]);
+        }
 
         Auth::flash('success', "Dashboard \"{$title}\" created.");
         $this->redirect("/admin/editor/{$pageId}/edit");
@@ -1612,18 +1747,41 @@ class SiteBuilderController extends BaseController
         Auth::requireAdmin();
         \Cruinn\CSRF::verify();
 
-        $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
-        if (!$page || $page['canvas_type'] !== 'widget-dashboard') {
+        $page = null;
+        $hasCanvasType = true;
+        try {
+            $page = $this->db->fetch('SELECT * FROM pages_index WHERE id = ?', [$id]);
+        } catch (\Throwable $e) {
+            $hasCanvasType = false;
+            $page = $this->db->fetch('SELECT id, title, slug FROM pages_index WHERE id = ?', [$id]);
+        }
+
+        if (!$page) {
             Auth::flash('error', 'Dashboard not found.');
             $this->redirect('/admin/site-builder/dashboards');
+        }
+        if ($hasCanvasType && ($page['canvas_type'] ?? '') !== 'widget-dashboard') {
+            Auth::flash('error', 'Dashboard not found.');
+            $this->redirect('/admin/site-builder/dashboards');
+        }
+        if (!$hasCanvasType) {
+            $isLegacyDashboardSlug = str_starts_with((string) ($page['slug'] ?? ''), '_dashboard_');
+            $hasAssignments = (int) $this->db->fetchColumn(
+                'SELECT COUNT(*) FROM context_dashboards WHERE page_id = ?',
+                [$id]
+            ) > 0;
+            if (!$isLegacyDashboardSlug && !$hasAssignments) {
+                Auth::flash('error', 'Dashboard not found.');
+                $this->redirect('/admin/site-builder/dashboards');
+            }
         }
 
         // Delete assignments first
         $this->db->delete('context_dashboards', 'page_id = ?', [$id]);
 
-        // Delete published and draft blocks
-        $this->db->delete('blocks_published', 'page_id = ?', [$id]);
-        $this->db->delete('blocks_draft', 'page_id = ?', [$id]);
+        // Delete page-owned blocks for both current and transitional schemas.
+        $this->db->delete('pages_draft', 'page_id = ?', [$id]);
+        $this->db->delete('pages', 'page_id = ?', [$id]);
 
         // Delete the page
         $this->db->delete('pages_index', 'id = ?', [$id]);

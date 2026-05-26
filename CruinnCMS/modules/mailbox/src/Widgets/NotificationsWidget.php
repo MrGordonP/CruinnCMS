@@ -32,12 +32,12 @@ class NotificationsWidget
             return ['mailboxes' => [], 'total_unread' => 0];
         }
 
-        // Determine role string for MailboxService (admin if level >= 90)
-        $role = $roleLevel >= 90 ? 'admin' : 'member';
+        // Determine admin access flag for MailboxService (admin if level >= 90)
+        $isAdmin = $roleLevel >= 90;
 
         // Get accessible mailboxes
         $mailboxService = new MailboxService($db, App::config('secret_key', 'default-secret'));
-        $mailboxes = $mailboxService->getAccessibleMailboxes($userId, $role);
+        $mailboxes = $mailboxService->getAccessibleMailboxes($userId, $isAdmin);
 
         // For each mailbox, count unread messages (messages with no read entry for this user)
         $results = [];

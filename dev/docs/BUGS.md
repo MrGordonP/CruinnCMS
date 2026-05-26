@@ -44,7 +44,22 @@ Uploading a hero image via the media browser modal showed no feedback — the bu
 
 ## Platform / General
 
-*(none currently logged)*
+### [PINNED] Reduce storage JSON usage (low QoL impact, high maintenance value)
+This is a large engine-level tidy-up rather than an urgent bug fix. Keep JSON where structure is genuinely variable (editor block configs/style payloads), but progressively move relational/business data out of JSON blobs into proper tables/columns.
+
+Outline:
+1. Audit and classify JSON fields into:
+	- Keep as JSON (variable config/state)
+	- Migrate to relational schema (query/report/business data)
+2. Prioritize low-risk, high-value candidates first (for example dynamic content set row/query data where filtering/reporting is needed).
+3. Add migration path per target area:
+	- Add new relational schema
+	- Backfill from JSON
+	- Dual-write for one release
+	- Switch reads to relational path
+	- Remove/retire legacy JSON reads
+4. Keep transport JSON (AJAX/API responses) unchanged unless specifically required; focus this effort on DB storage only.
+5. Track each sub-task here as separate entries so this work does not fall out of use again.
 
 ---
 

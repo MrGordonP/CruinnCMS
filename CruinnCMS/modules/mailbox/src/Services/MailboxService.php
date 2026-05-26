@@ -39,9 +39,9 @@ class MailboxService
      * Return all imap-enabled officer rows the given user has access to.
      * Admin users see all enabled mailboxes.
      */
-    public function getAccessibleMailboxes(int $userId, string $role): array
+    public function getAccessibleMailboxes(int $userId, bool $isAdmin): array
     {
-        if ($role === 'admin') {
+        if ($isAdmin) {
             return $this->db->fetchAll(
                 'SELECT id, label, label AS position, email,
                         imap_host, imap_port, imap_encryption,

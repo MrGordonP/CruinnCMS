@@ -24,15 +24,15 @@
         <tbody>
           <?php foreach ($imported as $p): ?>
             <tr>
-              <td><?= $this->escape($p['title']) ?></td>
-              <td><code>/<?= $this->escape($p['slug']) ?></code></td>
+              <td><?= e($p['title']) ?></td>
+              <td><code>/<?= e($p['slug']) ?></code></td>
               <td>
                 <span class="badge badge-<?= $p['mode'] === 'cruinn' ? 'green' : 'amber' ?>">
-                  <?= $this->escape($p['mode']) ?>
+                  <?= e($p['mode']) ?>
                 </span>
               </td>
               <td>
-                <a href="/<?= $this->escape($p['slug']) ?>" target="_blank" class="btn btn-xs btn-ghost">View</a>
+                <a href="/<?= e($p['slug']) ?>" target="_blank" class="btn btn-xs btn-ghost">View</a>
                 <?php if ($p['mode'] === 'cruinn'): ?>
                   <a href="/admin/pages/<?= $p['id'] ?>/edit" class="btn btn-xs btn-ghost">Edit in Cruinn</a>
                 <?php else: ?>

@@ -7,7 +7,7 @@
   <?php if (!empty($errors)): ?>
     <div class="alert alert-error">
       <?php foreach ($errors as $err): ?>
-        <p><?= $this->escape($err) ?></p>
+        <p><?= e($err) ?></p>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>

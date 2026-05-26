@@ -3,14 +3,14 @@
     <h1>Review Import</h1>
     <p class="acp-page-subtitle">
       Found <strong><?= count($pages) ?></strong> page<?= count($pages) !== 1 ? 's' : '' ?>.
-      Mode: <span class="badge badge-<?= $mode === 'cruinn' ? 'green' : 'amber' ?>"><?= $this->escape($mode) ?></span>
+      Mode: <span class="badge badge-<?= $mode === 'cruinn' ? 'green' : 'amber' ?>"><?= e($mode) ?></span>
       — Edit slugs/titles, uncheck pages you want to skip, then confirm.
     </p>
   </div>
 
   <form method="post" action="/admin/import/confirm" class="form-standard">
     <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
-    <input type="hidden" name="import_mode" value="<?= $this->escape($mode) ?>">
+    <input type="hidden" name="import_mode" value="<?= e($mode) ?>">
 
     <div class="acp-card">
       <table class="acp-table">
@@ -31,18 +31,18 @@
                 <input type="hidden" name="pages[<?= $i ?>][skip]" value="0" id="skip-<?= $i ?>">
               </td>
               <td>
-                <code><?= $this->escape($page['filename']) ?></code>
+                <code><?= e($page['filename']) ?></code>
               </td>
               <td>
                 <input type="text" name="pages[<?= $i ?>][title]"
-                       value="<?= $this->escape($page['title']) ?>"
+                       value="<?= e($page['title']) ?>"
                        class="form-input" required>
               </td>
               <td>
                 <div class="slug-field">
                   <span class="slug-prefix">/</span>
                   <input type="text" name="pages[<?= $i ?>][slug]"
-                         value="<?= $this->escape($page['slug']) ?>"
+                         value="<?= e($page['slug']) ?>"
                          class="form-input" pattern="[a-z0-9-]+" required>
                 </div>
               </td>
