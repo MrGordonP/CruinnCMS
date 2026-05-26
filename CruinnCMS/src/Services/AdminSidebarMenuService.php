@@ -52,6 +52,11 @@ class AdminSidebarMenuService
         ];
 
         $moduleGroups = [];
+        $menuIndexByLabel = [];
+        foreach ($menu as $idx => $item) {
+            $menuIndexByLabel[(string) ($item['label'] ?? '')] = $idx;
+        }
+
         $reservedGroups = [
             'Content' => true,
             'People' => true,
@@ -67,6 +72,26 @@ class AdminSidebarMenuService
             if ($group === '' || $label === '' || $url === '') {
                 continue;
             }
+
+            // Merge module links into existing core groups where applicable.
+            if (isset($menuIndexByLabel[$group]) && $group !== 'People' && $group !== 'Settings') {
+                $menuIdx = $menuIndexByLabel[$group];
+                $exists = false;
+                foreach ($menu[$menuIdx]['children'] as $child) {
+                    if ($child['url'] === $url) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                if (!$exists) {
+                    $menu[$menuIdx]['children'][] = [
+                        'label' => $label,
+                        'url' => $url,
+                    ];
+                }
+                continue;
+            }
+
             if (isset($reservedGroups[$group])) {
                 continue;
             }
