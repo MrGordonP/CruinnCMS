@@ -57,6 +57,21 @@ return [
         ['group' => 'Community', 'label' => 'Forum', 'url' => '/admin/forum', 'icon' => '💬', 'roles' => ['admin']],
     ],
 
+    'widget_providers' => [
+        [
+            'slug'     => 'quick-links',
+            'label'    => 'Forum Quick Links',
+            'provider' => 'Cruinn\\Module\\Forum\\Widgets\\DashboardWidgets::quickLinksData',
+            'template' => 'widgets/dashboard-quick-links',
+        ],
+        [
+            'slug'     => 'status-summary',
+            'label'    => 'Forum Activity Summary',
+            'provider' => 'Cruinn\\Module\\Forum\\Widgets\\DashboardWidgets::statusSummaryData',
+            'template' => 'widgets/dashboard-status-summary',
+        ],
+    ],
+
     'template_path' => __DIR__ . '/templates',
 
     'settings_schema' => [

@@ -55,6 +55,21 @@ return [
         ['group' => 'Community', 'label' => 'Events', 'url' => '/admin/events', 'icon' => '📅', 'roles' => ['admin']],
     ],
 
+    'widget_providers' => [
+        [
+            'slug'     => 'quick-links',
+            'label'    => 'Events Quick Links',
+            'provider' => 'Cruinn\\Module\\Events\\Widgets\\DashboardWidgets::quickLinksData',
+            'template' => 'widgets/dashboard-quick-links',
+        ],
+        [
+            'slug'     => 'status-summary',
+            'label'    => 'Events Status Summary',
+            'provider' => 'Cruinn\\Module\\Events\\Widgets\\DashboardWidgets::statusSummaryData',
+            'template' => 'widgets/dashboard-status-summary',
+        ],
+    ],
+
     'provides' => ['events'],
 
     'public_routes' => [],

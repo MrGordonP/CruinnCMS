@@ -16,8 +16,8 @@
 </div>
 
 <p class="text-muted" style="margin-bottom: var(--space-lg);">
-    Widget dashboards are block-based canvases that can be assigned to roles, positions, or individual users.
-    Build dashboards using the block editor with <code>module-widget</code> blocks and layout blocks.
+    Dashboards are block-based canvases that can be assigned to roles, positions, or individual users.
+    Build them with layout blocks and <code>module-widget</code> data cards (quick links + status summaries per module).
 </p>
 
 <div class="form-section">
@@ -83,7 +83,7 @@
     <ol>
         <li>Create a new dashboard using the form above</li>
         <li>Edit the dashboard canvas using the block editor</li>
-        <li>Add <code>module-widget</code> blocks and layout blocks (sections, columns, etc.)</li>
+        <li>Add layout blocks (sections, columns, etc.) and module data cards via <code>module-widget</code></li>
         <li>Publish the dashboard when ready</li>
         <li>Assign the dashboard to roles via <strong>Admin → Roles → {Role} → Dashboard</strong></li>
         <li>Users with that role will see the dashboard when they visit <code>/admin/dashboard</code></li>

@@ -23,17 +23,19 @@ BlockRegistry::register([
             return '<p class="cruinn-module-widget-empty">Module widget: no widget selected.</p>';
         }
 
-        // Check if userContext is present (injected by DashboardService for widget dashboards)
-        $userContext = $config['_userContext'] ?? null;
+        // Provider widgets can render with userContext (dashboard runtime) or
+        // empty context (editor/preview); fall back to legacy pre-rendered widgets.
+        $userContext = $config['_userContext'] ?? [];
+        if (!is_array($userContext)) {
+            $userContext = [];
+        }
 
-        if ($userContext && is_array($userContext)) {
-            // Provider-based widget with userContext — extract settings and call provider
-            $settings = $config;
-            unset($settings['widget_key'], $settings['_userContext']);
+        $settings = $config;
+        unset($settings['widget_key'], $settings['_userContext']);
 
-            $html = ModuleRegistry::renderProviderWidget($widgetKey, $settings, $userContext);
-        } else {
-            // Simple widget (sidebar) — pre-rendered HTML
+        $html = ModuleRegistry::renderProviderWidget($widgetKey, $settings, $userContext);
+        if ($html === '') {
+            // Simple widget (legacy sidebar callable) — pre-rendered HTML
             $html = ModuleRegistry::renderWidgetByKey($widgetKey);
         }
 

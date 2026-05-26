@@ -222,14 +222,57 @@ class ModuleRegistry
      */
     public static function widgetCatalog(): array
     {
+        self::load();
+
         $catalog = [];
+        $seen = [];
+
         foreach (self::collectWidgetEntries() as $entry) {
+            $seen[$entry['key']] = true;
             $catalog[] = [
                 'key'    => $entry['key'],
                 'module' => $entry['module'],
                 'title'  => $entry['title'],
             ];
         }
+
+        // Also expose provider-backed widgets so dashboard editors can pull
+        // module data cards even when a module does not implement legacy widgets().
+        foreach (self::$modules as $slug => $def) {
+            if ((self::$statuses[$slug] ?? 'discovered') !== 'active') {
+                continue;
+            }
+
+            foreach ((array) ($def['widget_providers'] ?? []) as $idx => $provider) {
+                if (!is_array($provider)) {
+                    continue;
+                }
+
+                $raw = trim((string) ($provider['slug'] ?? ''));
+                $safeRaw = self::normaliseWidgetKeyPart($raw);
+                if ($safeRaw === '') {
+                    $safeRaw = 'provider-' . ((int) $idx + 1);
+                }
+
+                $key = $slug . ':' . $safeRaw;
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+
+                $title = trim((string) ($provider['label'] ?? $provider['title'] ?? $safeRaw));
+                if ($title === '') {
+                    $title = $key;
+                }
+
+                $catalog[] = [
+                    'key'    => $key,
+                    'module' => $slug,
+                    'title'  => $title,
+                ];
+            }
+        }
+
         return $catalog;
     }
 
@@ -410,7 +453,8 @@ class ModuleRegistry
         // Find widget provider
         $providerDef = null;
         foreach ($providers as $p) {
-            if (($p['slug'] ?? '') === $widgetSlug) {
+            $candidate = self::normaliseWidgetKeyPart((string) ($p['slug'] ?? ''));
+            if ($candidate !== '' && $candidate === self::normaliseWidgetKeyPart($widgetSlug)) {
                 $providerDef = $p;
                 break;
             }

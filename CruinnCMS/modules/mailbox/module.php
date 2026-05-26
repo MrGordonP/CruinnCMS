@@ -39,6 +39,12 @@ return [
 
     'widget_providers' => [
         [
+            'slug'     => 'quick-links',
+            'label'    => 'Mailbox Quick Links',
+            'provider' => 'Cruinn\\Module\\Mailbox\\Widgets\\QuickLinksWidget::getData',
+            'template' => 'widgets/quick-links',
+        ],
+        [
             'slug'     => 'notifications',
             'label'    => 'Mailbox Notifications',
             'provider' => 'Cruinn\\Module\\Mailbox\\Widgets\\NotificationsWidget::getData',

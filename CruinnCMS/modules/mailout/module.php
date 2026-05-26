@@ -60,5 +60,20 @@ return [
         ['group' => 'Content', 'label' => 'Mailing Lists', 'url' => '/admin/mailout/lists', 'icon' => '📋', 'roles' => ['admin']],
     ],
 
+    'widget_providers' => [
+        [
+            'slug'     => 'quick-links',
+            'label'    => 'Mailout Quick Links',
+            'provider' => 'Cruinn\\Module\\Mailout\\Widgets\\DashboardWidgets::quickLinksData',
+            'template' => 'widgets/dashboard-quick-links',
+        ],
+        [
+            'slug'     => 'status-summary',
+            'label'    => 'Mailout Status Summary',
+            'provider' => 'Cruinn\\Module\\Mailout\\Widgets\\DashboardWidgets::statusSummaryData',
+            'template' => 'widgets/dashboard-status-summary',
+        ],
+    ],
+
     'provides' => ['mailout'],
 ];

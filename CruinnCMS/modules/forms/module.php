@@ -34,6 +34,21 @@ return [
         ['group' => 'Content', 'label' => 'Forms', 'url' => '/admin/forms', 'icon' => '📋', 'roles' => ['admin']],
     ],
 
+    'widget_providers' => [
+        [
+            'slug'     => 'quick-links',
+            'label'    => 'Forms Quick Links',
+            'provider' => 'Cruinn\\Module\\Forms\\Widgets\\DashboardWidgets::quickLinksData',
+            'template' => 'widgets/dashboard-quick-links',
+        ],
+        [
+            'slug'     => 'status-summary',
+            'label'    => 'Forms Status Summary',
+            'provider' => 'Cruinn\\Module\\Forms\\Widgets\\DashboardWidgets::statusSummaryData',
+            'template' => 'widgets/dashboard-status-summary',
+        ],
+    ],
+
     'routes' => function (\Cruinn\Router $router) {
         // Admin — Forms
         $router->get('/admin/forms',                                    [FormController::class, 'adminList']);

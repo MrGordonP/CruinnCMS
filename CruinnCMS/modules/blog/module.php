@@ -63,6 +63,21 @@ return [
         ['group' => 'Content', 'label' => 'Blog', 'url' => '/admin/blog', 'icon' => '📰', 'roles' => ['admin']],
     ],
 
+    'widget_providers' => [
+        [
+            'slug'     => 'quick-links',
+            'label'    => 'Blog Quick Links',
+            'provider' => 'Cruinn\\Module\\Blog\\Widgets\\DashboardWidgets::quickLinksData',
+            'template' => 'widgets/dashboard-quick-links',
+        ],
+        [
+            'slug'     => 'status-summary',
+            'label'    => 'Blog Status Summary',
+            'provider' => 'Cruinn\\Module\\Blog\\Widgets\\DashboardWidgets::statusSummaryData',
+            'template' => 'widgets/dashboard-status-summary',
+        ],
+    ],
+
     'provides' => ['articles'],
 
     'public_routes' => [],
