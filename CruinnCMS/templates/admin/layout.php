@@ -22,6 +22,7 @@
                 <?= e(\Cruinn\App::config('site.name', 'Admin')) ?>
             </a>
         </div>
+        <?php $_adminSidebarMenu = \Cruinn\Services\AdminSidebarMenuService::build(); ?>
         <nav class="admin-sidebar-nav">
             <?php if (!empty($acp_mode)): ?>
                 <a href="<?= url('/admin/dashboard') ?>">← Dashboard</a>
@@ -43,57 +44,20 @@
                 <span class="admin-sidebar-sep"></span>
                 <a href="<?= url('/admin/settings/site') ?>">⚙ Settings</a>
             <?php else: ?>
-                <a href="<?= url('/admin/dashboard') ?>">Dashboard</a>
-                <div class="admin-sidebar-group">
-                    <a href="<?= url('/admin/site-builder') ?>" class="admin-sidebar-parent">Site Builder <span class="sidebar-caret">▸</span></a>
-                    <div class="admin-sidebar-flyout">
-                        <a href="<?= url('/admin/editor') ?>">Open Editor</a>
-                        <a href="<?= url('/admin/pages') ?>">Pages</a>
-                        <a href="<?= url('/admin/templates') ?>">Templates</a>
-                        <a href="<?= url('/admin/menus') ?>">Menus</a>
-                        <a href="<?= url('/admin/content') ?>">Dynamic Content</a>
-                        <a href="<?= url('/admin/site-builder/structure') ?>">Structure</a>
-                        <a href="<?= url('/admin/site-builder/global-header') ?>">Global Header</a>
-                        <a href="<?= url('/admin/site-builder/global-footer') ?>">Global Footer</a>
-                        <a href="<?= url('/admin/blocks/named') ?>">Named Blocks</a>
-                        <a href="<?= url('/admin/template-editor') ?>">PHP Templates</a>
-                        <a href="<?= url('/admin/media') ?>">Media</a>
-                        <a href="<?= url('/admin/import') ?>">Import</a>
+                <?php foreach ($_adminSidebarMenu as $_item): ?>
+                    <?php if (!empty($_item['children'])): ?>
+                    <div class="admin-sidebar-group">
+                        <a href="<?= url($_item['url']) ?>" class="admin-sidebar-parent"><?= e($_item['label']) ?> <span class="sidebar-caret">▸</span></a>
+                        <div class="admin-sidebar-flyout">
+                            <?php foreach ($_item['children'] as $_child): ?>
+                            <a href="<?= url($_child['url']) ?>"><?= e($_child['label']) ?></a>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                </div>
-                <?php
-                // ── Dynamic module sidebar groups ─────────────────
-                // Group all active modules' acp_sections by group name.
-                // 'Settings' is a flat link below; 'People' is injected into the platform People flyout.
-                $_sidebarGroups = [];
-                foreach (\Cruinn\Modules\ModuleRegistry::acpSections() as $_s) {
-                    $_g = $_s['group'] ?? 'Other';
-                    if ($_g === 'Settings' || $_g === 'People') { continue; }
-                    $_sidebarGroups[$_g][] = $_s;
-                }
-                foreach ($_sidebarGroups as $_groupName => $_groupItems):
-                ?>
-                <div class="admin-sidebar-group">
-                    <a href="<?= url($_groupItems[0]['url']) ?>" class="admin-sidebar-parent"><?= e($_groupName) ?> <span class="sidebar-caret">▸</span></a>
-                    <div class="admin-sidebar-flyout">
-                        <?php foreach ($_groupItems as $_si): ?>
-                        <a href="<?= url($_si['url']) ?>"><?= e($_si['label']) ?></a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
+                    <?php else: ?>
+                    <a href="<?= url($_item['url']) ?>"><?= e($_item['label']) ?></a>
+                    <?php endif; ?>
                 <?php endforeach; ?>
-                <div class="admin-sidebar-group">
-                    <a href="<?= url('/admin/users') ?>" class="admin-sidebar-parent">People <span class="sidebar-caret">▸</span></a>
-                    <div class="admin-sidebar-flyout">
-                        <a href="<?= url('/admin/users') ?>">Users</a>
-                        <a href="<?= url('/admin/roles') ?>">Roles</a>
-                        <a href="<?= url('/admin/groups') ?>">Groups</a>
-                        <?php foreach (\Cruinn\Modules\ModuleRegistry::acpSections() as $_s):
-                            if (($_s['group'] ?? '') !== 'People') { continue; } ?>
-                        <a href="<?= url($_s['url']) ?>"><?= e($_s['label']) ?></a>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
                 <span class="admin-sidebar-sep"></span>
                 <a href="<?= url('/admin/settings/site') ?>">⚙ Settings</a>
             <?php endif; ?>
