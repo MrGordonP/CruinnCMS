@@ -31,6 +31,7 @@ class AdminSidebarMenuService
                 'url' => '/admin/site-builder',
                 'children' => [
                     ['label' => 'Open Editor', 'url' => '/admin/editor'],
+                    ['label' => 'Widget Editor', 'url' => '/admin/site-builder/dashboards'],
                     ['label' => 'Structure', 'url' => '/admin/site-builder/structure'],
                     ['label' => 'Menus', 'url' => '/admin/menus'],
                     ['label' => 'Layout Templates', 'url' => '/admin/templates?panel=template-layouts'],
@@ -45,6 +46,7 @@ class AdminSidebarMenuService
                 'children' => [
                     ['label' => 'Pages', 'url' => '/admin/pages'],
                     ['label' => 'Media', 'url' => '/admin/media'],
+                    ['label' => 'Subjects', 'url' => '/admin/subjects'],
                     ['label' => 'Dynamic Content', 'url' => '/admin/content'],
                     ['label' => 'Import', 'url' => '/admin/import'],
                 ],
