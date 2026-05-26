@@ -2,7 +2,7 @@
 
 Date: 2026-05-26
 Branch: main
-Status: ready to commit
+Status: checkpoint committed (follow-up required)
 
 ## Scope
 
@@ -89,3 +89,33 @@ Files:
 
 - Subject-level active family/category mapping is intentionally deferred.
 - Current model uses module-level default category selection for auto-provisioned subject threads.
+
+## Addendum: Dashboard Module Data Cards (Partial Rollout)
+
+Date: 2026-05-26
+Commit: `e7d8b60`
+State: partially working, requires refinement
+
+### What Was Shipped
+
+1. Extended dashboard `module-widget` catalog/render path to support provider-backed module cards.
+2. Added provider wiring and templates for quick-links/status-summary cards in:
+	- blog
+	- events
+	- forms
+	- forum
+	- mailout
+	- mailbox
+3. Updated dashboard builder copy to reflect module data-card usage.
+
+### Current Operator Feedback
+
+- Selection/drop-in flow is functional.
+- Overall behavior is not finished quality yet and needs additional iteration.
+
+### Follow-up Required
+
+1. Review card UX/content quality module-by-module and tighten output consistency.
+2. Validate real-data edge cases for empty/low-permission datasets.
+3. Confirm officer-facing dashboard usefulness and adjust card density/priority.
+4. Continue expanding via provider pattern only (no hardcoded per-instance behavior).
