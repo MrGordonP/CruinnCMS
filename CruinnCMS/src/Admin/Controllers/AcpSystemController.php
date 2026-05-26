@@ -743,10 +743,24 @@ class AcpSystemController extends BaseController
                     $pageOptions[(string) ($pageRow['id'] ?? '')] = (string) ($pageRow['title'] ?? 'Untitled') . ' (' . (string) ($pageRow['slug'] ?? '') . ')';
                 }
 
+                $forumCategoryOptions = ['' => '— Auto (first active category) —'];
+                if ($slug === 'forum') {
+                    $forumCategoryRows = $this->db->fetchAll(
+                        'SELECT id, title, access_role FROM forum_categories WHERE is_active = 1 ORDER BY sort_order ASC, title ASC'
+                    );
+                    foreach ($forumCategoryRows as $categoryRow) {
+                        $forumCategoryOptions[(string) ($categoryRow['id'] ?? '')] =
+                            (string) ($categoryRow['title'] ?? 'Untitled') . ' (' . (string) ($categoryRow['access_role'] ?? 'public') . ')';
+                    }
+                }
+
                 foreach ($def['settings_schema'] as &$field) {
                     if (in_array((string) ($field['key'] ?? ''), ['blog_list_page_id', 'blog_post_page_id', 'forum_list_page_id'], true)) {
                         $field['type'] = 'select';
                         $field['options'] = $pageOptions;
+                    } elseif ((string) ($field['key'] ?? '') === 'subject_thread_category_id') {
+                        $field['type'] = 'select';
+                        $field['options'] = $forumCategoryOptions;
                     }
                 }
                 unset($field);

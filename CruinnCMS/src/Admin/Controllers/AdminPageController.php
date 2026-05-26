@@ -230,7 +230,9 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
     /**
      * POST /admin/pages/{id}/convert-to-blocks
      * Parse the page's body_html into Cruinn blocks, persist as a draft,
-     * flip render_mode to 'block', and redirect to the block editor.
+     * and redirect to the block editor.
+     *
+     * render_mode intentionally remains 'html' until publish succeeds.
      */
     public function convertToBlocks(string $id): void
     {
@@ -257,13 +259,8 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
 
             $importSvc->persistImportedBlocks($blocks, (int) $id, $this->db);
 
-            $this->db->update('pages_index', [
-                'render_mode' => 'block',
-                'updated_at'  => date('Y-m-d H:i:s'),
-            ], 'id = ?', [$id]);
-
             $this->logActivity('update', 'page', (int) $id, $page['title'] . ' [convert-to-blocks]');
-            Auth::flash('success', 'Page converted. Review your blocks and publish when ready.');
+            Auth::flash('success', 'Page conversion draft created. Review your blocks and publish to switch this page to block mode.');
             $this->redirect('/admin/editor/' . (int) $id . '/edit');
         } catch (\Throwable $e) {
             Auth::flash('error', 'Convert failed: ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine());

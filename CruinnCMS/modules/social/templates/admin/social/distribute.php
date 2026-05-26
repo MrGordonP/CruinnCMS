@@ -113,27 +113,6 @@
             </div>
             <?php endif; ?>
 
-            <?php if (!empty($forumEnabled)): ?>
-            <div class="channel-section">
-                <h3>Forum</h3>
-                <div class="channel-checkboxes">
-                    <label class="checkbox-label channel-option">
-                        <input type="checkbox" name="forum_actions[create_thread]" value="1">
-                        Connect:Forum:Thread Create Thread
-                    </label>
-                </div>
-                <div class="form-group" style="margin-top: 1rem;">
-                    <label for="forumCategoryId">Forum Category</label>
-                    <select name="forum_category_id" id="forumCategoryId" class="form-control">
-                        <option value="">Choose category...</option>
-                        <?php foreach ($forumCategories as $category): ?>
-                        <option value="<?= (int) $category['id'] ?>"><?= e($category['title']) ?> (<?= e($category['access_role']) ?>)</option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small>A linked thread will be created once per subject and reused on later distributions.</small>
-                </div>
-            </div>
-            <?php endif; ?>
         </div>
 
         <div class="distribute-actions">

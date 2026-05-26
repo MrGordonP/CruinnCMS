@@ -14,7 +14,7 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
 **Current version:** `v1.0.0-beta.15` (follow-up work in progress)
-**HEAD:** `55092f7` — fix(editor): stabilize publish, zone assignment, and in-situ editing flows [v1.0.0-beta.15]
+**HEAD:** `7882387` — feat(forum,social): add subject-linked discussion flow [v1.0.0-beta.15]
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 ---
@@ -205,6 +205,7 @@ Apache: `public/.htaccess` handles rewrites + directory listing protection (`Opt
 - **v1.0.0-beta.13** (`57dd9f8`, pending tag) — Template zone/layout separation fix, `module-content` block type + provider registry, Blog list as first provider, system pages editable via block editor (`BaseController::renderSystemPage`), `Template::globals()` for php-include context, migrations 017-019.
 - **v1.0.0-beta.14** — Template-layout architecture corrections and follow-up recovery after the incomplete zone/template slice captured in `dev/docs/sessions/v1.0.0-beta.14_PARTIAL_FAILURE.md`.
 - **v1.0.0-beta.15** (`55092f7`) — Template/layout publish stability, system-page/blog list mapping fast follow-up, and the current follow-up working tree for Blog module ownership, Blog control-centre routing, relational Blog Profiles, module-content Blog profile selection, and single-post navigation polish/containment fixes.
+- **v1.0.0-beta.15 follow-up (2026-05-26, pending commit)** — Conversion safety fix (defer html->block mode switch to publish), Social boundary reset (remove forum thread provisioning from Social distribute), and core publish-time subject-thread provisioning service wired to Blog/Events with forum category configuration support.
 
 ---
 

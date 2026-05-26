@@ -76,6 +76,14 @@ return [
             'default' => '',
             'options' => ['' => '— Select page —'],
         ],
+        [
+            'key'     => 'subject_thread_category_id',
+            'type'    => 'select',
+            'label'   => 'Subject Thread Category',
+            'hint'    => 'Default forum category for auto-provisioned subject discussion threads.',
+            'default' => '',
+            'options' => ['' => '— Auto (first active category) —'],
+        ],
     ],
 
     'provides' => ['forum'],

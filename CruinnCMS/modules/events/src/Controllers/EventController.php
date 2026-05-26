@@ -14,6 +14,7 @@ use Cruinn\CSRF;
 use Cruinn\Database;
 use Cruinn\Mailer;
 use Cruinn\Controllers\BaseController;
+use Cruinn\Services\SubjectThreadProvisionService;
 
 class EventController extends BaseController
 {
@@ -693,6 +694,17 @@ class EventController extends BaseController
             'updated_at'        => date('Y-m-d H:i:s'),
         ]);
 
+        if ($this->input('status', 'draft') === 'published') {
+            $this->provisionForumThreadForEvent(
+                (int) $id,
+                (int) $subjectId,
+                (string) $this->input('title'),
+                $slug,
+                (string) ($this->input('description') ?: ''),
+                (int) Auth::userId()
+            );
+        }
+
         $this->logActivity('create', 'event', (int) $id, $this->input('title'));
         Auth::flash('success', 'Event created.');
         $this->redirect("/admin/events/{$id}");
@@ -782,6 +794,17 @@ class EventController extends BaseController
             'status'            => $this->input('status', 'draft'),
             'updated_at'        => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);
+
+        if ($this->input('status', 'draft') === 'published') {
+            $this->provisionForumThreadForEvent(
+                (int) $id,
+                (int) $subjectId,
+                (string) $this->input('title'),
+                $slug,
+                (string) ($this->input('description') ?: ''),
+                (int) ($event['created_by'] ?? Auth::userId())
+            );
+        }
 
         $this->logActivity('update', 'event', (int) $id, $this->input('title'));
         Auth::flash('success', 'Event updated.');
@@ -1373,6 +1396,33 @@ class EventController extends BaseController
     private static function normalisePerPage(mixed $value): int
     {
         return max(1, min(100, (int) $value ?: 10));
+    }
+
+    private function provisionForumThreadForEvent(
+        int $eventId,
+        int $subjectId,
+        string $title,
+        string $slug,
+        string $description,
+        int $authorId
+    ): void {
+        if ($eventId <= 0 || $subjectId <= 0) {
+            return;
+        }
+
+        try {
+            (new SubjectThreadProvisionService($this->db))->ensurePublishedContentThread(
+                'event',
+                $eventId,
+                $subjectId,
+                $title,
+                $slug,
+                $description,
+                $authorId
+            );
+        } catch (\Throwable $e) {
+            error_log('Event forum-thread provisioning failed for event #' . $eventId . ': ' . $e->getMessage());
+        }
     }
 
     private static function normaliseEventFilter(mixed $value): string

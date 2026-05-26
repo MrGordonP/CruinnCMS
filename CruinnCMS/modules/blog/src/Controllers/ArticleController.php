@@ -12,6 +12,7 @@ use Cruinn\Auth;
 use Cruinn\CSRF;
 use Cruinn\Database;
 use Cruinn\Controllers\BaseController;
+use Cruinn\Services\SubjectThreadProvisionService;
 
 class ArticleController extends BaseController
 {
@@ -396,6 +397,17 @@ class ArticleController extends BaseController
             'updated_at'     => date('Y-m-d H:i:s'),
         ]);
 
+        if ($status === 'published') {
+            $this->provisionForumThreadForArticle(
+                (int) $id,
+                (int) ($subjectId ?: 0),
+                (string) $this->input('title'),
+                $slug,
+                (string) $this->input('excerpt', ''),
+                (int) Auth::userId()
+            );
+        }
+
         $this->logActivity('create', 'article', (int) $id, $this->input('title'));
         Auth::flash('success', 'Blog post created. Now add some content blocks.');
         $this->redirect('/admin/blog/editor/' . $id . '/edit');
@@ -497,6 +509,17 @@ class ArticleController extends BaseController
             'published_at'   => $publishedAt,
             'updated_at'     => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);
+
+        if ($status === 'published') {
+            $this->provisionForumThreadForArticle(
+                (int) $id,
+                (int) ($subjectId ?: 0),
+                (string) $this->input('title'),
+                $slug,
+                (string) $this->input('excerpt', ''),
+                (int) ($article['author_id'] ?? Auth::userId())
+            );
+        }
 
         $this->logActivity('update', 'article', (int) $id, $this->input('title'));
         Auth::flash('success', 'Blog post updated.');
@@ -683,6 +706,33 @@ class ArticleController extends BaseController
         } while ($exists > 0);
 
         return $slug;
+    }
+
+    private function provisionForumThreadForArticle(
+        int $articleId,
+        int $subjectId,
+        string $title,
+        string $slug,
+        string $excerpt,
+        int $authorId
+    ): void {
+        if ($articleId <= 0 || $subjectId <= 0) {
+            return;
+        }
+
+        try {
+            (new SubjectThreadProvisionService($this->db))->ensurePublishedContentThread(
+                'article',
+                $articleId,
+                $subjectId,
+                $title,
+                $slug,
+                $excerpt,
+                $authorId
+            );
+        } catch (\Throwable $e) {
+            error_log('Article forum-thread provisioning failed for article #' . $articleId . ': ' . $e->getMessage());
+        }
     }
 
     private static function buildBlogListViewData(Database $db, string $basePath, array $settings = []): array

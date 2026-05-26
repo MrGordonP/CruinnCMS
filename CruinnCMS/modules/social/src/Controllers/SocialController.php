@@ -15,8 +15,6 @@ use Cruinn\Auth;
 use Cruinn\App;
 use Cruinn\Controllers\BaseController;
 use Cruinn\Module\Events\Controllers\EventController;
-use Cruinn\Module\Forum\Forum\ForumManager;
-use Cruinn\Modules\ModuleRegistry;
 use Cruinn\Module\Social\Services\FacebookService;
 use Cruinn\Module\Social\Services\TwitterService;
 use Cruinn\Module\Social\Services\InstagramService;
@@ -277,16 +275,6 @@ class SocialController extends BaseController
         // Get mailing lists
         $mailingLists = $this->db->fetchAll('SELECT * FROM mailing_lists WHERE is_active = 1 ORDER BY name');
 
-        $forumEnabled = ModuleRegistry::isActive('forum');
-        $forumCategories = $forumEnabled
-            ? $this->db->fetchAll(
-                'SELECT id, title, slug, access_role
-                 FROM forum_categories
-                 WHERE is_active = 1
-                 ORDER BY sort_order ASC, title ASC'
-            )
-            : [];
-
         // Pre-select content if provided
         $selectedContent = null;
         if ($contentId && $contentType) {
@@ -309,8 +297,6 @@ class SocialController extends BaseController
             'events'          => $events,
             'accounts'        => $accounts,
             'mailingLists'    => $mailingLists,
-            'forumEnabled'    => $forumEnabled,
-            'forumCategories' => $forumCategories,
             'selectedContent' => $selectedContent,
             'selectedType'    => $contentType,
             'history'         => $history,
@@ -328,25 +314,22 @@ class SocialController extends BaseController
         $imageUrl    = trim($this->input('image_url', ''));
         $channels    = $_POST['channels'] ?? [];
         $lists       = $_POST['mailing_lists'] ?? [];
-        $forumActions = $_POST['forum_actions'] ?? [];
-        $forumCategoryId = (int) $this->input('forum_category_id', 0);
 
         $wantsSocial = is_array($channels) && !empty($channels);
         $wantsEmail = is_array($lists) && !empty($lists);
-        $wantsForumThread = is_array($forumActions) && !empty($forumActions['create_thread']);
 
         if (!$contentType || !$contentId) {
             Auth::flash('warning', 'Please select the content you want to distribute.');
             $this->redirect('/admin/social/distribute');
         }
 
-        if (!$wantsSocial && !$wantsEmail && !$wantsForumThread) {
-            Auth::flash('warning', 'Select at least one social, email, or forum destination.');
+        if (!$wantsSocial && !$wantsEmail) {
+            Auth::flash('warning', 'Select at least one social or email destination.');
             $this->redirect('/admin/social/distribute');
         }
 
-        if (($wantsSocial || $wantsEmail) && $message === '') {
-            Auth::flash('warning', 'Please write a message for the selected social or email distribution channels.');
+        if ($message === '') {
+            Auth::flash('warning', 'Please write a message for the selected distribution channels.');
             $this->redirect('/admin/social/distribute');
         }
 
@@ -409,31 +392,6 @@ class SocialController extends BaseController
                     'created_by'    => Auth::userId(),
                 ]);
                 $successCount++;
-            }
-        }
-
-        if ($wantsForumThread) {
-            $forumResult = $this->createOrResolveForumThread($contentType, $content, $forumCategoryId, $link, $message);
-
-            if ($forumResult['success']) {
-                $threadId = (int) ($forumResult['thread_id'] ?? 0);
-                $threadLabel = $threadId > 0
-                    ? 'Forum: Thread #' . $threadId
-                    : 'Forum: Thread';
-
-                $this->db->insert('content_distributions', [
-                    'content_type'  => $contentType,
-                    'content_id'    => $contentId,
-                    'channel_type'  => 'forum',
-                    'channel_id'    => $threadId > 0 ? $threadId : null,
-                    'channel_name'  => $threadLabel,
-                    'status'        => 'sent',
-                    'sent_at'       => date('Y-m-d H:i:s'),
-                    'created_by'    => Auth::userId(),
-                ]);
-                $successCount++;
-            } else {
-                $errors[] = 'Forum: ' . ($forumResult['error'] ?? 'Failed');
             }
         }
 
@@ -760,75 +718,6 @@ class SocialController extends BaseController
 
         $slug = (string) ($this->db->fetchColumn('SELECT slug FROM pages_index WHERE id = ? LIMIT 1', [$listPageId]) ?: '');
         return $slug !== '' ? '/' . trim($slug, '/') : '/blog';
-    }
-
-    private function createOrResolveForumThread(string $contentType, array $content, int $forumCategoryId, string $link, string $message): array
-    {
-        if (!ModuleRegistry::isActive('forum')) {
-            return ['success' => false, 'error' => 'Forum module is not active.'];
-        }
-
-        $subjectId = (int) ($content['subject_id'] ?? 0);
-        if ($subjectId <= 0) {
-            return ['success' => false, 'error' => 'Selected content is not linked to a subject.'];
-        }
-
-        $provider = ForumManager::provider();
-        $existingThread = $provider->getThreadBySubjectId($subjectId, 100);
-        if ($existingThread) {
-            return ['success' => true, 'thread_id' => (int) $existingThread['id'], 'created' => false];
-        }
-
-        if ($forumCategoryId <= 0) {
-            return ['success' => false, 'error' => 'Choose a forum category for the discussion thread.'];
-        }
-
-        $category = $this->db->fetch(
-            'SELECT id, title FROM forum_categories WHERE id = ? AND is_active = 1 LIMIT 1',
-            [$forumCategoryId]
-        );
-        if (!$category) {
-            return ['success' => false, 'error' => 'The selected forum category is not available.'];
-        }
-
-        $title = trim((string) ($content['title'] ?? ''));
-        if ($title === '') {
-            $title = ucfirst($contentType) . ' discussion';
-        }
-
-        $threadBody = $this->buildForumThreadBody($contentType, $content, $link, $message);
-        $threadId = $provider->createThread($forumCategoryId, (int) Auth::userId(), $title, $threadBody, $subjectId);
-
-        return ['success' => true, 'thread_id' => $threadId, 'created' => true];
-    }
-
-    private function buildForumThreadBody(string $contentType, array $content, string $link, string $message): string
-    {
-        $title = htmlspecialchars((string) ($content['title'] ?? ucfirst($contentType)), ENT_QUOTES, 'UTF-8');
-        $bodyParts = [];
-
-        $bodyParts[] = '<p>Discussion thread for ' . $title . '.</p>';
-
-        if ($message !== '') {
-            $bodyParts[] = '<p>' . nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8')) . '</p>';
-        } else {
-            $summary = '';
-            if ($contentType === 'article') {
-                $summary = trim((string) ($content['excerpt'] ?? ''));
-            } elseif ($contentType === 'event') {
-                $summary = trim((string) strip_tags((string) ($content['description'] ?? '')));
-            }
-
-            if ($summary !== '') {
-                $bodyParts[] = '<p>' . htmlspecialchars(truncate($summary, 280), ENT_QUOTES, 'UTF-8') . '</p>';
-            }
-        }
-
-        if ($link !== '') {
-            $bodyParts[] = '<p><a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '">View the original content</a></p>';
-        }
-
-        return implode("\n", $bodyParts);
     }
 
     // â”€â”€ OAuth Connect & Callback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

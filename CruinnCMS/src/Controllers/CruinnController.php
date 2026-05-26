@@ -1351,6 +1351,8 @@ class CruinnController extends BaseController
                         // HTML mode: pages is the published state.
                         $this->db->execute('DELETE FROM pages WHERE page_id = ?', [$pageId]);
                         $this->publishDraftSnapshotToPages('page_id', $pageId, $maxSeq);
+                        // Explicit HTML->blocks conversion defers render_mode switch until publish.
+                        $this->db->execute("UPDATE pages_index SET render_mode = 'block' WHERE id = ?", [$pageId]);
                     }
                     $this->db->execute('DELETE FROM pages_draft WHERE page_id = ?', [$pageId]);
                     $this->db->execute("UPDATE pages_index SET status = 'published' WHERE id = ?", [$pageId]);
