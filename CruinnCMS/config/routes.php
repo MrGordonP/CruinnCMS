@@ -94,6 +94,9 @@ return function (Cruinn\Router $router) {
     $router->get('/profile',                   [AuthController::class, 'showProfile']);
     $router->post('/profile',                  [AuthController::class, 'updateProfile']);
 
+    // -- Subjects ---------------------------------------------------
+    $router->get('/subjects/{slug}',           [SubjectController::class, 'show']);
+
     // -- Admin Panel ------------------------------------------------
     $router->get('/admin',                       [AcpController::class, 'index']);
     $router->get('/admin/dashboard',             [AdminController::class, 'dashboard']);

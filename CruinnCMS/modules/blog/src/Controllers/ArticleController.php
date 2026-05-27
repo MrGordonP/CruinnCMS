@@ -301,8 +301,8 @@ class ArticleController extends BaseController
         );
 
         $subjects = $this->db->fetchAll(
-            'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
-            ['active']
+            'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+            ['archived']
         );
 
         $this->renderAdmin('admin/articles/index', [
@@ -326,8 +326,8 @@ class ArticleController extends BaseController
     public function adminNew(): void
     {
         $subjects = $this->db->fetchAll(
-            'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
-            ['active']
+            'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+            ['archived']
         );
 
         $this->renderAdmin('admin/articles/edit', [
@@ -360,8 +360,8 @@ class ArticleController extends BaseController
 
         if ($errors) {
             $subjects = $this->db->fetchAll(
-                'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
-                ['active']
+                'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+                ['archived']
             );
             $this->renderAdmin('admin/articles/edit', [
                 'title'       => 'New Blog Post',
@@ -426,8 +426,8 @@ class ArticleController extends BaseController
 
         $blocks   = $this->getArticleBlocks((int) $id);
         $subjects = $this->db->fetchAll(
-            'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
-            ['active']
+            'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+            ['archived']
         );
 
         $this->renderAdmin('admin/articles/edit', [
@@ -473,8 +473,8 @@ class ArticleController extends BaseController
         if ($errors) {
             $blocks   = $this->getArticleBlocks((int) $id);
             $subjects = $this->db->fetchAll(
-                'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
-                ['active']
+                'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+                ['archived']
             );
             $this->renderAdmin('admin/articles/edit', [
                 'title'       => 'Edit: ' . $article['title'],

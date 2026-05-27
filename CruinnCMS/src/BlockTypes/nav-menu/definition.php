@@ -18,9 +18,10 @@ BlockRegistry::register([
         }
 
         $all = $db->fetchAll(
-            'SELECT mi.*, p.slug AS page_slug
+            'SELECT mi.*, p.slug AS page_slug, s.slug AS subject_slug
              FROM menu_items mi
              LEFT JOIN pages_index p ON mi.page_id = p.id
+             LEFT JOIN subjects s ON mi.subject_id = s.id
              WHERE mi.menu_id = ? AND mi.is_active = 1
              ORDER BY mi.sort_order ASC',
             [$menuId]
@@ -64,7 +65,7 @@ BlockRegistry::register([
             $href = match ($mi['link_type'] ?? 'url') {
                 'page'    => '/' . ($mi['page_slug'] ?? ''),
                 'route'   => $mi['route'] ?? '/',
-                'subject' => '/subject/' . ($mi['subject_id'] ?? ''),
+                'subject' => !empty($mi['subject_slug']) ? '/subjects/' . $mi['subject_slug'] : '#',
                 default   => $mi['url'] ?? '#',
             };
             $label    = htmlspecialchars($mi['label'], ENT_QUOTES, 'UTF-8');

@@ -12,6 +12,59 @@ use Cruinn\Auth;
 
 class SubjectController extends BaseController
 {
+    /**
+     * GET /subjects/{slug} — Public subject page.
+     */
+    public function show(string $slug): void
+    {
+        $subject = $this->db->fetch(
+            'SELECT * FROM subjects WHERE slug = ? AND status = ? LIMIT 1',
+            [$slug, 'active']
+        );
+
+        if (!$subject) {
+            http_response_code(404);
+            $this->render('errors/404', ['title' => 'Subject Not Found']);
+            return;
+        }
+
+        $articles = [];
+        $events = [];
+
+        try {
+            $articles = $this->db->fetchAll(
+                'SELECT id, title, slug, published_at
+                 FROM articles
+                 WHERE subject_id = ? AND status = ?
+                 ORDER BY COALESCE(published_at, created_at) DESC
+                 LIMIT 10',
+                [(int) $subject['id'], 'published']
+            );
+        } catch (\Throwable) {
+            $articles = [];
+        }
+
+        try {
+            $events = $this->db->fetchAll(
+                'SELECT id, title, slug, date_start
+                 FROM events
+                 WHERE subject_id = ? AND status = ?
+                 ORDER BY COALESCE(date_start, created_at) DESC
+                 LIMIT 10',
+                [(int) $subject['id'], 'published']
+            );
+        } catch (\Throwable) {
+            $events = [];
+        }
+
+        $this->render('public/subjects/show', [
+            'title'   => $subject['title'],
+            'subject' => $subject,
+            'articles'=> $articles,
+            'events'  => $events,
+        ]);
+    }
+
     // ── Admin: List ───────────────────────────────────────────
 
     /**

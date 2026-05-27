@@ -288,9 +288,10 @@ namespace {
         }
 
         $rows = $db->fetchAll(
-            'SELECT mi.*, p.slug AS page_slug
+            'SELECT mi.*, p.slug AS page_slug, s.slug AS subject_slug
              FROM menu_items mi
              LEFT JOIN pages_index p ON mi.page_id = p.id
+             LEFT JOIN subjects s ON mi.subject_id = s.id
              WHERE mi.menu_id = ? AND mi.is_active = 1
              ORDER BY mi.sort_order ASC',
             [$menu['id']]
@@ -319,7 +320,7 @@ namespace {
                 'page'    => '/' . ($row['page_slug'] ?? ''),
                 'route'   => $row['route'] ?? '/',
                 'url'     => $row['url'] ?? '#',
-                'subject' => '#', // Subjects don't have a public page yet
+                'subject' => !empty($row['subject_slug']) ? '/subjects/' . $row['subject_slug'] : '#',
                 default   => '#',
             };
             $row['target'] = $row['open_new_tab'] ? '_blank' : '';
