@@ -83,8 +83,14 @@ The "Mailing List Subscribers" flow now includes inline helper guidance under li
 ### ~~[FIXED fee957d] Mailout subject field — allow selection from Subjects list~~
 Mailout compose/edit now exposes a "Pick from Subjects" selector that can prefill the subject line while keeping free-text editing available.
 
-### [PINNED] Mailout — additional import sources
-Currently only blog post import is supported. Desired additional sources: Word documents (.docx), platform Documents module pages, and other misc HTML sources.
+### [PINNED] Mailout — additional import sources (partially addressed)
+Now supported:
+- Blog post import
+- Documents module import (title + summary/link scaffold)
+- Raw HTML import (manual paste path)
+
+Still pending:
+- Word documents (.docx) direct import
 
 ### [PINNED] Mailout — email attachments
 No attachment support on broadcasts. Users want to be able to attach files (PDFs etc.) to mailouts before sending.
