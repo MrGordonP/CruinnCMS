@@ -6,9 +6,10 @@
 -- verify-email-sent) so they participate in the block/template
 -- system and inherit site chrome (header, footer zones).
 --
--- Each page gets a single php-include block pointing to the
--- existing PHP template partial.  Admins can add blocks around
--- the include in the block editor.
+-- Most system pages get a single php-include block pointing to the
+-- existing PHP template partial. The profile page is seeded with
+-- dedicated core/system account blocks so users can compose account
+-- layouts directly in Cruinn.
 --
 -- Note: system_pages table registration is handled by migration
 -- 019 which runs after this one. If applying to a schema that
@@ -30,7 +31,11 @@ INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`,
 INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
     SELECT 'sys-register-01',     id, 'php-include', '{"template":"public/register.php"}',          0 FROM `pages_index` WHERE `slug` = 'register';
 INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
-    SELECT 'sys-profile-01',      id, 'php-include', '{"template":"public/profile.php"}',           0 FROM `pages_index` WHERE `slug` = 'profile';
+    SELECT 'sys-profile-details-01', id, 'account-details-form', NULL, 0 FROM `pages_index` WHERE `slug` = 'profile';
+INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-profile-password-01', id, 'account-password-form', NULL, 1 FROM `pages_index` WHERE `slug` = 'profile';
+INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-profile-info-01', id, 'account-information', NULL, 2 FROM `pages_index` WHERE `slug` = 'profile';
 INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
     SELECT 'sys-forgot-pw-01',    id, 'php-include', '{"template":"public/forgot-password.php"}',   0 FROM `pages_index` WHERE `slug` = 'forgot-password';
 INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)

@@ -570,8 +570,9 @@ ON DUPLICATE KEY UPDATE `key` = VALUES(`key`);
 -- ── System Pages ─────────────────────────────────────────────
 -- Engine-level pages that exist outside the user's page tree but use the
 -- block/template system so they inherit site chrome (header, footer zones).
--- Each page has a single php-include block pointing to the appropriate PHP
--- template partial.  Admins can add blocks around the include in the editor.
+-- Most pages have a single php-include block pointing to the appropriate PHP
+-- template partial. The profile page is seeded with dedicated core/system
+-- account blocks so admins can compose account layouts directly in Cruinn.
 
 INSERT INTO `pages_index` (`title`, `slug`, `status`, `template`, `page_zone`, `render_mode`, `editor_mode`) VALUES
     ('Login',              'login',             'published', 'default', 'main', 'block', 'structured'),
@@ -587,7 +588,11 @@ INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
     SELECT 'sys-register-01',     id, 'php-include', '{"template":"public/register.php"}',          0 FROM `pages_index` WHERE `slug` = 'register';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
-    SELECT 'sys-profile-01',      id, 'php-include', '{"template":"public/profile.php"}',           0 FROM `pages_index` WHERE `slug` = 'profile';
+    SELECT 'sys-profile-details-01', id, 'account-details-form', NULL, 0 FROM `pages_index` WHERE `slug` = 'profile';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-profile-password-01', id, 'account-password-form', NULL, 1 FROM `pages_index` WHERE `slug` = 'profile';
+INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
+    SELECT 'sys-profile-info-01', id, 'account-information', NULL, 2 FROM `pages_index` WHERE `slug` = 'profile';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
     SELECT 'sys-forgot-pw-01',    id, 'php-include', '{"template":"public/forgot-password.php"}',   0 FROM `pages_index` WHERE `slug` = 'forgot-password';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
