@@ -1271,6 +1271,8 @@
     }
 
     function bindPropInputs(block) {
+        var anchorHrefInput = document.getElementById('prop-anchor-href');
+
         // Remove previous listeners by cloning nodes for [data-prop] inputs
         // We use a delegated approach on panel instead — re-bind on each select
         panel.querySelectorAll('[data-prop]').forEach(function (inp) {
@@ -2196,6 +2198,9 @@
         'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget G�� select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
         'module-content': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Content - select provider in Content settings.</p>', dynamic: true, defaultConfig: { provider_key: '', display_mode: 'both', per_page: 10, blog_profile_id: '', event_profile_id: '', settings_json: '' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include G�� visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
+        'account-details-form': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Account Details Form — visible on live page.</p>', dynamic: true, initCss: PORTRAIT_INIT },
+        'account-password-form': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Account Password Form — visible on live page.</p>', dynamic: true, initCss: PORTRAIT_INIT },
+        'account-information': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Account Information — visible on live page.</p>', dynamic: true, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
             initCss: { display: 'block', width: '100%', boxSizing: 'border-box' }

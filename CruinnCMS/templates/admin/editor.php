@@ -486,6 +486,9 @@ $eventProfiles = $eventProfiles ?? [];
                     <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Event List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>PHP Include</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="account-details-form" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Account Details</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="account-password-form" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Change Password</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="account-information" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Account Info</button>
                     <button class="palette-btn palette-btn--site" data-add-block="module-widget" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Module Widget</button>
                     <button class="palette-btn palette-btn--site" data-add-block="module-content" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Module Content</button>
                     <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
