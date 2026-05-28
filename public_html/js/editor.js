@@ -1387,6 +1387,7 @@
         var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
         var uiCollapseAlignRow = document.getElementById('prop-ui-collapse-align-row');
         var uiCollapseAlignSel = document.getElementById('prop-ui-collapse-align');
+        var collapsedStyleSel = document.getElementById('prop-collapsed-style');
         var uiCollapseStyleSel = document.getElementById('prop-ui-collapse-style');
         var uiCollapse = (config.ui_collapse || '').toString();
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
@@ -1403,8 +1404,12 @@
                 uiCollapseLabelInp.value = (config.ui_collapse_label || '').toString();
             }
         }
+        var collapseStyleValue = (config.ui_collapse_style === 'heading') ? 'heading' : 'hamburger';
+        if (collapsedStyleSel) {
+            collapsedStyleSel.value = collapseStyleValue;
+        }
         if (uiCollapseStyleSel) {
-            uiCollapseStyleSel.value = (config.ui_collapse_style === 'heading') ? 'heading' : 'hamburger';
+            uiCollapseStyleSel.value = collapseStyleValue;
         }
 
         // CSS properties � read from active viewport overrides, fallback to computed desktop
@@ -2253,6 +2258,7 @@
         var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
         var uiCollapseAlignRow = document.getElementById('prop-ui-collapse-align-row');
         var uiCollapseAlignSel = document.getElementById('prop-ui-collapse-align');
+        var collapsedStyleSel = document.getElementById('prop-collapsed-style');
         var uiCollapseStyleSel = document.getElementById('prop-ui-collapse-style');
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var writeUiCollapse = function () {
@@ -2307,19 +2313,28 @@
             }
         }
 
-        if (uiCollapseStyleSel) {
-            uiCollapseStyleSel.onchange = function () {
+        var bindCollapseStyleSelector = function (selector, peerSelector) {
+            if (!selector) {
+                return;
+            }
+            selector.onchange = function () {
                 var cfg = {};
                 try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
-                if (uiCollapseStyleSel.value === 'heading') {
+                if (selector.value === 'heading') {
                     cfg.ui_collapse_style = 'heading';
                 } else {
                     delete cfg.ui_collapse_style;
                 }
                 block.dataset.blockConfig = JSON.stringify(cfg);
+                if (peerSelector) {
+                    peerSelector.value = selector.value;
+                }
                 recordAction();
             };
-        }
+        };
+
+        bindCollapseStyleSelector(collapsedStyleSel, uiCollapseStyleSel);
+        bindCollapseStyleSelector(uiCollapseStyleSel, collapsedStyleSel);
 
         // Image block: src browse + attr bindings
         if (IMAGE_TYPES.indexOf(block.dataset.blockType) !== -1) {

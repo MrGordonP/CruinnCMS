@@ -847,6 +847,13 @@ $eventProfiles = $eventProfiles ?? [];
                         </label>
                         <span class="editor-label-hint">Always-on collapse for this block. Use Responsive UI for breakpoint-specific collapse.</span>
                     </div>
+                    <div class="editor-prop-row" id="prop-collapsed-style-row">
+                        <label>Collapse style</label>
+                        <select class="editor-prop-input" id="prop-collapsed-style">
+                            <option value="hamburger">Hamburger toggle</option>
+                            <option value="heading">Block heading bar</option>
+                        </select>
+                    </div>
                     <div class="editor-prop-row" id="prop-zone-assign-row" style="display:none">
                         <label>Template Zone</label>
                         <select class="editor-prop-input" id="prop-zone-assign">
