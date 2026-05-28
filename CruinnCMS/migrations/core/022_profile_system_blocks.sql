@@ -9,6 +9,8 @@
 -- - We only rewrite the legacy seeded block id (sys-profile-01)
 --   when it is still the original php-include profile block.
 -- - New account blocks are added with INSERT IGNORE.
+-- - If a legacy sys-profile-01 block still exists, we do not also
+--   insert sys-profile-details-01, avoiding duplicate details forms.
 -- ============================================================
 
 -- Convert legacy seeded profile include into account-details-form
@@ -25,7 +27,13 @@ WHERE p.block_id = 'sys-profile-01'
 INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
 SELECT 'sys-profile-details-01', sp.page_id, 'account-details-form', NULL, 0
 FROM `system_pages` sp
-WHERE sp.system_key = 'profile';
+WHERE sp.system_key = 'profile'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM `pages` p0
+      WHERE p0.page_id = sp.page_id
+        AND p0.block_id = 'sys-profile-01'
+  );
 
 INSERT IGNORE INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
 SELECT 'sys-profile-password-01', sp.page_id, 'account-password-form', NULL, 1
