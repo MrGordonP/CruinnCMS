@@ -94,6 +94,9 @@
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <p id="mailout-list-helper" class="text-muted" style="font-size:0.875rem; margin:0.45rem 0 0;">
+                        Choose the specific mailing list for this send after selecting "Mailing List Subscribers" above.
+                    </p>
                 </div>
             </div>
 
@@ -108,11 +111,37 @@
         </fieldset>
 
         <script>
+        function igaBcSyncListHelper(type) {
+            var helper = document.getElementById('mailout-list-helper');
+            if (!helper) return;
+            helper.style.fontWeight = (type === 'list') ? '600' : '400';
+            helper.style.color = (type === 'list') ? 'var(--color-text,#222)' : '';
+        }
+
         function igaBcTarget(type) {
             ['members', 'list', 'portal_users'].forEach(function(t) {
                 document.getElementById('panel-' + t).style.display = (t === type) ? 'block' : 'none';
             });
+            igaBcSyncListHelper(type);
         }
+
+        (function initMailoutAudienceHelper() {
+            igaBcSyncListHelper('<?= e($currentTarget) ?>');
+            var listSelect = document.getElementById('list_id');
+            var helper = document.getElementById('mailout-list-helper');
+            if (!listSelect || !helper) return;
+
+            function syncSelectionHint() {
+                if (listSelect.value) {
+                    helper.textContent = 'Selected list will receive this mailout when queued or sent.';
+                } else {
+                    helper.textContent = 'Choose the specific mailing list for this send after selecting "Mailing List Subscribers" above.';
+                }
+            }
+
+            listSelect.addEventListener('change', syncSelectionHint);
+            syncSelectionHint();
+        })();
         </script>
 
         <details class="acp-fieldset" style="margin-bottom:1.25rem;">
