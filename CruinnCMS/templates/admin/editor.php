@@ -906,6 +906,24 @@ $eventProfiles = $eventProfiles ?? [];
                 </div>
             </div>
 
+            <!-- Heading group (heading blocks only) -->
+            <div class="editor-accordion collapsed" data-group="heading" style="display:none">
+                <button class="editor-accordion-toggle">Heading</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row">
+                        <label>Level</label>
+                        <select class="editor-prop-input" id="prop-heading-level" data-config="level">
+                            <option value="1">H1</option>
+                            <option value="2">H2</option>
+                            <option value="3">H3</option>
+                            <option value="4">H4</option>
+                            <option value="5">H5</option>
+                            <option value="6">H6</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Bind accordion (content templates with a context_source only) -->
             <div class="editor-accordion collapsed" data-group="bind" style="display:none">
                 <button class="editor-accordion-toggle">Bind to Data</button>

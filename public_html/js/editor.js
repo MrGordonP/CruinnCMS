@@ -1218,7 +1218,7 @@
 
         panel.querySelectorAll('.editor-accordion').forEach(function (acc) {
             // Skip page-settings and template-layout, already handled above
-            if (acc.id === 'editor-page-settings' || acc.id === 'editor-template-layout') { return; }
+            if (acc.id === 'editor-page-settings' || acc.id === 'editor-template-layout' || acc.dataset.group === 'php-include-element') { return; }
             acc.style.display = '';
         });
 
@@ -1279,6 +1279,12 @@
         var phpCodeAcc = panel.querySelector('[data-group="php-code"]');
         if (phpCodeAcc) {
             phpCodeAcc.style.display = PHP_CODE_TYPES.indexOf(type) !== -1 ? '' : 'none';
+        }
+
+        // Heading group
+        var headingAcc = panel.querySelector('[data-group="heading"]');
+        if (headingAcc) {
+            headingAcc.style.display = type === 'heading' ? '' : 'none';
         }
 
         // Bind group � only when this page has context fields and the block type has bindable slots
@@ -1491,6 +1497,13 @@
         if (PHP_CODE_TYPES.indexOf(type) !== -1) {
             var phpCodeTa = document.getElementById('prop-php-code');
             if (phpCodeTa) { phpCodeTa.value = config._php || ''; }
+        }
+
+        if (type === 'heading') {
+            var headingLevelSel = document.getElementById('prop-heading-level');
+            if (headingLevelSel) {
+                headingLevelSel.value = (config.level || '2').toString();
+            }
         }
 
         // PHP Include: populate template picker + dynamic var rows + live canvas preview
@@ -1885,6 +1898,11 @@
             inp.oninput = function () {
                 writeConfig(block, inp.dataset.config, inp.value);
             };
+            if (inp.tagName === 'SELECT') {
+                inp.onchange = function () {
+                    writeConfig(block, inp.dataset.config, inp.value);
+                };
+            }
             // columns block: update grid-template-columns and sync child sections
             if (inp.id === 'prop-col-count' && block.dataset.blockType === 'columns') {
                 inp.oninput = function () {
@@ -2017,6 +2035,30 @@
                     block.setAttribute('href', href);
                 } else {
                     block.removeAttribute('href');
+                }
+            };
+        }
+
+        var headingLevelSel = document.getElementById('prop-heading-level');
+        if (headingLevelSel && block.dataset.blockType === 'heading') {
+            headingLevelSel.onchange = function () {
+                writeConfig(block, 'level', headingLevelSel.value);
+                var headingTag = 'h' + Math.min(6, Math.max(1, parseInt(headingLevelSel.value, 10) || 2));
+                if (block.tagName.toLowerCase() !== headingTag) {
+                    var next = document.createElement(headingTag);
+                    next.id = block.id;
+                    next.setAttribute('data-block', '');
+                    next.setAttribute('data-block-type', 'heading');
+                    if (block.dataset.blockConfig) {
+                        next.dataset.blockConfig = block.dataset.blockConfig;
+                    }
+                    next.className = block.className;
+                    next.style.cssText = block.style.cssText;
+                    next.innerHTML = block.innerHTML;
+                    block.replaceWith(next);
+                    reInitAll();
+                    select(next);
+                    recordAction();
                 }
             };
         }
