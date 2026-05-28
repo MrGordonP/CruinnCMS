@@ -1329,7 +1329,7 @@
 
         // Collapsed checkbox
         var collapsedCb = document.getElementById('prop-collapsed');
-        if (collapsedCb) { collapsedCb.checked = block.classList.contains('collapsed'); }
+        if (collapsedCb) { collapsedCb.checked = false; }
 
         // Block config (for dynamic/configurable blocks and UI behavior)
         var config = {};
@@ -1401,6 +1401,10 @@
                 uiCollapseLabelRow.style.display = isEnabled ? '' : 'none';
                 uiCollapseLabelInp.value = (config.ui_collapse_label || '').toString();
             }
+        }
+
+        if (collapsedCb) {
+            collapsedCb.checked = block.classList.contains('collapsed') || uiCollapse === 'tablet' || uiCollapse === 'mobile';
         }
 
         // CSS properties � read from active viewport overrides, fallback to computed desktop
@@ -2232,12 +2236,38 @@
         var collapsedCb = document.getElementById('prop-collapsed');
         if (collapsedCb) {
             collapsedCb.onchange = function () {
+                var cfg = {};
+                try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+
                 if (this.checked) {
                     block.classList.add('collapsed');
+                    if (cfg.ui_collapse !== 'tablet' && cfg.ui_collapse !== 'mobile') {
+                        cfg.ui_collapse = 'tablet';
+                    }
                 } else {
                     block.classList.remove('collapsed');
+                    delete cfg.ui_collapse;
+                    delete cfg.ui_collapse_align;
+                    delete cfg.ui_collapse_label;
                 }
-                debounceAction();
+
+                block.dataset.blockConfig = JSON.stringify(cfg);
+
+                var uiCollapseEnabledCb = document.getElementById('prop-ui-collapse-enabled');
+                var uiCollapseRowEl = document.getElementById('prop-ui-collapse-row');
+                var uiCollapseSelEl = document.getElementById('prop-ui-collapse');
+                var uiCollapseAlignRowEl = document.getElementById('prop-ui-collapse-align-row');
+                var uiCollapseLabelRowEl = document.getElementById('prop-ui-collapse-label-row');
+                if (uiCollapseEnabledCb && uiCollapseRowEl && uiCollapseSelEl) {
+                    var enabled = cfg.ui_collapse === 'tablet' || cfg.ui_collapse === 'mobile';
+                    uiCollapseEnabledCb.checked = enabled;
+                    uiCollapseRowEl.style.display = enabled ? '' : 'none';
+                    uiCollapseSelEl.value = enabled ? cfg.ui_collapse : 'tablet';
+                    if (uiCollapseAlignRowEl) { uiCollapseAlignRowEl.style.display = enabled ? '' : 'none'; }
+                    if (uiCollapseLabelRowEl) { uiCollapseLabelRowEl.style.display = enabled ? '' : 'none'; }
+                }
+
+                recordAction();
             };
         }
 
