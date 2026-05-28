@@ -58,6 +58,14 @@
         try { return JSON.parse(wrap.dataset.eventProfiles || '[]'); } catch (e) { return []; }
     }());
 
+    var CORE_FRAGMENT_CATALOG = {
+        account: [
+            { key: 'account_details_form', label: 'Account Details Form' },
+            { key: 'account_password_form', label: 'Account Password Form' },
+            { key: 'account_information', label: 'Account Information' }
+        ]
+    };
+
     var inlineFocusOverlay = null;
     var inlineFocusFrame = null;
     var inlineFocusTitle = null;
@@ -279,8 +287,8 @@
     // ── Section C — Block selection ─────────────────────────────────
 
     var activeBlock = null;
-    var pphiPanel = null;
-    var pphiPanelOutsideHandler = null;
+    var selectedPphiBlock = null;
+    var selectedPphiElement = null;
 
     var PHPI_PANEL_FIELDS = [
         { label: 'Color', prop: 'color', type: 'text', placeholder: 'e.g. #333 or inherit' },
@@ -306,18 +314,12 @@
         return t === 'php-include' || t === 'dynamic-include';
     }
 
-    function closePphiElementPanel() {
-        if (pphiPanelOutsideHandler) {
-            document.removeEventListener('click', pphiPanelOutsideHandler, true);
-            pphiPanelOutsideHandler = null;
-        }
-        if (pphiPanel && pphiPanel.parentNode) {
-            pphiPanel.parentNode.removeChild(pphiPanel);
-        }
-        pphiPanel = null;
+    function clearPphiElementSelection() {
         canvas.querySelectorAll('[data-phpi-el].phpi-el-selected').forEach(function (x) {
             x.classList.remove('phpi-el-selected');
         });
+        selectedPphiBlock = null;
+        selectedPphiElement = null;
     }
 
     function buildPphiPanelFieldsHtml() {
@@ -336,81 +338,91 @@
         }).join('');
     }
 
-    function populatePphiPanelFields(panelEl, props) {
-        panelEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
+    function populatePphiPanelFields(rootEl, props) {
+        rootEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
             inp.value = props[inp.dataset.phpiProp] || '';
         });
     }
 
-    function selectPphiElement(block, el) {
-        if (!isPhpIncludeBlock(block) || !el) { return; }
+    function syncPphiInspector(block, el) {
+        var acc = panel.querySelector('[data-group="php-include-element"]');
+        var titleEl = document.getElementById('prop-phpi-title');
+        var classRow = document.getElementById('prop-phpi-class-row');
+        var classSelect = document.getElementById('prop-phpi-class-select');
+        var emptyEl = document.getElementById('prop-phpi-empty');
+        var fieldsEl = document.getElementById('prop-phpi-fields');
+
+        if (!acc || !titleEl || !classRow || !classSelect || !emptyEl || !fieldsEl) {
+            return;
+        }
+
+        if (!isPhpIncludeBlock(block) || !el || !block.contains(el)) {
+            acc.style.display = 'none';
+            titleEl.textContent = 'None selected';
+            classRow.style.display = 'none';
+            classSelect.innerHTML = '';
+            emptyEl.style.display = '';
+            fieldsEl.style.display = 'none';
+            return;
+        }
 
         var classes = (el.dataset.phpiClasses || '').trim();
-        if (!classes) { return; }
+        if (!classes) {
+            acc.style.display = 'none';
+            return;
+        }
 
-        closePphiElementPanel();
+        if (!fieldsEl.dataset.initialized) {
+            fieldsEl.innerHTML = buildPphiPanelFieldsHtml();
+            fieldsEl.dataset.initialized = '1';
+        }
+
+        acc.style.display = '';
+        titleEl.textContent = classes;
+        emptyEl.style.display = 'none';
+        fieldsEl.style.display = '';
 
         var classList = classes.split(/\s+/).filter(Boolean);
-        if (!classList.length) { return; }
-
-        el.classList.add('phpi-el-selected');
+        classSelect.innerHTML = '';
+        if (classList.length > 1) {
+            classList.forEach(function (c) {
+                var opt = document.createElement('option');
+                opt.value = '.' + c;
+                opt.textContent = '.' + c;
+                classSelect.appendChild(opt);
+            });
+            var compound = classList.map(function (c) { return '.' + c; }).join('');
+            var compoundOpt = document.createElement('option');
+            compoundOpt.value = compound;
+            compoundOpt.textContent = compound + ' (all)';
+            classSelect.appendChild(compoundOpt);
+            classRow.style.display = '';
+        } else {
+            classRow.style.display = 'none';
+        }
 
         var cfg = {};
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
         var childStyles = (cfg.childStyles && typeof cfg.childStyles === 'object') ? cfg.childStyles : {};
 
-        var selectorRow = '';
-        if (classList.length > 1) {
-            var opts = classList.map(function (c) {
-                return '<option value=".' + c + '">.' + c + '</option>';
-            }).join('');
-            var compound = classList.map(function (c) { return '.' + c; }).join('');
-            opts += '<option value="' + compound + '">' + compound + ' (all)</option>';
-            selectorRow = '<div class="phpi-panel-row">'
-                + '<label>Style class</label>'
-                + '<select class="phpi-class-select editor-prop-input">' + opts + '</select>'
-                + '</div>';
-        }
-
-        var panelEl = document.createElement('div');
-        panelEl.id = 'phpi-element-panel';
-        panelEl.className = 'phpi-element-panel';
-        panelEl.innerHTML = '<div class="phpi-panel-header">'
-            + '<span class="phpi-panel-title">' + classes + '</span>'
-            + '<button class="phpi-panel-close" title="Close">&times;</button>'
-            + '</div>'
-            + '<div class="phpi-panel-body">'
-            + selectorRow
-            + buildPphiPanelFieldsHtml()
-            + '</div>';
-
-        var rect = el.getBoundingClientRect();
-        var scrollX = window.scrollX || 0;
-        var scrollY = window.scrollY || 0;
-        panelEl.style.left = Math.min(rect.left + scrollX, window.innerWidth - 320) + 'px';
-        panelEl.style.top = (rect.bottom + scrollY + 8) + 'px';
-        document.body.appendChild(panelEl);
-        pphiPanel = panelEl;
-
         var activeSelector = function () {
-            var sel = panelEl.querySelector('.phpi-class-select');
-            return sel ? sel.value : ('.' + classList[0]);
+            if (classList.length > 1 && classSelect.value) {
+                return classSelect.value;
+            }
+            return '.' + classList[0];
         };
 
-        populatePphiPanelFields(panelEl, childStyles[activeSelector()] || {});
+        populatePphiPanelFields(fieldsEl, childStyles[activeSelector()] || {});
 
-        var classSel = panelEl.querySelector('.phpi-class-select');
-        if (classSel) {
-            classSel.addEventListener('change', function () {
-                populatePphiPanelFields(panelEl, childStyles[activeSelector()] || {});
-            });
-        }
+        classSelect.onchange = function () {
+            populatePphiPanelFields(fieldsEl, childStyles[activeSelector()] || {});
+        };
 
-        panelEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
-            inp.addEventListener('input', function () {
+        fieldsEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
+            inp.oninput = function () {
                 var selector = activeSelector();
                 var props = {};
-                panelEl.querySelectorAll('[data-phpi-prop]').forEach(function (x) {
+                fieldsEl.querySelectorAll('[data-phpi-prop]').forEach(function (x) {
                     var value = (x.value || '').trim();
                     if (value !== '') {
                         props[x.dataset.phpiProp] = value;
@@ -428,6 +440,7 @@
                 } else {
                     delete nextCfg.childStyles[selector];
                 }
+
                 if (Object.keys(nextCfg.childStyles).length === 0) {
                     delete nextCfg.childStyles;
                 }
@@ -436,21 +449,21 @@
                 childStyles = nextCfg.childStyles || {};
                 rebuildLiveStyles();
                 debounceAction();
-            });
+            };
         });
+    }
 
-        panelEl.querySelector('.phpi-panel-close').addEventListener('click', function () {
-            closePphiElementPanel();
-        });
+    function selectPphiElement(block, el) {
+        if (!isPhpIncludeBlock(block) || !el) { return; }
 
-        pphiPanelOutsideHandler = function (evt) {
-            if (!panelEl.contains(evt.target) && evt.target !== el) {
-                closePphiElementPanel();
-            }
-        };
-        setTimeout(function () {
-            document.addEventListener('click', pphiPanelOutsideHandler, true);
-        }, 0);
+        var classes = (el.dataset.phpiClasses || '').trim();
+        if (!classes) { return; }
+
+        clearPphiElementSelection();
+        el.classList.add('phpi-el-selected');
+        selectedPphiBlock = block;
+        selectedPphiElement = el;
+        syncPphiInspector(block, el);
     }
 
     // Intercept all interactive element clicks in the canvas — prevent navigation/submission.
@@ -484,7 +497,7 @@
 
         var pphiEl = e.target.closest('[data-phpi-el]');
         if (pphiEl && b.contains(pphiEl) && isPhpIncludeBlock(b)) {
-            select(b);
+            select(b, { preservePphiSelection: true });
             selectPphiElement(b, pphiEl);
             return;
         }
@@ -504,9 +517,22 @@
         }
     });
 
-    function select(block) {
-        if (activeBlock === block) { return; }
-        closePphiElementPanel();
+    function select(block, options) {
+        options = options || {};
+        var preservePphiSelection = options.preservePphiSelection === true;
+
+        if (activeBlock === block) {
+            if (!preservePphiSelection) {
+                clearPphiElementSelection();
+                loadProps(block);
+                updateBlockTree();
+            }
+            return;
+        }
+
+        if (!preservePphiSelection) {
+            clearPphiElementSelection();
+        }
         if (activeBlock) {
             activeBlock.classList.remove('active');
             activeBlock.removeAttribute('contenteditable');
@@ -519,7 +545,7 @@
     }
 
     function deselect() {
-        closePphiElementPanel();
+        clearPphiElementSelection();
         if (activeBlock) {
             activeBlock.classList.remove('active');
             activeBlock.removeAttribute('contenteditable');
@@ -875,6 +901,55 @@
         return sourceType;
     }
 
+    function findCoreFragmentModule(fragmentKey) {
+        var key = (fragmentKey || '').toString();
+        if (!key) { return ''; }
+
+        var moduleKeys = Object.keys(CORE_FRAGMENT_CATALOG);
+        for (var i = 0; i < moduleKeys.length; i++) {
+            var moduleKey = moduleKeys[i];
+            var list = CORE_FRAGMENT_CATALOG[moduleKey] || [];
+            for (var j = 0; j < list.length; j++) {
+                if ((list[j].key || '').toString() === key) {
+                    return moduleKey;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function populateCoreFragmentOptions(moduleKey, selectedKey) {
+        var keyRow = document.getElementById('prop-dyn-core-fragment-key-row');
+        var fragmentSel = document.getElementById('prop-dyn-core-fragment');
+        if (!keyRow || !fragmentSel) {
+            return '';
+        }
+
+        var resolvedModule = (moduleKey || '').toString();
+        var resolvedSelected = (selectedKey || '').toString();
+        var options = CORE_FRAGMENT_CATALOG[resolvedModule] || [];
+
+        fragmentSel.innerHTML = '<option value="">— Select fragment —</option>';
+        options.forEach(function (entry) {
+            var opt = document.createElement('option');
+            opt.value = (entry.key || '').toString();
+            opt.textContent = (entry.label || entry.key || '').toString();
+            fragmentSel.appendChild(opt);
+        });
+
+        if (resolvedSelected && !Array.from(fragmentSel.options).some(function (opt) { return opt.value === resolvedSelected; })) {
+            var stale = document.createElement('option');
+            stale.value = resolvedSelected;
+            stale.textContent = '(missing) ' + resolvedSelected;
+            fragmentSel.appendChild(stale);
+        }
+
+        fragmentSel.value = resolvedSelected;
+        keyRow.style.display = resolvedModule ? '' : 'none';
+        return (fragmentSel.value || '').toString();
+    }
+
     function syncDynamicIncludeContentUi(config) {
         var sourceType = resolveDynamicIncludeSourceType(config);
         var sourceRow = document.getElementById('prop-dyn-source-type-row');
@@ -882,7 +957,8 @@
         var templateRow = document.getElementById('prop-dyn-template-row');
         var varsRow = document.getElementById('prop-dyn-vars-row');
         var editSourceRow = document.getElementById('prop-dyn-edit-source-row');
-        var coreFragmentRow = document.getElementById('prop-dyn-core-fragment-row');
+        var coreFragmentModuleRow = document.getElementById('prop-dyn-core-fragment-row');
+        var coreFragmentModuleSel = document.getElementById('prop-dyn-core-fragment-module');
         var moduleWidgetGroup = panel.querySelector('.editor-content-group[data-content-type="module-widget"]');
         var moduleContentGroup = panel.querySelector('.editor-content-group[data-content-type="module-content"]');
 
@@ -897,9 +973,26 @@
         if (templateRow) { templateRow.style.display = isPhpInclude ? '' : 'none'; }
         if (varsRow) { varsRow.style.display = isPhpInclude ? '' : 'none'; }
         if (editSourceRow) { editSourceRow.style.display = isPhpInclude ? '' : 'none'; }
-        if (coreFragmentRow) { coreFragmentRow.style.display = isCoreFragment ? '' : 'none'; }
+        if (coreFragmentModuleRow) { coreFragmentModuleRow.style.display = isCoreFragment ? '' : 'none'; }
         if (moduleWidgetGroup) { moduleWidgetGroup.style.display = isModuleWidget ? '' : 'none'; }
         if (moduleContentGroup) { moduleContentGroup.style.display = isModuleContent ? '' : 'none'; }
+
+        if (isCoreFragment) {
+            var selectedFragmentKey = (config.core_fragment_key || '').toString();
+            var resolvedModule = '';
+            if (coreFragmentModuleSel) {
+                resolvedModule = (coreFragmentModuleSel.value || '').toString();
+            }
+            if (!resolvedModule) {
+                resolvedModule = findCoreFragmentModule(selectedFragmentKey) || 'account';
+            }
+            if (coreFragmentModuleSel) {
+                coreFragmentModuleSel.value = resolvedModule;
+            }
+            populateCoreFragmentOptions(resolvedModule, selectedFragmentKey);
+        } else {
+            populateCoreFragmentOptions('', '');
+        }
     }
 
     function loadProps(block) {
@@ -1211,12 +1304,9 @@
             var phpVarsContainer = panel.querySelector('.php-include-vars');
             if (phpVarsContainer) { buildPhpIncludeVarRows(phpVarsContainer, config, block); }
             if (type === 'dynamic-include') {
-                var dynCoreSel = document.getElementById('prop-dyn-core-fragment');
-                if (dynCoreSel) {
-                    dynCoreSel.value = (config.core_fragment_key || '').toString();
-                }
                 syncDynamicIncludeContentUi(config);
             }
+            syncPphiInspector(block, selectedPphiBlock === block ? selectedPphiElement : null);
             refreshPhpIncludePreview(block);
         }
 
@@ -1707,6 +1797,14 @@
             }
 
             var dynCoreFragment = document.getElementById('prop-dyn-core-fragment');
+            var dynCoreFragmentModule = document.getElementById('prop-dyn-core-fragment-module');
+            if (dynCoreFragmentModule) {
+                dynCoreFragmentModule.onchange = function () {
+                    var nextKey = populateCoreFragmentOptions(dynCoreFragmentModule.value, '');
+                    writeConfig(block, 'core_fragment_key', nextKey);
+                    refreshPhpIncludePreview(block);
+                };
+            }
             if (dynCoreFragment) {
                 dynCoreFragment.onchange = function () {
                     writeConfig(block, 'core_fragment_key', dynCoreFragment.value);
@@ -2255,7 +2353,8 @@
     }
 
     function refreshPhpIncludePreview(block) {
-        closePphiElementPanel();
+        clearPphiElementSelection();
+        syncPphiInspector(block, null);
 
         var cfg = {};
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }

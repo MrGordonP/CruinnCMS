@@ -1004,12 +1004,16 @@ $eventProfiles = $eventProfiles ?? [];
                             <p class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Select a template to see its variables.</p>
                         </div>
                         <div class="editor-prop-row" id="prop-dyn-core-fragment-row" style="margin-top:0.75rem;display:none">
+                            <label>Fragment Module</label>
+                            <select class="editor-prop-input" id="prop-dyn-core-fragment-module">
+                                <option value="">— Select module —</option>
+                                <option value="account">Account</option>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" id="prop-dyn-core-fragment-key-row" style="margin-top:0.5rem;display:none">
                             <label>Core Fragment</label>
                             <select class="editor-prop-input" id="prop-dyn-core-fragment" data-config="core_fragment_key">
                                 <option value="">— Select fragment —</option>
-                                <option value="account_details_form">Account Details Form</option>
-                                <option value="account_password_form">Account Password Form</option>
-                                <option value="account_information">Account Information</option>
                             </select>
                         </div>
                         <div class="editor-prop-row" id="prop-dyn-edit-source-row" style="margin-top:0.75rem">
@@ -1114,6 +1118,22 @@ $eventProfiles = $eventProfiles ?? [];
                                       placeholder="{}"></textarea>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="editor-accordion collapsed" data-group="php-include-element" style="display:none">
+                <button class="editor-accordion-toggle">Include Element</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.25rem">
+                        <label>Selected Element</label>
+                        <div id="prop-phpi-title" class="editor-label-hint" style="font-family:monospace">None selected</div>
+                    </div>
+                    <div class="editor-prop-row" id="prop-phpi-class-row" style="display:none">
+                        <label>Style Class</label>
+                        <select class="editor-prop-input" id="prop-phpi-class-select"></select>
+                    </div>
+                    <p id="prop-phpi-empty" class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Click an element inside the include preview to edit its styles here.</p>
+                    <div id="prop-phpi-fields"></div>
                 </div>
             </div>
 

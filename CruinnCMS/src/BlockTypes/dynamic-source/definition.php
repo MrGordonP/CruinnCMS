@@ -316,6 +316,7 @@ BlockRegistry::register([
                 return BlockRegistry::isEditMode() ? $annotateEditable($html) : $html;
             }
 
+
             return '<p class="account-block-empty">Core fragment not found: '
                 . htmlspecialchars($fragmentKey, ENT_QUOTES, 'UTF-8')
                 . '.</p>';

@@ -1,10 +1,117 @@
 <?php
 /** My Account -- user portal landing page. All logged-in roles land here. */
-$isAdmin   = ($current_user['role'] ?? '') === 'admin';
-$isCouncil = ($current_user['role'] ?? '') === 'council';
+$globals = \Cruinn\Template::globals();
+$hasMember = isset($member) && is_array($member);
+$hasAddress = isset($address) && is_array($address);
+$hasAdminStats = isset($adminStats) && is_array($adminStats);
+$hasNotifications = isset($notifications) && is_array($notifications);
+$hasUnreadCount = isset($unreadCount);
+$hasUpcomingEvents = isset($upcomingEvents) && is_array($upcomingEvents);
+$hasLatestSub = isset($latestSub) && is_array($latestSub);
+
+$current_user = isset($current_user) && is_array($current_user)
+    ? $current_user
+    : (($globals['current_user'] ?? null) ?: null);
+
+$member = $hasMember ? $member : null;
+$address = $hasAddress ? $address : [];
+$adminStats = $hasAdminStats ? $adminStats : null;
+$notifications = $hasNotifications ? $notifications : [];
+$unreadCount = $hasUnreadCount ? (int) $unreadCount : 0;
+$upcomingEvents = $hasUpcomingEvents ? $upcomingEvents : [];
+$latestSub = $hasLatestSub ? $latestSub : null;
+
+$isAdmin = \Cruinn\Auth::isAdmin();
+$isCouncil = !$isAdmin && \Cruinn\Auth::roleLevel() >= 50;
+
+try {
+    $runtimeDb = isset($db) && $db instanceof \Cruinn\Database
+        ? $db
+        : \Cruinn\Database::getInstance();
+} catch (\Throwable $e) {
+    $runtimeDb = null;
+}
+
+$userId = \Cruinn\Auth::userId();
+if ($runtimeDb && $userId) {
+    if ($member === null) {
+        try {
+            $member = $runtimeDb->fetch('SELECT * FROM members WHERE user_id = ? LIMIT 1', [$userId]) ?: null;
+        } catch (\Throwable $e) {
+            $member = null;
+        }
+    }
+
+    if ($member && empty($address)) {
+        try {
+            $address = $runtimeDb->fetch('SELECT * FROM member_addresses WHERE member_id = ? LIMIT 1', [(int) $member['id']]) ?: [];
+        } catch (\Throwable $e) {
+            $address = [];
+        }
+    }
+
+    if ($isAdmin && $adminStats === null) {
+        try {
+            $adminStats = [
+                'pages' => (int) $runtimeDb->fetchColumn('SELECT COUNT(*) FROM pages_index'),
+                'members' => (int) $runtimeDb->fetchColumn('SELECT COUNT(*) FROM members'),
+                'users' => (int) $runtimeDb->fetchColumn('SELECT COUNT(*) FROM users'),
+            ];
+        } catch (\Throwable $e) {
+            $adminStats = null;
+        }
+    }
+
+    if (!$hasNotifications || !$hasUnreadCount) {
+        try {
+            $notifications = $runtimeDb->fetchAll(
+                'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5',
+                [$userId]
+            );
+            $unreadCount = (int) $runtimeDb->fetchColumn(
+                'SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL',
+                [$userId]
+            );
+        } catch (\Throwable $e) {
+            $notifications = [];
+            $unreadCount = 0;
+        }
+    }
+
+    if (!$hasUpcomingEvents && \Cruinn\Modules\ModuleRegistry::isActive('events')) {
+        try {
+            $upcomingEvents = $runtimeDb->fetchAll(
+                "SELECT id, title, slug, date_start, date_end, location, event_type
+                 FROM events
+                 WHERE date_start >= CURDATE() AND status = 'published'
+                 ORDER BY date_start ASC
+                 LIMIT 5"
+            );
+        } catch (\Throwable $e) {
+            $upcomingEvents = [];
+        }
+    }
+
+    if (!$hasLatestSub && $member) {
+        try {
+            $latestSub = $runtimeDb->fetch(
+                'SELECT s.*, p.name AS plan_name
+                 FROM membership_subscriptions s
+                 LEFT JOIN membership_plans p ON p.id = s.plan_id
+                 WHERE s.member_id = ?
+                 ORDER BY s.period_end DESC, s.id DESC
+                 LIMIT 1',
+                [(int) $member['id']]
+            ) ?: null;
+        } catch (\Throwable $e) {
+            $latestSub = null;
+        }
+    }
+}
+
 $userName  = $member
     ? e(trim(($member['forenames'] ?? '') . ' ' . ($member['surnames'] ?? '')))
-    : e($current_user['display_name'] ?? $current_user['email'] ?? 'there');
+    : e($current_user['name'] ?? $current_user['display_name'] ?? $current_user['email'] ?? 'there');
 ?>
 <div class="container">
 

@@ -1,6 +1,7 @@
 <?php
 
 use Cruinn\Module\Membership\Controllers\MembershipAdminController;
+use Cruinn\Module\Membership\Controllers\MembershipContentController;
 
 return [
     'slug'        => 'membership',
@@ -66,6 +67,45 @@ return [
             'width'    => 'full',
             'order'    => 120,
             'settings' => ['limit' => 5],
+        ],
+    ],
+
+    'content_providers' => [
+        [
+            'slug'     => 'member-dashboard-header',
+            'title'    => 'Member Dashboard Header',
+            'provider' => MembershipContentController::class . '::contentProviderMemberDashboardHeader',
+            'template' => 'public/membership/module-content/member-dashboard-header',
+        ],
+        [
+            'slug'     => 'member-details-form',
+            'title'    => 'Member Details Form',
+            'provider' => MembershipContentController::class . '::contentProviderMemberDetailsForm',
+            'template' => 'public/membership/module-content/member-details-form',
+        ],
+        [
+            'slug'     => 'member-notifications',
+            'title'    => 'Member Notifications',
+            'provider' => MembershipContentController::class . '::contentProviderMemberNotifications',
+            'template' => 'public/membership/module-content/member-notifications',
+        ],
+        [
+            'slug'     => 'member-upcoming-events',
+            'title'    => 'Member Upcoming Events',
+            'provider' => MembershipContentController::class . '::contentProviderMemberUpcomingEvents',
+            'template' => 'public/membership/module-content/member-upcoming-events',
+        ],
+        [
+            'slug'     => 'member-membership-summary',
+            'title'    => 'Member Membership Summary',
+            'provider' => MembershipContentController::class . '::contentProviderMemberMembershipSummary',
+            'template' => 'public/membership/module-content/member-membership-summary',
+        ],
+        [
+            'slug'     => 'member-admin-stats',
+            'title'    => 'Member Admin Stats',
+            'provider' => MembershipContentController::class . '::contentProviderMemberAdminStats',
+            'template' => 'public/membership/module-content/member-admin-stats',
         ],
     ],
 
