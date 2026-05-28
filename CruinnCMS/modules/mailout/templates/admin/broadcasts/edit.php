@@ -184,6 +184,25 @@
             </div>
         </details>
 
+        <details class="acp-fieldset" style="margin-bottom:1.25rem;">
+            <summary style="cursor:pointer; font-weight:600; padding:0.5rem 0;">Import from Document</summary>
+            <div style="padding:0.75rem 0 0.25rem;">
+                <div style="display:flex; gap:0.75rem; align-items:flex-end;">
+                    <div style="flex:1;">
+                        <label for="import_document_id" style="font-size:0.875rem;">Select document</label>
+                        <select id="import_document_id" class="form-input" style="margin-top:0.25rem;">
+                            <option value="">— Choose a document —</option>
+                            <?php foreach (($documents ?? []) as $d): ?>
+                                <option value="<?= (int)$d['id'] ?>"><?= e($d['title']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-outline" onclick="importDocument()">Import</button>
+                </div>
+                <p class="form-help" style="margin-top:0.5rem;">Copies document title into Subject and inserts a summary/link block into HTML Body.</p>
+            </div>
+        </details>
+
         <div class="form-group">
             <label for="subject">Subject *</label>
             <input type="text" id="subject" name="subject" class="form-input" required
@@ -258,6 +277,20 @@
             const broadcastId = document.getElementById('import_broadcast_id').value;
             if (!broadcastId) { alert('Please select a mailout first.'); return; }
             fetch('/admin/mailout/broadcast-import?broadcast_id=' + broadcastId)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) { alert('Error: ' + data.error); return; }
+                    document.getElementById('subject').value = data.subject;
+                    document.getElementById('body_html').value = data.body_html;
+                    document.getElementById('body_text').value = data.body_text || '';
+                })
+                .catch(() => alert('Import failed. Please try again.'));
+        }
+
+        function importDocument() {
+            const documentId = document.getElementById('import_document_id').value;
+            if (!documentId) { alert('Please select a document first.'); return; }
+            fetch('/admin/mailout/document-import?document_id=' + documentId)
                 .then(r => r.json())
                 .then(data => {
                     if (data.error) { alert('Error: ' + data.error); return; }

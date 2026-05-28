@@ -80,6 +80,44 @@ class BroadcastController extends BaseController
         ]);
     }
 
+    public function documentImport(): void
+    {
+        Auth::requireAdmin();
+        $documentId = (int) $this->query('document_id', 0);
+        if (!$documentId) {
+            $this->json(['error' => 'No document_id provided'], 400);
+        }
+
+        $doc = $this->db->fetch(
+            'SELECT id, title, description FROM documents WHERE id = ? LIMIT 1',
+            [$documentId]
+        );
+        if (!$doc) {
+            $this->json(['error' => 'Document not found'], 404);
+        }
+
+        $title = (string) ($doc['title'] ?? 'Document Update');
+        $desc = trim((string) ($doc['description'] ?? ''));
+        $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_HTML5);
+        $safeDesc = $desc !== ''
+            ? nl2br(htmlspecialchars($desc, ENT_QUOTES | ENT_HTML5))
+            : 'Please review the linked document for full details.';
+        $link = '/documents/' . (int) ($doc['id'] ?? 0);
+
+        $html = '<h2>' . $safeTitle . '</h2>'
+              . '<p>' . $safeDesc . '</p>'
+              . '<p><a href="' . htmlspecialchars($link, ENT_QUOTES | ENT_HTML5) . '">View Document</a></p>';
+        $text = $title . "\n\n"
+              . ($desc !== '' ? $desc : 'Please review the linked document for full details.')
+              . "\n\nView Document: " . $link;
+
+        $this->json([
+            'subject' => $title,
+            'body_html' => $html,
+            'body_text' => $text,
+        ]);
+    }
+
     public function newForm(): void
     {
         $lists = $this->db->fetchAll(
@@ -117,6 +155,14 @@ class BroadcastController extends BaseController
         );
 
         try {
+            $documents = $this->db->fetchAll(
+                'SELECT id, title FROM documents ORDER BY updated_at DESC LIMIT 100'
+            );
+        } catch (\Throwable $e) {
+            $documents = [];
+        }
+
+        try {
             $subjectOptions = $this->db->fetchAll(
                 "SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC",
                 ['archived']
@@ -134,6 +180,7 @@ class BroadcastController extends BaseController
             'year_options'         => $yearOptions,
             'articles'             => $articles,
             'previous_broadcasts'  => $previousBroadcasts,
+            'documents'            => $documents,
             'subject_options'      => $subjectOptions,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
@@ -238,6 +285,14 @@ class BroadcastController extends BaseController
         );
 
         try {
+            $documents = $this->db->fetchAll(
+                'SELECT id, title FROM documents ORDER BY updated_at DESC LIMIT 100'
+            );
+        } catch (\Throwable $e) {
+            $documents = [];
+        }
+
+        try {
             $subjectOptions = $this->db->fetchAll(
                 "SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC",
                 ['archived']
@@ -255,6 +310,7 @@ class BroadcastController extends BaseController
             'year_options'         => $yearOptions,
             'articles'             => $articles,
             'previous_broadcasts'  => $previousBroadcasts,
+            'documents'            => $documents,
             'subject_options'      => $subjectOptions,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
