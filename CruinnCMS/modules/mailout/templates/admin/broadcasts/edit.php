@@ -189,6 +189,20 @@
             <input type="text" id="subject" name="subject" class="form-input" required
                    value="<?= e($broadcast['subject'] ?? '') ?>"
                    placeholder="Your email subject line">
+            <?php if (!empty($subject_options ?? [])): ?>
+            <div style="display:flex; gap:0.5rem; align-items:flex-end; margin-top:0.5rem; flex-wrap:wrap;">
+                <div style="min-width:18rem; flex:1;">
+                    <label for="subject_pick" style="font-size:0.85rem;">Pick from Subjects</label>
+                    <select id="subject_pick" class="form-input" style="margin-top:0.2rem;">
+                        <option value="">- Choose a subject title -</option>
+                        <?php foreach (($subject_options ?? []) as $so): ?>
+                            <option value="<?= e($so['title']) ?>"><?= e($so['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-outline" onclick="applyPickedSubject()">Use Subject</button>
+            </div>
+            <?php endif; ?>
         </div>
 
         <div class="form-group">
@@ -219,6 +233,14 @@
         </script>
 
         <script>
+        function applyPickedSubject() {
+            var pick = document.getElementById('subject_pick');
+            var subject = document.getElementById('subject');
+            if (!pick || !subject || !pick.value) return;
+            subject.value = pick.value;
+            subject.focus();
+        }
+
         function importArticle() {
             const articleId = document.getElementById('import_article_id').value;
             if (!articleId) { alert('Please select an article first.'); return; }

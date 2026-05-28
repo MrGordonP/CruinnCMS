@@ -116,6 +116,15 @@ class BroadcastController extends BaseController
             "SELECT id, subject, created_at FROM email_broadcasts ORDER BY created_at DESC LIMIT 50"
         );
 
+        try {
+            $subjectOptions = $this->db->fetchAll(
+                "SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC",
+                ['archived']
+            );
+        } catch (\Throwable $e) {
+            $subjectOptions = [];
+        }
+
         $this->renderAdmin('admin/broadcasts/edit', [
             'title'                => 'New Mailout',
             'broadcast'            => null,
@@ -125,6 +134,7 @@ class BroadcastController extends BaseController
             'year_options'         => $yearOptions,
             'articles'             => $articles,
             'previous_broadcasts'  => $previousBroadcasts,
+            'subject_options'      => $subjectOptions,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 ['New'],
@@ -227,6 +237,15 @@ class BroadcastController extends BaseController
             [$id]
         );
 
+        try {
+            $subjectOptions = $this->db->fetchAll(
+                "SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC",
+                ['archived']
+            );
+        } catch (\Throwable $e) {
+            $subjectOptions = [];
+        }
+
         $this->renderAdmin('admin/broadcasts/edit', [
             'title'                => 'Edit Mailout',
             'broadcast'            => $broadcast,
@@ -236,6 +255,7 @@ class BroadcastController extends BaseController
             'year_options'         => $yearOptions,
             'articles'             => $articles,
             'previous_broadcasts'  => $previousBroadcasts,
+            'subject_options'      => $subjectOptions,
             'breadcrumbs' => [
                 ['Mailout', '/admin/mailout'],
                 ['Edit'],
