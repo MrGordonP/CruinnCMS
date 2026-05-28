@@ -552,6 +552,10 @@ p {
     cursor: pointer;
 }
 
+.ui-collapse-toggle[data-ui-collapse-mode="always"] {
+    display: inline-flex;
+}
+
 .ui-collapse-toggle:hover,
 .ui-collapse-toggle:focus {
     background: var(--color-bg-dark);
@@ -579,6 +583,24 @@ p {
     height: 2px;
     background: currentColor;
     border-radius: 99px;
+}
+
+[data-block].collapsed {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transform: translateY(-0.35rem);
+    transition: max-height 0.3s ease, opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+}
+
+[data-block].collapsed.ui-collapse-open {
+    max-height: 120vh;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 @media (max-width: 1023px) {

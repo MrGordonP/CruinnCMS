@@ -845,7 +845,7 @@ $eventProfiles = $eventProfiles ?? [];
                             <input type="checkbox" id="prop-collapsed">
                             Collapsed
                         </label>
-                        <span class="editor-label-hint">Collapsed preview in editor, and enables live responsive collapse (tablet by default).</span>
+                        <span class="editor-label-hint">Always-on collapse for this block. Use Responsive UI for breakpoint-specific collapse.</span>
                     </div>
                     <div class="editor-prop-row" id="prop-zone-assign-row" style="display:none">
                         <label>Template Zone</label>

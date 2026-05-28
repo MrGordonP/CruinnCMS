@@ -209,6 +209,45 @@ document.addEventListener('DOMContentLoaded', function () {
         syncCollapseMode();
     });
 
+    // ── Always-on collapse (collapsed class) ─────────────────
+    document.querySelectorAll('[data-block].collapsed').forEach(function (el) {
+        if (el.hasAttribute('data-ui-collapse')) {
+            return;
+        }
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ui-collapse-toggle';
+        btn.setAttribute('data-ui-collapse-mode', 'always');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-label', 'Toggle ' + buildCollapseLabel(el));
+        if (el.id) {
+            btn.setAttribute('aria-controls', el.id);
+        }
+        btn.innerHTML = '<span class="ui-collapse-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>' +
+            '<span class="ui-collapse-toggle-label">' + buildCollapseLabel(el) + '</span>';
+
+        el.parentNode.insertBefore(btn, el);
+
+        function closeTarget() {
+            el.classList.remove('ui-collapse-open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+
+        btn.addEventListener('click', function () {
+            var open = !el.classList.contains('ui-collapse-open');
+            el.classList.toggle('ui-collapse-open', open);
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', function (event) {
+            if (btn.contains(event.target) || el.contains(event.target)) {
+                return;
+            }
+            closeTarget();
+        });
+    });
+
     // Group sibling collapse-toggle buttons into a flex bar so they
     // lay out horizontally rather than stacking.
     (function () {
