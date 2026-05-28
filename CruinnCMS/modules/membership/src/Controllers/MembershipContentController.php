@@ -129,6 +129,11 @@ final class MembershipContentController
         return self::context();
     }
 
+    public static function contentProviderMemberAddressForm(array $settings = [], array $context = []): array
+    {
+        return self::context();
+    }
+
     public static function contentProviderMemberNotifications(array $settings = [], array $context = []): array
     {
         return self::context();

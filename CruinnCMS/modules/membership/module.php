@@ -84,6 +84,12 @@ return [
             'template' => 'public/membership/module-content/member-details-form',
         ],
         [
+            'slug'     => 'member-address-form',
+            'title'    => 'Member Address Form',
+            'provider' => MembershipContentController::class . '::contentProviderMemberAddressForm',
+            'template' => 'public/membership/module-content/member-address-form',
+        ],
+        [
             'slug'     => 'member-notifications',
             'title'    => 'Member Notifications',
             'provider' => MembershipContentController::class . '::contentProviderMemberNotifications',
