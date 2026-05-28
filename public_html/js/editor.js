@@ -474,12 +474,20 @@
         presetRow.style.display = '';
 
         var classList = classes.split(/\s+/).filter(Boolean);
+        var tagName = ((el.tagName || '').toString()).toLowerCase();
         var elementSelector = '[data-phpi-el="' + pphiId + '"]';
         classSelect.innerHTML = '';
         var elementOpt = document.createElement('option');
         elementOpt.value = elementSelector;
         elementOpt.textContent = 'Selected element only';
         classSelect.appendChild(elementOpt);
+
+        if (tagName) {
+            var tagOpt = document.createElement('option');
+            tagOpt.value = tagName;
+            tagOpt.textContent = 'All <' + tagName + '> in this include';
+            classSelect.appendChild(tagOpt);
+        }
 
         if (classList.length > 0) {
             classList.forEach(function (c) {
@@ -1179,6 +1187,11 @@
             && selectedPphiBlock === block
             && !!selectedPphiElement
             && block.contains(selectedPphiElement);
+
+        // Always resync include inspector visibility on block selection so
+        // include-specific controls never leak into non-include block editing.
+        syncPphiInspector(block, includeElementSelected ? selectedPphiElement : null);
+
         var styleTarget = includeElementSelected ? selectedPphiElement : block;
         var cs = getComputedStyle(styleTarget); // computed styles for reading actual CSS values
 

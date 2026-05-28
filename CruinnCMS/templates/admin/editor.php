@@ -1129,7 +1129,7 @@ $eventProfiles = $eventProfiles ?? [];
                         <div id="prop-phpi-title" class="editor-label-hint" style="font-family:monospace">None selected</div>
                     </div>
                     <div class="editor-prop-row" id="prop-phpi-class-row" style="display:none">
-                        <label>Style Class</label>
+                        <label>Style Target</label>
                         <select class="editor-prop-input" id="prop-phpi-class-select"></select>
                     </div>
                     <div class="editor-prop-row" id="prop-phpi-preset-row" style="display:none">
