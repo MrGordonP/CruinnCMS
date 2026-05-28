@@ -536,6 +536,11 @@ p {
     box-sizing: border-box;
 }
 
+.ui-collapse-bar:has(.ui-collapse-toggle[data-ui-collapse-mode="always"]) {
+    display: flex;
+    align-items: center;
+}
+
 .ui-collapse-toggle {
     display: none;
     align-items: center;
