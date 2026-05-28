@@ -308,6 +308,20 @@
         { label: 'Max width', prop: 'max-width', type: 'text', placeholder: 'e.g. 600px' },
     ];
 
+    var PHPI_TEXT_CASCADE_PROPS = {
+        'color': true,
+        'font-size': true,
+        'font-family': true,
+        'font-weight': true,
+        'font-style': true,
+        'line-height': true,
+        'letter-spacing': true,
+        'text-align': true,
+        'text-transform': true,
+        'text-decoration': true,
+        'text-shadow': true,
+    };
+
     function isPhpIncludeBlock(block) {
         if (!block) { return false; }
         var t = block.dataset.blockType;
@@ -2608,11 +2622,22 @@
                 Object.keys(cfg.childStyles).forEach(function (selector) {
                     var props = cfg.childStyles[selector];
                     if (!props || typeof props !== 'object') { return; }
-                    var rules = Object.keys(props).map(function (prop) {
-                        return prop + ':' + props[prop];
-                    }).join(';');
-                    if (rules) {
-                        css += '#' + block.id + ' ' + selector + ' {' + rules + '}\n';
+                    var rules = [];
+                    var cascadeRules = [];
+                    Object.keys(props).forEach(function (prop) {
+                        var value = props[prop];
+                        if (value === '' || value === null || value === undefined) { return; }
+                        var rule = prop + ':' + value;
+                        rules.push(rule);
+                        if (PHPI_TEXT_CASCADE_PROPS[prop]) {
+                            cascadeRules.push(rule);
+                        }
+                    });
+                    if (rules.length > 0) {
+                        css += '#' + block.id + ' ' + selector + ' {' + rules.join(';') + '}\n';
+                    }
+                    if (cascadeRules.length > 0) {
+                        css += '#' + block.id + ' ' + selector + ', #' + block.id + ' ' + selector + ' * {' + cascadeRules.join(';') + '}\n';
                     }
                 });
             }
@@ -3270,16 +3295,54 @@
     }
 
     var _actionTimer = null;
+    var _csrfRefreshPromise = null;
+    var _csrfSaveLocked = false;
 
-    function recordAction() {
-        if (!HAS_PAGE) { return; }
-        if (_htmlPageMode) { return; } // HTML pages: save only on publish
-        clearTimeout(_actionTimer);
-        var blocks = serialiseCanvas();
+    function isCsrfExpiredResponse(status, bodyText) {
+        return status === 403 && /csrf token expired/i.test((bodyText || '').toString());
+    }
 
-        pushLocalUndo();
+    function refreshCsrfTokenFromEditorPage() {
+        if (_csrfRefreshPromise) {
+            return _csrfRefreshPromise;
+        }
 
-        fetch(API_BASE + '/' + PAGE_ID + '/action', {
+        _csrfRefreshPromise = fetch(window.location.href, {
+            method: 'GET',
+            headers: { 'Accept': 'text/html' },
+            credentials: 'same-origin',
+            cache: 'no-store',
+        })
+            .then(function (r) {
+                if (!r.ok) {
+                    throw new Error('csrf refresh HTTP ' + r.status);
+                }
+                return r.text();
+            })
+            .then(function (html) {
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                var freshWrap = doc.getElementById('editor-wrap');
+                var freshToken = freshWrap && freshWrap.dataset
+                    ? (freshWrap.dataset.csrf || '').toString()
+                    : '';
+
+                if (!freshToken) {
+                    throw new Error('csrf token not found in refreshed editor html');
+                }
+
+                CSRF = freshToken;
+                wrap.dataset.csrf = freshToken;
+                return freshToken;
+            })
+            .finally(function () {
+                _csrfRefreshPromise = null;
+            });
+
+        return _csrfRefreshPromise;
+    }
+
+    function postRecordAction(blocks, retriedAfterRefresh) {
+        return fetch(API_BASE + '/' + PAGE_ID + '/action', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3291,10 +3354,24 @@
             .then(function (r) {
                 if (!r.ok) {
                     return r.text().then(function (t) {
+                        if (isCsrfExpiredResponse(r.status, t) && !retriedAfterRefresh) {
+                            return refreshCsrfTokenFromEditorPage().then(function () {
+                                return postRecordAction(blocks, true);
+                            });
+                        }
+
+                        if (isCsrfExpiredResponse(r.status, t)) {
+                            _csrfSaveLocked = true;
+                            showSaveError('Session token expired. Reload editor to continue saving.');
+                            return null;
+                        }
+
                         console.error('recordAction HTTP ' + r.status + ':', t);
-                        showSaveError('Save failed (' + r.status + ') � check console');
+                        showSaveError('Save failed (' + r.status + ') - check console');
+                        return null;
                     });
                 }
+
                 return r.json().then(function (data) {
                     if (data.success) {
                         setUndoRedoState(data.can_undo, data.can_redo);
@@ -3304,11 +3381,29 @@
                         console.error('recordAction error:', data.error || data);
                         showSaveError('Save error: ' + (data.error || 'unknown'));
                     }
+                    return data;
                 });
-            })
+            });
+    }
+
+    function recordAction() {
+        if (!HAS_PAGE) { return; }
+        if (_htmlPageMode) { return; } // HTML pages: save only on publish
+        if (_csrfSaveLocked) {
+            showSaveError('Session token expired. Reload editor to continue saving.');
+            return;
+        }
+        clearTimeout(_actionTimer);
+        var blocks = serialiseCanvas();
+
+        pushLocalUndo();
+
+        postRecordAction(blocks, false)
             .catch(function (err) {
                 console.error('recordAction failed:', err);
-                showSaveError('Save failed � check console');
+                if (!_csrfSaveLocked) {
+                    showSaveError('Save failed - check console');
+                }
             });
     }
 

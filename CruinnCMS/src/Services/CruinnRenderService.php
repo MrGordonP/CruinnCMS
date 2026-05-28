@@ -231,21 +231,41 @@ class CruinnRenderService
                 continue;
             }
             $id = htmlspecialchars($row['block_id'], ENT_QUOTES, 'UTF-8');
+            $textCascadeProps = [
+                'color' => true,
+                'font-size' => true,
+                'font-family' => true,
+                'font-weight' => true,
+                'font-style' => true,
+                'line-height' => true,
+                'letter-spacing' => true,
+                'text-align' => true,
+                'text-transform' => true,
+                'text-decoration' => true,
+                'text-shadow' => true,
+            ];
             foreach ($childStyles as $selector => $props) {
                 $selector = preg_replace('/[^a-zA-Z0-9\s\-_\.\:#\[\]="]/', '', (string) $selector);
                 if ($selector === '' || !is_array($props)) {
                     continue;
                 }
                 $rules = '';
+                $cascadeRules = '';
                 foreach ($props as $property => $value) {
                     $property = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $property);
                     $value    = str_replace(['{', '}', ';', '<', '>'], '', (string) $value);
                     if ($property !== '' && $value !== '') {
                         $rules .= "  {$property}: {$value};\n";
+                        if (!empty($textCascadeProps[$property])) {
+                            $cascadeRules .= "  {$property}: {$value};\n";
+                        }
                     }
                 }
                 if ($rules !== '') {
                     $css .= "#{$id} {$selector} {\n{$rules}}\n";
+                }
+                if ($cascadeRules !== '') {
+                    $css .= "#{$id} {$selector}, #{$id} {$selector} * {\n{$cascadeRules}}\n";
                 }
             }
         }
