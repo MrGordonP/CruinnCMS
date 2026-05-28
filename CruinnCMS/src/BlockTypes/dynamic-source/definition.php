@@ -38,10 +38,10 @@ BlockRegistry::register([
 
             $xpath = new \DOMXPath($dom);
             $idx = 0;
-            foreach ($xpath->query('//*[@class]') as $el) {
+            foreach ($xpath->query('/html/body//*') as $el) {
                 /** @var \DOMElement $el */
                 $el->setAttribute('data-phpi-el', (string) $idx++);
-                $el->setAttribute('data-phpi-classes', $el->getAttribute('class'));
+                $el->setAttribute('data-phpi-classes', trim((string) $el->getAttribute('class')));
             }
 
             $body = $dom->getElementsByTagName('body')->item(0);

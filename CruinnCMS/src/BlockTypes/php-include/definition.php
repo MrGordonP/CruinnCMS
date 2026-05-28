@@ -55,10 +55,10 @@ BlockRegistry::register([
         // ── Edit mode ───────────────────────────────────────────────────────────
         // Execute the template with PHP notice/warning suppression so that missing
         // live-data variables (e.g. $member, $current_user) don't abort rendering.
-        // Then annotate every element that carries a class attribute with two
+        // Then annotate every rendered element with two
         // data attributes so the editor JS can make them individually selectable:
         //   data-phpi-el="N"         — sequential index (click target)
-        //   data-phpi-classes="..."  — original class value (used for style keying)
+        //   data-phpi-classes="..."  — original class value (used for style keying when present)
         if (BlockRegistry::isEditMode()) {
             // Suppress undefined-variable notices without masking real errors.
             set_error_handler(static function (int $errno, string $errstr): bool {
@@ -84,7 +84,7 @@ BlockRegistry::register([
                 restore_error_handler();
             }
 
-            // Annotate elements with class attributes using DOMDocument so we handle
+            // Annotate rendered elements using DOMDocument so we handle
             // arbitrary HTML reliably without regex fragility.
             if (trim($output) !== '') {
                 $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -98,10 +98,10 @@ BlockRegistry::register([
 
                 $xpath = new \DOMXPath($dom);
                 $idx   = 0;
-                foreach ($xpath->query('//*[@class]') as $el) {
+                foreach ($xpath->query('/html/body//*') as $el) {
                     /** @var \DOMElement $el */
                     $el->setAttribute('data-phpi-el', (string) $idx++);
-                    $el->setAttribute('data-phpi-classes', $el->getAttribute('class'));
+                    $el->setAttribute('data-phpi-classes', trim((string) $el->getAttribute('class')));
                 }
 
                 // Extract only the <body> children to avoid the html/head wrapper.
