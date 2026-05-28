@@ -335,6 +335,10 @@ class CruinnRenderService
                     $extraAttrs .= ' data-ui-collapse-align="' . $uiAlign . '"';
                 }
             }
+            $uiCollapseStyle = (string) ($cfg['ui_collapse_style'] ?? '');
+            if ($uiCollapseStyle === 'heading') {
+                $extraAttrs .= ' data-ui-collapse-style="heading"';
+            }
 
             $isDynamic    = $this->isDynamicType($row['block_type']);
             $innerContent = $isDynamic
@@ -620,6 +624,10 @@ class CruinnRenderService
                             if ($pbCollapse === 'tablet' || $pbCollapse === 'mobile') {
                                 $pbAttrs .= ' data-ui-collapse="' . $pbCollapse . '"';
                             }
+                            $pbCollapseStyle = (string) ($pbCfg['ui_collapse_style'] ?? '');
+                            if ($pbCollapseStyle === 'heading') {
+                                $pbAttrs .= ' data-ui-collapse-style="heading"';
+                            }
                             $pbInner  = $this->isDynamicType($pb['block_type'])
                                 ? $this->renderDynamicBlock($pb)
                                 : ($pb['inner_html'] ?? '');
@@ -650,6 +658,10 @@ class CruinnRenderService
                 $uiCollapse = (string) ($tCfg['ui_collapse'] ?? '');
                 if ($uiCollapse === 'tablet' || $uiCollapse === 'mobile') {
                     $extraAttrs .= ' data-ui-collapse="' . $uiCollapse . '"';
+                }
+                $uiCollapseStyle = (string) ($tCfg['ui_collapse_style'] ?? '');
+                if ($uiCollapseStyle === 'heading') {
+                    $extraAttrs .= ' data-ui-collapse-style="heading"';
                 }
                 $isDynamic = $this->isDynamicType($row['block_type']);
                 $inner     = $isDynamic

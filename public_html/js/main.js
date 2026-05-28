@@ -143,6 +143,52 @@ document.addEventListener('DOMContentLoaded', function () {
         return 'Section';
     }
 
+    function buildCollapseHeadingLabel(el) {
+        var heading = el.querySelector('h1, h2, h3, h4, h5, h6');
+        var headingText = heading ? (heading.textContent || '').trim() : '';
+        return headingText || buildCollapseLabel(el);
+    }
+
+    function buildCollapseButton(el, mode) {
+        var style = (el.getAttribute('data-ui-collapse-style') || '').trim();
+        if (style !== 'heading') {
+            style = 'hamburger';
+        }
+
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ui-collapse-toggle';
+        btn.setAttribute('data-ui-collapse-mode', mode);
+        btn.setAttribute('data-ui-collapse-style', style);
+        btn.setAttribute('aria-expanded', 'false');
+        if (el.id) {
+            btn.setAttribute('aria-controls', el.id);
+        }
+
+        if (style === 'heading') {
+            var headingLabel = buildCollapseHeadingLabel(el);
+            btn.setAttribute('aria-label', 'Toggle ' + headingLabel);
+
+            var title = document.createElement('span');
+            title.className = 'ui-collapse-toggle-heading';
+            title.textContent = headingLabel;
+
+            var edgeIcon = document.createElement('span');
+            edgeIcon.className = 'ui-collapse-toggle-edge-icon';
+            edgeIcon.setAttribute('aria-hidden', 'true');
+            edgeIcon.textContent = '+';
+
+            btn.appendChild(title);
+            btn.appendChild(edgeIcon);
+            return btn;
+        }
+
+        btn.setAttribute('aria-label', 'Toggle ' + buildCollapseLabel(el));
+        btn.innerHTML = '<span class="ui-collapse-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>' +
+            '<span class="ui-collapse-toggle-label">' + buildCollapseLabel(el) + '</span>';
+        return btn;
+    }
+
     document.querySelectorAll('[data-ui-collapse]').forEach(function (el) {
         var mode = (el.getAttribute('data-ui-collapse') || '').trim();
         if (mode !== 'tablet' && mode !== 'mobile') {
@@ -150,19 +196,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         var bp = collapseBreakpoint(mode);
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'ui-collapse-toggle';
-        btn.setAttribute('data-ui-collapse-mode', mode);
-        btn.setAttribute('aria-expanded', 'false');
-        btn.setAttribute('aria-label', 'Toggle ' + buildCollapseLabel(el));
-        if (el.id) {
-            btn.setAttribute('aria-controls', el.id);
-        }
+        var btn = buildCollapseButton(el, mode);
         var align = (el.getAttribute('data-ui-collapse-align') || '').trim();
         if (align) { btn.setAttribute('data-ui-collapse-align', align); }
-        btn.innerHTML = '<span class="ui-collapse-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>' +
-            '<span class="ui-collapse-toggle-label">' + buildCollapseLabel(el) + '</span>';
 
         el.parentNode.insertBefore(btn, el);
 
@@ -216,16 +252,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'ui-collapse-toggle';
-        btn.setAttribute('data-ui-collapse-mode', 'always');
-        btn.setAttribute('aria-expanded', 'false');
-        btn.setAttribute('aria-label', 'Toggle ' + buildCollapseLabel(el));
-        if (el.id) {
-            btn.setAttribute('aria-controls', el.id);
-        }
-        btn.innerHTML = '<span class="ui-collapse-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>' +
-            '<span class="ui-collapse-toggle-label">' + buildCollapseLabel(el) + '</span>';
+        btn = buildCollapseButton(el, 'always');
 
         el.parentNode.insertBefore(btn, el);
 
@@ -259,7 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         parents.forEach(function (parent) {
             var btns = Array.prototype.slice.call(
-                parent.querySelectorAll(':scope > .ui-collapse-toggle')
+                parent.querySelectorAll(':scope > .ui-collapse-toggle:not([data-ui-collapse-style="heading"])')
             );
             if (btns.length < 2) { return; }
             var bar = document.createElement('div');

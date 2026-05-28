@@ -891,6 +891,13 @@ $eventProfiles = $eventProfiles ?? [];
                         <label>Button label</label>
                         <input type="text" class="editor-prop-input" id="prop-ui-collapse-label" placeholder="e.g. Menu, Navigation, Utility">
                     </div>
+                    <div class="editor-prop-row" id="prop-ui-collapse-style-row">
+                        <label>Collapse style</label>
+                        <select class="editor-prop-input" id="prop-ui-collapse-style">
+                            <option value="hamburger">Hamburger toggle</option>
+                            <option value="heading">Block heading bar</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

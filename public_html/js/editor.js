@@ -1387,6 +1387,7 @@
         var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
         var uiCollapseAlignRow = document.getElementById('prop-ui-collapse-align-row');
         var uiCollapseAlignSel = document.getElementById('prop-ui-collapse-align');
+        var uiCollapseStyleSel = document.getElementById('prop-ui-collapse-style');
         var uiCollapse = (config.ui_collapse || '').toString();
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var isEnabled = uiCollapse === 'tablet' || uiCollapse === 'mobile';
@@ -1401,6 +1402,9 @@
                 uiCollapseLabelRow.style.display = isEnabled ? '' : 'none';
                 uiCollapseLabelInp.value = (config.ui_collapse_label || '').toString();
             }
+        }
+        if (uiCollapseStyleSel) {
+            uiCollapseStyleSel.value = (config.ui_collapse_style === 'heading') ? 'heading' : 'hamburger';
         }
 
         // CSS properties � read from active viewport overrides, fallback to computed desktop
@@ -2249,6 +2253,7 @@
         var uiCollapseLabelInp = document.getElementById('prop-ui-collapse-label');
         var uiCollapseAlignRow = document.getElementById('prop-ui-collapse-align-row');
         var uiCollapseAlignSel = document.getElementById('prop-ui-collapse-align');
+        var uiCollapseStyleSel = document.getElementById('prop-ui-collapse-style');
         if (uiCollapseEnabled && uiCollapseRow && uiCollapseSel) {
             var writeUiCollapse = function () {
                 var cfg = {};
@@ -2300,6 +2305,20 @@
                     writeUiCollapse();
                 };
             }
+        }
+
+        if (uiCollapseStyleSel) {
+            uiCollapseStyleSel.onchange = function () {
+                var cfg = {};
+                try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+                if (uiCollapseStyleSel.value === 'heading') {
+                    cfg.ui_collapse_style = 'heading';
+                } else {
+                    delete cfg.ui_collapse_style;
+                }
+                block.dataset.blockConfig = JSON.stringify(cfg);
+                recordAction();
+            };
         }
 
         // Image block: src browse + attr bindings
