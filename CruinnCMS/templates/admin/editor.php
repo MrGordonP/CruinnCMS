@@ -231,7 +231,7 @@ $eventProfiles = $eventProfiles ?? [];
     <?php endif; ?>
 
     <!-- ── Editor body ──────────────────────────────────────────── -->
-    <div id="editor-body">
+    <div id="editor-body" class="panel-layout">
 
         <!-- Left panel: site nav + block palette + block tree -->
         <div id="editor-left" class="pl-panel pl-panel-left">
@@ -501,6 +501,11 @@ $eventProfiles = $eventProfiles ?? [];
 
         <!-- Canvas -->
         <div id="editor-canvas-wrap" class="pl-main">
+            <div class="pl-panel-header">
+                <button type="button" class="pl-panel-toggle" id="editor-canvas-toggle" title="Collapse">&#x25C0;</button>
+                <span class="pl-panel-title">Canvas</span>
+            </div>
+            <div class="pl-panel-body">
             <?php
                 $_sidebarCC = null;
                 foreach ($contextCanvases ?? [] as $_cc_s) {
@@ -656,6 +661,8 @@ $eventProfiles = $eventProfiles ?? [];
                          data-inline-canvas-id="<?= (int)($_cc['pageId'] ?? 0) ?>">Click to edit <?= e($_cc['label']) ?></a>
             </div>
             <?php endforeach; ?>
+
+            </div>
 
         </div>
 

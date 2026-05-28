@@ -30,6 +30,20 @@ var PanelCollapse = (function () {
     // registry: id → { panel, btn, storeKey, side }
     var _panels = {};
 
+    function _syncLayoutWidth(panel, width) {
+        if (!panel) return;
+        panel.style.width = width + 'px';
+
+        var layout = panel.closest('.panel-layout');
+        if (!layout) return;
+
+        if (panel.classList.contains('pl-panel-left')) {
+            layout.style.setProperty('--pl-left-width', width + 'px');
+        } else if (panel.classList.contains('pl-panel-right')) {
+            layout.style.setProperty('--pl-right-width', width + 'px');
+        }
+    }
+
     function _apply(id, collapsed) {
         var entry = _panels[id];
         if (!entry) return;
@@ -105,7 +119,7 @@ var PanelCollapse = (function () {
         // Restore persisted width
         if (storeKey) {
             var stored = localStorage.getItem(storeKey);
-            if (stored) panel.style.width = stored + 'px';
+            if (stored) _syncLayoutWidth(panel, parseInt(stored, 10));
         }
 
         handle.addEventListener('mousedown', function (e) {
@@ -119,7 +133,7 @@ var PanelCollapse = (function () {
             function onMove(e) {
                 var delta = e.clientX - startX;
                 var newW = Math.max(140, Math.min(480, startWidth + delta));
-                panel.style.width = newW + 'px';
+                _syncLayoutWidth(panel, newW);
             }
 
             function onUp() {

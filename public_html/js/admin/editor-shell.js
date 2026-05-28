@@ -44,6 +44,7 @@
 
 PanelCollapse.init([
     { panelId: 'editor-left', toggleId: 'pl-panel-left-toggle', storeKey: 'ed_left', side: 'left' },
+    { panelId: 'editor-canvas-wrap', toggleId: 'editor-canvas-toggle', storeKey: 'ed_centre', side: 'centre' },
     { panelId: 'editor-props', toggleId: 'pl-panel-right-toggle', storeKey: 'ed_right', side: 'right' },
 ]);
 PanelCollapse.initResize('pl-panel-left-resize', 'editor-left', 'ed_left_w');

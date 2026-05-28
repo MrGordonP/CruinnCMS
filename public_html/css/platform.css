@@ -1131,10 +1131,12 @@ body:has(#source-wrap) {
 }
 
 #source-wrap {
+    --pl-left-width: 220px;
+    --pl-right-width: 220px;
     flex: 1;
     min-height: 0;
     height: 100%;
-    display: flex;
+    display: grid;
     overflow: hidden;
 }
 
@@ -1152,13 +1154,13 @@ body:has(#source-wrap) {
 }
 
 #source-wrap .pl-panel-left {
-    width: 220px;
-    min-width: 160px;
+    width: var(--pl-left-width);
+    min-width: 0;
 }
 
 #source-wrap .pl-panel-right {
-    width: 220px;
-    min-width: 160px;
+    width: var(--pl-right-width);
+    min-width: 0;
 }
 
 #source-wrap .pl-panel-header {

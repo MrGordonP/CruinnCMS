@@ -1562,8 +1562,17 @@ class SiteBuilderController extends BaseController
 
         $source = file_get_contents($fullPath);
         preg_match_all('/\$([a-zA-Z_][a-zA-Z0-9_]*)/', $source, $m);
-        $skip = ['this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_SESSION',
-                 '_COOKIE', '_FILES', '_ENV', '_REQUEST', 'db'];
+        $skip = array_unique(array_merge(
+            ['this', 'GLOBALS', '_SERVER', '_GET', '_POST', '_SESSION',
+             '_COOKIE', '_FILES', '_ENV', '_REQUEST', 'db'],
+            array_keys(\Cruinn\Template::globals()),
+            [
+                'current_user', 'user', 'member', 'address', 'errors', 'old', 'flashes',
+                'adminStats', 'notifications', 'unreadCount', 'upcomingEvents', 'latestSub',
+                'oauth_providers', 'page', 'page_tpl', 'content', 'title', 'meta_description',
+                'canonical_url', 'og_title', 'og_description', 'og_image', 'og_url', 'site_name',
+            ]
+        ));
         $vars = array_values(array_diff(array_unique($m[1]), $skip));
         sort($vars);
 

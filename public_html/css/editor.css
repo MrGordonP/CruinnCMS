@@ -99,7 +99,9 @@
 
 #editor-body {
     display: grid;
-    grid-template-columns: 220px 1fr 280px;
+    --pl-left-width: 220px;
+    --pl-right-width: 280px;
+    grid-template-columns: var(--pl-left-width) minmax(0, 1fr) var(--pl-right-width);
     grid-template-rows: 1fr;
     flex: 1;
     min-height: 0;
@@ -405,9 +407,9 @@
 /* ── Canvas wrap ──────────────────────────────────────────────── */
 
 #editor-canvas-wrap {
-    overflow-y: auto;
+    overflow: hidden;
     background: #e8eaed;
-    padding: 2rem;
+    padding: 0;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -415,6 +417,14 @@
     min-width: 0;
     /* prevent grid blowout from wide content */
     /* contain position:fixed children to this scroll box */
+}
+
+#editor-canvas-wrap .pl-panel-body {
+    overflow-y: auto;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .editor-canvas-shell {
@@ -487,7 +497,7 @@
 }
 
 /* Code view: remove canvas constraints so textarea fills the column */
-#editor-canvas-wrap:has(#editor-code-area) {
+#editor-canvas-wrap:has(#editor-code-area) .pl-panel-body {
     padding: 0;
 }
 

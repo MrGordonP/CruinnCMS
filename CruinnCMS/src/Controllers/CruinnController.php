@@ -1640,20 +1640,69 @@ class CruinnController extends BaseController
             }
         }
 
-        // Build vars from query string (exclude 'template', internal keys)
-        $vars = $_GET;
-        unset($vars['template']);
+        $source = file_get_contents($fullPath) ?: '';
+        preg_match_all('/\$([a-zA-Z_][a-zA-Z0-9_]*)/', $source, $m);
+        $detectedVars = array_unique($m[1] ?? []);
+
+        $globals = \Cruinn\Template::globals();
+        $vars = $globals;
+        foreach ($_GET as $key => $value) {
+            if ($key === 'template' || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', (string) $key)) {
+                continue;
+            }
+            // Empty query values should not wipe out richer runtime globals.
+            if ($value === '' && array_key_exists($key, $globals)) {
+                continue;
+            }
+            $vars[$key] = $value;
+        }
         $vars['db'] = $this->db;
 
-        extract($vars, EXTR_SKIP);
+        $makeStub = static function (string $path): object {
+            return new class($path) implements \ArrayAccess, \Iterator, \Countable, \Stringable {
+                private string $path;
+                private int $pos = 0;
+
+                public function __construct(string $path = '') { $this->path = $path; }
+                public function __toString(): string { return $this->path; }
+                public function __get(string $k): object { return new self($this->path ? "{$this->path}.{$k}" : $k); }
+                public function __isset(string $k): bool { return true; }
+                public function __set(string $k, mixed $v): void {}
+                public function offsetGet(mixed $k): object { return new self($this->path ? "{$this->path}.{$k}" : (string) $k); }
+                public function offsetExists(mixed $k): bool { return true; }
+                public function offsetSet(mixed $k, mixed $v): void {}
+                public function offsetUnset(mixed $k): void {}
+                public function current(): object { return new self("{$this->path}[{$this->pos}]"); }
+                public function key(): int { return $this->pos; }
+                public function next(): void { $this->pos++; }
+                public function rewind(): void { $this->pos = 0; }
+                public function valid(): bool { return $this->pos < 3; }
+                public function count(): int { return 3; }
+            };
+        };
+
+        foreach ($detectedVars as $name) {
+            if ($name === 'db' || array_key_exists($name, $vars)) {
+                continue;
+            }
+            $vars[$name] = $makeStub($name);
+        }
+
+        set_error_handler(static function (int $errno, string $errstr): bool {
+            return ($errno & (E_NOTICE | E_WARNING | E_USER_NOTICE | E_USER_WARNING)) !== 0;
+        });
+
         ob_start();
         try {
+            extract($vars, EXTR_SKIP);
             include $fullPath;
             $html = ob_get_clean();
         } catch (\Throwable $e) {
             ob_end_clean();
             $html = '<div style="color:#b91c1c;font-size:0.8rem;padding:0.5rem;background:#fef2f2">'
                   . htmlspecialchars('Error: ' . $e->getMessage()) . '</div>';
+        } finally {
+            restore_error_handler();
         }
 
         echo json_encode(['html' => $html]);

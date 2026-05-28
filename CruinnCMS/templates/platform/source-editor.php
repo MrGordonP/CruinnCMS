@@ -31,7 +31,7 @@ if ($activeFile !== null && $fileContent !== null) {
 }
 ?>
 <?php ob_start(); ?>
-<div id="source-wrap"
+<div id="source-wrap" class="panel-layout"
     data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>"
     data-preview-url="<?= htmlspecialchars(($activeFile !== null && $fileContent !== null && in_array(strtolower(pathinfo($activeFile, PATHINFO_EXTENSION)), ['php', 'html'], true)) ? '/cms/source/preview?file=' . rawurlencode($activeFile) : '', ENT_QUOTES, 'UTF-8') ?>">
 
