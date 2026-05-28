@@ -215,11 +215,11 @@ class CruinnRenderService
             $css .= "@media (max-width: 599px) {\n{$mobileRules}}\n";
         }
 
-        // Emit child-element styles for php-include blocks.
+        // Emit child-element styles for php-include/dynamic-include blocks.
         // Stored as block_config.childStyles: { ".class-name": { "property": "value" } }
         // Rendered as: #blockId .class-name { property: value; }
         foreach ($flat as $row) {
-            if ($row['block_type'] !== 'php-include') {
+            if ($row['block_type'] !== 'php-include' && $row['block_type'] !== 'dynamic-include') {
                 continue;
             }
             if (empty($row['block_config'])) {

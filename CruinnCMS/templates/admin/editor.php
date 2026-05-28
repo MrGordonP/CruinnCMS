@@ -485,12 +485,7 @@ $eventProfiles = $eventProfiles ?? [];
                     <button class="palette-btn palette-btn--site" data-add-block="site-title" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Title</button>
                     <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Event List</button>
                     <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="php-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>PHP Include</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="account-details-form" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Account Details</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="account-password-form" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Change Password</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="account-information" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Account Info</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="module-widget" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Module Widget</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="module-content" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Module Content</button>
+                    <button class="palette-btn palette-btn--site" data-add-block="dynamic-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Dynamic Include</button>
                     <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
                 </div>
             </div>
@@ -973,7 +968,16 @@ $eventProfiles = $eventProfiles ?? [];
                     </div>
                     <!-- php-include config -->
                     <div class="editor-content-group" data-content-type="php-include" style="display:none">
-                        <div class="editor-prop-row">
+                        <div class="editor-prop-row" id="prop-dyn-source-type-row" style="display:none">
+                            <label>Source Type</label>
+                            <select class="editor-prop-input" id="prop-dyn-source-type" data-config="source_type">
+                                <option value="php_include">PHP Include</option>
+                                <option value="module_widget">Module Widget</option>
+                                <option value="module_content">Module Content</option>
+                                <option value="core_fragment">Core Fragment</option>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" id="prop-dyn-template-row">
                             <label>Template</label>
                             <select class="editor-prop-input php-include-tpl-picker">
                                 <option value="">— Select template —</option>
@@ -989,10 +993,19 @@ $eventProfiles = $eventProfiles ?? [];
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="php-include-vars" style="margin-top: 0.5rem">
+                        <div class="php-include-vars" id="prop-dyn-vars-row" style="margin-top: 0.5rem">
                             <p class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Select a template to see its variables.</p>
                         </div>
-                        <div class="editor-prop-row" style="margin-top:0.75rem">
+                        <div class="editor-prop-row" id="prop-dyn-core-fragment-row" style="margin-top:0.75rem;display:none">
+                            <label>Core Fragment</label>
+                            <select class="editor-prop-input" id="prop-dyn-core-fragment" data-config="core_fragment_key">
+                                <option value="">— Select fragment —</option>
+                                <option value="account_details_form">Account Details Form</option>
+                                <option value="account_password_form">Account Password Form</option>
+                                <option value="account_information">Account Information</option>
+                            </select>
+                        </div>
+                        <div class="editor-prop-row" id="prop-dyn-edit-source-row" style="margin-top:0.75rem">
                             <button type="button" id="prop-php-edit-source-btn" class="btn btn-small btn-outline" style="width:100%">&lt;/&gt; Edit Template Source</button>
                         </div>
                     </div>

@@ -1681,6 +1681,20 @@ class CruinnController extends BaseController
             };
         };
 
+        // Some templates expect these to be array-like structures. If a scalar
+        // sneaks in via globals/query params, normalize it to a stub object so
+        // `$var['key']` access remains safe in preview mode.
+        $structuredVars = ['user', 'member', 'address', 'old', 'errors', 'page'];
+        foreach ($structuredVars as $structuredVar) {
+            if (!array_key_exists($structuredVar, $vars)) {
+                continue;
+            }
+            if (is_array($vars[$structuredVar]) || is_object($vars[$structuredVar]) || $vars[$structuredVar] === null) {
+                continue;
+            }
+            $vars[$structuredVar] = $makeStub($structuredVar);
+        }
+
         foreach ($detectedVars as $name) {
             if ($name === 'db' || array_key_exists($name, $vars)) {
                 continue;

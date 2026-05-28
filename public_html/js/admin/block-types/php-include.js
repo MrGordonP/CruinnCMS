@@ -359,3 +359,7 @@ Cruinn.BlockTypes.register('php-include', {
         }, 600);
     },
 });
+
+// dynamic-include reuses the same editor behavior so child element styling
+// works identically when the source type is PHP include.
+Cruinn.BlockTypes.register('dynamic-include', Cruinn.BlockTypes.get('php-include'));

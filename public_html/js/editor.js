@@ -526,8 +526,8 @@
     var ZONE_TYPES = ['zone'];
     var IMAGE_TYPES = ['image', 'site-logo'];
     var TITLE_TYPES = ['site-title'];
-    var DYNAMIC_TYPES = ['event-list', 'data-list', 'module-widget', 'module-content'];
-    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'data-list', 'module-widget', 'module-content'];
+    var DYNAMIC_TYPES = ['event-list', 'data-list', 'module-widget', 'module-content', 'dynamic-include'];
+    var CONFIG_TYPES = ['event-list', 'nav-menu', 'php-include', 'dynamic-include', 'data-list', 'module-widget', 'module-content'];
     var PHP_CODE_TYPES = ['php-code'];
     // Block types whose inner_html slot is bindable
     var BIND_INNER_TYPES = ['text', 'html', 'heading', 'inline', 'anchor'];
@@ -674,6 +674,51 @@
         return resolvedMode;
     }
 
+    function resolveDynamicIncludeSourceType(config) {
+        var sourceType = (config.source_type || '').toString();
+        if (!sourceType) {
+            if ((config.template || '').toString() !== '') {
+                sourceType = 'php_include';
+            } else if ((config.widget_key || '').toString() !== '') {
+                sourceType = 'module_widget';
+            } else if ((config.provider_key || '').toString() !== '') {
+                sourceType = 'module_content';
+            } else if ((config.core_fragment_key || '').toString() !== '') {
+                sourceType = 'core_fragment';
+            } else {
+                sourceType = 'php_include';
+            }
+        }
+        return sourceType;
+    }
+
+    function syncDynamicIncludeContentUi(config) {
+        var sourceType = resolveDynamicIncludeSourceType(config);
+        var sourceRow = document.getElementById('prop-dyn-source-type-row');
+        var sourceSel = document.getElementById('prop-dyn-source-type');
+        var templateRow = document.getElementById('prop-dyn-template-row');
+        var varsRow = document.getElementById('prop-dyn-vars-row');
+        var editSourceRow = document.getElementById('prop-dyn-edit-source-row');
+        var coreFragmentRow = document.getElementById('prop-dyn-core-fragment-row');
+        var moduleWidgetGroup = panel.querySelector('.editor-content-group[data-content-type="module-widget"]');
+        var moduleContentGroup = panel.querySelector('.editor-content-group[data-content-type="module-content"]');
+
+        if (sourceRow) { sourceRow.style.display = ''; }
+        if (sourceSel) { sourceSel.value = sourceType; }
+
+        var isPhpInclude = sourceType === 'php_include';
+        var isModuleWidget = sourceType === 'module_widget';
+        var isModuleContent = sourceType === 'module_content';
+        var isCoreFragment = sourceType === 'core_fragment';
+
+        if (templateRow) { templateRow.style.display = isPhpInclude ? '' : 'none'; }
+        if (varsRow) { varsRow.style.display = isPhpInclude ? '' : 'none'; }
+        if (editSourceRow) { editSourceRow.style.display = isPhpInclude ? '' : 'none'; }
+        if (coreFragmentRow) { coreFragmentRow.style.display = isCoreFragment ? '' : 'none'; }
+        if (moduleWidgetGroup) { moduleWidgetGroup.style.display = isModuleWidget ? '' : 'none'; }
+        if (moduleContentGroup) { moduleContentGroup.style.display = isModuleContent ? '' : 'none'; }
+    }
+
     function loadProps(block) {
         var type = block.dataset.blockType;
         var cs = getComputedStyle(block); // computed styles for reading actual CSS values
@@ -786,7 +831,12 @@
 
         // Show the right content sub-group
         panel.querySelectorAll('.editor-content-group').forEach(function (g) {
-            g.style.display = g.dataset.contentType === type ? '' : 'none';
+            var groupType = g.dataset.contentType;
+            var show = groupType === type;
+            if (type === 'dynamic-include' && (groupType === 'php-include' || groupType === 'module-widget' || groupType === 'module-content')) {
+                show = true;
+            }
+            g.style.display = show ? '' : 'none';
         });
 
         // Identity
@@ -972,11 +1022,18 @@
         }
 
         // PHP Include: populate template picker + dynamic var rows + live canvas preview
-        if (type === 'php-include') {
+        if (type === 'php-include' || type === 'dynamic-include') {
             var phpTplPicker = panel.querySelector('.php-include-tpl-picker');
             if (phpTplPicker) { phpTplPicker.value = config.template || ''; }
             var phpVarsContainer = panel.querySelector('.php-include-vars');
             if (phpVarsContainer) { buildPhpIncludeVarRows(phpVarsContainer, config, block); }
+            if (type === 'dynamic-include') {
+                var dynCoreSel = document.getElementById('prop-dyn-core-fragment');
+                if (dynCoreSel) {
+                    dynCoreSel.value = (config.core_fragment_key || '').toString();
+                }
+                syncDynamicIncludeContentUi(config);
+            }
             refreshPhpIncludePreview(block);
         }
 
@@ -992,7 +1049,7 @@
         }
 
         // Module widget: populate picker and ensure selected key exists in options.
-        if (type === 'module-widget') {
+        if (type === 'module-widget' || type === 'dynamic-include') {
             var mwSel = document.getElementById('prop-module-widget-key');
             if (mwSel) {
                 var selectedKey = (config.widget_key || '').toString();
@@ -1013,10 +1070,12 @@
                 }
                 mwSel.value = selectedKey;
             }
-            refreshModuleWidgetPreview(block);
+            if (type === 'module-widget') {
+                refreshModuleWidgetPreview(block);
+            }
         }
 
-        if (type === 'module-content') {
+        if (type === 'module-content' || type === 'dynamic-include') {
             var mcSel = document.getElementById('prop-module-content-provider');
             var mcModeRow = document.getElementById('prop-module-content-mode-row');
             var mcModeSel = document.getElementById('prop-module-content-mode');
@@ -1107,7 +1166,9 @@
             if (mcSettings) {
                 mcSettings.value = (config.settings_json || '').toString();
             }
-            refreshModuleContentPreview(block);
+            if (type === 'module-content') {
+                refreshModuleContentPreview(block);
+            }
         }
 
         // Site title / tagline text
@@ -1393,13 +1454,13 @@
                     syncCardWrap();
                 };
             }
-            if (inp.tagName === 'SELECT' && inp.dataset.config === 'widget_key' && block.dataset.blockType === 'module-widget') {
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'widget_key' && (block.dataset.blockType === 'module-widget' || block.dataset.blockType === 'dynamic-include')) {
                 inp.onchange = function () {
                     writeConfig(block, 'widget_key', inp.value);
-                    refreshModuleWidgetPreview(block);
+                    refreshPhpIncludePreview(block);
                 };
             }
-            if (inp.tagName === 'SELECT' && inp.dataset.config === 'provider_key' && block.dataset.blockType === 'module-content') {
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'provider_key' && (block.dataset.blockType === 'module-content' || block.dataset.blockType === 'dynamic-include')) {
                 inp.onchange = function () {
                     var perPageRow = document.getElementById('prop-module-content-per-page-row');
                     var blogProfileRow = document.getElementById('prop-module-content-blog-profile-row');
@@ -1420,34 +1481,56 @@
                     if (eventProfileRow) {
                         eventProfileRow.style.display = (inp.value === 'events:list' || inp.value === 'events:content' || inp.value === 'events:detail') ? '' : 'none';
                     }
-                    refreshModuleContentPreview(block);
+                    refreshPhpIncludePreview(block);
                 };
             }
-            if (inp.tagName === 'SELECT' && inp.dataset.config === 'display_mode' && block.dataset.blockType === 'module-content') {
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'display_mode' && (block.dataset.blockType === 'module-content' || block.dataset.blockType === 'dynamic-include')) {
                 inp.onchange = function () {
                     writeConfig(block, 'display_mode', inp.value);
-                    refreshModuleContentPreview(block);
+                    refreshPhpIncludePreview(block);
                 };
             }
-            if (inp.tagName === 'TEXTAREA' && inp.dataset.config === 'settings_json' && block.dataset.blockType === 'module-content') {
+            if (inp.tagName === 'TEXTAREA' && inp.dataset.config === 'settings_json' && (block.dataset.blockType === 'module-content' || block.dataset.blockType === 'dynamic-include')) {
                 inp.oninput = function () {
                     writeConfig(block, 'settings_json', inp.value);
-                    refreshModuleContentPreview(block);
+                    refreshPhpIncludePreview(block);
                 };
             }
-            if (inp.tagName === 'SELECT' && inp.dataset.config === 'blog_profile_id' && block.dataset.blockType === 'module-content') {
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'blog_profile_id' && (block.dataset.blockType === 'module-content' || block.dataset.blockType === 'dynamic-include')) {
                 inp.onchange = function () {
                     writeConfig(block, 'blog_profile_id', inp.value);
-                    refreshModuleContentPreview(block);
+                    refreshPhpIncludePreview(block);
                 };
             }
-            if (inp.tagName === 'SELECT' && inp.dataset.config === 'event_profile_id' && block.dataset.blockType === 'module-content') {
+            if (inp.tagName === 'SELECT' && inp.dataset.config === 'event_profile_id' && (block.dataset.blockType === 'module-content' || block.dataset.blockType === 'dynamic-include')) {
                 inp.onchange = function () {
                     writeConfig(block, 'event_profile_id', inp.value);
-                    refreshModuleContentPreview(block);
+                    refreshPhpIncludePreview(block);
                 };
             }
         });
+
+        if (block.dataset.blockType === 'dynamic-include') {
+            var dynSourceType = document.getElementById('prop-dyn-source-type');
+            if (dynSourceType) {
+                dynSourceType.onchange = function () {
+                    writeConfig(block, 'source_type', dynSourceType.value);
+                    var cfg = {};
+                    try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+                    syncDynamicIncludeContentUi(cfg);
+                    block.innerHTML = '';
+                    refreshPhpIncludePreview(block);
+                };
+            }
+
+            var dynCoreFragment = document.getElementById('prop-dyn-core-fragment');
+            if (dynCoreFragment) {
+                dynCoreFragment.onchange = function () {
+                    writeConfig(block, 'core_fragment_key', dynCoreFragment.value);
+                    refreshPhpIncludePreview(block);
+                };
+            }
+        }
 
         if (anchorHrefInput && block.dataset.blockType === 'anchor') {
             anchorHrefInput.oninput = function () {
@@ -1882,7 +1965,7 @@
         }
 
         // PHP Include: template picker triggers var-row rebuild + live canvas preview
-        if (block.dataset.blockType === 'php-include') {
+        if (block.dataset.blockType === 'php-include' || block.dataset.blockType === 'dynamic-include') {
             var phpPicker = panel.querySelector('.php-include-tpl-picker');
             if (phpPicker) {
                 phpPicker.onchange = function () {
@@ -1902,7 +1985,7 @@
                         .then(function (r) { return r.json(); })
                         .then(function (data) {
                             (data.vars || []).forEach(function (v) {
-                                if (!(v in cfg) && v !== 'db' && v !== 'template') {
+                                if (!(v in cfg) && v !== 'db' && v !== 'template' && v !== 'source_type') {
                                     cfg[v] = '';
                                 }
                             });
@@ -1949,7 +2032,18 @@
     function buildPhpIncludeVarRows(container, cfg, block) {
         container.innerHTML = '';
         var varKeys = Object.keys(cfg).filter(function (k) {
-            return k !== 'template' && k !== 'db';
+            return k !== 'template'
+                && k !== 'db'
+                && k !== 'source_type'
+                && k !== 'core_fragment_key'
+                && k !== 'widget_key'
+                && k !== 'provider_key'
+                && k !== 'settings_json'
+                && k !== 'display_mode'
+                && k !== 'per_page'
+                && k !== 'blog_profile_id'
+                && k !== 'event_profile_id'
+                && k !== 'childStyles';
         });
         if (varKeys.length === 0) {
             container.innerHTML = '<p class="php-include-hint">Select a template to see its variables.</p>';
@@ -1980,6 +2074,32 @@
     function refreshPhpIncludePreview(block) {
         var cfg = {};
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+
+        if (block.dataset.blockType === 'dynamic-include') {
+            var sourceType = resolveDynamicIncludeSourceType(cfg);
+
+            if (sourceType === 'module_widget') {
+                if (!block.innerHTML.trim()) {
+                    block.innerHTML = '<p class="editor-dynamic-placeholder">Dynamic Include: select a module widget.</p>';
+                }
+                return;
+            }
+
+            if (sourceType === 'module_content') {
+                if (!block.innerHTML.trim()) {
+                    block.innerHTML = '<p class="editor-dynamic-placeholder">Dynamic Include: select module content.</p>';
+                }
+                return;
+            }
+
+            if (sourceType === 'core_fragment') {
+                if (!block.innerHTML.trim()) {
+                    block.innerHTML = '<p class="editor-dynamic-placeholder">Dynamic Include: select a core fragment.</p>';
+                }
+                return;
+            }
+        }
+
         var rel = cfg.template || '';
         if (!rel) {
             block.innerHTML = '<p style="color:#9ca3af;font-size:0.8rem;padding:0.5rem">PHP Include — no template selected</p>';
@@ -1987,7 +2107,18 @@
         }
         var qs = 'template=' + encodeURIComponent(rel);
         Object.keys(cfg).forEach(function (k) {
-            if (k !== 'template' && k !== 'db') {
+            if (k !== 'template'
+                && k !== 'db'
+                && k !== 'source_type'
+                && k !== 'core_fragment_key'
+                && k !== 'widget_key'
+                && k !== 'provider_key'
+                && k !== 'settings_json'
+                && k !== 'display_mode'
+                && k !== 'per_page'
+                && k !== 'blog_profile_id'
+                && k !== 'event_profile_id'
+                && k !== 'childStyles') {
                 qs += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(cfg[k] || '');
             }
         });
@@ -2198,9 +2329,7 @@
         'module-widget': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Widget G�� select widget in Content settings.</p>', dynamic: true, defaultConfig: { widget_key: '' }, initCss: PORTRAIT_INIT },
         'module-content': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Module Content - select provider in Content settings.</p>', dynamic: true, defaultConfig: { provider_key: '', display_mode: 'both', per_page: 10, blog_profile_id: '', event_profile_id: '', settings_json: '' }, initCss: PORTRAIT_INIT },
         'php-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">PHP Include G�� visible on live page.</p>', dynamic: true, defaultConfig: { template: '' }, initCss: PORTRAIT_INIT },
-        'account-details-form': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Account Details Form — visible on live page.</p>', dynamic: true, initCss: PORTRAIT_INIT },
-        'account-password-form': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Account Password Form — visible on live page.</p>', dynamic: true, initCss: PORTRAIT_INIT },
-        'account-information': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Account Information — visible on live page.</p>', dynamic: true, initCss: PORTRAIT_INIT },
+        'dynamic-include': { tag: 'div', inner: '<p class="editor-dynamic-placeholder">Dynamic Include G�� select a template in Content settings.</p>', dynamic: true, defaultConfig: { source_type: 'php_include', template: '' }, initCss: PORTRAIT_INIT },
         'zone': {
             tag: 'div', inner: '', isLayout: true, defaultConfig: { zone_name: 'main', zone_label: 'Main Content' },
             initCss: { display: 'block', width: '100%', boxSizing: 'border-box' }
@@ -2253,6 +2382,10 @@
 
         if (type === 'module-content') {
             refreshModuleContentPreview(el);
+        }
+
+        if (type === 'dynamic-include') {
+            refreshPhpIncludePreview(el);
         }
 
         // Columns block: create initial 2 column sections
@@ -3089,7 +3222,7 @@
         'text': 'div', 'heading': 'h2', 'image': 'figure', 'gallery': 'div',
         'html': 'div', 'section': 'section', 'columns': 'div', 'site-logo': 'div',
         'site-title': 'div', 'nav-menu': 'nav', 'map': 'div', 'event-list': 'div',
-        'php-include': 'div', 'anchor': 'a', 'document': 'span', 'element': 'div',
+        'php-include': 'div', 'dynamic-include': 'div', 'anchor': 'a', 'document': 'span', 'element': 'div',
         'form': 'form', 'inline': 'span', 'list': 'ul', 'list-item': 'li',
         'table': 'table', 'php-code': 'div'
     };
@@ -3269,7 +3402,7 @@
                 .then(function (r) { return r.json(); })
                 .then(function () {
                     // Refresh php-include preview if a block is selected
-                    if (activeBlock && activeBlock.dataset.blockType === 'php-include') {
+                    if (activeBlock && (activeBlock.dataset.blockType === 'php-include' || activeBlock.dataset.blockType === 'dynamic-include')) {
                         refreshPhpIncludePreview(activeBlock);
                     }
                 })
@@ -3306,7 +3439,7 @@
         var editSrcBtn = document.getElementById('prop-php-edit-source-btn');
         if (!editSrcBtn) { return; }
         editSrcBtn.addEventListener('click', function () {
-            if (!activeBlock || activeBlock.dataset.blockType !== 'php-include') { return; }
+            if (!activeBlock || (activeBlock.dataset.blockType !== 'php-include' && activeBlock.dataset.blockType !== 'dynamic-include')) { return; }
             var cfg = {};
             try { cfg = JSON.parse(activeBlock.dataset.blockConfig || '{}'); } catch (e) { }
             var rel = cfg.template || '';

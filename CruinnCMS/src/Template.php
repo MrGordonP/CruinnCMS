@@ -246,8 +246,19 @@ namespace {
         if ($datetime === null) {
             return '';
         }
-        $dt = new \DateTime($datetime, new \DateTimeZone('Europe/Dublin'));
-        return $dt->format($format);
+        $datetime = trim($datetime);
+        if ($datetime === '') {
+            return '';
+        }
+
+        try {
+            $dt = new \DateTime($datetime, new \DateTimeZone('Europe/Dublin'));
+            return $dt->format($format);
+        } catch (\Throwable $e) {
+            // Keep template rendering resilient when preview placeholders or
+            // malformed legacy values are passed into date fields.
+            return $datetime;
+        }
     }
 
     /**
