@@ -77,11 +77,11 @@ Outline:
 
 ## Mailout Module
 
-### [PINNED] Mailing list audience option — UX not obvious
-The "Mailing List Subscribers" radio on `/admin/mailout/new` does show a named-list dropdown, but it is not clear to the user that selecting the radio then choosing from the dropdown is how it works. Consider a helper label or inline description under the dropdown once selected.
+### ~~[FIXED e7a9d01] Mailing list audience option — UX not obvious~~
+The "Mailing List Subscribers" flow now includes inline helper guidance under list selection and active-state emphasis so users can clearly see the required step sequence.
 
-### [PINNED] Mailout subject field — allow selection from Subjects list
-The Subject field on `/admin/mailout/new` (and edit) is free text only. It would be useful to allow selecting from the existing Subjects list (geology topics / subject registry) to pre-fill or constrain the subject line.
+### ~~[FIXED fee957d] Mailout subject field — allow selection from Subjects list~~
+Mailout compose/edit now exposes a "Pick from Subjects" selector that can prefill the subject line while keeping free-text editing available.
 
 ### [PINNED] Mailout — additional import sources
 Currently only blog post import is supported. Desired additional sources: Word documents (.docx), platform Documents module pages, and other misc HTML sources.
