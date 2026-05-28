@@ -279,6 +279,179 @@
     // ── Section C — Block selection ─────────────────────────────────
 
     var activeBlock = null;
+    var pphiPanel = null;
+    var pphiPanelOutsideHandler = null;
+
+    var PHPI_PANEL_FIELDS = [
+        { label: 'Color', prop: 'color', type: 'text', placeholder: 'e.g. #333 or inherit' },
+        { label: 'Font size', prop: 'font-size', type: 'text', placeholder: 'e.g. 1rem or 16px' },
+        { label: 'Font weight', prop: 'font-weight', type: 'text', placeholder: 'e.g. 400 or bold' },
+        { label: 'Line height', prop: 'line-height', type: 'text', placeholder: 'e.g. 1.5' },
+        { label: 'Text align', prop: 'text-align', type: 'select', options: ['', 'left', 'center', 'right', 'justify'] },
+        { label: 'Background', prop: 'background-color', type: 'text', placeholder: 'e.g. #fff or transparent' },
+        { label: 'Padding', prop: 'padding', type: 'text', placeholder: 'e.g. 1rem or 8px 16px' },
+        { label: 'Margin', prop: 'margin', type: 'text', placeholder: 'e.g. 0 auto' },
+        { label: 'Display', prop: 'display', type: 'select', options: ['', 'block', 'flex', 'grid', 'inline', 'inline-block', 'none'] },
+        { label: 'Gap', prop: 'gap', type: 'text', placeholder: 'e.g. 1rem (flex/grid)' },
+        { label: 'Grid columns', prop: 'grid-template-columns', type: 'text', placeholder: 'e.g. 1fr 2fr' },
+        { label: 'Border', prop: 'border', type: 'text', placeholder: 'e.g. 1px solid #ccc' },
+        { label: 'Border radius', prop: 'border-radius', type: 'text', placeholder: 'e.g. 4px' },
+        { label: 'Width', prop: 'width', type: 'text', placeholder: 'e.g. 100% or 300px' },
+        { label: 'Max width', prop: 'max-width', type: 'text', placeholder: 'e.g. 600px' },
+    ];
+
+    function isPhpIncludeBlock(block) {
+        if (!block) { return false; }
+        var t = block.dataset.blockType;
+        return t === 'php-include' || t === 'dynamic-include';
+    }
+
+    function closePphiElementPanel() {
+        if (pphiPanelOutsideHandler) {
+            document.removeEventListener('click', pphiPanelOutsideHandler, true);
+            pphiPanelOutsideHandler = null;
+        }
+        if (pphiPanel && pphiPanel.parentNode) {
+            pphiPanel.parentNode.removeChild(pphiPanel);
+        }
+        pphiPanel = null;
+        canvas.querySelectorAll('[data-phpi-el].phpi-el-selected').forEach(function (x) {
+            x.classList.remove('phpi-el-selected');
+        });
+    }
+
+    function buildPphiPanelFieldsHtml() {
+        return PHPI_PANEL_FIELDS.map(function (field) {
+            var input = '';
+            if (field.type === 'select') {
+                var options = (field.options || []).map(function (opt) {
+                    var label = opt || '&mdash;';
+                    return '<option value="' + opt + '">' + label + '</option>';
+                }).join('');
+                input = '<select class="editor-prop-input" data-phpi-prop="' + field.prop + '">' + options + '</select>';
+            } else {
+                input = '<input type="text" class="editor-prop-input" data-phpi-prop="' + field.prop + '" placeholder="' + (field.placeholder || '') + '">';
+            }
+            return '<div class="phpi-panel-row"><label>' + field.label + '</label>' + input + '</div>';
+        }).join('');
+    }
+
+    function populatePphiPanelFields(panelEl, props) {
+        panelEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
+            inp.value = props[inp.dataset.phpiProp] || '';
+        });
+    }
+
+    function selectPphiElement(block, el) {
+        if (!isPhpIncludeBlock(block) || !el) { return; }
+
+        var classes = (el.dataset.phpiClasses || '').trim();
+        if (!classes) { return; }
+
+        closePphiElementPanel();
+
+        var classList = classes.split(/\s+/).filter(Boolean);
+        if (!classList.length) { return; }
+
+        el.classList.add('phpi-el-selected');
+
+        var cfg = {};
+        try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+        var childStyles = (cfg.childStyles && typeof cfg.childStyles === 'object') ? cfg.childStyles : {};
+
+        var selectorRow = '';
+        if (classList.length > 1) {
+            var opts = classList.map(function (c) {
+                return '<option value=".' + c + '">.' + c + '</option>';
+            }).join('');
+            var compound = classList.map(function (c) { return '.' + c; }).join('');
+            opts += '<option value="' + compound + '">' + compound + ' (all)</option>';
+            selectorRow = '<div class="phpi-panel-row">'
+                + '<label>Style class</label>'
+                + '<select class="phpi-class-select editor-prop-input">' + opts + '</select>'
+                + '</div>';
+        }
+
+        var panelEl = document.createElement('div');
+        panelEl.id = 'phpi-element-panel';
+        panelEl.className = 'phpi-element-panel';
+        panelEl.innerHTML = '<div class="phpi-panel-header">'
+            + '<span class="phpi-panel-title">' + classes + '</span>'
+            + '<button class="phpi-panel-close" title="Close">&times;</button>'
+            + '</div>'
+            + '<div class="phpi-panel-body">'
+            + selectorRow
+            + buildPphiPanelFieldsHtml()
+            + '</div>';
+
+        var rect = el.getBoundingClientRect();
+        var scrollX = window.scrollX || 0;
+        var scrollY = window.scrollY || 0;
+        panelEl.style.left = Math.min(rect.left + scrollX, window.innerWidth - 320) + 'px';
+        panelEl.style.top = (rect.bottom + scrollY + 8) + 'px';
+        document.body.appendChild(panelEl);
+        pphiPanel = panelEl;
+
+        var activeSelector = function () {
+            var sel = panelEl.querySelector('.phpi-class-select');
+            return sel ? sel.value : ('.' + classList[0]);
+        };
+
+        populatePphiPanelFields(panelEl, childStyles[activeSelector()] || {});
+
+        var classSel = panelEl.querySelector('.phpi-class-select');
+        if (classSel) {
+            classSel.addEventListener('change', function () {
+                populatePphiPanelFields(panelEl, childStyles[activeSelector()] || {});
+            });
+        }
+
+        panelEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                var selector = activeSelector();
+                var props = {};
+                panelEl.querySelectorAll('[data-phpi-prop]').forEach(function (x) {
+                    var value = (x.value || '').trim();
+                    if (value !== '') {
+                        props[x.dataset.phpiProp] = value;
+                    }
+                });
+
+                var nextCfg = {};
+                try { nextCfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+                if (!nextCfg.childStyles || typeof nextCfg.childStyles !== 'object') {
+                    nextCfg.childStyles = {};
+                }
+
+                if (Object.keys(props).length > 0) {
+                    nextCfg.childStyles[selector] = props;
+                } else {
+                    delete nextCfg.childStyles[selector];
+                }
+                if (Object.keys(nextCfg.childStyles).length === 0) {
+                    delete nextCfg.childStyles;
+                }
+
+                block.dataset.blockConfig = JSON.stringify(nextCfg);
+                childStyles = nextCfg.childStyles || {};
+                rebuildLiveStyles();
+                debounceAction();
+            });
+        });
+
+        panelEl.querySelector('.phpi-panel-close').addEventListener('click', function () {
+            closePphiElementPanel();
+        });
+
+        pphiPanelOutsideHandler = function (evt) {
+            if (!panelEl.contains(evt.target) && evt.target !== el) {
+                closePphiElementPanel();
+            }
+        };
+        setTimeout(function () {
+            document.addEventListener('click', pphiPanelOutsideHandler, true);
+        }, 0);
+    }
 
     // Intercept all interactive element clicks in the canvas — prevent navigation/submission.
     // Ctrl+click or Cmd+click opens anchor href in a new tab (for preview).
@@ -308,6 +481,14 @@
         var b = e.target.closest('[data-block]');
         if (!b) { deselect(); return; }
         e.stopPropagation();
+
+        var pphiEl = e.target.closest('[data-phpi-el]');
+        if (pphiEl && b.contains(pphiEl) && isPhpIncludeBlock(b)) {
+            select(b);
+            selectPphiElement(b, pphiEl);
+            return;
+        }
+
         select(b);
     });
 
@@ -325,6 +506,7 @@
 
     function select(block) {
         if (activeBlock === block) { return; }
+        closePphiElementPanel();
         if (activeBlock) {
             activeBlock.classList.remove('active');
             activeBlock.removeAttribute('contenteditable');
@@ -337,6 +519,7 @@
     }
 
     function deselect() {
+        closePphiElementPanel();
         if (activeBlock) {
             activeBlock.classList.remove('active');
             activeBlock.removeAttribute('contenteditable');
@@ -2072,6 +2255,8 @@
     }
 
     function refreshPhpIncludePreview(block) {
+        closePphiElementPanel();
+
         var cfg = {};
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
 
@@ -2125,8 +2310,8 @@
         fetch(API_BASE + '/php-include-preview?' + qs, {
             headers: { 'Accept': 'application/json' },
         })
-            .then(function (r) { return r.json(); })
-            .then(function (data) { block.innerHTML = data.html || ''; })
+                .then(function (r) { return r.json(); })
+                .then(function (data) { block.innerHTML = data.html || ''; })
             .catch(function () { /* leave existing content on error */ });
     }
 
@@ -2258,6 +2443,22 @@
             if (block.style.cssText) {
                 css += '#' + block.id + ' { ' + block.style.cssText + ' }\n';
             }
+
+            var cfg = {};
+            try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+            if (cfg.childStyles && typeof cfg.childStyles === 'object') {
+                Object.keys(cfg.childStyles).forEach(function (selector) {
+                    var props = cfg.childStyles[selector];
+                    if (!props || typeof props !== 'object') { return; }
+                    var rules = Object.keys(props).map(function (prop) {
+                        return prop + ':' + props[prop];
+                    }).join(';');
+                    if (rules) {
+                        css += '#' + block.id + ' ' + selector + ' {' + rules + '}\n';
+                    }
+                });
+            }
+
             if (block.dataset.cssPropsTablet) {
                 try {
                     var tp = JSON.parse(block.dataset.cssPropsTablet);
@@ -2347,6 +2548,25 @@
         });
     }
 
+    function isUnsafeInsertParent(node) {
+        if (!node || !node.tagName) { return false; }
+        return [
+            'ul', 'ol',
+            'table', 'thead', 'tbody', 'tfoot', 'tr',
+            'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+        ].indexOf(node.tagName.toLowerCase()) !== -1;
+    }
+
+    function getSafeInsertAnchor(block) {
+        var anchor = block;
+        while (anchor && anchor.parentNode && anchor.parentNode !== canvas && isUnsafeInsertParent(anchor.parentNode)) {
+            var parentBlock = anchor.parentNode.closest('[data-block]');
+            if (!parentBlock || parentBlock === anchor) { break; }
+            anchor = parentBlock;
+        }
+        return anchor;
+    }
+
     function addBlock(type, options) {
         if (!HAS_PAGE) { return; }
         var def = BLOCK_DEFS[type];
@@ -2414,8 +2634,19 @@
 
         // Insert after active block, or append
         if (activeBlock && canvas.contains(activeBlock)) {
-            activeBlock.parentNode.insertBefore(el, activeBlock.nextSibling);
+            var insertAnchor = getSafeInsertAnchor(activeBlock);
+            var insertParent = insertAnchor && insertAnchor.parentNode ? insertAnchor.parentNode : canvas;
+            if (!insertParent || !canvas.contains(insertParent)) {
+                insertParent = canvas;
+            }
+            insertParent.insertBefore(el, insertAnchor ? insertAnchor.nextSibling : null);
         } else {
+            canvas.appendChild(el);
+        }
+
+        // Browser DOM normalisation can reject invalid insertions inside list/table/text contexts.
+        // If the new block did not land in the canvas tree as expected, fall back to canvas root.
+        if (!canvas.contains(el)) {
             canvas.appendChild(el);
         }
 

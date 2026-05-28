@@ -60,6 +60,8 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/cms/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
     $router->post('/cms/editor/{pageId}/zone-canvas/new', [CruinnController::class, 'createZoneCanvas']);
+    $router->get('/cms/editor/fragment-styles',          [CruinnController::class, 'fragmentStyles']);
+    $router->post('/cms/editor/fragment-styles',         [CruinnController::class, 'saveFragmentStyles']);
     $router->get('/cms/migrations',                      [PlatformController::class, 'platformMigrations']);
     $router->post('/cms/migrations',                     [PlatformController::class, 'platformRunMigrations']);
     $router->post('/cms/migrations/rerun',               [PlatformController::class, 'platformRerunMigration']);
@@ -238,6 +240,8 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/admin/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
     $router->post('/admin/editor/{pageId}/zone-canvas/new', [CruinnController::class, 'createZoneCanvas']);
+    $router->get('/admin/editor/fragment-styles',          [CruinnController::class, 'fragmentStyles']);
+    $router->post('/admin/editor/fragment-styles',         [CruinnController::class, 'saveFragmentStyles']);
 
     // Named Block Library
     $router->get('/admin/blocks/named',              [SiteBuilderController::class, 'namedBlockList']);

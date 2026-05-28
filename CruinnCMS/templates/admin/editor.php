@@ -55,6 +55,7 @@ $eventProfiles = $eventProfiles ?? [];
     data-module-content-providers="<?= htmlspecialchars(json_encode($moduleContentProviders ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-blog-profiles="<?= htmlspecialchars(json_encode($blogProfiles), ENT_QUOTES, 'UTF-8') ?>"
     data-event-profiles="<?= htmlspecialchars(json_encode($eventProfiles), ENT_QUOTES, 'UTF-8') ?>"
+    data-core-fragment-styles="<?= htmlspecialchars(json_encode((object)($coreFragmentStyles ?? [])), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
@@ -844,7 +845,7 @@ $eventProfiles = $eventProfiles ?? [];
                             <input type="checkbox" id="prop-collapsed">
                             Collapsed
                         </label>
-                        <span class="editor-label-hint">Add "collapsed" class (define behaviour in site CSS).</span>
+                        <span class="editor-label-hint">Applies the "collapsed" class and shows a collapsed preview in the editor.</span>
                     </div>
                     <div class="editor-prop-row" id="prop-zone-assign-row" style="display:none">
                         <label>Template Zone</label>

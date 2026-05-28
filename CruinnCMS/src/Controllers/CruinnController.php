@@ -23,6 +23,81 @@ use Cruinn\Platform\PlatformAuth;
 
 class CruinnController extends BaseController
 {
+    private function editorSettingsTable(): ?string
+    {
+        foreach (['settings', 'platform_settings'] as $table) {
+            try {
+                $this->db->fetchColumn("SELECT 1 FROM {$table} LIMIT 1");
+                return $table;
+            } catch (\Throwable $e) {
+                // Try next table name.
+            }
+        }
+        return null;
+    }
+
+    private function loadCoreFragmentStyles(): array
+    {
+        $table = $this->editorSettingsTable();
+        if ($table === null) {
+            return [];
+        }
+
+        try {
+            $rows = $this->db->fetchAll(
+                "SELECT `key`, `value` FROM {$table} WHERE `group` = 'editor' AND `key` LIKE 'editor.core_fragment_styles.%'"
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($rows as $row) {
+            $key = (string) ($row['key'] ?? '');
+            $fragmentKey = str_starts_with($key, 'editor.core_fragment_styles.')
+                ? substr($key, strlen('editor.core_fragment_styles.'))
+                : '';
+            if ($fragmentKey === '' || !preg_match('/^[a-z0-9_-]+$/', $fragmentKey)) {
+                continue;
+            }
+            $decoded = json_decode((string) ($row['value'] ?? '{}'), true);
+            if (is_array($decoded)) {
+                $out[$fragmentKey] = $decoded;
+            }
+        }
+
+        return $out;
+    }
+
+    private function sanitiseChildStylePayload(array $styles): array
+    {
+        $clean = [];
+        foreach ($styles as $selector => $props) {
+            if (!is_array($props)) {
+                continue;
+            }
+            $selector = preg_replace('/[^a-zA-Z0-9\s\-_\.\:#\[\]="\*]/', '', (string) $selector);
+            if ($selector === '') {
+                continue;
+            }
+
+            $ruleSet = [];
+            foreach ($props as $property => $value) {
+                $property = preg_replace('/[^a-zA-Z0-9\-]/', '', (string) $property);
+                $value = str_replace(['{', '}', ';', '<', '>'], '', (string) $value);
+                if ($property !== '' && $value !== '') {
+                    $ruleSet[$property] = $value;
+                }
+            }
+
+            if (!empty($ruleSet)) {
+                $clean[$selector] = $ruleSet;
+            }
+        }
+
+        return $clean;
+    }
+
     private function loadBlogProfiles(): array
     {
         try {
@@ -287,6 +362,7 @@ class CruinnController extends BaseController
             'apiBase'         => '/admin/editor',
             'fromPageId'      => 0,
             'fromPageTitle'   => '',
+            'coreFragmentStyles' => $this->loadCoreFragmentStyles(),
         ]);
     }
 
@@ -799,6 +875,7 @@ class CruinnController extends BaseController
             'apiBase'           => '/admin/editor',
             'fromPageId'        => $fromPageId,
             'fromPageTitle'     => $fromPageTitle,
+            'coreFragmentStyles' => $this->loadCoreFragmentStyles(),
         ]);
     }
 
@@ -1133,6 +1210,76 @@ class CruinnController extends BaseController
             'docBodyBlock'        => null,
             'editorPageBase'      => null,
             'apiBase'             => '/admin/article-editor',
+            'coreFragmentStyles'  => $this->loadCoreFragmentStyles(),
+        ]);
+    }
+
+    /**
+     * GET /admin|cms/editor/fragment-styles[?fragment_key=...] 
+     * Return global core-fragment style presets.
+     */
+    public function fragmentStyles(): void
+    {
+        $this->requireEditorAuth();
+
+        $all = $this->loadCoreFragmentStyles();
+        $fragmentKey = trim((string) ($_GET['fragment_key'] ?? ''));
+        if ($fragmentKey !== '') {
+            if (!preg_match('/^[a-z0-9_-]+$/', $fragmentKey)) {
+                $this->json(['error' => 'Invalid fragment key'], 400);
+            }
+            $this->json([
+                'success' => true,
+                'fragment_key' => $fragmentKey,
+                'child_styles' => $all[$fragmentKey] ?? new \stdClass(),
+            ]);
+            return;
+        }
+
+        $this->json(['success' => true, 'styles' => $all]);
+    }
+
+    /**
+     * POST /admin|cms/editor/fragment-styles
+     * Persist global child-style presets for a core fragment.
+     */
+    public function saveFragmentStyles(): void
+    {
+        $this->requireEditorAuth();
+
+        $payload = json_decode(file_get_contents('php://input'), true) ?? [];
+        $fragmentKey = trim((string) ($payload['fragment_key'] ?? ''));
+        if ($fragmentKey === '' || !preg_match('/^[a-z0-9_-]+$/', $fragmentKey)) {
+            $this->json(['error' => 'Invalid fragment key'], 400);
+        }
+
+        $styles = is_array($payload['child_styles'] ?? null) ? $payload['child_styles'] : [];
+        $cleanStyles = $this->sanitiseChildStylePayload($styles);
+
+        $table = $this->editorSettingsTable();
+        if ($table === null) {
+            $this->json(['error' => 'Settings table is unavailable'], 500);
+        }
+
+        $settingKey = 'editor.core_fragment_styles.' . $fragmentKey;
+        try {
+            if (empty($cleanStyles)) {
+                $this->db->execute("DELETE FROM {$table} WHERE `key` = ?", [$settingKey]);
+            } else {
+                $this->db->execute(
+                    "INSERT INTO {$table} (`key`, `value`, `group`) VALUES (?, ?, 'editor')
+                     ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `group` = VALUES(`group`)",
+                    [$settingKey, json_encode($cleanStyles)]
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->json(['error' => 'Failed to save fragment styles'], 500);
+        }
+
+        $this->json([
+            'success' => true,
+            'fragment_key' => $fragmentKey,
+            'child_styles' => empty($cleanStyles) ? new \stdClass() : $cleanStyles,
         ]);
     }
 

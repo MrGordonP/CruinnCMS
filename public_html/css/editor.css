@@ -737,7 +737,10 @@
 .editor-mode [data-block-type="element"],
 .editor-mode [data-block-type="form"],
 .editor-mode [data-block-type="list"],
-.editor-mode [data-block-type="table"] {
+.editor-mode [data-block-type="table"],
+.editor-mode [data-block-type="image"],
+.editor-mode [data-block-type="gallery"],
+.editor-mode [data-block-type="html"] {
     min-height: 60px;
     min-width: 100px;
 }
@@ -793,6 +796,39 @@
     cursor: default;
     resize: both;
     overflow: auto;
+}
+
+/* Collapsed blocks are visibly represented in-editor, not just by class name. */
+.editor-mode [data-block].collapsed {
+    min-height: 44px !important;
+    max-height: 44px !important;
+    overflow: hidden !important;
+    background-color: rgba(148, 163, 184, 0.16) !important;
+    background-image: repeating-linear-gradient(-45deg, rgba(15, 23, 42, 0.12) 0 8px, rgba(15, 23, 42, 0.04) 8px 16px) !important;
+    outline-style: dashed;
+}
+
+.editor-mode [data-block].collapsed > * {
+    opacity: 0.2;
+    pointer-events: none;
+}
+
+.editor-mode [data-block].collapsed:not([data-block-type="zone"])::before {
+    content: 'Collapsed preview';
+    position: absolute;
+    top: 3px;
+    left: 6px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #1f2937;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 3px;
+    padding: 1px 6px;
+    line-height: 1.3;
+    pointer-events: none;
+    z-index: 3;
 }
 
 .editor-mode [data-block].drag-over {
@@ -1548,6 +1584,73 @@ div.editor-zone-preview {
     padding: 0 4px;
     cursor: default;
     user-select: none;
+}
+
+/* php-include / dynamic-include child style editor panel */
+.editor-mode [data-phpi-el].phpi-el-selected {
+    outline: 2px solid #f59e0b;
+    outline-offset: 2px;
+}
+
+.phpi-element-panel {
+    position: absolute;
+    z-index: 10050;
+    width: 300px;
+    max-width: calc(100vw - 1rem);
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.phpi-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
+
+.phpi-panel-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #374151;
+    max-width: 238px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.phpi-panel-close {
+    border: none;
+    background: none;
+    font-size: 1rem;
+    line-height: 1;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+}
+
+.phpi-panel-body {
+    max-height: 340px;
+    overflow: auto;
+    padding: 0.55rem;
+}
+
+.phpi-panel-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 0.45rem;
+}
+
+.phpi-panel-row label {
+    font-size: 0.68rem;
+    color: #6b7280;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 /* ── Zone picker dropdown ─────────────────────────────────── */
