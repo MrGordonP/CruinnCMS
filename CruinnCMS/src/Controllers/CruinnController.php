@@ -98,6 +98,45 @@ class CruinnController extends BaseController
     {
         Auth::requireAdmin();
 
+        // Allow source-file handoff into the visual editor, mirroring platform flow.
+        $fileParam = isset($_GET['file'])
+            ? ltrim(str_replace(['..', '\\'], ['', '/'], (string) $_GET['file']), '/')
+            : null;
+        if ($fileParam !== null && $fileParam !== '') {
+            $cmsRoot = dirname(__DIR__, 2);
+            $allowedExt = ['php', 'css', 'js', 'html', 'htm'];
+
+            if (str_starts_with($fileParam, 'public/')) {
+                $absPath = realpath(CRUINN_PUBLIC . '/' . substr($fileParam, 7));
+                $absRoot = realpath(CRUINN_PUBLIC);
+            } else {
+                $absPath = realpath($cmsRoot . '/' . $fileParam);
+                $absRoot = realpath($cmsRoot);
+            }
+
+            if ($absPath && $absRoot
+                && str_starts_with($absPath, $absRoot . DIRECTORY_SEPARATOR)
+                && is_file($absPath)
+                && in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
+            ) {
+                $slug = '_cms_src_' . md5($fileParam);
+                $title = basename($fileParam);
+
+                $this->db->execute(
+                    'INSERT INTO pages_index (title, slug, render_mode, render_file, status)
+                     VALUES (?, ?, "file", ?, "draft")
+                     ON DUPLICATE KEY UPDATE title = VALUES(title), render_file = VALUES(render_file)',
+                    [$title, $slug, '@cms/' . $fileParam]
+                );
+
+                $row = $this->db->fetch('SELECT id FROM pages_index WHERE slug = ? LIMIT 1', [$slug]);
+                if ($row) {
+                    header('Location: /admin/editor/' . (int) $row['id'] . '/edit');
+                    exit;
+                }
+            }
+        }
+
         // Build nav data — identical to edit(), but with no page loaded
         $headerPages = $this->db->fetchAll(
             "SELECT id, title, slug FROM pages_index
@@ -335,8 +374,8 @@ class CruinnController extends BaseController
             $absPath    = null;
             if ($renderMode === 'file') {
                 $filePath = $page['render_file'] ?? '';
-                $resolved = CRUINN_PUBLIC . $filePath;
-                if ($filePath !== '' && file_exists($resolved)) {
+                $resolved = $this->resolveRenderFilePath($filePath);
+                if ($resolved !== null) {
                     $absPath = $resolved;
                 }
             }
@@ -2306,6 +2345,38 @@ class CruinnController extends BaseController
         $html = preg_replace('/\sdata-block(?:="[^"]*")?/', '', $html) ?? $html;
         $html = preg_replace('/\sdata-block-type="[^"]*"/', '', $html) ?? $html;
         return $html;
+    }
+
+    /**
+     * Resolve a render_file path to an absolute filesystem path.
+     *
+     * Supports:
+     *   @cms/<rel>  -> relative to CruinnCMS root (or CRUINN_PUBLIC when rel starts with public/)
+     *   /path       -> legacy public-relative file path
+     */
+    private function resolveRenderFilePath(string $renderFile): ?string
+    {
+        if ($renderFile === '') {
+            return null;
+        }
+
+        $cmsRoot = dirname(__DIR__, 2);
+
+        if (str_starts_with($renderFile, '@cms/')) {
+            $rel = substr($renderFile, 5);
+            if (str_starts_with($rel, 'public/')) {
+                $publicRoot = realpath(CRUINN_PUBLIC);
+                $abs = realpath(CRUINN_PUBLIC . '/' . substr($rel, 7));
+                return ($abs && $publicRoot && str_starts_with($abs, $publicRoot . DIRECTORY_SEPARATOR)) ? $abs : null;
+            }
+
+            $cmsRootReal = realpath($cmsRoot);
+            $abs = realpath($cmsRoot . '/' . $rel);
+            return ($abs && $cmsRootReal && str_starts_with($abs, $cmsRootReal . DIRECTORY_SEPARATOR)) ? $abs : null;
+        }
+
+        $abs = CRUINN_PUBLIC . $renderFile;
+        return file_exists($abs) ? $abs : null;
     }
 
     /**

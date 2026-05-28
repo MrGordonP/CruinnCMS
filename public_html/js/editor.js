@@ -3309,22 +3309,7 @@
                 alert('Select a template file first.');
                 return;
             }
-            editSrcBtn.disabled = true;
-            editSrcBtn.textContent = 'LoadingGǪ';
-            fetch('/admin/template-editor/edit?f=' + encodeURIComponent(rel) + '&format=json', {
-                headers: { 'Accept': 'application/json' },
-            })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    editSrcBtn.disabled = false;
-                    editSrcBtn.textContent = '</> Edit Template Source';
-                    enterCodeView({ rel: data.rel || rel, content: data.content || '' });
-                })
-                .catch(function () {
-                    editSrcBtn.disabled = false;
-                    editSrcBtn.textContent = '</> Edit Template Source';
-                    alert('Could not load template file.');
-                });
+            window.location.href = '/admin/editor?file=' + encodeURIComponent('templates/' + rel);
         });
     }());
 

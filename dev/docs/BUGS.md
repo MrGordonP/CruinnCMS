@@ -44,6 +44,15 @@ Uploading a hero image via the media browser modal showed no feedback — the bu
 
 ## Platform / General
 
+### [PINNED] System files must be instance-owned (not platform-owned)
+Current behavior allows editing shared system/source files in ways that effectively apply platform-wide. This conflicts with instance isolation.
+
+Required direction:
+1. Treat system/template/source files used by an instance as instance-owned assets.
+2. Seed/copy required system files into each instance separately at provision time (and for existing instances via migration/tooling).
+3. Update editor/file resolution paths so instance editing targets instance-owned copies, not shared platform originals.
+4. Define a safe update strategy for engine upgrades (explicit sync/diff workflow), rather than implicit global overwrite.
+
 ### [PINNED] Named Blocks — dedicated management page still needed
 Current state: `/admin/blocks/named` is an API endpoint, not a full management UI. We need a proper ACP management page for listing, editing, deleting, and creating named blocks, and nav links should target that page rather than raw JSON routes.
 

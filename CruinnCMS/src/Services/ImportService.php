@@ -535,7 +535,7 @@ class ImportService
             'block_type'      => 'text',
             'inner_html'      => $t,  // raw: text from source file is already valid HTML content
             'css_props'       => null,
-            'block_config'    => json_encode(['_tag' => 'span']),
+            'block_config'    => json_encode(['_tag' => '#text']),
             'sort_order'      => $sortOrder++,
             'parent_block_id' => $parentId,
         ];
@@ -718,7 +718,7 @@ class ImportService
                 'block_type'      => 'text',
                 'inner_html'      => $textBuffer,
                 'css_props'       => null,
-                'block_config'    => json_encode(['_tag' => 'span']),
+                'block_config'    => json_encode(['_tag' => '#text']),
                 'sort_order'      => $sortOrder++,
                 'parent_block_id' => $parentBlockId,
             ];
@@ -805,6 +805,12 @@ class ImportService
             // php-code blocks emit their raw PHP source verbatim
             if ($row['block_type'] === 'php-code') {
                 $html .= $cfg['_php'] ?? '';
+                continue;
+            }
+
+            // Imported text nodes round-trip as raw text, not synthetic span wrappers.
+            if (($cfg['_tag'] ?? null) === '#text') {
+                $html .= $row['inner_html'] ?? '';
                 continue;
             }
 

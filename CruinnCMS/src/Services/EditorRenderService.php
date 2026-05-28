@@ -200,6 +200,12 @@ class EditorRenderService
             // Use _tag from config (imported blocks) or registry default
             $tag = $cfg['_tag'] ?? BlockRegistry::getTag($row['block_type']);
 
+            // Imported text nodes need an element wrapper on the canvas so they can
+            // be selected and edited, but they must round-trip as raw text on publish.
+            if ($tag === '#text') {
+                $tag = 'span';
+            }
+
             // Tags whose content model forbids block-level children — if rendered as-is
             // the browser auto-closes them before any nested block element, leaving the
             // [data-block] element empty in the canvas.  Coerce to div; the original tag

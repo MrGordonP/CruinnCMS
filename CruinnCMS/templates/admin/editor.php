@@ -459,7 +459,7 @@ $eventProfiles = $eventProfiles ?? [];
                             <?php foreach ($navPhpGroups as $_grpKey => $_grpFiles): ?>
                             <span class="editor-site-nav-subheading"><?= e($_grpLabels[$_grpKey] ?? ucfirst($_grpKey)) ?></span>
                             <?php foreach ($_grpFiles as $_rel): ?>
-                            <a href="<?= url('/admin/template-editor/edit?f=' . rawurlencode($_rel) . ($page ? '&return=' . rawurlencode('/admin/editor/' . (int)$page['id'] . '/edit') : '')) ?>" class="editor-site-nav-link"><?= e(basename($_rel)) ?></a>
+                            <a href="<?= e('/admin/editor?file=' . rawurlencode('templates/' . $_rel)) ?>" class="editor-site-nav-link"><?= e(basename($_rel)) ?></a>
                             <?php endforeach; ?>
                             <?php endforeach; ?>
                         </div>
