@@ -522,7 +522,7 @@
 
     // ── Section F — Properties panel ────────────────────────────────
 
-    var LAYOUT_TYPES = ['section', 'columns', 'table', 'site-header', 'nav-menu'];
+    var LAYOUT_TYPES = ['element', 'section', 'columns', 'table', 'list', 'nav-menu'];
     var ZONE_TYPES = ['zone'];
     var IMAGE_TYPES = ['image', 'site-logo'];
     var TITLE_TYPES = ['site-title'];
@@ -2302,8 +2302,10 @@
     var PORTRAIT_INIT = { display: 'inline-block', verticalAlign: 'top', width: '260px', boxSizing: 'border-box' };
 
     var BLOCK_DEFS = {
+        'element': { tag: 'div', inner: '', isLayout: true, initCss: PORTRAIT_INIT },
         'text': { tag: 'div', inner: '<p>New text block.</p>', initCss: PORTRAIT_INIT },
         'heading': { tag: 'h2', inner: 'New Heading', initCss: PORTRAIT_INIT },
+        'list': { tag: 'ul', inner: '<li>List item</li><li>List item</li>', isLayout: true, initCss: PORTRAIT_INIT },
         'image': { tag: 'figure', inner: '<img src="" alt=""><figcaption></figcaption>', initCss: PORTRAIT_INIT },
         'section': { tag: 'section', inner: '', isLayout: true, initCss: PORTRAIT_INIT },
         'columns': {
@@ -2312,14 +2314,13 @@
                     '<section data-block data-block-type="section" id="' + newId() + '"></section>';
             }, isLayout: true, initCss: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }
         },
-        'site-header': {
-            tag: 'header', inner: function () {
-                return '<div data-block data-block-type="site-logo" id="' + newId() + '"><a href="/"><img src="" alt="Site Logo"></a></div>' +
-                    '<div data-block data-block-type="site-title" id="' + newId() + '"><h1 class="site-name">Site Name</h1><p class="site-tagline"></p></div>' +
-                    '<nav data-block data-block-type="nav-menu" id="' + newId() + '" data-block-config="{&quot;menu_id&quot;:&quot;&quot;}"></nav>';
-            }, isLayout: true, initCss: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '1rem 2rem', boxSizing: 'border-box', backgroundSize: 'cover', backgroundPosition: 'center center', backgroundRepeat: 'no-repeat' }
-        },
         'gallery': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
+        'table': {
+            tag: 'table',
+            inner: '<tbody><tr><td>Cell</td><td>Cell</td></tr></tbody>',
+            isLayout: true,
+            initCss: { width: '100%', borderCollapse: 'collapse', boxSizing: 'border-box' }
+        },
         'html': { tag: 'div', inner: '', initCss: PORTRAIT_INIT },
         'nav-menu': { tag: 'nav', inner: '', defaultConfig: { menu_id: '' }, initCss: PORTRAIT_INIT },
         'site-logo': { tag: 'div', inner: '<a href="/"><img src="" alt="Site Logo"></a>', initCss: PORTRAIT_INIT },
@@ -2339,23 +2340,35 @@
     function bindPalette() {
         document.querySelectorAll('[data-add-block]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                addBlock(btn.dataset.addBlock);
+                addBlock(btn.dataset.addBlock, {
+                    tag: btn.dataset.addTag || ''
+                });
             });
         });
     }
 
-    function addBlock(type) {
+    function addBlock(type, options) {
         if (!HAS_PAGE) { return; }
         var def = BLOCK_DEFS[type];
         if (!def) { return; }
+        options = options || {};
 
-        var el = document.createElement(def.tag);
+        var elementTag = (options.tag || '').trim() || def.tag;
+
+        var el = document.createElement(elementTag);
         el.id = newId();
         el.setAttribute('data-block', '');
         el.setAttribute('data-block-type', type);
 
+        var blockConfig = {};
         if (def.defaultConfig) {
-            el.dataset.blockConfig = JSON.stringify(def.defaultConfig);
+            Object.assign(blockConfig, def.defaultConfig);
+        }
+        if (options.tag) {
+            blockConfig._tag = elementTag;
+        }
+        if (Object.keys(blockConfig).length > 0) {
+            el.dataset.blockConfig = JSON.stringify(blockConfig);
         }
 
         if (def.initCss) {
@@ -3233,11 +3246,12 @@
     function blockToHtml(block, indent) {
         indent = indent || '';
         var type = block.dataset.blockType || 'text';
-        var tag = BLOCK_TAGS[type] || 'div';
         var config = {};
         if (block.dataset.blockConfig) {
             try { config = JSON.parse(block.dataset.blockConfig); } catch (e) { }
         }
+
+        var tag = config._tag || BLOCK_TAGS[type] || 'div';
 
         // Special handling for heading levels
         if (type === 'heading' && config.level) {

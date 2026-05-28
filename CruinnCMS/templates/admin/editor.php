@@ -472,21 +472,27 @@ $eventProfiles = $eventProfiles ?? [];
                 <h3 class="editor-panel-heading editor-panel-toggle">Add Block <span class="editor-panel-chevron">▾</span></h3>
                 <div class="editor-palette">
                     <?php $_disableCanvasEditing = !$page; ?>
-                    <button class="palette-btn" data-add-block="text" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Text</button>
-                    <button class="palette-btn" data-add-block="heading" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Heading</button>
-                    <button class="palette-btn" data-add-block="image" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Image</button>
+                    <div class="editor-palette-group-label">Layout &amp; Containers</div>
+                    <button class="palette-btn" data-add-block="element" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Block</button>
                     <button class="palette-btn" data-add-block="section" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Section</button>
                     <button class="palette-btn" data-add-block="columns" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Columns</button>
-                    <button class="palette-btn" data-add-block="gallery" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Gallery</button>
-                    <button class="palette-btn" data-add-block="html" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>HTML</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-header" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Header</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="nav-menu" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Nav Menu</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-logo" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Logo</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="site-title" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Site Title</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="event-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Event List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
-                    <button class="palette-btn palette-btn--site" data-add-block="dynamic-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Dynamic Include</button>
+                    <button class="palette-btn" data-add-block="table" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Table</button>
                     <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
+
+                    <div class="editor-palette-group-label">Text</div>
+                    <button class="palette-btn" data-add-block="heading" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Heading</button>
+                    <button class="palette-btn" data-add-block="text" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Text</button>
+                    <button class="palette-btn" data-add-block="list" data-add-tag="ul" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>List (UL)</button>
+                    <button class="palette-btn" data-add-block="list" data-add-tag="ol" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>List (OL)</button>
+
+                    <div class="editor-palette-group-label">Media</div>
+                    <button class="palette-btn" data-add-block="image" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Image</button>
+                    <button class="palette-btn" data-add-block="gallery" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Gallery</button>
+
+                    <div class="editor-palette-group-label">Data &amp; Dynamic</div>
+                    <button class="palette-btn" data-add-block="html" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>HTML</button>
+                    <button class="palette-btn" data-add-block="dynamic-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Dynamic Include</button>
+                    <button class="palette-btn" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
                 </div>
             </div>
             <div class="editor-panel-section" id="editor-tree-section">

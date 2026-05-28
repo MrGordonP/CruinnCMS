@@ -337,6 +337,24 @@
     padding: 0 0.75rem 0.75rem;
 }
 
+.editor-palette-group-label {
+    grid-column: 1 / -1;
+    margin-top: 0.45rem;
+    padding-top: 0.35rem;
+    border-top: 1px solid #e5e7eb;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+.editor-palette-group-label:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
 .palette-btn {
     background: #f0f2f5;
     border: 1px solid #d1d5db;
@@ -354,7 +372,7 @@
     color: #0d7a5b;
 }
 
-/* Site-specific blocks (site-header, nav-menu, site-logo, site-title) */
+/* Site-specific blocks (nav-menu, site-logo, site-title) */
 .palette-btn--site {
     background: #eef2fb;
     border-color: #b5c6f0;
@@ -716,6 +734,7 @@
 
 .editor-mode [data-block-type="columns"],
 .editor-mode [data-block-type="section"],
+.editor-mode [data-block-type="element"],
 .editor-mode [data-block-type="form"],
 .editor-mode [data-block-type="list"],
 .editor-mode [data-block-type="table"] {
@@ -739,6 +758,7 @@
 /* Empty layout containers show placeholder text */
 .editor-mode [data-block-type="columns"]:empty::after,
 .editor-mode [data-block-type="section"]:empty::after,
+.editor-mode [data-block-type="element"]:empty::after,
 .editor-mode [data-block-type="form"]:empty::after,
 .editor-mode [data-block-type="list"]:empty::after,
 .editor-mode [data-block-type="table"]:empty::after {
