@@ -10,7 +10,7 @@ UPDATE `pages`
 SET `block_type` = 'dynamic-include',
     `block_config` = CASE
         WHEN `block_config` IS NULL OR TRIM(`block_config`) = '' THEN JSON_OBJECT('source_type', 'php_include')
-        WHEN JSON_VALID(`block_config`) THEN JSON_SET(CAST(`block_config` AS JSON), '$.source_type', 'php_include')
+        WHEN JSON_VALID(`block_config`) THEN JSON_SET(COALESCE(`block_config`, '{}'), '$.source_type', 'php_include')
         ELSE JSON_OBJECT('source_type', 'php_include')
     END
 WHERE `block_type` = 'php-include';
@@ -20,7 +20,7 @@ UPDATE `pages`
 SET `block_type` = 'dynamic-include',
     `block_config` = CASE
         WHEN `block_config` IS NULL OR TRIM(`block_config`) = '' THEN JSON_OBJECT('source_type', 'module_widget')
-        WHEN JSON_VALID(`block_config`) THEN JSON_SET(CAST(`block_config` AS JSON), '$.source_type', 'module_widget')
+        WHEN JSON_VALID(`block_config`) THEN JSON_SET(COALESCE(`block_config`, '{}'), '$.source_type', 'module_widget')
         ELSE JSON_OBJECT('source_type', 'module_widget')
     END
 WHERE `block_type` = 'module-widget';
@@ -30,7 +30,7 @@ UPDATE `pages`
 SET `block_type` = 'dynamic-include',
     `block_config` = CASE
         WHEN `block_config` IS NULL OR TRIM(`block_config`) = '' THEN JSON_OBJECT('source_type', 'module_content')
-        WHEN JSON_VALID(`block_config`) THEN JSON_SET(CAST(`block_config` AS JSON), '$.source_type', 'module_content')
+        WHEN JSON_VALID(`block_config`) THEN JSON_SET(COALESCE(`block_config`, '{}'), '$.source_type', 'module_content')
         ELSE JSON_OBJECT('source_type', 'module_content')
     END
 WHERE `block_type` = 'module-content';
