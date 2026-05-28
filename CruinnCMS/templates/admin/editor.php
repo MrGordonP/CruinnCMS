@@ -1132,6 +1132,20 @@ $eventProfiles = $eventProfiles ?? [];
                         <label>Style Class</label>
                         <select class="editor-prop-input" id="prop-phpi-class-select"></select>
                     </div>
+                    <div class="editor-prop-row" id="prop-phpi-preset-row" style="display:none">
+                        <label>Typography Preset</label>
+                        <select class="editor-prop-input" id="prop-phpi-preset">
+                            <option value="">— None —</option>
+                            <option value="body">Body</option>
+                            <option value="h1">H1</option>
+                            <option value="h2">H2</option>
+                            <option value="h3">H3</option>
+                            <option value="h4">H4</option>
+                            <option value="h5">H5</option>
+                            <option value="h6">H6</option>
+                            <option value="__custom__">Custom</option>
+                        </select>
+                    </div>
                     <p id="prop-phpi-empty" class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Click an element inside the include preview to edit its styles here.</p>
                     <div id="prop-phpi-fields"></div>
                 </div>

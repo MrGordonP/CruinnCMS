@@ -308,6 +308,77 @@
         { label: 'Max width', prop: 'max-width', type: 'text', placeholder: 'e.g. 600px' },
     ];
 
+    var PHPI_PANEL_PROP_SET = PHPI_PANEL_FIELDS.reduce(function (acc, field) {
+        acc[field.prop] = true;
+        return acc;
+    }, {});
+
+    var PHPI_TYPOGRAPHY_PRESETS = {
+        body: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-body)',
+            'font-size': '1rem',
+            'font-weight': '400',
+            'line-height': '1.7',
+        },
+        h1: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-heading)',
+            'font-size': '2rem',
+            'font-weight': '700',
+            'line-height': '1.3',
+        },
+        h2: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-heading)',
+            'font-size': '1.5rem',
+            'font-weight': '700',
+            'line-height': '1.3',
+        },
+        h3: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-heading)',
+            'font-size': '1.25rem',
+            'font-weight': '700',
+            'line-height': '1.3',
+        },
+        h4: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-heading)',
+            'font-size': '1rem',
+            'font-weight': '700',
+            'line-height': '1.3',
+        },
+        h5: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-heading)',
+            'font-size': '0.875rem',
+            'font-weight': '700',
+            'line-height': '1.3',
+        },
+        h6: {
+            'color': 'var(--color-text)',
+            'font-family': 'var(--font-heading)',
+            'font-size': '0.75rem',
+            'font-weight': '700',
+            'line-height': '1.3',
+        }
+    };
+
+    var PHPI_TYPOGRAPHY_PROP_SET = {
+        'color': true,
+        'font-family': true,
+        'font-size': true,
+        'font-weight': true,
+        'font-style': true,
+        'line-height': true,
+        'letter-spacing': true,
+        'text-align': true,
+        'text-transform': true,
+        'text-decoration': true,
+        'text-shadow': true,
+    };
+
     var PHPI_TEXT_CASCADE_PROPS = {
         'color': true,
         'font-size': true,
@@ -363,10 +434,12 @@
         var titleEl = document.getElementById('prop-phpi-title');
         var classRow = document.getElementById('prop-phpi-class-row');
         var classSelect = document.getElementById('prop-phpi-class-select');
+        var presetRow = document.getElementById('prop-phpi-preset-row');
+        var presetSelect = document.getElementById('prop-phpi-preset');
         var emptyEl = document.getElementById('prop-phpi-empty');
         var fieldsEl = document.getElementById('prop-phpi-fields');
 
-        if (!acc || !titleEl || !classRow || !classSelect || !emptyEl || !fieldsEl) {
+        if (!acc || !titleEl || !classRow || !classSelect || !presetRow || !presetSelect || !emptyEl || !fieldsEl) {
             return;
         }
 
@@ -375,6 +448,8 @@
             titleEl.textContent = 'None selected';
             classRow.style.display = 'none';
             classSelect.innerHTML = '';
+            presetRow.style.display = 'none';
+            presetSelect.value = '';
             emptyEl.style.display = '';
             fieldsEl.style.display = 'none';
             return;
@@ -396,6 +471,7 @@
         titleEl.textContent = classes || ('[data-phpi-el="' + pphiId + '"]');
         emptyEl.style.display = 'none';
         fieldsEl.style.display = '';
+        presetRow.style.display = '';
 
         var classList = classes.split(/\s+/).filter(Boolean);
         var elementSelector = '[data-phpi-el="' + pphiId + '"]';
@@ -434,16 +510,112 @@
             return elementSelector;
         };
 
-        populatePphiPanelFields(fieldsEl, childStyles[activeSelector()] || {});
+        var detectTypographyPreset = function (props) {
+            var activeTypography = {};
+            Object.keys(props || {}).forEach(function (key) {
+                if (PHPI_TYPOGRAPHY_PROP_SET[key]) {
+                    var value = (props[key] || '').toString().trim();
+                    if (value !== '') {
+                        activeTypography[key] = value;
+                    }
+                }
+            });
+
+            if (Object.keys(activeTypography).length === 0) {
+                return '';
+            }
+
+            var presetKey = Object.keys(PHPI_TYPOGRAPHY_PRESETS).find(function (candidate) {
+                var preset = PHPI_TYPOGRAPHY_PRESETS[candidate] || {};
+                var presetKeys = Object.keys(preset);
+                if (presetKeys.length !== Object.keys(activeTypography).length) {
+                    return false;
+                }
+                return presetKeys.every(function (key) {
+                    return (activeTypography[key] || '').toString().trim() === (preset[key] || '').toString().trim();
+                });
+            });
+
+            return presetKey || '__custom__';
+        };
+
+        var saveChildSelectorProps = function (selector, props) {
+            var nextCfg = {};
+            try { nextCfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+            if (!nextCfg.childStyles || typeof nextCfg.childStyles !== 'object') {
+                nextCfg.childStyles = {};
+            }
+
+            if (Object.keys(props).length > 0) {
+                nextCfg.childStyles[selector] = props;
+            } else {
+                delete nextCfg.childStyles[selector];
+            }
+
+            if (Object.keys(nextCfg.childStyles).length === 0) {
+                delete nextCfg.childStyles;
+            }
+
+            block.dataset.blockConfig = JSON.stringify(nextCfg);
+            childStyles = nextCfg.childStyles || {};
+            rebuildLiveStyles();
+            debounceAction();
+        };
+
+        var loadSelectorIntoPanel = function (selector) {
+            var selectorProps = childStyles[selector] || {};
+            populatePphiPanelFields(fieldsEl, selectorProps);
+            if (presetSelect) {
+                presetSelect.value = detectTypographyPreset(selectorProps);
+            }
+        };
+
+        loadSelectorIntoPanel(activeSelector());
 
         classSelect.onchange = function () {
-            populatePphiPanelFields(fieldsEl, childStyles[activeSelector()] || {});
+            loadSelectorIntoPanel(activeSelector());
         };
+
+        if (presetSelect) {
+            presetSelect.onchange = function () {
+                var presetKey = (presetSelect.value || '').toString();
+                if (presetKey === '__custom__') {
+                    return;
+                }
+
+                var selector = activeSelector();
+                var existing = childStyles[selector] || {};
+                var nextProps = {};
+
+                Object.keys(existing).forEach(function (prop) {
+                    if (!PHPI_TYPOGRAPHY_PROP_SET[prop]) {
+                        nextProps[prop] = existing[prop];
+                    }
+                });
+
+                if (presetKey && PHPI_TYPOGRAPHY_PRESETS[presetKey]) {
+                    Object.keys(PHPI_TYPOGRAPHY_PRESETS[presetKey]).forEach(function (prop) {
+                        nextProps[prop] = PHPI_TYPOGRAPHY_PRESETS[presetKey][prop];
+                    });
+                }
+
+                saveChildSelectorProps(selector, nextProps);
+                loadSelectorIntoPanel(selector);
+            };
+        }
 
         fieldsEl.querySelectorAll('[data-phpi-prop]').forEach(function (inp) {
             inp.oninput = function () {
                 var selector = activeSelector();
+                var existing = childStyles[selector] || {};
                 var props = {};
+
+                Object.keys(existing).forEach(function (prop) {
+                    if (!PHPI_PANEL_PROP_SET[prop]) {
+                        props[prop] = existing[prop];
+                    }
+                });
+
                 fieldsEl.querySelectorAll('[data-phpi-prop]').forEach(function (x) {
                     var value = (x.value || '').trim();
                     if (value !== '') {
@@ -451,26 +623,10 @@
                     }
                 });
 
-                var nextCfg = {};
-                try { nextCfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
-                if (!nextCfg.childStyles || typeof nextCfg.childStyles !== 'object') {
-                    nextCfg.childStyles = {};
+                saveChildSelectorProps(selector, props);
+                if (presetSelect) {
+                    presetSelect.value = detectTypographyPreset(props);
                 }
-
-                if (Object.keys(props).length > 0) {
-                    nextCfg.childStyles[selector] = props;
-                } else {
-                    delete nextCfg.childStyles[selector];
-                }
-
-                if (Object.keys(nextCfg.childStyles).length === 0) {
-                    delete nextCfg.childStyles;
-                }
-
-                block.dataset.blockConfig = JSON.stringify(nextCfg);
-                childStyles = nextCfg.childStyles || {};
-                rebuildLiveStyles();
-                debounceAction();
             };
         });
     }
