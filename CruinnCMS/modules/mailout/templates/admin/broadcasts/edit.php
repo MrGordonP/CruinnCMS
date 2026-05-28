@@ -203,6 +203,22 @@
             </div>
         </details>
 
+        <details class="acp-fieldset" style="margin-bottom:1.25rem;">
+            <summary style="cursor:pointer; font-weight:600; padding:0.5rem 0;">Import from Raw HTML</summary>
+            <div style="padding:0.75rem 0 0.25rem;">
+                <div class="form-group" style="margin-bottom:0.6rem;">
+                    <label for="import_html_subject" style="font-size:0.875rem;">Subject (optional)</label>
+                    <input type="text" id="import_html_subject" class="form-input" style="margin-top:0.25rem;" placeholder="Optional subject override">
+                </div>
+                <div class="form-group" style="margin-bottom:0.6rem;">
+                    <label for="import_html_body" style="font-size:0.875rem;">HTML content</label>
+                    <textarea id="import_html_body" class="form-input form-textarea monospace" rows="8" style="margin-top:0.25rem;" placeholder="Paste HTML here..."></textarea>
+                </div>
+                <button type="button" class="btn btn-outline" onclick="importRawHtml()">Import HTML</button>
+                <p class="form-help" style="margin-top:0.5rem;">Useful for content copied from external HTML sources. Existing body content will be replaced.</p>
+            </div>
+        </details>
+
         <div class="form-group">
             <label for="subject">Subject *</label>
             <input type="text" id="subject" name="subject" class="form-input" required
@@ -299,6 +315,19 @@
                     document.getElementById('body_text').value = data.body_text || '';
                 })
                 .catch(() => alert('Import failed. Please try again.'));
+        }
+
+        function importRawHtml() {
+            const html = document.getElementById('import_html_body').value;
+            const subject = document.getElementById('import_html_subject').value;
+            if (!html.trim()) {
+                alert('Please paste HTML content first.');
+                return;
+            }
+            if (subject.trim()) {
+                document.getElementById('subject').value = subject.trim();
+            }
+            document.getElementById('body_html').value = html;
         }
         </script>
 
