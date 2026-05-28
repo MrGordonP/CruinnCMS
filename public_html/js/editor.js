@@ -384,36 +384,40 @@
         fieldsEl.style.display = '';
 
         var classList = classes.split(/\s+/).filter(Boolean);
+        var elementSelector = '[data-phpi-el="' + pphiId + '"]';
         classSelect.innerHTML = '';
-        if (classList.length > 1) {
+        var elementOpt = document.createElement('option');
+        elementOpt.value = elementSelector;
+        elementOpt.textContent = 'Selected element only';
+        classSelect.appendChild(elementOpt);
+
+        if (classList.length > 0) {
             classList.forEach(function (c) {
                 var opt = document.createElement('option');
                 opt.value = '.' + c;
                 opt.textContent = '.' + c;
                 classSelect.appendChild(opt);
             });
-            var compound = classList.map(function (c) { return '.' + c; }).join('');
-            var compoundOpt = document.createElement('option');
-            compoundOpt.value = compound;
-            compoundOpt.textContent = compound + ' (all)';
-            classSelect.appendChild(compoundOpt);
-            classRow.style.display = '';
-        } else {
-            classRow.style.display = 'none';
+            if (classList.length > 1) {
+                var compound = classList.map(function (c) { return '.' + c; }).join('');
+                var compoundOpt = document.createElement('option');
+                compoundOpt.value = compound;
+                compoundOpt.textContent = compound + ' (all)';
+                classSelect.appendChild(compoundOpt);
+            }
         }
+        classSelect.value = elementSelector;
+        classRow.style.display = '';
 
         var cfg = {};
         try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
         var childStyles = (cfg.childStyles && typeof cfg.childStyles === 'object') ? cfg.childStyles : {};
 
         var activeSelector = function () {
-            if (classList.length > 1 && classSelect.value) {
+            if (classSelect.value) {
                 return classSelect.value;
             }
-            if (classList.length === 1) {
-                return '.' + classList[0];
-            }
-            return '[data-phpi-el="' + pphiId + '"]';
+            return elementSelector;
         };
 
         populatePphiPanelFields(fieldsEl, childStyles[activeSelector()] || {});
@@ -1001,7 +1005,12 @@
 
     function loadProps(block) {
         var type = block.dataset.blockType;
-        var cs = getComputedStyle(block); // computed styles for reading actual CSS values
+        var includeElementSelected = isPhpIncludeBlock(block)
+            && selectedPphiBlock === block
+            && !!selectedPphiElement
+            && block.contains(selectedPphiElement);
+        var styleTarget = includeElementSelected ? selectedPphiElement : block;
+        var cs = getComputedStyle(styleTarget); // computed styles for reading actual CSS values
 
         function usesPagedContent(providerKey) {
             return ['blog:list', 'blog:content', 'events:list', 'events:content'].indexOf((providerKey || '').toString()) !== -1;
@@ -1206,8 +1215,8 @@
         }
 
         // CSS properties � read from active viewport overrides, fallback to computed desktop
-        var vpPropsRaw = activeViewport === 'tablet' ? block.dataset.cssPropsTablet
-            : activeViewport === 'mobile' ? block.dataset.cssPropsMobile
+        var vpPropsRaw = (!includeElementSelected && activeViewport === 'tablet') ? block.dataset.cssPropsTablet
+            : (!includeElementSelected && activeViewport === 'mobile') ? block.dataset.cssPropsMobile
                 : null;
         var vpProps = {};
         if (vpPropsRaw) { try { vpProps = JSON.parse(vpPropsRaw); } catch (e) { } }
@@ -2459,6 +2468,52 @@
     }());
 
     function writeProps(block, prop, value) {
+        var includeElementSelected = isPhpIncludeBlock(block)
+            && selectedPphiBlock === block
+            && !!selectedPphiElement
+            && block.contains(selectedPphiElement);
+
+        if (includeElementSelected) {
+            var cfg = {};
+            try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+            if (!cfg.childStyles || typeof cfg.childStyles !== 'object') {
+                cfg.childStyles = {};
+            }
+
+            var pphiId = (selectedPphiElement.dataset.phpiEl || '').trim();
+            if (!pphiId) {
+                return;
+            }
+
+            var classSelect = document.getElementById('prop-phpi-class-select');
+            var selector = (classSelect && classSelect.value)
+                ? classSelect.value
+                : ('[data-phpi-el="' + pphiId + '"]');
+
+            if (!cfg.childStyles[selector] || typeof cfg.childStyles[selector] !== 'object') {
+                cfg.childStyles[selector] = {};
+            }
+
+            var cssProp = String(prop || '').replace(/([A-Z])/g, '-$1').toLowerCase();
+            if (value !== '' && value !== null && value !== undefined) {
+                cfg.childStyles[selector][cssProp] = value;
+            } else {
+                delete cfg.childStyles[selector][cssProp];
+            }
+
+            if (Object.keys(cfg.childStyles[selector]).length === 0) {
+                delete cfg.childStyles[selector];
+            }
+            if (Object.keys(cfg.childStyles).length === 0) {
+                delete cfg.childStyles;
+            }
+
+            block.dataset.blockConfig = JSON.stringify(cfg);
+            rebuildLiveStyles();
+            recordAction();
+            return;
+        }
+
         if (activeViewport === 'desktop') {
             block.style[prop] = value;
         } else {
