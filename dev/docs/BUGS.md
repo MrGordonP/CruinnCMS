@@ -13,9 +13,9 @@ Backend route (`POST /admin/pages/{id}/delete`) and controller method existed, b
 
 ## Editor
 
-### [OPEN] Article editor shows Page Settings panel in right-hand properties
+### ~~[FIXED 6e67c0ff] Article editor shows Page Settings panel in right-hand properties~~
 ~~When editing a blog post via `/admin/article-editor/{id}/edit`, the right-hand properties panel includes a **Page Settings** accordion (template selector, render mode, etc.) that is meaningless for articles.~~
-**Fixed** in commit following this entry — guard updated to check `empty($page['_is_article'])`.
+Fixed by guarding the section with `empty($page['_is_article'])` in `templates/admin/editor.php`.
 
 ### ~~[FIXED] AJAX URLs doubled ID — all editor actions 404 when editing articles~~
 `editor.js` constructs AJAX URLs as `API_BASE + '/' + PAGE_ID + '/action'`. `apiBase` was set to `/admin/article-editor/157`, producing `/admin/article-editor/157/157/action`. Fixed: `apiBase` for articles is now `/admin/article-editor` (no ID), matching the pages pattern.
