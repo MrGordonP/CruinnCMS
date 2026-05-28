@@ -3,7 +3,7 @@
 Reference documentation for the CruinnCMS platform engine. This file is for context lookup — the agent reads it when architectural knowledge is needed.
 
 **Current version:** `v1.0.0-beta.15` (follow-up work in progress)
-**HEAD:** `3d98e5c` — fix(editor,social,forum): conversion safety and boundary-owned subject threads [v1.0.0-beta.15]
+**HEAD:** `06032cb` — fix(editor,collapse): expose collapse style for always-on collapsed blocks [v1.0.0-beta.15]
 **Schema:** `CruinnCMS/schema/platform.sql` + `CruinnCMS/schema/instance_core.sql`
 
 ---
@@ -211,3 +211,4 @@ Apache: `public_html/.htaccess` handles rewrites + directory listing protection 
 - **v1.0.0-beta.15** (`55092f7`) — Template/layout publish stability, system-page/blog mapping follow-up, blog control-centre/profile/navigation polish.
 - **v1.0.0-beta.15** (`7882387`) — Subject-linked discussion flow landed across forum/social integration baseline.
 - **v1.0.0-beta.15 follow-up** (`3d98e5c`) — Conversion safety fix (defer html->block switch to publish), social boundary reset (remove forum thread provisioning from Social), and core publish-time subject-thread provisioning service wired to Blog/Events with forum category configuration support.
+- **v1.0.0-beta.15 follow-up** (`06032cb`) — Editor/include follow-up landed: include child-style controls moved into the right-hand inspector, CSRF autosave retry added, heading blocks gained explicit level selection, include inspector context leakage was cleaned up, and collapse behavior was split into always-on vs responsive with heading-bar presentation support and always-on style controls.
