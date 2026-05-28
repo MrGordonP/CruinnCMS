@@ -13,6 +13,26 @@ Backend route (`POST /admin/pages/{id}/delete`) and controller method existed, b
 
 ## Editor
 
+### [OPEN] Dynamic include child-style editing is using a popup instead of the dynamic right-hand properties panel
+Current state: clicking annotated child elements inside dynamic include / php-include output opens a floating popup. Gordon clarified this is the wrong ownership model: the right-hand properties panel is supposed to be dynamic and should own these controls.
+
+Required follow-up:
+1. Add selected-child-element editor state for dynamic include descendants.
+2. Render child-style controls in the right-hand properties panel, not a floating popup.
+3. Keep this panel dynamic rather than extending a fixed list of block properties.
+
+### [OPEN] Dynamic include child-style popup closes on interaction and its fields are not usable
+Current popup regression in the active editor runtime:
+
+1. Labels are not clickable.
+2. Clicking fields can close the popup immediately.
+3. The visible controls appear greyed-out/non-editable because focus is lost when the popup is torn down.
+
+Local diagnosis: the editor-level deselect handler is still treating popup clicks as outside-editor clicks, and the popup field markup does not yet use proper label/input association.
+
+### [OPEN] Heading block has no level selector in the right-hand properties panel
+The editor runtime already contains partial `config.level` handling in HTML export, but there is still no UI for selecting `p`, `h1`, `h2`, `h3`, `h4`, `h5`, or `h6` for a heading block.
+
 ### ~~[FIXED 6e67c0ff] Article editor shows Page Settings panel in right-hand properties~~
 ~~When editing a blog post via `/admin/article-editor/{id}/edit`, the right-hand properties panel includes a **Page Settings** accordion (template selector, render mode, etc.) that is meaningless for articles.~~
 Fixed by guarding the section with `empty($page['_is_article'])` in `templates/admin/editor.php`.

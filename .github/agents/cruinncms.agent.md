@@ -14,7 +14,7 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
 **Current version:** `v1.0.0-beta.15` (follow-up work in progress)
-**HEAD:** `3d98e5c` — fix(editor,social,forum): conversion safety and boundary-owned subject threads [v1.0.0-beta.15]
+**HEAD:** `d5193bc` — fix(editor,dynamic-include): fragment styling and canvas block insertion [v1.0.0-beta.15]
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
@@ -71,3 +71,9 @@ Keep this file focused on session behavior and execution workflow rules.
 3. Commit with message: `fix|feat|refactor|chore(scope): description [vX.Y.Z-betaN]`
 4. Tag: `git tag vX.Y.Z-betaN`
 5. Push: `git push origin main --tags`
+
+---
+
+## Version History
+
+- **v1.0.0-beta.15 follow-up** (`d5193bc`) — active editor runtime gained dynamic-include child-style editing scaffolding, editor-visible collapsed state, initial core-fragment style plumbing, and safer canvas insertion/selectability fixes for table/list/image/gallery/html blocks.
