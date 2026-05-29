@@ -6,10 +6,11 @@ Status: checkpoint prepared for testing
 
 ## Scope
 
-This checkpoint captures two targeted fixes completed in this session:
+This checkpoint captures targeted fixes completed in this session:
 
 1. Membership module-content fragments now render safe fallback output instead of being interpreted as missing content providers.
 2. Block-level visibility controls were added to the editor and enforced at live render time.
+3. Position-based visibility methods were added to the same block visibility system.
 
 ## Why
 
@@ -51,12 +52,25 @@ What changed:
   - Show to: Everyone / Logged-in users only / Logged-out visitors only
   - Minimum role (for logged-in visibility)
   - Minimum group level (for logged-in visibility)
+  - Officer positions (multi-select, for logged-in visibility)
 - Added editor runtime bindings to read/write block config keys:
   - `_visibility`
   - `_min_role`
   - `_min_group`
+  - `_position_ids`
 
-### 3) Server-side render gating (secure omission)
+### 3) Position catalog source for editor visibility methods
+
+Updated file:
+
+- `CruinnCMS/src/Controllers/CruinnController.php`
+
+What changed:
+
+- Added `loadVisibilityPositions()` to fetch active officer positions from `organisation_officers`.
+- Passed the resulting position list into all editor entry contexts (pages/articles/open editor) for visibility configuration UI.
+
+### 4) Server-side render gating (secure omission)
 
 Updated file:
 
@@ -64,8 +78,10 @@ Updated file:
 
 What changed:
 
-- Added a visibility gate in `renderTree()` before block output.
+- Added a shared visibility gate and applied it in both `renderTree()` and template-render paths.
 - Live render now skips blocks (and their subtree) when visibility conditions fail.
+- Position-based checks now enforce `_position_ids` against current user officer assignments (`Auth::positionIds()`).
+- Admin users bypass visibility gates as expected.
 - Gate checks are server-side only and produce no placeholder/comment markers.
 - Editor mode remains unrestricted (all blocks remain editable).
 
@@ -82,5 +98,4 @@ Result:
 
 ## Notes
 
-- This checkpoint intentionally focuses on role/group/auth visibility methods now implemented in block config and render gating.
-- Position-based block visibility can be layered into the same mechanism in a follow-up slice if needed.
+- Visibility now supports auth status, role level, group level, and officer-position methods through the same block config gate.

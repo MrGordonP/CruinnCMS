@@ -35,6 +35,7 @@ $_contextCss = implode('', array_column($contextCanvases ?? [], 'css')) . ($temp
 $moduleContentProviders = $moduleContentProviders ?? \Cruinn\Modules\ModuleRegistry::contentProviderCatalog();
 $blogProfiles = $blogProfiles ?? [];
 $eventProfiles = $eventProfiles ?? [];
+$visibilityPositions = $visibilityPositions ?? [];
 ?>
 <?php if (!empty($_contextCss)): ?>
 <style id="editor-zone-context-styles"><?= $_contextCss ?></style>
@@ -55,6 +56,7 @@ $eventProfiles = $eventProfiles ?? [];
     data-module-content-providers="<?= htmlspecialchars(json_encode($moduleContentProviders ?? []), ENT_QUOTES, 'UTF-8') ?>"
     data-blog-profiles="<?= htmlspecialchars(json_encode($blogProfiles), ENT_QUOTES, 'UTF-8') ?>"
     data-event-profiles="<?= htmlspecialchars(json_encode($eventProfiles), ENT_QUOTES, 'UTF-8') ?>"
+    data-visibility-positions="<?= htmlspecialchars(json_encode($visibilityPositions), ENT_QUOTES, 'UTF-8') ?>"
     data-core-fragment-styles="<?= htmlspecialchars(json_encode((object)($coreFragmentStyles ?? [])), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
@@ -899,6 +901,11 @@ $eventProfiles = $eventProfiles ?? [];
                             <option value="50">Level 50+</option>
                             <option value="100">Level 100+</option>
                         </select>
+                    </div>
+                    <div class="editor-prop-row" id="prop-position-ids-row" style="display:none;flex-direction:column;align-items:flex-start;gap:0.35rem">
+                        <label>Officer positions</label>
+                        <select class="editor-prop-input" id="prop-position-ids" multiple size="6" style="width:100%"></select>
+                        <span class="editor-label-hint">Optional: limit to users assigned to one or more selected active officer positions.</span>
                     </div>
                 </div>
             </div>

@@ -58,6 +58,10 @@
         try { return JSON.parse(wrap.dataset.eventProfiles || '[]'); } catch (e) { return []; }
     }());
 
+    var VISIBILITY_POSITIONS = (function () {
+        try { return JSON.parse(wrap.dataset.visibilityPositions || '[]'); } catch (e) { return []; }
+    }());
+
     var CORE_FRAGMENT_CATALOG = {
         account: [
             { key: 'account_details_form', label: 'Account Details Form' },
@@ -1207,6 +1211,36 @@
             return ['events:list', 'events:content', 'events:detail'].indexOf((providerKey || '').toString()) !== -1;
         }
 
+        function getSelectedPositionIds(selectEl) {
+            if (!selectEl) { return []; }
+            return Array.from(selectEl.options)
+                .filter(function (opt) { return opt.selected; })
+                .map(function (opt) { return parseInt(opt.value, 10) || 0; })
+                .filter(function (id) { return id > 0; });
+        }
+
+        function syncVisibilityPositionOptions(selectEl, selectedIds) {
+            if (!selectEl) { return; }
+            var selected = (Array.isArray(selectedIds) ? selectedIds : [])
+                .map(function (id) { return parseInt(id, 10) || 0; })
+                .filter(function (id) { return id > 0; });
+
+            selectEl.innerHTML = '';
+            VISIBILITY_POSITIONS.forEach(function (pos) {
+                var id = parseInt(pos.id, 10) || 0;
+                if (!id) { return; }
+                var opt = document.createElement('option');
+                opt.value = String(id);
+                var label = (pos.position || 'Position').toString();
+                var officerName = (pos.name || '').toString().trim();
+                opt.textContent = officerName ? (label + ' - ' + officerName + ' (#' + id + ')') : (label + ' (#' + id + ')');
+                if (selected.indexOf(id) !== -1) {
+                    opt.selected = true;
+                }
+                selectEl.appendChild(opt);
+            });
+        }
+
         // Show/hide groups
         panel.querySelector('.editor-props-empty').style.display = 'none';
 
@@ -1418,13 +1452,17 @@
         var minRoleSel     = document.getElementById('prop-min-role');
         var minGroupRow    = document.getElementById('prop-min-group-row');
         var minGroupSel    = document.getElementById('prop-min-group');
+        var positionIdsRow = document.getElementById('prop-position-ids-row');
+        var positionIdsSel = document.getElementById('prop-position-ids');
         if (visibilitySel) {
             visibilitySel.value = (config._visibility || 'always').toString();
             var showLoggedInRows = visibilitySel.value === 'logged_in';
             if (minRoleRow)  { minRoleRow.style.display  = showLoggedInRows ? '' : 'none'; }
             if (minGroupRow) { minGroupRow.style.display = showLoggedInRows ? '' : 'none'; }
+            if (positionIdsRow) { positionIdsRow.style.display = showLoggedInRows ? '' : 'none'; }
             if (minRoleSel)  { minRoleSel.value  = String(config._min_role  || 0); }
             if (minGroupSel) { minGroupSel.value = String(config._min_group || 0); }
+            syncVisibilityPositionOptions(positionIdsSel, config._position_ids || []);
         }
 
         // CSS properties � read from active viewport overrides, fallback to computed desktop
@@ -2357,6 +2395,8 @@
         var minRoleSel2     = document.getElementById('prop-min-role');
         var minGroupRow2    = document.getElementById('prop-min-group-row');
         var minGroupSel2    = document.getElementById('prop-min-group');
+        var positionIdsRow2 = document.getElementById('prop-position-ids-row');
+        var positionIdsSel2 = document.getElementById('prop-position-ids');
         var writeVisibility = function () {
             var cfg = {};
             try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
@@ -2365,6 +2405,7 @@
                 delete cfg._visibility;
                 delete cfg._min_role;
                 delete cfg._min_group;
+                delete cfg._position_ids;
             } else {
                 cfg._visibility = vis;
                 if (vis === 'logged_in') {
@@ -2372,9 +2413,12 @@
                     if (role > 0) { cfg._min_role = role; } else { delete cfg._min_role; }
                     var grp = minGroupSel2 ? parseInt(minGroupSel2.value, 10) : 0;
                     if (grp > 0) { cfg._min_group = grp; } else { delete cfg._min_group; }
+                    var posIds = getSelectedPositionIds(positionIdsSel2);
+                    if (posIds.length > 0) { cfg._position_ids = posIds; } else { delete cfg._position_ids; }
                 } else {
                     delete cfg._min_role;
                     delete cfg._min_group;
+                    delete cfg._position_ids;
                 }
             }
             block.dataset.blockConfig = JSON.stringify(cfg);
@@ -2385,11 +2429,13 @@
                 var isLoggedIn = this.value === 'logged_in';
                 if (minRoleRow2)  { minRoleRow2.style.display  = isLoggedIn ? '' : 'none'; }
                 if (minGroupRow2) { minGroupRow2.style.display = isLoggedIn ? '' : 'none'; }
+                if (positionIdsRow2) { positionIdsRow2.style.display = isLoggedIn ? '' : 'none'; }
                 writeVisibility();
             };
         }
         if (minRoleSel2)  { minRoleSel2.onchange  = writeVisibility; }
         if (minGroupSel2) { minGroupSel2.onchange = writeVisibility; }
+        if (positionIdsSel2) { positionIdsSel2.onchange = writeVisibility; }
 
         // Image block: src browse + attr bindings
         if (IMAGE_TYPES.indexOf(block.dataset.blockType) !== -1) {

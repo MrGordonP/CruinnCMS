@@ -303,30 +303,9 @@ class CruinnRenderService
         foreach ($childrenOf[$parentKey] as $blockId) {
             $row  = $byId[$blockId];
             $cfg  = json_decode($row['block_config'] ?? '{}', true) ?: [];
-
-            // ── Visibility gate ───────────────────────────────────────
-            // Only applied on the public render path; editor always sees all blocks.
-            if (!\Cruinn\BlockTypes\BlockRegistry::isEditMode()) {
-                $vis      = (string) ($cfg['_visibility'] ?? 'always');
-                $loggedIn = \Cruinn\Auth::check();
-                if ($vis === 'logged_in' && !$loggedIn) {
-                    continue;
-                }
-                if ($vis === 'logged_out' && $loggedIn) {
-                    continue;
-                }
-                if ($vis === 'logged_in' && $loggedIn) {
-                    $reqRole = (int) ($cfg['_min_role'] ?? 0);
-                    if ($reqRole > 0 && \Cruinn\Auth::roleLevel() < $reqRole) {
-                        continue;
-                    }
-                    $reqGroup = (int) ($cfg['_min_group'] ?? 0);
-                    if ($reqGroup > 0 && \Cruinn\Auth::groupLevel() < $reqGroup) {
-                        continue;
-                    }
-                }
+            if (!$this->canRenderByVisibility($cfg)) {
+                continue;
             }
-            // ─────────────────────────────────────────────────────────
 
             $cssProps = json_decode($row['css_props'] ?? '{}', true) ?: [];
             $tag  = $cfg['_tag'] ?? $this->tagForType($row['block_type']);
@@ -378,6 +357,59 @@ class CruinnRenderService
         }
 
         return $html;
+    }
+
+    private function canRenderByVisibility(array $cfg): bool
+    {
+        // Editor mode must always show all blocks for editing.
+        if (BlockRegistry::isEditMode()) {
+            return true;
+        }
+
+        // Admins always pass visibility gates.
+        if (\Cruinn\Auth::roleLevel() >= 100) {
+            return true;
+        }
+
+        $vis = (string) ($cfg['_visibility'] ?? 'always');
+        $loggedIn = \Cruinn\Auth::check();
+
+        if ($vis === 'logged_in' && !$loggedIn) {
+            return false;
+        }
+        if ($vis === 'logged_out' && $loggedIn) {
+            return false;
+        }
+
+        // Role/group/position checks only apply to logged-in users.
+        if (!$loggedIn) {
+            return true;
+        }
+
+        $reqRole = (int) ($cfg['_min_role'] ?? 0);
+        if ($reqRole > 0 && \Cruinn\Auth::roleLevel() < $reqRole) {
+            return false;
+        }
+
+        $reqGroup = (int) ($cfg['_min_group'] ?? 0);
+        if ($reqGroup > 0 && \Cruinn\Auth::groupLevel() < $reqGroup) {
+            return false;
+        }
+
+        $reqPositions = $cfg['_position_ids'] ?? [];
+        if (!is_array($reqPositions)) {
+            $reqPositions = [];
+        }
+        $reqPositions = array_values(array_unique(array_filter(array_map('intval', $reqPositions), static fn (int $id): bool => $id > 0)));
+        if (!empty($reqPositions)) {
+            $userPositions = \Cruinn\Auth::positionIds();
+            $userPositions = array_values(array_unique(array_filter(array_map('intval', $userPositions), static fn (int $id): bool => $id > 0)));
+            if (empty(array_intersect($reqPositions, $userPositions))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -625,6 +657,9 @@ class CruinnRenderService
             $row  = $tplById[$blockId];
             $id   = htmlspecialchars($blockId, ENT_QUOTES, 'UTF-8');
             $tCfg = json_decode($row['block_config'] ?? '{}', true) ?: [];
+            if (!$this->canRenderByVisibility($tCfg)) {
+                continue;
+            }
             $tag  = $tCfg['_tag'] ?? $this->tagForType($row['block_type']);
             $type = htmlspecialchars($row['block_type'], ENT_QUOTES, 'UTF-8');
 
@@ -641,6 +676,9 @@ class CruinnRenderService
                     } else {
                         foreach ($pageByZone[$rawZone] ?? [] as $pb) {
                             $pbCfg      = json_decode($pb['block_config'] ?? '{}', true) ?: [];
+                            if (!$this->canRenderByVisibility($pbCfg)) {
+                                continue;
+                            }
                             $pbTag      = $pbCfg['_tag'] ?? $this->tagForType($pb['block_type']);
                             $pbType     = htmlspecialchars($pb['block_type'], ENT_QUOTES, 'UTF-8');
                             $pbId       = htmlspecialchars($pb['block_id'], ENT_QUOTES, 'UTF-8');

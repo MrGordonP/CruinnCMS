@@ -116,6 +116,17 @@ class CruinnController extends BaseController
         }
     }
 
+    private function loadVisibilityPositions(): array
+    {
+        try {
+            return $this->db->fetchAll(
+                'SELECT id, position, name FROM organisation_officers WHERE active = 1 ORDER BY sort_order ASC, position ASC, id ASC'
+            );
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     /**
      * Accept either instance admin auth or platform auth for editor AJAX.
      * Platform editor routes share the same controller methods.
@@ -301,6 +312,7 @@ class CruinnController extends BaseController
         }
         $blogProfiles = $this->loadBlogProfiles();
         $eventProfiles = $this->loadEventProfiles();
+        $visibilityPositions = $this->loadVisibilityPositions();
 
         $allTemplates = $this->db->fetchAll(
             'SELECT id, slug, name FROM page_templates WHERE template_type = ? ORDER BY sort_order, name',
@@ -323,6 +335,7 @@ class CruinnController extends BaseController
             'moduleWidgets'   => $moduleWidgets,
             'blogProfiles'    => $blogProfiles,
             'eventProfiles'   => $eventProfiles,
+            'visibilityPositions' => $visibilityPositions,
             'templates'       => $allTemplates,
             'isZonePage'      => false,
             'zoneName'        => null,
@@ -510,6 +523,7 @@ class CruinnController extends BaseController
         }
         $blogProfiles = $this->loadBlogProfiles();
         $eventProfiles = $this->loadEventProfiles();
+        $visibilityPositions = $this->loadVisibilityPositions();
 
         // Detect zone and template-shell canvas pages via canvas_type column.
         // Fall back to slug prefix convention for instances that haven't run migration 011 yet.
@@ -820,6 +834,7 @@ class CruinnController extends BaseController
             'moduleWidgets'     => $moduleWidgets,
             'blogProfiles'      => $blogProfiles,
             'eventProfiles'     => $eventProfiles,
+            'visibilityPositions' => $visibilityPositions,
             'templates'         => $allTemplates,
             'isZonePage'        => $isZonePage,
             'zoneName'          => $zoneName,
@@ -1131,6 +1146,7 @@ class CruinnController extends BaseController
         }
         $blogProfiles = $this->loadBlogProfiles();
         $eventProfiles = $this->loadEventProfiles();
+        $visibilityPositions = $this->loadVisibilityPositions();
         try {
             $navArticles = $this->db->fetchAll('SELECT id, title, slug FROM articles ORDER BY updated_at DESC LIMIT 100');
         } catch (\Throwable $e) {
@@ -1165,6 +1181,7 @@ class CruinnController extends BaseController
             'moduleWidgets'       => $moduleWidgets,
             'blogProfiles'        => $blogProfiles,
             'eventProfiles'       => $eventProfiles,
+            'visibilityPositions' => $visibilityPositions,
             'templates'           => $allTemplates,
             'isZonePage'          => false,
             'zoneName'            => null,
