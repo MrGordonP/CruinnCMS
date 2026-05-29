@@ -1412,6 +1412,21 @@
             uiCollapseStyleSel.value = collapseStyleValue;
         }
 
+        // Visibility controls
+        var visibilitySel  = document.getElementById('prop-visibility');
+        var minRoleRow     = document.getElementById('prop-min-role-row');
+        var minRoleSel     = document.getElementById('prop-min-role');
+        var minGroupRow    = document.getElementById('prop-min-group-row');
+        var minGroupSel    = document.getElementById('prop-min-group');
+        if (visibilitySel) {
+            visibilitySel.value = (config._visibility || 'always').toString();
+            var showLoggedInRows = visibilitySel.value === 'logged_in';
+            if (minRoleRow)  { minRoleRow.style.display  = showLoggedInRows ? '' : 'none'; }
+            if (minGroupRow) { minGroupRow.style.display = showLoggedInRows ? '' : 'none'; }
+            if (minRoleSel)  { minRoleSel.value  = String(config._min_role  || 0); }
+            if (minGroupSel) { minGroupSel.value = String(config._min_group || 0); }
+        }
+
         // CSS properties � read from active viewport overrides, fallback to computed desktop
         var vpPropsRaw = (!includeElementSelected && activeViewport === 'tablet') ? block.dataset.cssPropsTablet
             : (!includeElementSelected && activeViewport === 'mobile') ? block.dataset.cssPropsMobile
@@ -2335,6 +2350,46 @@
 
         bindCollapseStyleSelector(collapsedStyleSel, uiCollapseStyleSel);
         bindCollapseStyleSelector(uiCollapseStyleSel, collapsedStyleSel);
+
+        // Visibility controls — write back
+        var visibilitySel2  = document.getElementById('prop-visibility');
+        var minRoleRow2     = document.getElementById('prop-min-role-row');
+        var minRoleSel2     = document.getElementById('prop-min-role');
+        var minGroupRow2    = document.getElementById('prop-min-group-row');
+        var minGroupSel2    = document.getElementById('prop-min-group');
+        var writeVisibility = function () {
+            var cfg = {};
+            try { cfg = JSON.parse(block.dataset.blockConfig || '{}'); } catch (e) { }
+            var vis = visibilitySel2 ? visibilitySel2.value : 'always';
+            if (vis === 'always') {
+                delete cfg._visibility;
+                delete cfg._min_role;
+                delete cfg._min_group;
+            } else {
+                cfg._visibility = vis;
+                if (vis === 'logged_in') {
+                    var role = minRoleSel2 ? parseInt(minRoleSel2.value, 10) : 0;
+                    if (role > 0) { cfg._min_role = role; } else { delete cfg._min_role; }
+                    var grp = minGroupSel2 ? parseInt(minGroupSel2.value, 10) : 0;
+                    if (grp > 0) { cfg._min_group = grp; } else { delete cfg._min_group; }
+                } else {
+                    delete cfg._min_role;
+                    delete cfg._min_group;
+                }
+            }
+            block.dataset.blockConfig = JSON.stringify(cfg);
+            recordAction();
+        };
+        if (visibilitySel2) {
+            visibilitySel2.onchange = function () {
+                var isLoggedIn = this.value === 'logged_in';
+                if (minRoleRow2)  { minRoleRow2.style.display  = isLoggedIn ? '' : 'none'; }
+                if (minGroupRow2) { minGroupRow2.style.display = isLoggedIn ? '' : 'none'; }
+                writeVisibility();
+            };
+        }
+        if (minRoleSel2)  { minRoleSel2.onchange  = writeVisibility; }
+        if (minGroupSel2) { minGroupSel2.onchange = writeVisibility; }
 
         // Image block: src browse + attr bindings
         if (IMAGE_TYPES.indexOf(block.dataset.blockType) !== -1) {

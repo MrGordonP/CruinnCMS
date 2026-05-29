@@ -1,8 +1,17 @@
 <?php
 $member = $member ?? null;
+$current_user = $current_user ?? null;
 $address = is_array($address ?? null) ? $address : [];
 ?>
-<?php if ($member): ?>
+<?php if (!$current_user): ?>
+<div class="detail-card">
+    <p class="text-muted">Please <a href="/login">log in</a> to manage your address.</p>
+</div>
+<?php elseif (!$member): ?>
+<div class="detail-card">
+    <p class="text-muted">Address details are available once your membership record has been created.</p>
+</div>
+<?php else: ?>
 <div class="detail-card">
     <div class="activity-header">
         <h2>Address</h2>

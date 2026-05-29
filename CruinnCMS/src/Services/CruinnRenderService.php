@@ -303,6 +303,31 @@ class CruinnRenderService
         foreach ($childrenOf[$parentKey] as $blockId) {
             $row  = $byId[$blockId];
             $cfg  = json_decode($row['block_config'] ?? '{}', true) ?: [];
+
+            // ── Visibility gate ───────────────────────────────────────
+            // Only applied on the public render path; editor always sees all blocks.
+            if (!\Cruinn\BlockTypes\BlockRegistry::isEditMode()) {
+                $vis      = (string) ($cfg['_visibility'] ?? 'always');
+                $loggedIn = \Cruinn\Auth::check();
+                if ($vis === 'logged_in' && !$loggedIn) {
+                    continue;
+                }
+                if ($vis === 'logged_out' && $loggedIn) {
+                    continue;
+                }
+                if ($vis === 'logged_in' && $loggedIn) {
+                    $reqRole = (int) ($cfg['_min_role'] ?? 0);
+                    if ($reqRole > 0 && \Cruinn\Auth::roleLevel() < $reqRole) {
+                        continue;
+                    }
+                    $reqGroup = (int) ($cfg['_min_group'] ?? 0);
+                    if ($reqGroup > 0 && \Cruinn\Auth::groupLevel() < $reqGroup) {
+                        continue;
+                    }
+                }
+            }
+            // ─────────────────────────────────────────────────────────
+
             $cssProps = json_decode($row['css_props'] ?? '{}', true) ?: [];
             $tag  = $cfg['_tag'] ?? $this->tagForType($row['block_type']);
             $type = htmlspecialchars($row['block_type'], ENT_QUOTES, 'UTF-8');

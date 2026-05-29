@@ -867,6 +867,42 @@ $eventProfiles = $eventProfiles ?? [];
                 </div>
             </div>
 
+            <!-- Visibility group -->
+            <div class="editor-accordion collapsed" data-group="visibility">
+                <button class="editor-accordion-toggle">Visibility</button>
+                <div class="editor-accordion-body">
+                    <div class="editor-prop-row">
+                        <label>Show to</label>
+                        <select class="editor-prop-input" id="prop-visibility">
+                            <option value="always">Everyone</option>
+                            <option value="logged_in">Logged-in users only</option>
+                            <option value="logged_out">Logged-out visitors only</option>
+                        </select>
+                        <span class="editor-label-hint">Who can see this block on the live site. Hidden blocks leave no trace in the page source.</span>
+                    </div>
+                    <div class="editor-prop-row" id="prop-min-role-row" style="display:none">
+                        <label>Minimum role</label>
+                        <select class="editor-prop-input" id="prop-min-role">
+                            <option value="0">Any logged-in user</option>
+                            <option value="10">Member (10+)</option>
+                            <option value="20">Editor (20+)</option>
+                            <option value="50">Council (50+)</option>
+                            <option value="100">Admin only</option>
+                        </select>
+                    </div>
+                    <div class="editor-prop-row" id="prop-min-group-row" style="display:none">
+                        <label>Minimum group level</label>
+                        <select class="editor-prop-input" id="prop-min-group">
+                            <option value="0">Any group</option>
+                            <option value="10">Level 10+</option>
+                            <option value="20">Level 20+</option>
+                            <option value="50">Level 50+</option>
+                            <option value="100">Level 100+</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <!-- Responsive UI group -->
             <div class="editor-accordion collapsed" data-group="responsive-ui">
                 <button class="editor-accordion-toggle">Responsive UI</button>
