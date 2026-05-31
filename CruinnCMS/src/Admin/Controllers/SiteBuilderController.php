@@ -1736,7 +1736,7 @@ class SiteBuilderController extends BaseController
             // Pre-canvas_type fallback uses slug convention for later discovery.
             $pageId = $this->db->insert('pages_index', [
                 'title'       => $title,
-                'slug'        => '_dashboard_' . $this->generateUniqueSlug($title),
+                'slug'        => $this->generateUniqueSlug('_dashboard_' . $title),
                 'status'      => 'published',
                 'template'    => 'none',
                 'editor_mode' => 'freeform',
