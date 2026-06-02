@@ -1595,6 +1595,7 @@
         // Module widget: populate picker and ensure selected key exists in options.
         if (type === 'module-widget' || type === 'dynamic-include') {
             var mwSel = document.getElementById('prop-module-widget-key');
+            var mwSettings = document.getElementById('prop-module-widget-settings');
             if (mwSel) {
                 var selectedKey = (config.widget_key || '').toString();
                 mwSel.innerHTML = '<option value="">� Select widget �</option>';
@@ -1613,6 +1614,9 @@
                     mwSel.appendChild(stale);
                 }
                 mwSel.value = selectedKey;
+            }
+            if (mwSettings) {
+                mwSettings.value = (config.settings_json || '').toString();
             }
             if (type === 'module-widget') {
                 refreshModuleWidgetPreview(block);
@@ -2006,7 +2010,21 @@
             if (inp.tagName === 'SELECT' && inp.dataset.config === 'widget_key' && (block.dataset.blockType === 'module-widget' || block.dataset.blockType === 'dynamic-include')) {
                 inp.onchange = function () {
                     writeConfig(block, 'widget_key', inp.value);
-                    refreshPhpIncludePreview(block);
+                    if (block.dataset.blockType === 'module-widget') {
+                        refreshModuleWidgetPreview(block);
+                    } else {
+                        refreshPhpIncludePreview(block);
+                    }
+                };
+            }
+            if (inp.tagName === 'TEXTAREA' && inp.dataset.config === 'settings_json' && (block.dataset.blockType === 'module-widget' || block.dataset.blockType === 'dynamic-include')) {
+                inp.oninput = function () {
+                    writeConfig(block, 'settings_json', inp.value);
+                    if (block.dataset.blockType === 'module-widget') {
+                        refreshModuleWidgetPreview(block);
+                    } else {
+                        refreshPhpIncludePreview(block);
+                    }
                 };
             }
             if (inp.tagName === 'SELECT' && inp.dataset.config === 'provider_key' && (block.dataset.blockType === 'module-content' || block.dataset.blockType === 'dynamic-include')) {

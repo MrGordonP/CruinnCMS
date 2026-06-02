@@ -1143,6 +1143,12 @@ $visibilityPositions = $visibilityPositions ?? [];
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <div class="editor-prop-row" style="flex-direction:column;align-items:flex-start;gap:0.35rem">
+                            <label>Settings JSON <small style="font-weight:400;color:#9ca3af">(optional)</small></label>
+                            <textarea class="editor-prop-input" id="prop-module-widget-settings" data-config="settings_json"
+                                      rows="5" style="font-family:monospace;font-size:0.78rem;resize:vertical;width:100%"
+                                      placeholder="{}"></textarea>
+                        </div>
                     </div>
                     <!-- module-content config -->
                     <div class="editor-content-group" data-content-type="module-content" style="display:none">

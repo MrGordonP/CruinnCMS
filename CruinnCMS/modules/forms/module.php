@@ -47,6 +47,12 @@ return [
             'provider' => 'Cruinn\\Module\\Forms\\Widgets\\DashboardWidgets::statusSummaryData',
             'template' => 'widgets/dashboard-status-summary',
         ],
+        [
+            'slug'     => 'form-summary',
+            'label'    => 'Forms Summary (Selected Form)',
+            'provider' => 'Cruinn\\Module\\Forms\\Widgets\\DashboardWidgets::formSummaryData',
+            'template' => 'widgets/dashboard-status-summary',
+        ],
     ],
 
     'routes' => function (\Cruinn\Router $router) {
