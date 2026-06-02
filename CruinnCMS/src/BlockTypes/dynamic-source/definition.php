@@ -209,7 +209,13 @@ BlockRegistry::register([
         if ($sourceType === 'core_fragment') {
             $fragmentKey = trim((string) ($config['core_fragment_key'] ?? ''));
 
-            if (!Auth::check()) {
+            $accountFragments = [
+                'account_details_form',
+                'account_password_form',
+                'account_information',
+            ];
+
+            if (in_array($fragmentKey, $accountFragments, true) && !Auth::check()) {
                 return '<p class="account-block-empty">This content is only available to logged-in users.</p>';
             }
 
@@ -313,6 +319,39 @@ BlockRegistry::register([
                     . '<dt>Last Login</dt><dd>' . $lastLogin . '</dd>'
                     . '</dl>'
                     . '</section>';
+                return BlockRegistry::isEditMode() ? $annotateEditable($html) : $html;
+            }
+
+            if ($fragmentKey === 'subjects_quick_link') {
+                $html = '<div class="dash-quick-grid">'
+                    . '<a href="/admin/subjects" class="dash-quick-link">'
+                    . '<span class="dash-quick-icon">🧭</span>'
+                    . '<span>Subjects</span>'
+                    . '</a>'
+                    . '</div>';
+                return BlockRegistry::isEditMode() ? $annotateEditable($html) : $html;
+            }
+
+            if ($fragmentKey === 'subjects_status_summary') {
+                try {
+                    $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM subjects');
+                    $active = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'active'");
+                    $draft = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'draft'");
+                    $archived = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'archived'");
+                } catch (\Throwable) {
+                    $total = 0;
+                    $active = 0;
+                    $draft = 0;
+                    $archived = 0;
+                }
+
+                $html = '<div class="activity-header"><h2>Subjects Status</h2></div>'
+                    . '<div class="dash-quick-grid">'
+                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Total</span></a>'
+                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $active . '</strong><span>Active</span></a>'
+                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $draft . '</strong><span>Draft</span></a>'
+                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $archived . '</strong><span>Archived</span></a>'
+                    . '</div>';
                 return BlockRegistry::isEditMode() ? $annotateEditable($html) : $html;
             }
 

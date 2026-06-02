@@ -237,7 +237,7 @@ class ModuleRegistry
         }
 
         // Expose virtual granular widgets generated from module dashboard/acp sections
-        // plus core summaries (e.g. subjects) so dashboards can be assembled card-by-card.
+        // so dashboards can be assembled card-by-card.
         foreach (self::collectVirtualWidgetEntries() as $entry) {
             if (isset($seen[$entry['key']])) {
                 continue;
@@ -603,21 +603,6 @@ class ModuleRegistry
             }
         }
 
-        $map['core:subjects-status-summary'] = [
-            'type' => 'subjects-summary',
-            'module' => 'core',
-            'title' => 'Subjects Status Summary',
-        ];
-
-        $map['core:subjects-quick-link'] = [
-            'type' => 'quick-link',
-            'module' => 'core',
-            'title' => 'Quick Link: Subjects',
-            'label' => 'Subjects',
-            'url' => '/admin/subjects',
-            'icon' => '🧭',
-        ];
-
         return $map;
     }
 
@@ -639,29 +624,6 @@ class ModuleRegistry
                 . '<span class="dash-quick-icon">' . $iconEsc . '</span>'
                 . '<span>' . $labelEsc . '</span>'
                 . '</a>'
-                . '</div>';
-        }
-
-        if ($type === 'subjects-summary') {
-            try {
-                $db = Database::getInstance();
-                $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM subjects');
-                $active = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'active'");
-                $draft = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'draft'");
-                $archived = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'archived'");
-            } catch (\Throwable) {
-                $total = 0;
-                $active = 0;
-                $draft = 0;
-                $archived = 0;
-            }
-
-            return '<div class="activity-header"><h2>Subjects Status</h2></div>'
-                . '<div class="dash-quick-grid">'
-                . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Total</span></a>'
-                . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $active . '</strong><span>Active</span></a>'
-                . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $draft . '</strong><span>Draft</span></a>'
-                . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $archived . '</strong><span>Archived</span></a>'
                 . '</div>';
         }
 
