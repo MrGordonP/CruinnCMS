@@ -280,7 +280,7 @@ class ArticleController extends BaseController
             $params[] = $status;
         }
         if ($subject !== '') {
-            $where[]  = 'a.subject_id = ?';
+            $where[]  = 'EXISTS (SELECT 1 FROM subject_content sc WHERE sc.item_type = \'article\' AND sc.item_id = a.id AND sc.subject_id = ?)';
             $params[] = $subject;
         }
 
@@ -290,11 +290,14 @@ class ArticleController extends BaseController
         $offset     = ($page - 1) * $perPage;
 
         $articles = $this->db->fetchAll(
-            "SELECT a.*, u.display_name as author_name, s.title as subject_title
+            "SELECT a.*, u.display_name as author_name,
+                    GROUP_CONCAT(s.title ORDER BY s.title SEPARATOR ', ') AS subject_titles
              FROM articles a
              LEFT JOIN users u ON a.author_id = u.id
-             LEFT JOIN subjects s ON a.subject_id = s.id
+             LEFT JOIN subject_content sc2 ON sc2.item_type = 'article' AND sc2.item_id = a.id
+             LEFT JOIN subjects s ON s.id = sc2.subject_id
              {$whereSQL}
+             GROUP BY a.id
              ORDER BY a.updated_at DESC
              LIMIT {$perPage} OFFSET {$offset}",
             $params
@@ -331,13 +334,14 @@ class ArticleController extends BaseController
         );
 
         $this->renderAdmin('admin/articles/edit', [
-            'title'       => 'New Blog Post',
-            'article'     => null,
-            'blocks'      => [],
-            'blogBasePath'=> $this->adminBlogBasePath(),
-            'subjects'    => $subjects,
-            'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], ['New Blog Post']],
+            'title'             => 'New Blog Post',
+            'article'           => null,
+            'blocks'            => [],
+            'blogBasePath'      => $this->adminBlogBasePath(),
+            'subjects'          => $subjects,
+            'articleSubjectIds' => [],
+            'errors'            => [],
+            'breadcrumbs'       => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], ['New Blog Post']],
         ]);
     }
 
@@ -364,13 +368,14 @@ class ArticleController extends BaseController
                 ['archived']
             );
             $this->renderAdmin('admin/articles/edit', [
-                'title'       => 'New Blog Post',
-                'article'     => $_POST,
-                'blocks'      => [],
-                'blogBasePath'=> $this->adminBlogBasePath(),
-                'subjects'    => $subjects,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['New Blog Post']],
+                'title'             => 'New Blog Post',
+                'article'           => $_POST,
+                'blocks'            => [],
+                'blogBasePath'      => $this->adminBlogBasePath(),
+                'subjects'          => $subjects,
+                'articleSubjectIds' => array_map('intval', (array) ($_POST['subject_ids'] ?? [])),
+                'errors'            => $errors,
+                'breadcrumbs'       => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['New Blog Post']],
             ]);
             return;
         }
@@ -382,10 +387,9 @@ class ArticleController extends BaseController
             $publishedAt = date('Y-m-d H:i:s');
         }
 
-        $subjectId = $this->input('subject_id');
+        $subjectIds = array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? [])));
 
         $id = $this->db->insert('articles', [
-            'subject_id'     => $subjectId ?: null,
             'title'          => $this->input('title'),
             'slug'           => $slug,
             'excerpt'        => $this->input('excerpt', ''),
@@ -397,10 +401,20 @@ class ArticleController extends BaseController
             'updated_at'     => date('Y-m-d H:i:s'),
         ]);
 
+        // Sync subject associations
+        foreach ($subjectIds as $sid) {
+            try {
+                $this->db->query(
+                    'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                    [$sid, 'article', (int) $id]
+                );
+            } catch (\Throwable) {}
+        }
+
         if ($status === 'published') {
             $this->provisionForumThreadForArticle(
                 (int) $id,
-                (int) ($subjectId ?: 0),
+                (int) ($subjectIds[0] ?? 0),
                 (string) $this->input('title'),
                 $slug,
                 (string) $this->input('excerpt', ''),
@@ -429,15 +443,20 @@ class ArticleController extends BaseController
             'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
             ['archived']
         );
+        $articleSubjectIds = array_column(
+            $this->db->fetchAll('SELECT subject_id FROM subject_content WHERE item_type = ? AND item_id = ?', ['article', (int) $id]),
+            'subject_id'
+        );
 
         $this->renderAdmin('admin/articles/edit', [
-            'title'       => 'Edit: ' . $article['title'],
-            'article'     => $article,
-            'blocks'      => $blocks,
-            'blogBasePath'=> $this->adminBlogBasePath(),
-            'subjects'    => $subjects,
-            'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], [$article['title']]],
+            'title'             => 'Edit: ' . $article['title'],
+            'article'           => $article,
+            'blocks'            => $blocks,
+            'blogBasePath'      => $this->adminBlogBasePath(),
+            'subjects'          => $subjects,
+            'articleSubjectIds' => $articleSubjectIds,
+            'errors'            => [],
+            'breadcrumbs'       => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], [$article['title']]],
         ]);
     }
 
@@ -477,13 +496,14 @@ class ArticleController extends BaseController
                 ['archived']
             );
             $this->renderAdmin('admin/articles/edit', [
-                'title'       => 'Edit: ' . $article['title'],
-                'article'     => array_merge($article, $_POST),
-                'blocks'      => $blocks,
-                'blogBasePath'=> $this->adminBlogBasePath(),
-                'subjects'    => $subjects,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], [$article['title']]],
+                'title'             => 'Edit: ' . $article['title'],
+                'article'           => array_merge($article, $_POST),
+                'blocks'            => $blocks,
+                'blogBasePath'      => $this->adminBlogBasePath(),
+                'subjects'          => $subjects,
+                'articleSubjectIds' => array_map('intval', (array) ($_POST['subject_ids'] ?? [])),
+                'errors'            => $errors,
+                'breadcrumbs'       => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], [$article['title']]],
             ]);
             return;
         }
@@ -497,10 +517,9 @@ class ArticleController extends BaseController
             $publishedAt = $article['published_at'];
         }
 
-        $subjectId = $this->input('subject_id');
+        $subjectIds = array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? [])));
 
         $this->db->update('articles', [
-            'subject_id'     => $subjectId ?: null,
             'title'          => $this->input('title'),
             'slug'           => $slug,
             'excerpt'        => $this->input('excerpt', ''),
@@ -510,10 +529,21 @@ class ArticleController extends BaseController
             'updated_at'     => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);
 
+        // Sync subject associations — replace all existing for this article
+        $this->db->query('DELETE FROM subject_content WHERE item_type = ? AND item_id = ?', ['article', (int) $id]);
+        foreach ($subjectIds as $sid) {
+            try {
+                $this->db->query(
+                    'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                    [$sid, 'article', (int) $id]
+                );
+            } catch (\Throwable) {}
+        }
+
         if ($status === 'published') {
             $this->provisionForumThreadForArticle(
                 (int) $id,
-                (int) ($subjectId ?: 0),
+                (int) ($subjectIds[0] ?? 0),
                 (string) $this->input('title'),
                 $slug,
                 (string) $this->input('excerpt', ''),
@@ -746,8 +776,10 @@ class ArticleController extends BaseController
             'SELECT a.*, u.display_name as author_name, s.title as subject_title
              FROM articles a
              LEFT JOIN users u ON a.author_id = u.id
-             LEFT JOIN subjects s ON a.subject_id = s.id
+             LEFT JOIN subject_content sc ON sc.item_type = 'article' AND sc.item_id = a.id
+             LEFT JOIN subjects s ON s.id = sc.subject_id
              WHERE a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
+             GROUP BY a.id
              ORDER BY a.published_at DESC
              LIMIT ? OFFSET ?',
             ['published', $perPage, $offset]
@@ -804,11 +836,14 @@ class ArticleController extends BaseController
     private static function findPublishedArticleBySlug(Database $db, string $slug): ?array
     {
         $article = $db->fetch(
-            'SELECT a.*, u.display_name as author_name, s.title as subject_title
+            'SELECT a.*, u.display_name as author_name,
+                    GROUP_CONCAT(s.title ORDER BY s.title SEPARATOR ", ") AS subject_title
              FROM articles a
              LEFT JOIN users u ON a.author_id = u.id
-             LEFT JOIN subjects s ON a.subject_id = s.id
+             LEFT JOIN subject_content sc ON sc.item_type = \'article\' AND sc.item_id = a.id
+             LEFT JOIN subjects s ON s.id = sc.subject_id
              WHERE a.slug = ? AND a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
+             GROUP BY a.id
              LIMIT 1',
             [$slug, 'published']
         );

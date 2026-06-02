@@ -1,7 +1,7 @@
 <?php
 /**
  * CruinnCMS — Subject Controller
- * 
+ *
  * Admin CRUD for the Subject correlation index.
  * Subjects organise events, articles, documents, and finances under a single umbrella.
  */
@@ -33,12 +33,13 @@ class SubjectController extends BaseController
 
         try {
             $articles = $this->db->fetchAll(
-                'SELECT id, title, slug, published_at
-                 FROM articles
-                 WHERE subject_id = ? AND status = ?
-                 ORDER BY COALESCE(published_at, created_at) DESC
+                'SELECT a.id, a.title, a.slug, a.published_at
+                 FROM articles a
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = a.id
+                 WHERE sc.subject_id = ? AND a.status = ?
+                 ORDER BY COALESCE(a.published_at, a.created_at) DESC
                  LIMIT 10',
-                [(int) $subject['id'], 'published']
+                ['article', (int) $subject['id'], 'published']
             );
         } catch (\Throwable) {
             $articles = [];
@@ -46,12 +47,13 @@ class SubjectController extends BaseController
 
         try {
             $events = $this->db->fetchAll(
-                'SELECT id, title, slug, date_start
-                 FROM events
-                 WHERE subject_id = ? AND status = ?
-                 ORDER BY COALESCE(date_start, created_at) DESC
+                'SELECT e.id, e.title, e.slug, e.date_start
+                 FROM events e
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = e.id
+                 WHERE sc.subject_id = ? AND e.status = ?
+                 ORDER BY COALESCE(e.date_start, e.created_at) DESC
                  LIMIT 10',
-                [(int) $subject['id'], 'published']
+                ['event', (int) $subject['id'], 'published']
             );
         } catch (\Throwable) {
             $events = [];
@@ -65,67 +67,132 @@ class SubjectController extends BaseController
         ]);
     }
 
-    // ── Admin: List ───────────────────────────────────────────
+    // ── Admin: List (workspace root) ──────────────────────────
 
     /**
-     * GET /admin/subjects — List subjects with search, filters, pagination.
+     * GET /admin/subjects — Three-panel workspace with no subject selected.
      */
     public function adminList(): void
     {
-        $search  = $this->query('q', '');
-        $type    = $this->query('type', '');
-        $status  = $this->query('status', '');
-        $page    = max(1, (int) $this->query('page', 1));
-        $perPage = 25;
+        Auth::requireAdmin();
 
-        $where  = [];
-        $params = [];
-
-        if ($search !== '') {
-            $where[]  = '(s.title LIKE ? OR s.code LIKE ?)';
-            $params[] = "%{$search}%";
-            $params[] = "%{$search}%";
-        }
-        if ($type !== '') {
-            $where[]  = 's.type = ?';
-            $params[] = $type;
-        }
-        if ($status !== '') {
-            $where[]  = 's.status = ?';
-            $params[] = $status;
-        }
-
-        $whereSQL = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-
-        $total = $this->db->fetchColumn(
-            "SELECT COUNT(*) FROM subjects s {$whereSQL}",
-            $params
-        );
-        $totalPages = max(1, (int) ceil($total / $perPage));
-        $offset = ($page - 1) * $perPage;
-
-        $subjects = $this->db->fetchAll(
-            "SELECT s.*, u.display_name as creator_name,
-                    (SELECT COUNT(*) FROM events e WHERE e.subject_id = s.id) AS event_count,
-                    (SELECT COUNT(*) FROM articles a WHERE a.subject_id = s.id) AS article_count
-             FROM subjects s
-             LEFT JOIN users u ON s.created_by = u.id
-             {$whereSQL}
-             ORDER BY s.created_at DESC
-             LIMIT {$perPage} OFFSET {$offset}",
-            $params
+        $allSubjects = $this->db->fetchAll(
+            'SELECT id, parent_id, code, title, type, status FROM subjects ORDER BY title ASC'
         );
 
-        $this->renderAdmin('admin/subjects/index', [
+        $this->renderAdmin('admin/subjects/workspace', [
             'title'       => 'Subjects',
-            'subjects'    => $subjects,
-            'search'      => $search,
-            'type'        => $type,
-            'status'      => $status,
-            'page'        => $page,
-            'totalPages'  => $totalPages,
-            'total'       => $total,
+            'allSubjects' => $allSubjects,
+            'subject'     => null,
             'breadcrumbs' => [['Admin', '/admin'], ['Subjects']],
+        ]);
+    }
+
+    // ── Admin: View (workspace with subject selected) ─────────
+
+    /**
+     * GET /admin/subjects/{id} — Three-panel workspace with subject selected.
+     */
+    public function adminView(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT * FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        // Build ancestor breadcrumb chain (walk up parent_id)
+        $ancestors = [];
+        $cursor = $subject;
+        while (!empty($cursor['parent_id'])) {
+            $cursor = $this->db->fetch(
+                'SELECT id, parent_id, code, title FROM subjects WHERE id = ?',
+                [$cursor['parent_id']]
+            );
+            if (!$cursor) break;
+            array_unshift($ancestors, $cursor);
+        }
+
+        // Direct children
+        $children = $this->db->fetchAll(
+            'SELECT id, code, title, type, status FROM subjects WHERE parent_id = ? ORDER BY title ASC',
+            [$id]
+        );
+
+        // All subjects for tree panel
+        $allSubjects = $this->db->fetchAll(
+            'SELECT id, parent_id, code, title, type, status FROM subjects ORDER BY title ASC'
+        );
+
+        // Content associations via subject_content bridge — each wrapped in try/catch; modules may not be installed
+        $articles = [];
+        try {
+            $articles = $this->db->fetchAll(
+                'SELECT a.id, a.title, a.slug, a.status, a.created_at
+                 FROM articles a
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = a.id
+                 WHERE sc.subject_id = ?
+                 ORDER BY a.created_at DESC',
+                ['article', $id]
+            );
+        } catch (\Throwable) {}
+
+        $events = [];
+        try {
+            $events = $this->db->fetchAll(
+                'SELECT e.id, e.title, e.slug, e.status, e.date_start
+                 FROM events e
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = e.id
+                 WHERE sc.subject_id = ?
+                 ORDER BY e.date_start DESC',
+                ['event', $id]
+            );
+        } catch (\Throwable) {}
+
+        $files = [];
+        try {
+            $files = $this->db->fetchAll(
+                'SELECT f.id, f.name, f.mime_type, f.created_at
+                 FROM files f
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = f.id
+                 WHERE sc.subject_id = ?
+                 ORDER BY f.created_at DESC',
+                ['file', $id]
+            );
+        } catch (\Throwable) {}
+
+        $folders = [];
+        try {
+            $folders = $this->db->fetchAll(
+                'SELECT fo.id, fo.name, fo.created_at
+                 FROM folders fo
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = fo.id
+                 WHERE sc.subject_id = ?
+                 ORDER BY fo.name ASC',
+                ['folder', $id]
+            );
+        } catch (\Throwable) {}
+
+        // All subjects except self for the settings form parent selector
+        $parentSubjects = $this->db->fetchAll(
+            'SELECT id, code, title FROM subjects WHERE id != ? ORDER BY title ASC',
+            [$id]
+        );
+
+        $this->renderAdmin('admin/subjects/workspace', [
+            'title'          => $subject['title'] . ' — Subjects',
+            'allSubjects'    => $allSubjects,
+            'subject'        => $subject,
+            'ancestors'      => $ancestors,
+            'children'       => $children,
+            'articles'       => $articles,
+            'events'         => $events,
+            'files'          => $files,
+            'folders'        => $folders,
+            'parentSubjects' => $parentSubjects,
+            'breadcrumbs'    => [['Admin', '/admin'], ['Subjects', '/admin/subjects'], [$subject['title']]],
         ]);
     }
 

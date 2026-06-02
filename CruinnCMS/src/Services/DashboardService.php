@@ -543,24 +543,11 @@ class DashboardService
      */
     public function listDashboardCanvases(): array
     {
-        try {
-            return $this->db->fetchAll(
-                "SELECT * FROM pages_index
-                 WHERE canvas_type = 'widget-dashboard'
-                 ORDER BY title ASC"
-            );
-        } catch (\Throwable $e) {
-            // Pre-canvas_type fallback: discover dashboards by legacy slug convention
-            // or existing context assignments.
-            return $this->db->fetchAll(
-                "SELECT DISTINCT p.*
-                 FROM pages_index p
-                 LEFT JOIN context_dashboards cd ON cd.page_id = p.id
-                 WHERE p.slug LIKE '\\_dashboard\\_%' ESCAPE '\\\\'
-                    OR cd.page_id IS NOT NULL
-                 ORDER BY p.title ASC"
-            );
-        }
+        return $this->db->fetchAll(
+            "SELECT * FROM pages_index
+             WHERE canvas_type = 'widget-dashboard'
+             ORDER BY title ASC"
+        );
     }
 
     /**

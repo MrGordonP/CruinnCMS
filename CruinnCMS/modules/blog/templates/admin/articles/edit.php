@@ -42,13 +42,17 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="subject_id">Subject</label>
-                        <select id="subject_id" name="subject_id" class="form-input">
-                            <option value="">— None —</option>
-                            <?php foreach ($subjects as $s): ?>
-                            <option value="<?= (int)$s['id'] ?>" <?= ($article['subject_id'] ?? '') == $s['id'] ? 'selected' : '' ?>><?= e($s['title']) ?></option>
+                        <label>Subjects</label>
+                        <select id="subject_ids" name="subject_ids[]" class="form-input" multiple size="5">
+                            <?php
+                            $currentSubjectIds = $articleSubjectIds ?? [];
+                            foreach ($subjects as $s):
+                                $sel = in_array((int)$s['id'], array_map('intval', $currentSubjectIds)) ? 'selected' : '';
+                            ?>
+                            <option value="<?= (int)$s['id'] ?>" <?= $sel ?>><?= e($s['title']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="form-help">Hold Ctrl / Cmd to select multiple subjects.</small>
                     </div>
                 </div>
 

@@ -103,10 +103,13 @@ class FileManagerController extends BaseController
         $whereClause = implode(' AND ', $where);
 
         $files = $this->db->fetchAll(
-            "SELECT f.*, u.display_name as owner_name, s.title as subject_title
+            "SELECT f.*, u.display_name as owner_name,
+                    (SELECT GROUP_CONCAT(s2.title ORDER BY s2.title SEPARATOR ', ')
+                     FROM subject_content sc2
+                     INNER JOIN subjects s2 ON s2.id = sc2.subject_id
+                     WHERE sc2.item_type = 'file' AND sc2.item_id = f.id) AS subject_title
              FROM files f
              LEFT JOIN users u ON f.owner_id = u.id
-             LEFT JOIN subjects s ON f.subject_id = s.id
              WHERE {$whereClause}
              ORDER BY f.updated_at DESC",
             $params
@@ -124,6 +127,14 @@ class FileManagerController extends BaseController
             ['active']
         );
 
+        // Current folder subject associations (for edit modal)
+        $currentFolderSubjectIds = $currentFolder
+            ? array_column($this->db->fetchAll(
+                'SELECT subject_id FROM subject_content WHERE item_type = ? AND item_id = ?',
+                ['folder', (int) $currentFolder['id']]
+              ), 'subject_id')
+            : [];
+
         $this->renderAdmin('admin/files/index', [
             'title' => 'Drivespace',
             'files' => array_values($files),
@@ -132,6 +143,7 @@ class FileManagerController extends BaseController
             'folderTree' => $folderTree,
             'breadcrumb' => $breadcrumb,
             'subjects' => $subjects,
+            'currentFolderSubjectIds' => $currentFolderSubjectIds,
             'search' => $search,
             'status' => $status,
             'type' => $type,
@@ -200,7 +212,7 @@ class FileManagerController extends BaseController
         $title = $this->input('title') ?: pathinfo($file['name'], PATHINFO_FILENAME);
         $description = $this->input('description', '');
         $folderId = $this->input('folder_id') ? (int) $this->input('folder_id') : null;
-        $subjectId = $this->input('subject_id') ? (int) $this->input('subject_id') : null;
+        $subjectIds = array_values(array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? []))));
 
         // Validate folder access
         if ($folderId) {
@@ -250,7 +262,6 @@ class FileManagerController extends BaseController
             'mime_type' => $result['real_mime'],
             'file_ext' => $ext,
             'owner_id' => $userId,
-            'subject_id' => $subjectId,
             'status' => 'draft',
             'version' => 1,
             'content_type' => 'upload',
@@ -280,6 +291,16 @@ class FileManagerController extends BaseController
 
         $this->logActivity('create', 'file', (int) $fileId, "Uploaded: {$file['name']}");
 
+        // Sync subject associations
+        foreach ($subjectIds as $sid) {
+            try {
+                $this->db->query(
+                    'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                    [$sid, 'file', (int) $fileId]
+                );
+            } catch (\Throwable) {}
+        }
+
         Auth::flash('success', 'File uploaded successfully.' . ($parsedContent ? ' Content has been parsed.' : ''));
         $this->redirect('/drivespace/' . $fileId);
     }
@@ -292,11 +313,14 @@ class FileManagerController extends BaseController
     public function show(int $id): void
     {
         $file = $this->db->fetch(
-            "SELECT f.*, u.display_name as owner_name, s.title as subject_title,
+            "SELECT f.*, u.display_name as owner_name,
+                    (SELECT GROUP_CONCAT(s2.title ORDER BY s2.title SEPARATOR ', ')
+                     FROM subject_content sc2
+                     INNER JOIN subjects s2 ON s2.id = sc2.subject_id
+                     WHERE sc2.item_type = 'file' AND sc2.item_id = f.id) AS subject_title,
                     fo.name as folder_name, fo.id as folder_id_resolved
              FROM files f
              LEFT JOIN users u ON f.owner_id = u.id
-             LEFT JOIN subjects s ON f.subject_id = s.id
              LEFT JOIN folders fo ON f.folder_id = fo.id
              WHERE f.id = ?",
             [$id]
@@ -614,7 +638,7 @@ class FileManagerController extends BaseController
 
         $parentId = $this->input('parent_id') ? (int) $this->input('parent_id') : null;
         $visibility = $this->input('visibility', 'private');
-        $subjectId = $this->input('subject_id') ? (int) $this->input('subject_id') : null;
+        $subjectIds = array_values(array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? []))));
         $description = $this->input('description', '');
 
         if (!in_array($visibility, ['private', 'role', 'members', 'public'], true)) {
@@ -637,7 +661,6 @@ class FileManagerController extends BaseController
             'slug' => $slug,
             'description' => $description,
             'owner_id' => Auth::userId(),
-            'subject_id' => $subjectId,
             'visibility' => $visibility,
             'allowed_roles' => $allowedRoles,
             'created_at' => date('Y-m-d H:i:s'),
@@ -645,6 +668,16 @@ class FileManagerController extends BaseController
         ]);
 
         $this->logActivity('create', 'folder', (int) $folderId, "Created folder: {$name}");
+
+        // Sync subject associations
+        foreach ($subjectIds as $sid) {
+            try {
+                $this->db->query(
+                    'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                    [$sid, 'folder', (int) $folderId]
+                );
+            } catch (\Throwable) {}
+        }
 
         Auth::flash('success', "Folder '{$name}' created.");
         $this->redirect($parentId ? '/drivespace?folder=' . $parentId : '/drivespace');
@@ -669,7 +702,8 @@ class FileManagerController extends BaseController
         $name = $this->input('name', $folder['name']);
         $visibility = $this->input('visibility', $folder['visibility']);
         $description = $this->input('description', $folder['description']);
-        $subjectId = $this->input('subject_id') !== null ? ((int) $this->input('subject_id') ?: null) : $folder['subject_id'];
+        $subjectIds = array_values(array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? []))));
+        $hasSubjectInput = isset($_POST['subject_ids']);
 
         $allowedRoles = $folder['allowed_roles'];
         if ($visibility === 'role') {
@@ -683,11 +717,23 @@ class FileManagerController extends BaseController
             'name' => $name,
             'slug' => $this->sanitiseSlug($name),
             'description' => $description,
-            'subject_id' => $subjectId,
             'visibility' => $visibility,
             'allowed_roles' => $allowedRoles,
             'updated_at' => date('Y-m-d H:i:s'),
         ], 'id = ?', [$id]);
+
+        // Sync subject associations if form included the field
+        if ($hasSubjectInput) {
+            $this->db->query('DELETE FROM subject_content WHERE item_type = ? AND item_id = ?', ['folder', (int) $id]);
+            foreach ($subjectIds as $sid) {
+                try {
+                    $this->db->query(
+                        'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                        [$sid, 'folder', (int) $id]
+                    );
+                } catch (\Throwable) {}
+            }
+        }
 
         Auth::flash('success', 'Folder updated.');
         $this->redirect('/drivespace?folder=' . $id);
@@ -735,12 +781,15 @@ class FileManagerController extends BaseController
     public function folderInfo(int $id): void
     {
         $folder = $this->db->fetch(
-            'SELECT f.*, u.display_name as owner_name, s.title as subject_title,
+            'SELECT f.*, u.display_name as owner_name,
+                    (SELECT GROUP_CONCAT(s2.title ORDER BY s2.title SEPARATOR \', \')
+                     FROM subject_content sc2
+                     INNER JOIN subjects s2 ON s2.id = sc2.subject_id
+                     WHERE sc2.item_type = \'folder\' AND sc2.item_id = f.id) AS subject_title,
                     (SELECT COUNT(*) FROM files   WHERE folder_id = f.id) as file_count,
                     (SELECT COUNT(*) FROM folders WHERE parent_id = f.id) as subfolder_count
              FROM folders f
              LEFT JOIN users u    ON f.owner_id   = u.id
-             LEFT JOIN subjects s ON f.subject_id = s.id
              WHERE f.id = ?',
             [$id]
         );
@@ -776,12 +825,15 @@ class FileManagerController extends BaseController
     public function fileInfo(int $id): void
     {
         $file = $this->db->fetch(
-            "SELECT f.*, u.display_name as owner_name, s.title as subject_title,
+            "SELECT f.*, u.display_name as owner_name,
+                    (SELECT GROUP_CONCAT(s2.title ORDER BY s2.title SEPARATOR ', ')
+                     FROM subject_content sc2
+                     INNER JOIN subjects s2 ON s2.id = sc2.subject_id
+                     WHERE sc2.item_type = 'file' AND sc2.item_id = f.id) AS subject_title,
                     fo.name as folder_name,
                     (SELECT COUNT(*) FROM file_versions WHERE file_id = f.id) as version_count
              FROM files f
              LEFT JOIN users u    ON f.owner_id   = u.id
-             LEFT JOIN subjects s ON f.subject_id = s.id
              LEFT JOIN folders fo ON f.folder_id  = fo.id
              WHERE f.id = ?",
             [$id]

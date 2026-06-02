@@ -130,14 +130,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="subject_id">Subject</label>
-                    <select id="subject_id" name="subject_id" class="form-input">
-                        <option value="">— None —</option>
-                        <?php foreach ($subjects ?? [] as $subject): ?>
-                            <option value="<?= (int) $subject['id'] ?>" <?= (int) ($event['subject_id'] ?? 0) === (int) $subject['id'] ? 'selected' : '' ?>><?= e($subject['title']) ?></option>
+                    <label>Subjects</label>
+                    <select id="subject_ids" name="subject_ids[]" class="form-input" multiple size="5">
+                        <?php
+                        $currentEventSubjectIds = array_map('intval', $eventSubjectIds ?? []);
+                        foreach ($subjects ?? [] as $subject):
+                            $sel = in_array((int) $subject['id'], $currentEventSubjectIds) ? 'selected' : '';
+                        ?>
+                            <option value="<?= (int) $subject['id'] ?>" <?= $sel ?>><?= e($subject['title']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="help-text">Used to link this event to its discussion thread and other subject-owned content.</small>
+                    <small class="help-text">Hold Ctrl / Cmd to select multiple. Used to link this event to its discussion thread and other subject-owned content.</small>
                 </div>
             </div>
         </div>

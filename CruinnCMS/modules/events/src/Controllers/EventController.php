@@ -664,12 +664,11 @@ class EventController extends BaseController
 
         $dateStartRaw = $this->input('date_start');
         $dateEndRaw   = $this->input('date_end') ?: null;
-        $subjectId = $this->normaliseSubjectId($this->input('subject_id'));
+        $subjectIds = array_values(array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? []))));
 
         $id = $this->db->insert('events', [
             'title'             => $this->input('title'),
             'slug'              => $slug,
-            'subject_id'        => $subjectId,
             'event_type'        => $this->input('event_type'),
             'description'       => $this->input('description') ?: null,
             'date_start'        => $dateStartRaw,
@@ -697,12 +696,22 @@ class EventController extends BaseController
         if ($this->input('status', 'draft') === 'published') {
             $this->provisionForumThreadForEvent(
                 (int) $id,
-                (int) $subjectId,
+                (int) ($subjectIds[0] ?? 0),
                 (string) $this->input('title'),
                 $slug,
                 (string) ($this->input('description') ?: ''),
                 (int) Auth::userId()
             );
+        }
+
+        // Sync subject associations
+        foreach ($subjectIds as $sid) {
+            try {
+                $this->db->query(
+                    'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                    [$sid, 'event', (int) $id]
+                );
+            } catch (\Throwable) {}
         }
 
         $this->logActivity('create', 'event', (int) $id, $this->input('title'));
@@ -725,13 +734,18 @@ class EventController extends BaseController
 
         $articles = $this->fetchPublishedArticles();
         $subjects = $this->fetchSubjects();
+        $eventSubjectIds = array_column(
+            $this->db->fetchAll('SELECT subject_id FROM subject_content WHERE item_type = ? AND item_id = ?', ['event', (int) $id]),
+            'subject_id'
+        );
         $this->renderAdmin('admin/events/edit', [
-            'title'       => 'Edit: ' . $event['title'],
-            'event'       => $event,
-            'articles'    => $articles,
-            'subjects'    => $subjects,
-            'eventBasePath' => $this->adminEventBasePath(),
-            'breadcrumbs' => [['Admin', '/admin'], ['Events', '/admin/events'], [$event['title']]],
+            'title'          => 'Edit: ' . $event['title'],
+            'event'          => $event,
+            'articles'       => $articles,
+            'subjects'       => $subjects,
+            'eventSubjectIds'=> $eventSubjectIds,
+            'eventBasePath'  => $this->adminEventBasePath(),
+            'breadcrumbs'    => [['Admin', '/admin'], ['Events', '/admin/events'], [$event['title']]],
         ]);
     }
 
@@ -767,12 +781,11 @@ class EventController extends BaseController
 
         $dateStartRaw = $this->input('date_start');
         $dateEndRaw   = $this->input('date_end') ?: null;
-        $subjectId = $this->normaliseSubjectId($this->input('subject_id'));
+        $subjectIds = array_values(array_filter(array_map('intval', (array) ($_POST['subject_ids'] ?? []))));
 
         $this->db->update('events', [
             'title'             => $this->input('title'),
             'slug'              => $slug,
-            'subject_id'        => $subjectId,
             'event_type'        => $this->input('event_type'),
             'description'       => $this->input('description') ?: null,
             'date_start'        => $dateStartRaw,
@@ -798,12 +811,23 @@ class EventController extends BaseController
         if ($this->input('status', 'draft') === 'published') {
             $this->provisionForumThreadForEvent(
                 (int) $id,
-                (int) $subjectId,
+                (int) ($subjectIds[0] ?? 0),
                 (string) $this->input('title'),
                 $slug,
                 (string) ($this->input('description') ?: ''),
                 (int) ($event['created_by'] ?? Auth::userId())
             );
+        }
+
+        // Sync subject associations — replace all existing for this event
+        $this->db->query('DELETE FROM subject_content WHERE item_type = ? AND item_id = ?', ['event', (int) $id]);
+        foreach ($subjectIds as $sid) {
+            try {
+                $this->db->query(
+                    'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                    [$sid, 'event', (int) $id]
+                );
+            } catch (\Throwable) {}
         }
 
         $this->logActivity('update', 'event', (int) $id, $this->input('title'));
@@ -1139,12 +1163,6 @@ class EventController extends BaseController
         } catch (\Throwable $e) {
             return [];
         }
-    }
-
-    private function normaliseSubjectId(mixed $value): ?int
-    {
-        $subjectId = (int) $value;
-        return $subjectId > 0 ? $subjectId : null;
     }
 
     private function canRegister(array $event, ?int $spotsRemaining): bool

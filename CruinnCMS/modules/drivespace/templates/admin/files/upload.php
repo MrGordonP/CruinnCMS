@@ -62,13 +62,13 @@
             </div>
 
             <div class="form-group">
-                <label for="subject_id">Subject</label>
-                <select id="subject_id" name="subject_id">
-                    <option value="">— None —</option>
+                <label>Subjects</label>
+                <select id="subject_ids" name="subject_ids[]" multiple size="4">
                     <?php foreach ($subjects as $s): ?>
                         <option value="<?= (int)$s['id'] ?>"><?= e($s['title']) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <small>Hold Ctrl / Cmd to select multiple.</small>
             </div>
         </div>
 

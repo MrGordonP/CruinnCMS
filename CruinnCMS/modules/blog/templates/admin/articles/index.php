@@ -56,7 +56,7 @@
                         <span class="badge badge-info" title="Has featured image">📷</span>
                     <?php endif; ?>
                 </td>
-                <td><?= e($article['subject_title'] ?? '—') ?></td>
+                <td><?= e($article['subject_titles'] ?? '—') ?></td>
                 <td><?= e($article['author_name'] ?? '—') ?></td>
                 <td>
                     <?php

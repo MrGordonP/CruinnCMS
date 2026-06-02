@@ -338,9 +338,8 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
             </div>
 
             <div class="form-group">
-                <label for="folder-subject">Subject</label>
-                <select id="folder-subject" name="subject_id">
-                    <option value="">— None —</option>
+                <label for="folder-subject">Subjects</label>
+                <select id="folder-subject" name="subject_ids[]" multiple size="4">
                     <?php foreach ($subjects as $s): ?>
                         <option value="<?= (int)$s['id'] ?>"><?= e($s['title']) ?></option>
                     <?php endforeach; ?>
@@ -401,12 +400,12 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
             </div>
 
             <div class="form-group">
-                <label for="edit-folder-subject">Subject</label>
-                <select id="edit-folder-subject" name="subject_id">
-                    <option value="">— None —</option>
-                    <?php foreach ($subjects as $s): ?>
-                        <option value="<?= (int)$s['id'] ?>"
-                                <?= ($currentFolder['subject_id'] ?? '') == $s['id'] ? 'selected' : '' ?>>
+                <label for="edit-folder-subject">Subjects</label>
+                <select id="edit-folder-subject" name="subject_ids[]" multiple size="4">
+                    <?php foreach ($subjects as $s):
+                        $sel = in_array((int)$s['id'], array_map('intval', $currentFolderSubjectIds ?? [])) ? 'selected' : '';
+                    ?>
+                        <option value="<?= (int)$s['id'] ?>" <?= $sel ?>>
                             <?= e($s['title']) ?>
                         </option>
                     <?php endforeach; ?>

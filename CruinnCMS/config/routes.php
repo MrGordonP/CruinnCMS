@@ -193,8 +193,7 @@ return function (Cruinn\Router $router) {
     // Admin � Subjects
     $router->get('/admin/subjects',              [SubjectController::class, 'adminList']);
     $router->get('/admin/subjects/new',          [SubjectController::class, 'adminNew']);
-    $router->post('/admin/subjects',             [SubjectController::class, 'adminCreate']);
-    $router->get('/admin/subjects/{id}/edit',    [SubjectController::class, 'adminEdit']);
+    $router->post('/admin/subjects',             [SubjectController::class, 'adminCreate']);    $router->get('/admin/subjects/{id}',         [SubjectController::class, 'adminView']);    $router->get('/admin/subjects/{id}/edit',    [SubjectController::class, 'adminEdit']);
     $router->post('/admin/subjects/{id}',        [SubjectController::class, 'adminUpdate']);
     $router->post('/admin/subjects/{id}/delete', [SubjectController::class, 'adminDelete']);
 

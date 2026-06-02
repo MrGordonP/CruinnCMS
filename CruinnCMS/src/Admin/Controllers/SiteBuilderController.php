@@ -1724,25 +1724,12 @@ class SiteBuilderController extends BaseController
             $this->redirect('/admin/site-builder/dashboards');
         }
 
-        // Create a new page with canvas_type='widget-dashboard' where available.
-        try {
-            $pageId = $this->db->insert('pages_index', [
-                'title'       => $title,
-                'slug'        => $this->generateUniqueSlug($title),
-                'canvas_type' => 'widget-dashboard',
-                'created_by'  => Auth::userId(),
-            ]);
-        } catch (\Throwable $e) {
-            // Pre-canvas_type fallback uses slug convention for later discovery.
-            $pageId = $this->db->insert('pages_index', [
-                'title'       => $title,
-                'slug'        => $this->generateUniqueSlug('_dashboard_' . $title),
-                'status'      => 'published',
-                'template'    => 'none',
-                'editor_mode' => 'freeform',
-                'created_by'  => Auth::userId(),
-            ]);
-        }
+        $pageId = $this->db->insert('pages_index', [
+            'title'       => $title,
+            'slug'        => $this->generateUniqueSlug($title),
+            'canvas_type' => 'widget-dashboard',
+            'created_by'  => Auth::userId(),
+        ]);
 
         Auth::flash('success', "Dashboard \"{$title}\" created.");
         $this->redirect("/admin/editor/{$pageId}/edit");
