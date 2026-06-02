@@ -603,22 +603,32 @@ class ModuleRegistry
             }
 
             // For modules that do not expose their own dashboard widgets yet,
-            // provide one virtual summary card so each module still has a
-            // data-oriented card option beyond link tiles.
+            // provide virtual summary cards so each module still has
+            // data-oriented card options beyond link tiles.
             $hasCustomWidgets = !empty((array) ($def['widget_providers'] ?? []))
                 || is_callable($def['widgets'] ?? null);
             if (!$hasCustomWidgets) {
-                $summaryDef = self::virtualModuleSummaryDefinition($slug);
-                if ($summaryDef !== null) {
-                    $summaryKey = $slug . ':summary-overview';
-                    if (!isset($seen[$summaryKey])) {
-                        $seen[$summaryKey] = true;
-                        $map[$summaryKey] = array_merge([
-                            'type' => 'module-summary',
-                            'module' => $slug,
-                            'title' => trim((string) ($def['name'] ?? $slug)) . ' Summary',
-                        ], $summaryDef);
+                foreach (self::virtualModuleSummaryDefinitions($slug) as $summaryDef) {
+                    if (!is_array($summaryDef)) {
+                        continue;
                     }
+
+                    $summarySlug = trim((string) ($summaryDef['slug'] ?? 'overview'));
+                    if ($summarySlug === '') {
+                        $summarySlug = 'overview';
+                    }
+
+                    $summaryKey = $slug . ':' . self::normaliseWidgetKeyPart('summary-' . $summarySlug);
+                    if (isset($seen[$summaryKey])) {
+                        continue;
+                    }
+
+                    $seen[$summaryKey] = true;
+                    $map[$summaryKey] = array_merge([
+                        'type' => 'module-summary',
+                        'module' => $slug,
+                        'title' => trim((string) ($def['name'] ?? $slug)) . ' Summary',
+                    ], $summaryDef);
                 }
             }
         }
@@ -626,80 +636,219 @@ class ModuleRegistry
         return $map;
     }
 
-    private static function virtualModuleSummaryDefinition(string $slug): ?array
+    private static function virtualModuleSummaryDefinitions(string $slug): array
     {
         $defs = [
             'documents' => [
-                'title' => 'Documents Summary',
-                'primary_url' => '/admin/documents',
-                'stats' => [
-                    ['label' => 'Documents', 'sql' => 'SELECT COUNT(*) FROM documents'],
-                    ['label' => 'Versions', 'sql' => 'SELECT COUNT(*) FROM document_versions'],
-                    ['label' => 'Categories', 'sql' => 'SELECT COUNT(*) FROM document_categories'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'Documents Summary',
+                    'primary_url' => '/admin/documents',
+                    'stats' => [
+                        ['label' => 'Documents', 'sql' => 'SELECT COUNT(*) FROM documents'],
+                        ['label' => 'Versions', 'sql' => 'SELECT COUNT(*) FROM document_versions'],
+                        ['label' => 'Categories', 'sql' => 'SELECT COUNT(*) FROM document_categories'],
+                    ],
+                ],
+                [
+                    'slug' => 'visibility',
+                    'title' => 'Documents Visibility',
+                    'primary_url' => '/admin/documents',
+                    'stats' => [
+                        ['label' => 'Public', 'sql' => 'SELECT COUNT(*) FROM documents WHERE is_public = 1'],
+                        ['label' => 'Private', 'sql' => 'SELECT COUNT(*) FROM documents WHERE is_public = 0'],
+                        ['label' => 'Stored (MB)', 'sql' => 'SELECT ROUND(IFNULL(SUM(file_size), 0) / 1048576) FROM documents'],
+                    ],
                 ],
             ],
             'drivespace' => [
-                'title' => 'Drivespace Summary',
-                'primary_url' => '/admin/drivespace',
-                'stats' => [
-                    ['label' => 'Folders', 'sql' => 'SELECT COUNT(*) FROM folders'],
-                    ['label' => 'Files', 'sql' => 'SELECT COUNT(*) FROM files'],
-                    ['label' => 'Publications', 'sql' => 'SELECT COUNT(*) FROM file_publications'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'Drivespace Summary',
+                    'primary_url' => '/admin/drivespace',
+                    'stats' => [
+                        ['label' => 'Folders', 'sql' => 'SELECT COUNT(*) FROM folders'],
+                        ['label' => 'Files', 'sql' => 'SELECT COUNT(*) FROM files'],
+                        ['label' => 'Publications', 'sql' => 'SELECT COUNT(*) FROM file_publications'],
+                    ],
+                ],
+                [
+                    'slug' => 'workflow',
+                    'title' => 'Drivespace Workflow',
+                    'primary_url' => '/admin/drivespace',
+                    'stats' => [
+                        ['label' => 'Draft', 'sql' => "SELECT COUNT(*) FROM files WHERE status = 'draft'"],
+                        ['label' => 'Pending Review', 'sql' => "SELECT COUNT(*) FROM files WHERE status = 'pending_review'"],
+                        ['label' => 'Published', 'sql' => "SELECT COUNT(*) FROM files WHERE status = 'published'"],
+                    ],
                 ],
             ],
             'gdpr' => [
-                'title' => 'GDPR Summary',
-                'primary_url' => '/admin/gdpr',
-                'stats' => [
-                    ['label' => 'Consents', 'sql' => 'SELECT COUNT(*) FROM gdpr_consents'],
-                    ['label' => 'Data Requests', 'sql' => 'SELECT COUNT(*) FROM gdpr_data_requests'],
-                    ['label' => 'Deleted Accounts', 'sql' => 'SELECT COUNT(*) FROM deleted_accounts'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'GDPR Summary',
+                    'primary_url' => '/admin/gdpr',
+                    'stats' => [
+                        ['label' => 'Consents', 'sql' => 'SELECT COUNT(*) FROM gdpr_consents'],
+                        ['label' => 'Data Requests', 'sql' => 'SELECT COUNT(*) FROM gdpr_data_requests'],
+                        ['label' => 'Deleted Accounts', 'sql' => 'SELECT COUNT(*) FROM deleted_accounts'],
+                    ],
+                ],
+                [
+                    'slug' => 'requests',
+                    'title' => 'GDPR Request Pipeline',
+                    'primary_url' => '/admin/gdpr',
+                    'stats' => [
+                        ['label' => 'Pending', 'sql' => "SELECT COUNT(*) FROM gdpr_data_requests WHERE status = 'pending'"],
+                        ['label' => 'Processing', 'sql' => "SELECT COUNT(*) FROM gdpr_data_requests WHERE status = 'processing'"],
+                        ['label' => 'Completed', 'sql' => "SELECT COUNT(*) FROM gdpr_data_requests WHERE status = 'completed'"],
+                    ],
                 ],
             ],
             'membership' => [
-                'title' => 'Membership Summary',
-                'primary_url' => '/admin/membership',
-                'stats' => [
-                    ['label' => 'Members', 'sql' => 'SELECT COUNT(*) FROM members'],
-                    ['label' => 'Subscriptions', 'sql' => 'SELECT COUNT(*) FROM membership_subscriptions'],
-                    ['label' => 'Payments', 'sql' => 'SELECT COUNT(*) FROM membership_payments'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'Membership Summary',
+                    'primary_url' => '/admin/membership',
+                    'stats' => [
+                        ['label' => 'Members', 'sql' => 'SELECT COUNT(*) FROM members'],
+                        ['label' => 'Subscriptions', 'sql' => 'SELECT COUNT(*) FROM membership_subscriptions'],
+                        ['label' => 'Payments', 'sql' => 'SELECT COUNT(*) FROM membership_payments'],
+                    ],
+                ],
+                [
+                    'slug' => 'member-status',
+                    'title' => 'Member Status',
+                    'primary_url' => '/admin/membership',
+                    'stats' => [
+                        ['label' => 'Applicants', 'sql' => "SELECT COUNT(*) FROM members WHERE status = 'applicant'"],
+                        ['label' => 'Active', 'sql' => "SELECT COUNT(*) FROM members WHERE status = 'active'"],
+                        ['label' => 'Lapsed', 'sql' => "SELECT COUNT(*) FROM members WHERE status = 'lapsed'"],
+                    ],
+                ],
+                [
+                    'slug' => 'subscription-status',
+                    'title' => 'Subscription Status',
+                    'primary_url' => '/admin/membership',
+                    'stats' => [
+                        ['label' => 'Pending', 'sql' => "SELECT COUNT(*) FROM membership_subscriptions WHERE status = 'pending'"],
+                        ['label' => 'Paid', 'sql' => "SELECT COUNT(*) FROM membership_subscriptions WHERE status = 'paid'"],
+                        ['label' => 'Overdue', 'sql' => "SELECT COUNT(*) FROM membership_subscriptions WHERE status = 'overdue'"],
+                    ],
                 ],
             ],
             'oauth' => [
-                'title' => 'OAuth Summary',
-                'primary_url' => '/admin/oauth',
-                'stats' => [
-                    ['label' => 'Linked Accounts', 'sql' => 'SELECT COUNT(*) FROM user_oauth_accounts'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'OAuth Summary',
+                    'primary_url' => '/admin/settings/oauth',
+                    'stats' => [
+                        ['label' => 'Linked Accounts', 'sql' => 'SELECT COUNT(*) FROM user_oauth_accounts'],
+                        ['label' => 'Google', 'sql' => "SELECT COUNT(*) FROM user_oauth_accounts WHERE provider = 'google'"],
+                        ['label' => 'Facebook', 'sql' => "SELECT COUNT(*) FROM user_oauth_accounts WHERE provider = 'facebook'"],
+                    ],
+                ],
+                [
+                    'slug' => 'token-health',
+                    'title' => 'OAuth Token Health',
+                    'primary_url' => '/admin/settings/oauth',
+                    'stats' => [
+                        ['label' => 'Expiring < 7d', 'sql' => 'SELECT COUNT(*) FROM user_oauth_accounts WHERE token_expires IS NOT NULL AND token_expires <= DATE_ADD(NOW(), INTERVAL 7 DAY)'],
+                        ['label' => 'Expired', 'sql' => 'SELECT COUNT(*) FROM user_oauth_accounts WHERE token_expires IS NOT NULL AND token_expires < NOW()'],
+                        ['label' => 'No Expiry', 'sql' => 'SELECT COUNT(*) FROM user_oauth_accounts WHERE token_expires IS NULL'],
+                    ],
                 ],
             ],
             'organisation' => [
-                'title' => 'Organisation Summary',
-                'primary_url' => '/admin/organisation',
-                'stats' => [
-                    ['label' => 'Groups', 'sql' => 'SELECT COUNT(*) FROM groups'],
-                    ['label' => 'Meetings', 'sql' => 'SELECT COUNT(*) FROM organisation_meetings'],
-                    ['label' => 'Officers', 'sql' => 'SELECT COUNT(*) FROM organisation_officers'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'Organisation Summary',
+                    'primary_url' => '/admin/organisation',
+                    'stats' => [
+                        ['label' => 'Groups', 'sql' => 'SELECT COUNT(*) FROM groups'],
+                        ['label' => 'Meetings', 'sql' => 'SELECT COUNT(*) FROM organisation_meetings'],
+                        ['label' => 'Officers', 'sql' => 'SELECT COUNT(*) FROM organisation_officers'],
+                    ],
+                ],
+                [
+                    'slug' => 'meetings',
+                    'title' => 'Meeting Status',
+                    'primary_url' => '/admin/organisation/meetings',
+                    'stats' => [
+                        ['label' => 'Scheduled', 'sql' => "SELECT COUNT(*) FROM organisation_meetings WHERE status = 'scheduled'"],
+                        ['label' => 'Completed', 'sql' => "SELECT COUNT(*) FROM organisation_meetings WHERE status = 'completed'"],
+                        ['label' => 'Cancelled', 'sql' => "SELECT COUNT(*) FROM organisation_meetings WHERE status = 'cancelled'"],
+                    ],
+                ],
+                [
+                    'slug' => 'discussions',
+                    'title' => 'Discussions Activity',
+                    'primary_url' => '/organisation/discussions',
+                    'stats' => [
+                        ['label' => 'Discussions', 'sql' => 'SELECT COUNT(*) FROM discussions'],
+                        ['label' => 'Posts', 'sql' => 'SELECT COUNT(*) FROM discussion_posts'],
+                        ['label' => 'Locked', 'sql' => 'SELECT COUNT(*) FROM discussions WHERE locked = 1'],
+                    ],
                 ],
             ],
             'payments' => [
-                'title' => 'Payments Summary',
-                'primary_url' => '/admin/payments',
-                'stats' => [
-                    ['label' => 'Transactions', 'sql' => 'SELECT COUNT(*) FROM payment_transactions'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'Payments Summary',
+                    'primary_url' => '/admin/modules',
+                    'stats' => [
+                        ['label' => 'Transactions', 'sql' => 'SELECT COUNT(*) FROM payment_transactions'],
+                        ['label' => 'Completed', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'completed'"],
+                        ['label' => 'Pending', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'pending'"],
+                    ],
+                ],
+                [
+                    'slug' => 'exceptions',
+                    'title' => 'Payment Exceptions',
+                    'primary_url' => '/admin/modules',
+                    'stats' => [
+                        ['label' => 'Failed', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'failed'"],
+                        ['label' => 'Refunded', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'refunded'"],
+                        ['label' => 'Unverified', 'sql' => 'SELECT COUNT(*) FROM payment_transactions WHERE verified_at IS NULL'],
+                    ],
                 ],
             ],
             'social' => [
-                'title' => 'Social Summary',
-                'primary_url' => '/admin/social',
-                'stats' => [
-                    ['label' => 'Accounts', 'sql' => 'SELECT COUNT(*) FROM social_accounts'],
-                    ['label' => 'Posts', 'sql' => 'SELECT COUNT(*) FROM social_posts'],
-                    ['label' => 'Inbox', 'sql' => 'SELECT COUNT(*) FROM social_inbox'],
+                [
+                    'slug' => 'overview',
+                    'title' => 'Social Summary',
+                    'primary_url' => '/admin/social',
+                    'stats' => [
+                        ['label' => 'Accounts', 'sql' => 'SELECT COUNT(*) FROM social_accounts'],
+                        ['label' => 'Posts', 'sql' => 'SELECT COUNT(*) FROM social_posts'],
+                        ['label' => 'Inbox', 'sql' => 'SELECT COUNT(*) FROM social_inbox'],
+                    ],
+                ],
+                [
+                    'slug' => 'posting',
+                    'title' => 'Social Posting Status',
+                    'primary_url' => '/admin/social',
+                    'stats' => [
+                        ['label' => 'Draft', 'sql' => "SELECT COUNT(*) FROM social_posts WHERE status = 'draft'"],
+                        ['label' => 'Scheduled', 'sql' => "SELECT COUNT(*) FROM social_posts WHERE status = 'scheduled'"],
+                        ['label' => 'Failed', 'sql' => "SELECT COUNT(*) FROM social_posts WHERE status = 'failed'"],
+                    ],
+                ],
+                [
+                    'slug' => 'inbox',
+                    'title' => 'Social Inbox Queue',
+                    'primary_url' => '/admin/social',
+                    'stats' => [
+                        ['label' => 'Unread', 'sql' => 'SELECT COUNT(*) FROM social_inbox WHERE is_read = 0'],
+                        ['label' => 'Starred', 'sql' => 'SELECT COUNT(*) FROM social_inbox WHERE is_starred = 1'],
+                        ['label' => 'Replied', 'sql' => 'SELECT COUNT(*) FROM social_inbox WHERE replied = 1'],
+                    ],
                 ],
             ],
         ];
 
-        return $defs[$slug] ?? null;
+        $moduleDefs = $defs[$slug] ?? [];
+        return is_array($moduleDefs) ? $moduleDefs : [];
     }
 
     private static function renderVirtualWidget(array $def, array $settings, array $userContext): string
