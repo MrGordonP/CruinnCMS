@@ -3,8 +3,11 @@ $forumBasePath = trim((string) ($forumBasePath ?? ''));
 $status = (string)($filters['status'] ?? 'all');
 $categoryTree = is_array($categoryTree ?? null) ? $categoryTree : [];
 $categoryOptions = is_array($categoryOptions ?? null) ? $categoryOptions : [];
+$hasActiveFilter = trim((string) ($filters['q'] ?? '')) !== ''
+    || (int) ($filters['category_id'] ?? 0) > 0
+    || $status !== 'all';
 
-$renderSection = function (array $section, int $depth = 0) use (&$renderSection, $forumBasePath, $categoryOptions): string {
+$renderSection = function (array $section, int $depth = 0) use (&$renderSection, $forumBasePath, $categoryOptions, $hasActiveFilter): string {
     $children = is_array($section['children'] ?? null) ? $section['children'] : [];
     $threads = is_array($section['threads'] ?? null) ? $section['threads'] : [];
     $sectionId = (int) ($section['id'] ?? 0);
@@ -15,8 +18,8 @@ $renderSection = function (array $section, int $depth = 0) use (&$renderSection,
 
     ob_start();
     ?>
-    <div class="forum-category-section" style="margin-top: var(--space-md); margin-left: <?= $depthIndent ?>rem;">
-        <div class="forum-category-header">
+    <details class="forum-category-section" style="margin-top: var(--space-md); margin-left: <?= $depthIndent ?>rem;"<?= $hasActiveFilter ? ' open' : '' ?>>
+        <summary class="forum-category-header" style="cursor:pointer;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap;">
                 <div>
                     <h3 style="margin:0 0 .2rem 0;font-size:1rem;">
@@ -41,7 +44,7 @@ $renderSection = function (array $section, int $depth = 0) use (&$renderSection,
                     <span class="forum-stat-item"><strong><?= (int) ($section['post_count'] ?? 0) ?></strong> Posts</span>
                 </div>
             </div>
-        </div>
+        </summary>
 
         <div class="forum-category-forums" style="padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--color-border);">
             <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-bottom:var(--space-sm);">
@@ -227,7 +230,7 @@ $renderSection = function (array $section, int $depth = 0) use (&$renderSection,
                 <?= $renderSection($child, $depth + 1) ?>
             <?php endforeach; ?>
         </div>
-    </div>
+    </details>
     <?php
 
     return (string) ob_get_clean();

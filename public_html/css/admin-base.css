@@ -649,7 +649,7 @@ html.admin-sidebar-collapsed .admin-sidebar {
 
 .admin-table th,
 .admin-table td {
-    padding: var(--space-sm) var(--space-md);
+    padding: 0.35rem 0.55rem;
     text-align: left;
     border-bottom: 1px solid var(--color-border);
     font-size: 0.9rem;
@@ -669,6 +669,25 @@ html.admin-sidebar-collapsed .admin-sidebar {
     padding: 2px 6px;
     border-radius: 3px;
     font-size: 0.8rem;
+}
+
+.actions-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    white-space: nowrap;
+}
+
+.actions-cell .inline-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.actions-cell .btn {
+    padding: 0.15rem 0.45rem;
+    font-size: 0.75rem;
+    line-height: 1.25;
 }
 
 /* ── Page Header ────────────────────────────────────────────── */
