@@ -601,9 +601,105 @@ class ModuleRegistry
                     'icon' => (string) ($section['icon'] ?? '🔗'),
                 ];
             }
+
+            // For modules that do not expose their own dashboard widgets yet,
+            // provide one virtual summary card so each module still has a
+            // data-oriented card option beyond link tiles.
+            $hasCustomWidgets = !empty((array) ($def['widget_providers'] ?? []))
+                || is_callable($def['widgets'] ?? null);
+            if (!$hasCustomWidgets) {
+                $summaryDef = self::virtualModuleSummaryDefinition($slug);
+                if ($summaryDef !== null) {
+                    $summaryKey = $slug . ':summary-overview';
+                    if (!isset($seen[$summaryKey])) {
+                        $seen[$summaryKey] = true;
+                        $map[$summaryKey] = array_merge([
+                            'type' => 'module-summary',
+                            'module' => $slug,
+                            'title' => trim((string) ($def['name'] ?? $slug)) . ' Summary',
+                        ], $summaryDef);
+                    }
+                }
+            }
         }
 
         return $map;
+    }
+
+    private static function virtualModuleSummaryDefinition(string $slug): ?array
+    {
+        $defs = [
+            'documents' => [
+                'title' => 'Documents Summary',
+                'primary_url' => '/admin/documents',
+                'stats' => [
+                    ['label' => 'Documents', 'sql' => 'SELECT COUNT(*) FROM documents'],
+                    ['label' => 'Versions', 'sql' => 'SELECT COUNT(*) FROM document_versions'],
+                    ['label' => 'Categories', 'sql' => 'SELECT COUNT(*) FROM document_categories'],
+                ],
+            ],
+            'drivespace' => [
+                'title' => 'Drivespace Summary',
+                'primary_url' => '/admin/drivespace',
+                'stats' => [
+                    ['label' => 'Folders', 'sql' => 'SELECT COUNT(*) FROM folders'],
+                    ['label' => 'Files', 'sql' => 'SELECT COUNT(*) FROM files'],
+                    ['label' => 'Publications', 'sql' => 'SELECT COUNT(*) FROM file_publications'],
+                ],
+            ],
+            'gdpr' => [
+                'title' => 'GDPR Summary',
+                'primary_url' => '/admin/gdpr',
+                'stats' => [
+                    ['label' => 'Consents', 'sql' => 'SELECT COUNT(*) FROM gdpr_consents'],
+                    ['label' => 'Data Requests', 'sql' => 'SELECT COUNT(*) FROM gdpr_data_requests'],
+                    ['label' => 'Deleted Accounts', 'sql' => 'SELECT COUNT(*) FROM deleted_accounts'],
+                ],
+            ],
+            'membership' => [
+                'title' => 'Membership Summary',
+                'primary_url' => '/admin/membership',
+                'stats' => [
+                    ['label' => 'Members', 'sql' => 'SELECT COUNT(*) FROM members'],
+                    ['label' => 'Subscriptions', 'sql' => 'SELECT COUNT(*) FROM membership_subscriptions'],
+                    ['label' => 'Payments', 'sql' => 'SELECT COUNT(*) FROM membership_payments'],
+                ],
+            ],
+            'oauth' => [
+                'title' => 'OAuth Summary',
+                'primary_url' => '/admin/oauth',
+                'stats' => [
+                    ['label' => 'Linked Accounts', 'sql' => 'SELECT COUNT(*) FROM user_oauth_accounts'],
+                ],
+            ],
+            'organisation' => [
+                'title' => 'Organisation Summary',
+                'primary_url' => '/admin/organisation',
+                'stats' => [
+                    ['label' => 'Groups', 'sql' => 'SELECT COUNT(*) FROM groups'],
+                    ['label' => 'Meetings', 'sql' => 'SELECT COUNT(*) FROM organisation_meetings'],
+                    ['label' => 'Officers', 'sql' => 'SELECT COUNT(*) FROM organisation_officers'],
+                ],
+            ],
+            'payments' => [
+                'title' => 'Payments Summary',
+                'primary_url' => '/admin/payments',
+                'stats' => [
+                    ['label' => 'Transactions', 'sql' => 'SELECT COUNT(*) FROM payment_transactions'],
+                ],
+            ],
+            'social' => [
+                'title' => 'Social Summary',
+                'primary_url' => '/admin/social',
+                'stats' => [
+                    ['label' => 'Accounts', 'sql' => 'SELECT COUNT(*) FROM social_accounts'],
+                    ['label' => 'Posts', 'sql' => 'SELECT COUNT(*) FROM social_posts'],
+                    ['label' => 'Inbox', 'sql' => 'SELECT COUNT(*) FROM social_inbox'],
+                ],
+            ],
+        ];
+
+        return $defs[$slug] ?? null;
     }
 
     private static function renderVirtualWidget(array $def, array $settings, array $userContext): string
@@ -625,6 +721,61 @@ class ModuleRegistry
                 . '<span>' . $labelEsc . '</span>'
                 . '</a>'
                 . '</div>';
+        }
+
+        if ($type === 'module-summary') {
+            $title = (string) ($settings['title'] ?? $def['title'] ?? 'Module Summary');
+            $primaryUrl = (string) ($settings['primary_url'] ?? $def['primary_url'] ?? '#');
+            $statsDef = is_array($def['stats'] ?? null) ? $def['stats'] : [];
+            $stats = [];
+
+            try {
+                $db = Database::getInstance();
+                foreach ($statsDef as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+                    $label = trim((string) ($item['label'] ?? 'Metric'));
+                    $sql = trim((string) ($item['sql'] ?? ''));
+                    if ($label === '' || $sql === '') {
+                        continue;
+                    }
+
+                    $value = 0;
+                    try {
+                        $value = (int) $db->fetchColumn($sql);
+                    } catch (\Throwable) {
+                        $value = 0;
+                    }
+
+                    $stats[] = ['label' => $label, 'value' => $value];
+                }
+            } catch (\Throwable) {
+                foreach ($statsDef as $item) {
+                    if (!is_array($item)) {
+                        continue;
+                    }
+                    $label = trim((string) ($item['label'] ?? 'Metric'));
+                    if ($label === '') {
+                        continue;
+                    }
+                    $stats[] = ['label' => $label, 'value' => 0];
+                }
+            }
+
+            $titleEsc = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+            $urlEsc = htmlspecialchars($primaryUrl, ENT_QUOTES, 'UTF-8');
+            $html = '<div class="activity-header"><h2>' . $titleEsc . '</h2></div><div class="dash-quick-grid">';
+            foreach ($stats as $stat) {
+                $statLabelEsc = htmlspecialchars((string) ($stat['label'] ?? 'Metric'), ENT_QUOTES, 'UTF-8');
+                $statValue = (int) ($stat['value'] ?? 0);
+                $html .= '<a href="' . $urlEsc . '" class="dash-quick-link">'
+                    . '<strong class="dash-stat-num">' . $statValue . '</strong>'
+                    . '<span>' . $statLabelEsc . '</span>'
+                    . '</a>';
+            }
+            $html .= '</div>';
+            return $html;
         }
 
         return '<p class="cruinn-module-widget-error">Unsupported virtual widget.</p>';
