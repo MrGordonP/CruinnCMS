@@ -198,7 +198,25 @@ include __DIR__ . '/_tabs.php';
                     </div>
                 </div>
             </div>
-            <p class="sb-subtitle" style="margin-top:1rem">Use the + New Template Layout button in the top toolbar to create a new layout.</p>
+            <div class="sb-info-box" id="new-template-layout" style="margin-top:1rem">
+                <h3>Create New Template Layout</h3>
+                <p class="sb-subtitle">Create a standalone template layout page (template shell) and open it directly in the editor.</p>
+                <form method="post" action="<?= url('/admin/templates/layouts/new') ?>">
+                    <?= csrf_field() ?>
+                    <div class="form-group">
+                        <label for="tpl_layout_title">Template Layout Name</label>
+                        <input type="text" id="tpl_layout_title" name="title" required class="form-input" placeholder="e.g. Standard Template Layout">
+                    </div>
+                    <div class="form-group">
+                        <label for="tpl_layout_slug">Template Layout Slug <small>(optional)</small></label>
+                        <input type="text" id="tpl_layout_slug" name="slug" class="form-input" pattern="[a-z0-9_-]+" placeholder="e.g. standard-layout">
+                        <small class="form-help">If blank, one is generated automatically.</small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Create Template Layout</button>
+                    </div>
+                </form>
+            </div>
             <?php else: ?>
             <p class="sb-subtitle">Templates define which zones are available and how page content is arranged.</p>
             <div id="tpl-page-template-detail-mode">
