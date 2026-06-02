@@ -4,7 +4,6 @@ namespace Cruinn\Module\Forum\Controllers;
 
 use Cruinn\Auth;
 use Cruinn\Controllers\BaseController;
-use Cruinn\Module\Forum\Forum\ForumManager;
 
 class ForumAdminController extends BaseController
 {
@@ -56,16 +55,40 @@ class ForumAdminController extends BaseController
         );
 
         $categories = $this->db->fetchAll(
-            'SELECT id, title FROM forum_categories ORDER BY sort_order ASC, title ASC'
+            "SELECT c.*,
+                    (SELECT COUNT(*) FROM forum_threads t WHERE t.category_id = c.id) AS thread_count,
+                    (SELECT COUNT(*) FROM forum_posts p
+                        JOIN forum_threads t2 ON t2.id = p.thread_id
+                        WHERE t2.category_id = c.id) AS post_count,
+                    (SELECT MAX(t3.last_post_at) FROM forum_threads t3 WHERE t3.category_id = c.id) AS last_post_at,
+                    (SELECT t.title FROM forum_threads t WHERE t.category_id = c.id ORDER BY t.last_post_at DESC LIMIT 1) AS last_thread_title,
+                    (SELECT t.id FROM forum_threads t WHERE t.category_id = c.id ORDER BY t.last_post_at DESC LIMIT 1) AS last_thread_id,
+                    (SELECT u.display_name FROM forum_threads t LEFT JOIN users u ON u.id = t.last_post_user_id WHERE t.category_id = c.id ORDER BY t.last_post_at DESC LIMIT 1) AS last_post_user_name
+             FROM forum_categories c
+             ORDER BY c.sort_order ASC, c.title ASC"
         );
 
-        $categoriesHierarchical = ForumManager::provider()->listCategoriesHierarchical(Auth::roleLevel());
+        $threadsByCategory = [];
+        foreach ($threads as $thread) {
+            $cid = (int) ($thread['category_id'] ?? 0);
+            if ($cid < 1) {
+                continue;
+            }
+            if (!isset($threadsByCategory[$cid])) {
+                $threadsByCategory[$cid] = [];
+            }
+            $threadsByCategory[$cid][] = $thread;
+        }
+
+        $categoryTree = $this->buildCategoryTreeWithThreads($categories, $threadsByCategory);
+        $categoryOptions = $this->flattenCategoryOptions($categoryTree);
 
         $this->renderAdmin('admin/forum/index', [
             'title' => 'Forum Moderation',
             'threads' => $threads,
             'categories' => $categories,
-            'categoriesHierarchical' => $categoriesHierarchical,
+            'categoryTree' => $categoryTree,
+            'categoryOptions' => $categoryOptions,
             'forumBasePath' => $forumBasePath,
             'filters' => [
                 'q' => $search,
@@ -74,6 +97,152 @@ class ForumAdminController extends BaseController
             ],
             'breadcrumbs' => [['Admin', '/admin'], ['Forum Moderation']],
         ]);
+    }
+
+    public function createCategory(): void
+    {
+        Auth::requireAdmin();
+
+        $title = trim((string) $this->input('title', ''));
+        $slugInput = trim((string) $this->input('slug', ''));
+        $description = trim((string) $this->input('description', ''));
+        $accessRole = (string) $this->input('access_role', 'public');
+        $sortOrder = max(0, (int) $this->input('sort_order', 0));
+        $parentId = max(0, (int) $this->input('parent_id', 0));
+        $isActive = (int) $this->input('is_active', 0) === 1 ? 1 : 0;
+
+        if ($title === '') {
+            Auth::flash('error', 'Section title is required.');
+            $this->redirect('/admin/forum');
+        }
+
+        $allowedRoles = ['public', 'member', 'council', 'admin'];
+        if (!in_array($accessRole, $allowedRoles, true)) {
+            $accessRole = 'public';
+        }
+
+        if ($parentId > 0) {
+            $parent = $this->db->fetch('SELECT id FROM forum_categories WHERE id = ? LIMIT 1', [$parentId]);
+            if (!$parent) {
+                Auth::flash('error', 'Selected parent section was not found.');
+                $this->redirect('/admin/forum');
+            }
+        }
+
+        $baseSlug = $slugInput !== '' ? $slugInput : $title;
+        $slug = $this->generateUniqueCategorySlug($baseSlug);
+
+        $categoryId = (int) $this->db->insert('forum_categories', [
+            'parent_id' => $parentId > 0 ? $parentId : null,
+            'title' => $title,
+            'slug' => $slug,
+            'description' => $description !== '' ? $description : null,
+            'access_role' => $accessRole,
+            'is_active' => $isActive,
+            'sort_order' => $sortOrder,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->logActivity('create', 'forum_category', $categoryId, 'Created section: ' . $title);
+        Auth::flash('success', 'Forum section created.');
+        $this->redirect('/admin/forum');
+    }
+
+    public function updateCategory(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $categoryId = (int) $id;
+        $category = $this->db->fetch('SELECT id, title FROM forum_categories WHERE id = ? LIMIT 1', [$categoryId]);
+        if (!$category) {
+            Auth::flash('error', 'Section not found.');
+            $this->redirect('/admin/forum');
+        }
+
+        $title = trim((string) $this->input('title', ''));
+        $slugInput = trim((string) $this->input('slug', ''));
+        $description = trim((string) $this->input('description', ''));
+        $accessRole = (string) $this->input('access_role', 'public');
+        $sortOrder = max(0, (int) $this->input('sort_order', 0));
+        $parentId = max(0, (int) $this->input('parent_id', 0));
+        $isActive = (int) $this->input('is_active', 0) === 1 ? 1 : 0;
+
+        if ($title === '') {
+            Auth::flash('error', 'Section title is required.');
+            $this->redirect('/admin/forum');
+        }
+
+        $allowedRoles = ['public', 'member', 'council', 'admin'];
+        if (!in_array($accessRole, $allowedRoles, true)) {
+            $accessRole = 'public';
+        }
+
+        if ($parentId === $categoryId) {
+            Auth::flash('error', 'A section cannot be its own parent.');
+            $this->redirect('/admin/forum');
+        }
+
+        if ($parentId > 0) {
+            $parent = $this->db->fetch('SELECT id FROM forum_categories WHERE id = ? LIMIT 1', [$parentId]);
+            if (!$parent) {
+                Auth::flash('error', 'Selected parent section was not found.');
+                $this->redirect('/admin/forum');
+            }
+
+            if ($this->wouldCreateCategoryCycle($categoryId, $parentId)) {
+                Auth::flash('error', 'Cannot move a section into its own descendant.');
+                $this->redirect('/admin/forum');
+            }
+        }
+
+        $baseSlug = $slugInput !== '' ? $slugInput : $title;
+        $slug = $this->generateUniqueCategorySlug($baseSlug, $categoryId);
+
+        $this->db->update('forum_categories', [
+            'parent_id' => $parentId > 0 ? $parentId : null,
+            'title' => $title,
+            'slug' => $slug,
+            'description' => $description !== '' ? $description : null,
+            'access_role' => $accessRole,
+            'is_active' => $isActive,
+            'sort_order' => $sortOrder,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ], 'id = ?', [$categoryId]);
+
+        $this->logActivity('update', 'forum_category', $categoryId, 'Updated section: ' . $title);
+        Auth::flash('success', 'Forum section updated.');
+        $this->redirect('/admin/forum');
+    }
+
+    public function deleteCategory(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $categoryId = (int) $id;
+        $category = $this->db->fetch('SELECT id, title FROM forum_categories WHERE id = ? LIMIT 1', [$categoryId]);
+        if (!$category) {
+            Auth::flash('error', 'Section not found.');
+            $this->redirect('/admin/forum');
+        }
+
+        $childCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM forum_categories WHERE parent_id = ?', [$categoryId]);
+        if ($childCount > 0) {
+            Auth::flash('error', 'Cannot delete a section that still has sub-forums.');
+            $this->redirect('/admin/forum');
+        }
+
+        $threadCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM forum_threads WHERE category_id = ?', [$categoryId]);
+        if ($threadCount > 0) {
+            Auth::flash('error', 'Cannot delete a section that still has threads. Move or delete those threads first.');
+            $this->redirect('/admin/forum');
+        }
+
+        $this->db->delete('forum_categories', 'id = ?', [$categoryId]);
+
+        $this->logActivity('delete', 'forum_category', $categoryId, 'Deleted section: ' . (string) $category['title']);
+        Auth::flash('success', 'Forum section deleted.');
+        $this->redirect('/admin/forum');
     }
 
     public function bulkModerate(): void
@@ -501,5 +670,116 @@ class ForumAdminController extends BaseController
         }
 
         return rtrim($basePath, '/') . '/thread/' . $threadId;
+    }
+
+    private function buildCategoryTreeWithThreads(array $categories, array $threadsByCategory): array
+    {
+        $map = [];
+
+        foreach ($categories as $category) {
+            $id = (int) ($category['id'] ?? 0);
+            if ($id < 1) {
+                continue;
+            }
+
+            $category['children'] = [];
+            $category['threads'] = $threadsByCategory[$id] ?? [];
+            $map[$id] = $category;
+        }
+
+        $roots = [];
+        foreach ($map as $id => &$category) {
+            $parentId = (int) ($category['parent_id'] ?? 0);
+            if ($parentId > 0 && isset($map[$parentId])) {
+                $map[$parentId]['children'][] = &$category;
+                continue;
+            }
+
+            $roots[] = &$category;
+        }
+        unset($category);
+
+        return $roots;
+    }
+
+    private function flattenCategoryOptions(array $tree, int $depth = 0): array
+    {
+        $options = [];
+
+        foreach ($tree as $node) {
+            $options[] = [
+                'id' => (int) ($node['id'] ?? 0),
+                'title' => (string) ($node['title'] ?? ''),
+                'depth' => $depth,
+                'is_active' => (int) ($node['is_active'] ?? 0),
+            ];
+
+            $children = is_array($node['children'] ?? null) ? $node['children'] : [];
+            if (!empty($children)) {
+                $options = array_merge($options, $this->flattenCategoryOptions($children, $depth + 1));
+            }
+        }
+
+        return $options;
+    }
+
+    private function wouldCreateCategoryCycle(int $categoryId, int $newParentId): bool
+    {
+        $current = $newParentId;
+
+        while ($current > 0) {
+            if ($current === $categoryId) {
+                return true;
+            }
+
+            $parent = $this->db->fetch('SELECT parent_id FROM forum_categories WHERE id = ? LIMIT 1', [$current]);
+            if (!$parent) {
+                break;
+            }
+
+            $current = (int) ($parent['parent_id'] ?? 0);
+        }
+
+        return false;
+    }
+
+    private function generateUniqueCategorySlug(string $source, int $excludeId = 0): string
+    {
+        $base = $this->slugify($source);
+        if ($base === '') {
+            $base = 'forum-section';
+        }
+
+        $slug = $base;
+        $suffix = 2;
+
+        while (true) {
+            if ($excludeId > 0) {
+                $exists = (int) $this->db->fetchColumn(
+                    'SELECT COUNT(*) FROM forum_categories WHERE slug = ? AND id != ?',
+                    [$slug, $excludeId]
+                );
+            } else {
+                $exists = (int) $this->db->fetchColumn(
+                    'SELECT COUNT(*) FROM forum_categories WHERE slug = ?',
+                    [$slug]
+                );
+            }
+
+            if ($exists === 0) {
+                return $slug;
+            }
+
+            $slug = $base . '-' . $suffix;
+            $suffix++;
+        }
+    }
+
+    private function slugify(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9-]/', '-', $value) ?? '';
+        $value = preg_replace('/-+/', '-', $value) ?? '';
+        return trim($value, '-');
     }
 }

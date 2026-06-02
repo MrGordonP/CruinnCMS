@@ -1,171 +1,263 @@
-<?php $forumBasePath = trim((string) ($forumBasePath ?? '')); ?>
+<?php
+$forumBasePath = trim((string) ($forumBasePath ?? ''));
+$status = (string)($filters['status'] ?? 'all');
+$categoryTree = is_array($categoryTree ?? null) ? $categoryTree : [];
+$categoryOptions = is_array($categoryOptions ?? null) ? $categoryOptions : [];
+
+$renderSection = function (array $section, int $depth = 0) use (&$renderSection, $forumBasePath, $categoryOptions): string {
+    $children = is_array($section['children'] ?? null) ? $section['children'] : [];
+    $threads = is_array($section['threads'] ?? null) ? $section['threads'] : [];
+    $sectionId = (int) ($section['id'] ?? 0);
+    $depthIndent = max(0, $depth) * 1.25;
+    $publicSectionUrl = $forumBasePath !== ''
+        ? rtrim($forumBasePath, '/') . '/' . ltrim((string) ($section['slug'] ?? ''), '/')
+        : '';
+
+    ob_start();
+    ?>
+    <div class="forum-category-section" style="margin-top: var(--space-md); margin-left: <?= $depthIndent ?>rem;">
+        <div class="forum-category-header">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap;">
+                <div>
+                    <h3 style="margin:0 0 .2rem 0;font-size:1rem;">
+                        <?php if ($publicSectionUrl !== ''): ?>
+                            <a href="<?= e($publicSectionUrl) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) ($section['title'] ?? 'Untitled Section')) ?></a>
+                        <?php else: ?>
+                            <?= e((string) ($section['title'] ?? 'Untitled Section')) ?>
+                        <?php endif; ?>
+                    </h3>
+                    <?php if (!empty($section['description'])): ?>
+                        <p class="forum-category-desc" style="margin:0;"><?= e((string) $section['description']) ?></p>
+                    <?php endif; ?>
+                    <p class="text-muted" style="margin:.35rem 0 0 0;font-size:.8rem;">
+                        Slug: /<?= e((string) ($section['slug'] ?? '')) ?>
+                        | Access: <?= e((string) ($section['access_role'] ?? 'public')) ?>
+                        | Sort: <?= (int) ($section['sort_order'] ?? 0) ?>
+                        | <?= (int) ($section['is_active'] ?? 1) === 1 ? 'Active' : 'Inactive' ?>
+                    </p>
+                </div>
+                <div class="forum-stats" style="text-align:right;">
+                    <span class="forum-stat-item"><strong><?= (int) ($section['thread_count'] ?? 0) ?></strong> Topics</span>
+                    <span class="forum-stat-item"><strong><?= (int) ($section['post_count'] ?? 0) ?></strong> Posts</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="forum-category-forums" style="padding: var(--space-sm) var(--space-md); border-top: 1px solid var(--color-border);">
+            <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-bottom:var(--space-sm);">
+                <details>
+                    <summary class="btn btn-small btn-outline" style="cursor:pointer;display:inline-block;">Edit Section</summary>
+                    <div class="card" style="margin-top:var(--space-sm);padding:var(--space-md);min-width:min(56rem,92vw);">
+                        <form method="post" action="/admin/forum/category/<?= $sectionId ?>/update">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="is_active" value="0">
+                            <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--space-md);">
+                                <div class="form-group" style="margin:0;">
+                                    <label>Title</label>
+                                    <input type="text" name="title" class="form-input" value="<?= e((string) ($section['title'] ?? '')) ?>" required>
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Slug</label>
+                                    <input type="text" name="slug" class="form-input" value="<?= e((string) ($section['slug'] ?? '')) ?>" pattern="[a-z0-9-]+">
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Sort Order</label>
+                                    <input type="number" name="sort_order" class="form-input" value="<?= (int) ($section['sort_order'] ?? 0) ?>" min="0">
+                                </div>
+                                <div class="form-group" style="margin:0;grid-column:1 / -1;">
+                                    <label>Description</label>
+                                    <input type="text" name="description" class="form-input" value="<?= e((string) ($section['description'] ?? '')) ?>">
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Parent Section</label>
+                                    <select name="parent_id" class="form-input">
+                                        <option value="0">Top level</option>
+                                        <?php foreach ($categoryOptions as $opt): ?>
+                                            <?php if ((int) ($opt['id'] ?? 0) === $sectionId) { continue; } ?>
+                                            <option value="<?= (int) ($opt['id'] ?? 0) ?>" <?= (int) ($section['parent_id'] ?? 0) === (int) ($opt['id'] ?? 0) ? 'selected' : '' ?>>
+                                                <?= e(str_repeat('-- ', (int) ($opt['depth'] ?? 0)) . (string) ($opt['title'] ?? '')) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Access Role</label>
+                                    <select name="access_role" class="form-input">
+                                        <?php foreach (['public', 'member', 'council', 'admin'] as $role): ?>
+                                            <option value="<?= e($role) ?>" <?= (string) ($section['access_role'] ?? 'public') === $role ? 'selected' : '' ?>><?= e($role) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="margin:0;display:flex;align-items:flex-end;">
+                                    <label style="display:flex;align-items:center;gap:.4rem;margin:0;">
+                                        <input type="checkbox" name="is_active" value="1" <?= (int) ($section['is_active'] ?? 1) === 1 ? 'checked' : '' ?>> Active
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-actions" style="margin-top:var(--space-md);display:flex;justify-content:space-between;align-items:center;gap:var(--space-sm);">
+                                <button type="submit" class="btn btn-primary btn-small">Save Section</button>
+                            </div>
+                        </form>
+                        <form method="post" action="/admin/forum/category/<?= $sectionId ?>/delete" onsubmit="return confirm('Delete this section? It must have no sub-forums and no threads.')" style="margin-top:var(--space-sm);">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="btn btn-small btn-danger">Delete Section</button>
+                        </form>
+                    </div>
+                </details>
+
+                <details>
+                    <summary class="btn btn-small btn-outline" style="cursor:pointer;display:inline-block;">Add Sub-forum</summary>
+                    <div class="card" style="margin-top:var(--space-sm);padding:var(--space-md);min-width:min(42rem,92vw);">
+                        <form method="post" action="/admin/forum/category/new">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="parent_id" value="<?= $sectionId ?>">
+                            <input type="hidden" name="is_active" value="1">
+                            <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--space-md);">
+                                <div class="form-group" style="margin:0;">
+                                    <label>Title</label>
+                                    <input type="text" name="title" class="form-input" required>
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Slug</label>
+                                    <input type="text" name="slug" class="form-input" pattern="[a-z0-9-]+" placeholder="Optional">
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Sort Order</label>
+                                    <input type="number" name="sort_order" class="form-input" value="0" min="0">
+                                </div>
+                                <div class="form-group" style="margin:0;grid-column:1 / -1;">
+                                    <label>Description</label>
+                                    <input type="text" name="description" class="form-input">
+                                </div>
+                                <div class="form-group" style="margin:0;">
+                                    <label>Access Role</label>
+                                    <select name="access_role" class="form-input">
+                                        <option value="public">public</option>
+                                        <option value="member">member</option>
+                                        <option value="council">council</option>
+                                        <option value="admin">admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-actions" style="margin-top:var(--space-md);">
+                                <button type="submit" class="btn btn-primary btn-small">Create Sub-forum</button>
+                            </div>
+                        </form>
+                    </div>
+                </details>
+            </div>
+
+            <?php if (empty($threads)): ?>
+                <p class="text-muted" style="margin:0 0 var(--space-sm) 0;">No threads in this section for the current filter.</p>
+            <?php else: ?>
+                <div class="table-wrap" style="margin-bottom:var(--space-sm);">
+                    <table class="admin-table">
+                        <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Thread</th>
+                            <th>Author</th>
+                            <th>Replies</th>
+                            <th>Last Post</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($threads as $thread): ?>
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="thread_ids[]" value="<?= (int)$thread['id'] ?>" form="forum-bulk-moderation" aria-label="Select thread <?= (int)$thread['id'] ?>">
+                                </td>
+                                <td>
+                                    <?php if ($forumBasePath !== ''): ?>
+                                        <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $thread['id']) ?>" target="_blank" rel="noopener noreferrer">
+                                            <?= e((string) ($thread['title'] ?? 'Untitled Thread')) ?>
+                                        </a>
+                                    <?php else: ?>
+                                        <?= e((string) ($thread['title'] ?? 'Untitled Thread')) ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= e((string) ($thread['author_name'] ?? 'Unknown')) ?></td>
+                                <td><?= (int) ($thread['reply_count'] ?? 0) ?></td>
+                                <td>
+                                    <?php if (!empty($thread['last_post_at'])): ?>
+                                        <time datetime="<?= e((string) $thread['last_post_at']) ?>"><?= format_date((string) $thread['last_post_at'], 'j M Y H:i') ?></time>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ((int) ($thread['is_pinned'] ?? 0) === 1): ?>
+                                        <span class="badge badge-info">Pinned</span>
+                                    <?php endif; ?>
+                                    <?php if ((int) ($thread['is_locked'] ?? 0) === 1): ?>
+                                        <span class="badge badge-warning">Locked</span>
+                                    <?php endif; ?>
+                                    <?php if ((int) ($thread['is_pinned'] ?? 0) !== 1 && (int) ($thread['is_locked'] ?? 0) !== 1): ?>
+                                        <span class="badge">Open</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="actions-cell">
+                                    <form method="post" action="/admin/forum/<?= (int)$thread['id'] ?>/pin" class="inline-form">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-small btn-outline"><?= (int) ($thread['is_pinned'] ?? 0) === 1 ? 'Unpin' : 'Pin' ?></button>
+                                    </form>
+
+                                    <form method="post" action="/admin/forum/<?= (int)$thread['id'] ?>/lock" class="inline-form">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-small btn-outline"><?= (int) ($thread['is_locked'] ?? 0) === 1 ? 'Unlock' : 'Lock' ?></button>
+                                    </form>
+
+                                    <form method="post" action="/admin/forum/<?= (int)$thread['id'] ?>/delete" class="inline-form" onsubmit="return confirm('Delete this thread and all replies? This cannot be undone.')">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-small btn-danger">Delete</button>
+                                    </form>
+
+                                    <a href="/admin/forum/<?= (int)$thread['id'] ?>/move" class="btn btn-small btn-outline">Move</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+
+            <?php foreach ($children as $child): ?>
+                <?= $renderSection($child, $depth + 1) ?>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php
+
+    return (string) ob_get_clean();
+};
+?>
 
 <div class="admin-page-header">
     <div>
         <h1>Forum Moderation</h1>
-        <p class="text-muted">Manage thread visibility, lock state, and cleanup.</p>
+        <p class="text-muted">Moderate threads within their forum hierarchy and administer section structure.</p>
     </div>
     <div class="admin-page-header-actions">
         <a href="<?= url('/admin/forum/reports') ?>" class="btn btn-outline">Post Reports</a>
     </div>
 </div>
 
-<?php if (!empty($categoriesHierarchical)): ?>
-<div style="margin-bottom: var(--space-xl);">
-    <h2 style="font-size: 1.1rem; margin-bottom: var(--space-md); color: var(--color-text-light);">Forum Structure</h2>
-    <div class="forum-index-phpbb">
-        <?php foreach ($categoriesHierarchical as $category): ?>
-            <div class="forum-category-section">
-                <div class="forum-category-header">
-                    <h3 style="margin: 0; font-size: 1rem;">
-                        <?php if ($forumBasePath !== ''): ?>
-                        <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>" target="_blank">
-                            <?= e($category['title']) ?>
-                        </a>
-                        <?php else: ?>
-                        <?= e($category['title']) ?>
-                        <?php endif; ?>
-                    </h3>
-                    <?php if (!empty($category['description'])): ?>
-                        <p class="forum-category-desc"><?= e($category['description']) ?></p>
-                    <?php endif; ?>
-                </div>
-
-                <div class="forum-category-forums">
-                    <?php if (empty($category['children'])): ?>
-                        <!-- No sub-forums, show the category itself as a forum -->
-                        <div class="forum-row">
-                            <div class="forum-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                </svg>
-                            </div>
-                            <div class="forum-info">
-                                <h4 class="forum-title" style="margin: 0 0 0.25rem;">
-                                    <?php if ($forumBasePath !== ''): ?>
-                                    <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($category['slug'] ?? ''), '/')) ?>" target="_blank">
-                                        <?= e($category['title']) ?>
-                                    </a>
-                                    <?php else: ?>
-                                    <?= e($category['title']) ?>
-                                    <?php endif; ?>
-                                </h4>
-                                <?php if (!empty($category['description'])): ?>
-                                    <p class="forum-desc" style="margin: 0;"><?= e($category['description']) ?></p>
-                                <?php endif; ?>
-                            </div>
-                            <div class="forum-stats">
-                                <span class="forum-stat-item">
-                                    <strong><?= (int)$category['thread_count'] ?></strong> Topics
-                                </span>
-                                <span class="forum-stat-item">
-                                    <strong><?= (int)$category['post_count'] ?></strong> Posts
-                                </span>
-                            </div>
-                            <div class="forum-last-post">
-                                <?php if (!empty($category['last_post_at'])): ?>
-                                    <div class="last-post-info">
-                                        <?php if (!empty($category['last_thread_title'])): ?>
-                                            <?php if ($forumBasePath !== ''): ?>
-                                            <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $category['last_thread_id']) ?>" class="last-post-thread" target="_blank">
-                                                <?= e($category['last_thread_title']) ?>
-                                            </a>
-                                            <?php else: ?>
-                                            <span class="last-post-thread"><?= e($category['last_thread_title']) ?></span>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-                                        <span class="last-post-meta">
-                                            <?= e(format_date($category['last_post_at'], 'j M Y, H:i')) ?>
-                                            <?php if (!empty($category['last_post_user_name'])): ?>
-                                                <br>by <?= e($category['last_post_user_name']) ?>
-                                            <?php endif; ?>
-                                        </span>
-                                    </div>
-                                <?php else: ?>
-                                    <span class="no-posts">No posts yet</span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                    <?php else: ?>
-                        <!-- Has sub-forums -->
-                        <?php foreach ($category['children'] as $subforum): ?>
-                            <div class="forum-row">
-                                <div class="forum-icon">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                    </svg>
-                                </div>
-                                <div class="forum-info">
-                                    <h4 class="forum-title" style="margin: 0 0 0.25rem;">
-                                        <?php if ($forumBasePath !== ''): ?>
-                                        <a href="<?= e(rtrim($forumBasePath, '/') . '/' . ltrim((string) ($subforum['slug'] ?? ''), '/')) ?>" target="_blank">
-                                            <?= e($subforum['title']) ?>
-                                        </a>
-                                        <?php else: ?>
-                                        <?= e($subforum['title']) ?>
-                                        <?php endif; ?>
-                                    </h4>
-                                    <?php if (!empty($subforum['description'])): ?>
-                                        <p class="forum-desc" style="margin: 0;"><?= e($subforum['description']) ?></p>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="forum-stats">
-                                    <span class="forum-stat-item">
-                                        <strong><?= (int)$subforum['thread_count'] ?></strong> Topics
-                                    </span>
-                                    <span class="forum-stat-item">
-                                        <strong><?= (int)$subforum['post_count'] ?></strong> Posts
-                                    </span>
-                                </div>
-                                <div class="forum-last-post">
-                                    <?php if (!empty($subforum['last_post_at'])): ?>
-                                        <div class="last-post-info">
-                                            <?php if (!empty($subforum['last_thread_title'])): ?>
-                                                <?php if ($forumBasePath !== ''): ?>
-                                                <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $subforum['last_thread_id']) ?>" class="last-post-thread" target="_blank">
-                                                    <?= e($subforum['last_thread_title']) ?>
-                                                </a>
-                                                <?php else: ?>
-                                                <span class="last-post-thread"><?= e($subforum['last_thread_title']) ?></span>
-                                                <?php endif; ?>
-                                            <?php endif; ?>
-                                            <span class="last-post-meta">
-                                                <?= e(format_date($subforum['last_post_at'], 'j M Y, H:i')) ?>
-                                                <?php if (!empty($subforum['last_post_user_name'])): ?>
-                                                    <br>by <?= e($subforum['last_post_user_name']) ?>
-                                                <?php endif; ?>
-                                            </span>
-                                        </div>
-                                    <?php else: ?>
-                                        <span class="no-posts">No posts yet</span>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
-
-<h2 style="font-size: 1.1rem; margin-bottom: var(--space-md); color: var(--color-text-light);">Thread Moderation</h2>
-
 <form method="get" action="/admin/forum" class="card" style="margin-bottom: var(--space-lg);">
     <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:var(--space-md);align-items:end;">
         <div class="form-group" style="margin:0;">
             <label for="q">Search title</label>
-            <input id="q" name="q" type="search" class="form-input" value="<?= e($filters['q'] ?? '') ?>" placeholder="Search threads">
+            <input id="q" name="q" type="search" class="form-input" value="<?= e((string) ($filters['q'] ?? '')) ?>" placeholder="Search threads">
         </div>
 
         <div class="form-group" style="margin:0;">
             <label for="category_id">Category</label>
             <select id="category_id" name="category_id" class="form-input">
                 <option value="0">All categories</option>
-                <?php foreach ($categories as $category): ?>
-                    <option value="<?= (int)$category['id'] ?>" <?= (int)($filters['category_id'] ?? 0) === (int)$category['id'] ? 'selected' : '' ?>>
-                        <?= e($category['title']) ?>
+                <?php foreach ($categoryOptions as $option): ?>
+                    <option value="<?= (int) ($option['id'] ?? 0) ?>" <?= (int) ($filters['category_id'] ?? 0) === (int) ($option['id'] ?? 0) ? 'selected' : '' ?>>
+                        <?= e(str_repeat('-- ', (int) ($option['depth'] ?? 0)) . (string) ($option['title'] ?? '')) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
@@ -174,7 +266,6 @@
         <div class="form-group" style="margin:0;">
             <label for="status">Status</label>
             <select id="status" name="status" class="form-input">
-                <?php $status = (string)($filters['status'] ?? 'all'); ?>
                 <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>All</option>
                 <option value="open" <?= $status === 'open' ? 'selected' : '' ?>>Open only</option>
                 <option value="locked" <?= $status === 'locked' ? 'selected' : '' ?>>Locked only</option>
@@ -189,118 +280,84 @@
     </div>
 </form>
 
-<?php if (empty($threads)): ?>
-    <div class="card">
-        <p style="margin:0;">No threads matched your filters.</p>
-    </div>
-<?php else: ?>
-    <form method="post" action="/admin/forum/bulk" id="forum-bulk-moderation" class="card" style="margin-bottom: var(--space-md);">
+<div class="card" id="forum-create-top-level" style="margin-bottom: var(--space-md);">
+    <h2 style="font-size:1.05rem;margin:0 0 var(--space-sm) 0;">Create Top-Level Section</h2>
+    <form method="post" action="/admin/forum/category/new">
         <?= csrf_field() ?>
-        <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr auto;gap:var(--space-md);align-items:end;">
+        <input type="hidden" name="parent_id" value="0">
+        <input type="hidden" name="is_active" value="1">
+        <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:var(--space-md);align-items:end;">
             <div class="form-group" style="margin:0;">
-                <label for="bulk_action">Mass Moderation Action</label>
-                <select id="bulk_action" name="bulk_action" class="form-input" required>
-                    <option value="">Choose action...</option>
-                    <option value="pin">Pin selected</option>
-                    <option value="unpin">Unpin selected</option>
-                    <option value="lock">Lock selected</option>
-                    <option value="unlock">Unlock selected</option>
-                    <option value="move">Move selected</option>
-                    <option value="delete">Delete selected</option>
+                <label>Title</label>
+                <input type="text" name="title" class="form-input" required>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>Slug</label>
+                <input type="text" name="slug" class="form-input" pattern="[a-z0-9-]+" placeholder="Optional">
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>Sort Order</label>
+                <input type="number" name="sort_order" class="form-input" value="0" min="0">
+            </div>
+            <div class="form-group" style="margin:0;grid-column:1 / -1;">
+                <label>Description</label>
+                <input type="text" name="description" class="form-input">
+            </div>
+            <div class="form-group" style="margin:0;max-width:16rem;">
+                <label>Access Role</label>
+                <select name="access_role" class="form-input">
+                    <option value="public">public</option>
+                    <option value="member">member</option>
+                    <option value="council">council</option>
+                    <option value="admin">admin</option>
                 </select>
             </div>
-
-            <div class="form-group" style="margin:0;">
-                <label for="target_category_id">Move destination</label>
-                <select id="target_category_id" name="target_category_id" class="form-input">
-                    <option value="0">Choose category (move only)</option>
-                    <?php foreach ($categories as $category): ?>
-                        <option value="<?= (int)$category['id'] ?>"><?= e($category['title']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-
             <div>
-                <button type="submit" class="btn btn-primary">Apply To Selected</button>
+                <button type="submit" class="btn btn-primary">Create Section</button>
             </div>
         </div>
     </form>
+</div>
 
-    <div class="table-wrap">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Select</th>
-                    <th>Thread</th>
-                    <th>Category</th>
-                    <th>Author</th>
-                    <th>Replies</th>
-                    <th>Last Post</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($threads as $thread): ?>
-                    <tr>
-                        <td>
-                            <input type="checkbox" name="thread_ids[]" value="<?= (int)$thread['id'] ?>" form="forum-bulk-moderation" aria-label="Select thread <?= (int)$thread['id'] ?>">
-                        </td>
-                        <td>
-                            <?php if ($forumBasePath !== ''): ?>
-                            <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $thread['id']) ?>" target="_blank" rel="noopener noreferrer">
-                                <?= e($thread['title']) ?>
-                            </a>
-                            <?php else: ?>
-                            <?= e($thread['title']) ?>
-                            <?php endif; ?>
-                        </td>
-                        <td><?= e($thread['category_title']) ?></td>
-                        <td><?= e($thread['author_name']) ?></td>
-                        <td><?= (int)$thread['reply_count'] ?></td>
-                        <td>
-                            <?php if (!empty($thread['last_post_at'])): ?>
-                                <time datetime="<?= e($thread['last_post_at']) ?>"><?= format_date($thread['last_post_at'], 'j M Y H:i') ?></time>
-                            <?php else: ?>
-                                <span class="text-muted">-</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ((int)$thread['is_pinned'] === 1): ?>
-                                <span class="badge badge-info">Pinned</span>
-                            <?php endif; ?>
-                            <?php if ((int)$thread['is_locked'] === 1): ?>
-                                <span class="badge badge-warning">Locked</span>
-                            <?php endif; ?>
-                            <?php if ((int)$thread['is_pinned'] !== 1 && (int)$thread['is_locked'] !== 1): ?>
-                                <span class="badge">Open</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="actions-cell">
-                            <form method="post" action="/admin/forum/<?= (int)$thread['id'] ?>/pin" class="inline-form">
-                                <?= csrf_field() ?>
-                                <button type="submit" class="btn btn-small btn-outline">
-                                    <?= (int)$thread['is_pinned'] === 1 ? 'Unpin' : 'Pin' ?>
-                                </button>
-                            </form>
+<form method="post" action="/admin/forum/bulk" id="forum-bulk-moderation" class="card" style="margin-bottom: var(--space-md);">
+    <?= csrf_field() ?>
+    <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr auto;gap:var(--space-md);align-items:end;">
+        <div class="form-group" style="margin:0;">
+            <label for="bulk_action">Mass Moderation Action</label>
+            <select id="bulk_action" name="bulk_action" class="form-input" required>
+                <option value="">Choose action...</option>
+                <option value="pin">Pin selected</option>
+                <option value="unpin">Unpin selected</option>
+                <option value="lock">Lock selected</option>
+                <option value="unlock">Unlock selected</option>
+                <option value="move">Move selected</option>
+                <option value="delete">Delete selected</option>
+            </select>
+        </div>
 
-                            <form method="post" action="/admin/forum/<?= (int)$thread['id'] ?>/lock" class="inline-form">
-                                <?= csrf_field() ?>
-                                <button type="submit" class="btn btn-small btn-outline">
-                                    <?= (int)$thread['is_locked'] === 1 ? 'Unlock' : 'Lock' ?>
-                                </button>
-                            </form>
-
-                            <form method="post" action="/admin/forum/<?= (int)$thread['id'] ?>/delete" class="inline-form" onsubmit="return confirm('Delete this thread and all replies? This cannot be undone.')">
-                                <?= csrf_field() ?>
-                                <button type="submit" class="btn btn-small btn-danger">Delete</button>
-                            </form>
-
-                            <a href="/admin/forum/<?= (int)$thread['id'] ?>/move" class="btn btn-small btn-outline">Move</a>
-                        </td>
-                    </tr>
+        <div class="form-group" style="margin:0;">
+            <label for="target_category_id">Move destination</label>
+            <select id="target_category_id" name="target_category_id" class="form-input">
+                <option value="0">Choose category (move only)</option>
+                <?php foreach ($categoryOptions as $option): ?>
+                    <?php if ((int) ($option['is_active'] ?? 0) !== 1) { continue; } ?>
+                    <option value="<?= (int) ($option['id'] ?? 0) ?>"><?= e(str_repeat('-- ', (int) ($option['depth'] ?? 0)) . (string) ($option['title'] ?? '')) ?></option>
                 <?php endforeach; ?>
-            </tbody>
-        </table>
+            </select>
+        </div>
+
+        <div>
+            <button type="submit" class="btn btn-primary">Apply To Selected</button>
+        </div>
     </div>
+</form>
+
+<?php if (empty($categoryTree)): ?>
+    <div class="card">
+        <p style="margin:0;">No forum sections exist yet. Use the Create Top-Level Section form to start structuring the forum.</p>
+    </div>
+<?php else: ?>
+    <?php foreach ($categoryTree as $section): ?>
+        <?= $renderSection($section, 0) ?>
+    <?php endforeach; ?>
 <?php endif; ?>
