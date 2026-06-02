@@ -76,6 +76,112 @@ class ForumAdminController extends BaseController
         ]);
     }
 
+    public function bulkModerate(): void
+    {
+        Auth::requireAdmin();
+
+        $action = trim((string) $this->input('bulk_action', ''));
+        $rawThreadIds = (array) $this->input('thread_ids', []);
+        $threadIds = array_values(array_unique(array_filter(array_map('intval', $rawThreadIds), static fn(int $id): bool => $id > 0)));
+
+        if (empty($threadIds)) {
+            Auth::flash('error', 'Select at least one thread.');
+            $this->redirect($this->forumReturnUrl());
+        }
+
+        $allowedActions = ['pin', 'unpin', 'lock', 'unlock', 'move', 'delete'];
+        if (!in_array($action, $allowedActions, true)) {
+            Auth::flash('error', 'Select a valid bulk action.');
+            $this->redirect($this->forumReturnUrl());
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($threadIds), '?'));
+        $threads = $this->db->fetchAll(
+            'SELECT id, title FROM forum_threads WHERE id IN (' . $placeholders . ')',
+            $threadIds
+        );
+
+        if (empty($threads)) {
+            Auth::flash('error', 'No matching threads were found.');
+            $this->redirect($this->forumReturnUrl());
+        }
+
+        $threadIds = array_map(static fn(array $thread): int => (int) $thread['id'], $threads);
+        $placeholders = implode(', ', array_fill(0, count($threadIds), '?'));
+
+        if ($action === 'move') {
+            $targetCategoryId = (int) $this->input('target_category_id', 0);
+            if ($targetCategoryId < 1) {
+                Auth::flash('error', 'Choose a destination category for move.');
+                $this->redirect($this->forumReturnUrl());
+            }
+
+            $targetCategory = $this->db->fetch(
+                'SELECT id FROM forum_categories WHERE id = ? AND is_active = 1 LIMIT 1',
+                [$targetCategoryId]
+            );
+            if (!$targetCategory) {
+                Auth::flash('error', 'Destination category was not found.');
+                $this->redirect($this->forumReturnUrl());
+            }
+
+            $params = array_merge([$targetCategoryId], $threadIds);
+            $this->db->execute(
+                'UPDATE forum_threads SET category_id = ?, updated_at = NOW() WHERE id IN (' . $placeholders . ')',
+                $params
+            );
+
+            foreach ($threads as $thread) {
+                $this->logActivity('update', 'forum_thread', (int) $thread['id'], 'Moved thread: ' . (string) $thread['title']);
+            }
+
+            Auth::flash('success', count($threads) . ' thread(s) moved.');
+            $this->redirect($this->forumReturnUrl());
+        }
+
+        if ($action === 'delete') {
+            $this->db->transaction(function () use ($placeholders, $threadIds): void {
+                $this->db->execute(
+                    'DELETE FROM forum_threads WHERE id IN (' . $placeholders . ')',
+                    $threadIds
+                );
+            });
+
+            foreach ($threads as $thread) {
+                $this->logActivity('delete', 'forum_thread', (int) $thread['id'], 'Deleted: ' . (string) $thread['title']);
+            }
+
+            Auth::flash('success', count($threads) . ' thread(s) deleted.');
+            $this->redirect($this->forumReturnUrl());
+        }
+
+        $statusMap = [
+            'pin' => ['field' => 'is_pinned', 'value' => 1, 'verb' => 'Pinned'],
+            'unpin' => ['field' => 'is_pinned', 'value' => 0, 'verb' => 'Unpinned'],
+            'lock' => ['field' => 'is_locked', 'value' => 1, 'verb' => 'Locked'],
+            'unlock' => ['field' => 'is_locked', 'value' => 0, 'verb' => 'Unlocked'],
+        ];
+
+        $config = $statusMap[$action] ?? null;
+        if (!$config) {
+            Auth::flash('error', 'Bulk action is not supported.');
+            $this->redirect($this->forumReturnUrl());
+        }
+
+        $params = array_merge([(int) $config['value']], $threadIds);
+        $this->db->execute(
+            'UPDATE forum_threads SET ' . $config['field'] . ' = ?, updated_at = NOW() WHERE id IN (' . $placeholders . ')',
+            $params
+        );
+
+        foreach ($threads as $thread) {
+            $this->logActivity('update', 'forum_thread', (int) $thread['id'], $config['verb'] . ': ' . (string) $thread['title']);
+        }
+
+        Auth::flash('success', count($threads) . ' thread(s) updated.');
+        $this->redirect($this->forumReturnUrl());
+    }
+
     public function togglePin(string $id): void
     {
         Auth::requireAdmin();

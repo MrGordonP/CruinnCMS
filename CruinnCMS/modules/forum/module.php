@@ -36,6 +36,7 @@ return [
 
         // Admin forum moderation routes
         $router->get('/admin/forum',                    [ForumAdminController::class, 'index']);
+        $router->post('/admin/forum/bulk',              [ForumAdminController::class, 'bulkModerate']);
         $router->post('/admin/forum/{id}/pin',          [ForumAdminController::class, 'togglePin']);
         $router->post('/admin/forum/{id}/lock',         [ForumAdminController::class, 'toggleLock']);
         $router->post('/admin/forum/{id}/delete',       [ForumAdminController::class, 'deleteThread']);

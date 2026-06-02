@@ -194,10 +194,43 @@
         <p style="margin:0;">No threads matched your filters.</p>
     </div>
 <?php else: ?>
+    <form method="post" action="/admin/forum/bulk" id="forum-bulk-moderation" class="card" style="margin-bottom: var(--space-md);">
+        <?= csrf_field() ?>
+        <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr auto;gap:var(--space-md);align-items:end;">
+            <div class="form-group" style="margin:0;">
+                <label for="bulk_action">Mass Moderation Action</label>
+                <select id="bulk_action" name="bulk_action" class="form-input" required>
+                    <option value="">Choose action...</option>
+                    <option value="pin">Pin selected</option>
+                    <option value="unpin">Unpin selected</option>
+                    <option value="lock">Lock selected</option>
+                    <option value="unlock">Unlock selected</option>
+                    <option value="move">Move selected</option>
+                    <option value="delete">Delete selected</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin:0;">
+                <label for="target_category_id">Move destination</label>
+                <select id="target_category_id" name="target_category_id" class="form-input">
+                    <option value="0">Choose category (move only)</option>
+                    <?php foreach ($categories as $category): ?>
+                        <option value="<?= (int)$category['id'] ?>"><?= e($category['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary">Apply To Selected</button>
+            </div>
+        </div>
+    </form>
+
     <div class="table-wrap">
         <table class="admin-table">
             <thead>
                 <tr>
+                    <th>Select</th>
                     <th>Thread</th>
                     <th>Category</th>
                     <th>Author</th>
@@ -210,6 +243,9 @@
             <tbody>
                 <?php foreach ($threads as $thread): ?>
                     <tr>
+                        <td>
+                            <input type="checkbox" name="thread_ids[]" value="<?= (int)$thread['id'] ?>" form="forum-bulk-moderation" aria-label="Select thread <?= (int)$thread['id'] ?>">
+                        </td>
                         <td>
                             <?php if ($forumBasePath !== ''): ?>
                             <a href="<?= e(rtrim($forumBasePath, '/') . '/thread/' . (int) $thread['id']) ?>" target="_blank" rel="noopener noreferrer">
