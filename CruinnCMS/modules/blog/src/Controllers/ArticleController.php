@@ -773,7 +773,7 @@ class ArticleController extends BaseController
         $offset = ($page - 1) * $perPage;
 
         $articles = $db->fetchAll(
-            'SELECT a.*, u.display_name as author_name, s.title as subject_title
+            "SELECT a.*, u.display_name as author_name, s.title as subject_title
              FROM articles a
              LEFT JOIN users u ON a.author_id = u.id
              LEFT JOIN subject_content sc ON sc.item_type = 'article' AND sc.item_id = a.id
@@ -781,7 +781,7 @@ class ArticleController extends BaseController
              WHERE a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
              GROUP BY a.id
              ORDER BY a.published_at DESC
-             LIMIT ? OFFSET ?',
+             LIMIT ? OFFSET ?",
             ['published', $perPage, $offset]
         );
         $articles = self::hydrateArticlePreviewData($db, $articles);

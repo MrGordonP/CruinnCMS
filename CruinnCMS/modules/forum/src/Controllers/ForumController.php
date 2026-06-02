@@ -701,14 +701,25 @@ class ForumController extends BaseController
             return $subjectId;
         }
 
+        // Articles and events no longer carry subject_id — look up via bridge.
+        $db = \Cruinn\Database::getInstance();
+
         $article = $context['article'] ?? null;
-        if (is_array($article) && !empty($article['subject_id'])) {
-            return (int) $article['subject_id'];
+        if (is_array($article) && !empty($article['id'])) {
+            $sid = (int) ($db->fetchColumn(
+                'SELECT subject_id FROM subject_content WHERE item_type = ? AND item_id = ? LIMIT 1',
+                ['article', (int) $article['id']]
+            ) ?: 0);
+            if ($sid > 0) return $sid;
         }
 
         $event = $context['event'] ?? null;
-        if (is_array($event) && !empty($event['subject_id'])) {
-            return (int) $event['subject_id'];
+        if (is_array($event) && !empty($event['id'])) {
+            $sid = (int) ($db->fetchColumn(
+                'SELECT subject_id FROM subject_content WHERE item_type = ? AND item_id = ? LIMIT 1',
+                ['event', (int) $event['id']]
+            ) ?: 0);
+            if ($sid > 0) return $sid;
         }
 
         return 0;

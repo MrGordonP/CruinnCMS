@@ -181,6 +181,34 @@ class SubjectController extends BaseController
             [$id]
         );
 
+        // Discussions scoped to this subject
+        $discussions = [];
+        try {
+            $discussions = $this->db->fetchAll(
+                'SELECT d.id, d.title, d.category, d.pinned, d.locked, d.post_count, d.last_post_at, d.created_at,
+                        u.display_name AS created_by_name
+                 FROM discussions d
+                 LEFT JOIN users u ON u.id = d.created_by
+                 WHERE d.context_type = ? AND d.context_id = ?
+                 ORDER BY d.pinned DESC, COALESCE(d.last_post_at, d.created_at) DESC',
+                ['subject', (int) $id]
+            );
+        } catch (\Throwable) {}
+
+        // Existing forum thread for this subject (forum module may not be installed)
+        $forumThread = null;
+        try {
+            $forumThread = $this->db->fetch(
+                'SELECT t.id, t.title, t.reply_count, t.last_post_at,
+                        c.title AS category_title, c.slug AS category_slug
+                 FROM forum_threads t
+                 JOIN forum_categories c ON c.id = t.category_id
+                 WHERE t.subject_id = ?
+                 LIMIT 1',
+                [(int) $id]
+            ) ?: null;
+        } catch (\Throwable) {}
+
         $this->renderAdmin('admin/subjects/workspace', [
             'title'          => $subject['title'] . ' — Subjects',
             'allSubjects'    => $allSubjects,
@@ -192,11 +220,112 @@ class SubjectController extends BaseController
             'files'          => $files,
             'folders'        => $folders,
             'parentSubjects' => $parentSubjects,
+            'discussions'    => $discussions,
+            'forumThread'    => $forumThread,
             'breadcrumbs'    => [['Admin', '/admin'], ['Subjects', '/admin/subjects'], [$subject['title']]],
         ]);
     }
 
     // ── Admin: New ────────────────────────────────────────────
+
+    /**
+     * POST /admin/subjects/{id}/discussion — Create a new discussion thread scoped to this subject.
+     */
+    public function adminCreateDiscussion(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id, title FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $title = trim($this->input('title', ''));
+        if ($title === '') {
+            Auth::flash('error', 'Discussion title is required.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $body = trim($this->input('body', ''));
+        $postCount  = $body !== '' ? 1 : 0;
+        $lastPostAt = $body !== '' ? date('Y-m-d H:i:s') : null;
+
+        $discussionId = $this->db->insert('discussions', [
+            'title'        => $title,
+            'category'     => $this->input('category') ?: null,
+            'context_type' => 'subject',
+            'context_id'   => (int) $id,
+            'created_by'   => Auth::userId(),
+            'pinned'       => 0,
+            'locked'       => 0,
+            'post_count'   => $postCount,
+            'last_post_at' => $lastPostAt,
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($body !== '') {
+            $this->db->insert('discussion_posts', [
+                'discussion_id' => $discussionId,
+                'author_id'     => Auth::userId(),
+                'body'          => $body,
+                'created_at'    => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        Auth::flash('success', 'Discussion created.');
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/forum-thread — Provision a public forum thread for this subject.
+     */
+    public function adminProvisionForumThread(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT * FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        // Check a thread doesn't already exist
+        $existing = null;
+        try {
+            $existing = $this->db->fetchColumn(
+                'SELECT id FROM forum_threads WHERE subject_id = ? LIMIT 1',
+                [(int) $id]
+            );
+        } catch (\Throwable) {}
+
+        if ($existing) {
+            Auth::flash('info', 'A forum thread already exists for this subject.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $service = new \Cruinn\Services\SubjectThreadProvisionService($this->db);
+        $slug    = $subject['slug'] ?? ('subject-' . $id);
+        $summary = $subject['description'] ?? '';
+
+        $threadId = $service->ensurePublishedContentThread(
+            'subject',
+            (int) $id,
+            (int) $id,
+            $subject['title'],
+            $slug,
+            $summary,
+            Auth::userId()
+        );
+
+        if ($threadId) {
+            Auth::flash('success', 'Forum thread provisioned.');
+        } else {
+            Auth::flash('error', 'Could not provision forum thread — check the Forum module is active and has a category configured.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
 
     /**
      * GET /admin/subjects/new — New subject form.

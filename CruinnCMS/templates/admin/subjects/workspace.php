@@ -260,6 +260,37 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 0.4rem;
 }
+
+/* Discussion inline form */
+.sws-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: .7rem;
+    font-weight: 400;
+    color: var(--color-primary, #4a90d9);
+}
+.sws-link-btn:hover { text-decoration: underline; }
+.sws-discussion-form {
+    display: none;
+    margin: .4rem 0 .5rem;
+    padding: .6rem .75rem;
+    background: var(--color-bg-light, #f8f9fa);
+    border: 1px solid var(--color-border, #dee2e6);
+    border-radius: 4px;
+}
+.sws-discussion-form.is-open { display: block; }
+.sws-form-input {
+    display: block;
+    width: 100%;
+    margin-bottom: .35rem;
+    font-size: .83rem;
+    padding: .3rem .5rem;
+    border: 1px solid var(--color-border, #dee2e6);
+    border-radius: 3px;
+    box-sizing: border-box;
+}
 .sws-child-card {
     display: block;
     padding: 0.45rem 0.6rem;
@@ -382,21 +413,23 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
         </div>
         <div class="sws-middle-body">
 
-            <!-- Child subjects -->
+            <!-- Child subjects (collapsible) -->
             <?php if (!empty($children)): ?>
             <div class="sws-section">
-                <div class="sws-section-title">
-                    <span>Sub-Subjects (<?= count($children) ?>)</span>
-                </div>
-                <div class="sws-child-grid">
-                    <?php foreach ($children as $child): ?>
-                    <a href="/admin/subjects/<?= (int) $child['id'] ?>" class="sws-child-card">
-                        <span class="sws-child-card-code"><?= e($child['code']) ?></span>
-                        <span class="sws-child-card-title"><?= e($child['title']) ?></span>
-                        <span class="sws-badge sws-badge--<?= e($child['status']) ?>" style="margin-top:.2rem"><?= e($child['status']) ?></span>
-                    </a>
-                    <?php endforeach; ?>
-                </div>
+                <details open>
+                    <summary class="sws-section-title" style="cursor:pointer; list-style:none">
+                        <span>Sub-Subjects (<?= count($children) ?>)</span>
+                    </summary>
+                    <div class="sws-child-grid" style="margin-top:.25rem">
+                        <?php foreach ($children as $child): ?>
+                        <a href="/admin/subjects/<?= (int) $child['id'] ?>" class="sws-child-card">
+                            <span class="sws-child-card-code"><?= e($child['code']) ?></span>
+                            <span class="sws-child-card-title"><?= e($child['title']) ?></span>
+                            <span class="sws-badge sws-badge--<?= e($child['status']) ?>" style="margin-top:.2rem"><?= e($child['status']) ?></span>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </details>
             </div>
             <?php endif; ?>
 
@@ -490,6 +523,64 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                 </ul>
             </div>
             <?php endif; ?>
+
+            <!-- Discussions -->
+            <div class="sws-section">
+                <div class="sws-section-title">
+                    <span>Discussions (<?= count($discussions ?? []) ?>)</span>
+                    <button type="button" class="sws-link-btn"
+                            onclick="this.closest('.sws-section').querySelector('.sws-discussion-form').classList.toggle('is-open')">+ New</button>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/discussion"
+                      class="sws-discussion-form">
+                    <?= csrf_field() ?>
+                    <input type="text" name="title" class="sws-form-input" placeholder="Discussion title" required>
+                    <textarea name="body" class="sws-form-input" placeholder="Opening post (optional)" rows="3"></textarea>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Create</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-discussion-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
+                <?php if (!empty($discussions)): ?>
+                <ul class="sws-item-list">
+                    <?php foreach ($discussions as $disc): ?>
+                    <li class="sws-item">
+                        <span class="sws-item-title"><a href="/organisation/discussions/<?= (int) $disc['id'] ?>"><?= e($disc['title']) ?></a></span>
+                        <?php if ($disc['pinned']): ?><span class="sws-badge sws-badge--active">pinned</span><?php endif; ?>
+                        <?php if ($disc['locked']): ?><span class="sws-badge sws-badge--archived">locked</span><?php endif; ?>
+                        <span class="sws-item-meta"><?= (int) $disc['post_count'] ?> posts</span>
+                        <span class="sws-item-meta"><?= format_date($disc['last_post_at'] ?? $disc['created_at'], 'j M') ?></span>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+                <?php else: ?>
+                <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">No discussions yet.</p>
+                <?php endif; ?>
+            </div>
+
+            <!-- Forum Thread -->
+            <div class="sws-section">
+                <div class="sws-section-title"><span>Forum Thread</span></div>
+                <?php if (!empty($forumThread)): ?>
+                <div style="font-size:.83rem; padding:.3rem 0">
+                    <a href="/forum/thread/<?= (int) $forumThread['id'] ?>" style="font-weight:600"><?= e($forumThread['title']) ?></a>
+                    <div style="color:var(--color-text-light,#6c757d); font-size:.76rem; margin-top:.15rem">
+                        <?= (int) $forumThread['reply_count'] ?> repl<?= $forumThread['reply_count'] == 1 ? 'y' : 'ies' ?>
+                        &nbsp;&middot;&nbsp; <?= e($forumThread['category_title']) ?>
+                        <?php if ($forumThread['last_post_at']): ?>
+                        &nbsp;&middot;&nbsp; Last post <?= format_date($forumThread['last_post_at'], 'j M Y') ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php else: ?>
+                <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">No forum thread provisioned.</p>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/forum-thread" style="margin-top:.4rem">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-small btn-outline">Provision Forum Thread</button>
+                </form>
+                <?php endif; ?>
+            </div>
 
         </div><!-- /sws-middle-body -->
         <?php endif; ?>

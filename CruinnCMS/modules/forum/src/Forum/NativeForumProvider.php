@@ -370,15 +370,6 @@ class NativeForumProvider implements ForumProviderInterface
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
-            $watchers = $this->db->fetchAll(
-                "SELECT id
-                 FROM users
-                 WHERE active = 1
-                   AND role IN ('admin', 'council')
-                   AND id != ?",
-                [$userId]
-            );
-
             // Notifications stub — NotificationService not yet implemented.
 
             return $threadId;
