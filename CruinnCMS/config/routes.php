@@ -60,8 +60,6 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/cms/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
     $router->post('/cms/editor/{pageId}/zone-canvas/new', [CruinnController::class, 'createZoneCanvas']);
-    $router->get('/cms/editor/fragment-styles',          [CruinnController::class, 'fragmentStyles']);
-    $router->post('/cms/editor/fragment-styles',         [CruinnController::class, 'saveFragmentStyles']);
     $router->get('/cms/migrations',                      [PlatformController::class, 'platformMigrations']);
     $router->post('/cms/migrations',                     [PlatformController::class, 'platformRunMigrations']);
     $router->post('/cms/migrations/rerun',               [PlatformController::class, 'platformRerunMigration']);
@@ -247,8 +245,6 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/editor/{pageId}/reload-source',  [CruinnController::class, 'reloadFromSource']);
     $router->post('/admin/editor/{pageId}/doc-attrs',      [CruinnController::class, 'saveDocAttrs']);
     $router->post('/admin/editor/{pageId}/zone-canvas/new', [CruinnController::class, 'createZoneCanvas']);
-    $router->get('/admin/editor/fragment-styles',          [CruinnController::class, 'fragmentStyles']);
-    $router->post('/admin/editor/fragment-styles',         [CruinnController::class, 'saveFragmentStyles']);
 
     // Named Block Library
     $router->get('/admin/blocks/named',              [SiteBuilderController::class, 'namedBlockList']);
@@ -308,6 +304,10 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/settings/modules/{slug}/settings',        [AcpSystemController::class, 'saveModuleSettings']);
     $router->post('/admin/settings/modules/{slug}/migrate',         [AcpSystemController::class, 'applyModuleMigrations']);
     $router->post('/admin/settings/modules/{slug}/remigrate',      [AcpSystemController::class, 'rerunModuleMigrations']);
+    // Admin — Block Types panel
+    $router->get('/admin/settings/block-types',                          [AcpSystemController::class, 'blockTypes']);
+    $router->post('/admin/settings/block-types/{slug}/activate',         [AcpSystemController::class, 'activateBlockType']);
+    $router->post('/admin/settings/block-types/{slug}/deactivate',       [AcpSystemController::class, 'deactivateBlockType']);
 
     // Admin � Site Builder
     $router->get('/admin/site-builder',                       [SiteBuilderController::class, 'builderPages']);

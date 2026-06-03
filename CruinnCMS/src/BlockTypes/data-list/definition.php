@@ -12,6 +12,9 @@ BlockRegistry::register([
     'dynamic'   => true,
     'container' => false,
     'isLayout'  => false,
+    'group'          => 'dynamic',
+    'group_label'    => 'Data &amp; Dynamic',
+    'palette_entries'=> [['label' => 'Data List']],
     'renderer'  => function (array $config, Database $db): string {
         $setSlug      = $config['set_slug']     ?? '';
         $view         = $config['view']         ?? 'continuous';

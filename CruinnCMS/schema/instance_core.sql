@@ -434,6 +434,17 @@ CREATE TABLE `named_blocks` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
+-- BLOCK TYPE SYSTEM
+-- ============================================================
+
+CREATE TABLE `block_type_config` (
+    `slug`       VARCHAR(64)  NOT NULL,
+    `status`     ENUM('discovered','active','offline') NOT NULL DEFAULT 'discovered',
+    `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uq_slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- MODULE SYSTEM
 -- ============================================================
 

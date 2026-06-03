@@ -76,6 +76,21 @@ class ModuleRegistry
         }
     }
 
+    /**
+     * Register a core (platform-level) module and force its status to active.
+     * Core modules are not drop-in modules and are not tracked in module_config.
+     * Called from App::init() after ModuleRegistry::load().
+     */
+    public static function registerCore(array $def): void
+    {
+        $slug = $def['slug'] ?? '';
+        if ($slug === '') {
+            return;
+        }
+        self::register($def);
+        self::$statuses[$slug] = 'active';
+    }
+
     // ── Querying ─────────────────────────────────────────────────────────────
 
     /**

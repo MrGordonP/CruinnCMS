@@ -1197,4 +1197,92 @@ class AcpSystemController extends BaseController
         }
     }
 
+    // ── Block Types ──────────────────────────────────────────────────────────
+
+    public function blockTypes(): void
+    {
+        Auth::requireAdmin();
+
+        $allSlugs = \Cruinn\BlockTypes\BlockRegistry::allDiscovered();
+        $available = [];
+        $active    = [];
+
+        try {
+            $dbRows = $this->db->fetchAll('SELECT slug, status FROM block_type_config');
+        } catch (\Throwable) {
+            $dbRows = [];
+        }
+        $dbBySlug = [];
+        foreach ($dbRows as $row) {
+            $dbBySlug[$row['slug']] = $row['status'];
+        }
+
+        foreach ($allSlugs as $slug) {
+            $status = $dbBySlug[$slug] ?? 'discovered';
+            $entry  = ['slug' => $slug, 'status' => $status];
+            if ($status === 'active') {
+                $def = \Cruinn\BlockTypes\BlockRegistry::get($slug);
+                $entry['label'] = $def['label'] ?? $slug;
+                $active[$slug]  = $entry;
+            } else {
+                $available[$slug] = $entry;
+            }
+        }
+
+        $this->renderAcp('admin/settings/block-types', [
+            'title'     => 'Block Types',
+            'tab'       => 'block-types',
+            'available' => $available,
+            'active'    => $active,
+        ]);
+    }
+
+    public function activateBlockType(string $slug): void
+    {
+        Auth::requireAdmin();
+
+        // Slug must exist on disk.
+        $discovered = \Cruinn\BlockTypes\BlockRegistry::allDiscovered();
+        if (!in_array($slug, $discovered, true)) {
+            Auth::flash('error', "Block type '{$slug}' not found.");
+            $this->redirect('/admin/settings/block-types');
+        }
+
+        try {
+            $exists = $this->db->fetch('SELECT slug FROM block_type_config WHERE slug = ?', [$slug]);
+            if ($exists) {
+                $this->db->execute(
+                    'UPDATE block_type_config SET status = ?, updated_at = NOW() WHERE slug = ?',
+                    ['active', $slug]
+                );
+            } else {
+                $this->db->execute(
+                    'INSERT INTO block_type_config (slug, status) VALUES (?, ?)',
+                    [$slug, 'active']
+                );
+            }
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Failed to activate block type: ' . $e->getMessage());
+            $this->redirect('/admin/settings/block-types');
+        }
+
+        Auth::flash('success', "Block type '{$slug}' activated.");
+        $this->redirect('/admin/settings/block-types');
+    }
+
+    public function deactivateBlockType(string $slug): void
+    {
+        Auth::requireAdmin();
+
+        try {
+            $this->db->execute('DELETE FROM block_type_config WHERE slug = ?', [$slug]);
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Failed to deactivate block type: ' . $e->getMessage());
+            $this->redirect('/admin/settings/block-types');
+        }
+
+        Auth::flash('success', "Block type '{$slug}' deactivated.");
+        $this->redirect('/admin/settings/block-types');
+    }
+
 }

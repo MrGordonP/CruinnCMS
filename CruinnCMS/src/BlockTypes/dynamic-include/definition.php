@@ -6,7 +6,6 @@
  * - php_include    (template include)
  * - module_widget  (module widget catalog)
  * - module_content (module content provider catalog)
- * - core_fragment  (core-managed reusable fragments)
  */
 
 use Cruinn\Auth;
@@ -22,6 +21,9 @@ BlockRegistry::register([
     'dynamic'   => true,
     'container' => false,
     'isLayout'  => false,
+    'group'          => 'dynamic',
+    'group_label'    => 'Data &amp; Dynamic',
+    'palette_entries'=> [['label' => 'Dynamic Include']],
     'renderer'  => function (array $config, Database $db, array $context = []): string {
         $annotateEditable = static function (string $html): string {
             if (trim($html) === '') {
@@ -89,7 +91,7 @@ BlockRegistry::register([
             }
 
             $vars = $config;
-            unset($vars['source_type'], $vars['core_fragment_key'], $vars['template'], $vars['widget_key'], $vars['provider_key'], $vars['settings_json'], $vars['display_mode'], $vars['per_page'], $vars['blog_profile_id'], $vars['event_profile_id'], $vars['childStyles']);
+            unset($vars['source_type'], $vars['template'], $vars['widget_key'], $vars['provider_key'], $vars['settings_json'], $vars['display_mode'], $vars['per_page'], $vars['blog_profile_id'], $vars['event_profile_id'], $vars['childStyles']);
             $vars['db'] = $db;
 
             if (BlockRegistry::isEditMode()) {
@@ -141,7 +143,7 @@ BlockRegistry::register([
             }
 
             $settings = $config;
-            unset($settings['source_type'], $settings['core_fragment_key'], $settings['template'], $settings['provider_key'], $settings['settings_json'], $settings['display_mode'], $settings['per_page'], $settings['blog_profile_id'], $settings['event_profile_id'], $settings['_userContext']);
+            unset($settings['source_type'], $settings['template'], $settings['provider_key'], $settings['settings_json'], $settings['display_mode'], $settings['per_page'], $settings['blog_profile_id'], $settings['event_profile_id'], $settings['_userContext']);
 
             $html = ModuleRegistry::renderProviderWidget($widgetKey, $settings, $userContext);
             if ($html === '') {
@@ -204,48 +206,6 @@ BlockRegistry::register([
                 return $annotateEditable($html);
             }
             return $html;
-        }
-
-        if ($sourceType === 'core_fragment') {
-            $fragmentKey = trim((string) ($config['core_fragment_key'] ?? ''));
-
-            if ($fragmentKey === 'subjects_quick_link') {
-                $html = '<div class="dash-quick-grid">'
-                    . '<a href="/admin/subjects" class="dash-quick-link">'
-                    . '<span class="dash-quick-icon">🧭</span>'
-                    . '<span>Subjects</span>'
-                    . '</a>'
-                    . '</div>';
-                return BlockRegistry::isEditMode() ? $annotateEditable($html) : $html;
-            }
-
-            if ($fragmentKey === 'subjects_status_summary') {
-                try {
-                    $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM subjects');
-                    $active = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'active'");
-                    $draft = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'draft'");
-                    $archived = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'archived'");
-                } catch (\Throwable) {
-                    $total = 0;
-                    $active = 0;
-                    $draft = 0;
-                    $archived = 0;
-                }
-
-                $html = '<div class="activity-header"><h2>Subjects Status</h2></div>'
-                    . '<div class="dash-quick-grid">'
-                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Total</span></a>'
-                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $active . '</strong><span>Active</span></a>'
-                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $draft . '</strong><span>Draft</span></a>'
-                    . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $archived . '</strong><span>Archived</span></a>'
-                    . '</div>';
-                return BlockRegistry::isEditMode() ? $annotateEditable($html) : $html;
-            }
-
-
-            return '<p class="account-block-empty">Core fragment not found: '
-                . htmlspecialchars($fragmentKey, ENT_QUOTES, 'UTF-8')
-                . '.</p>';
         }
 
         return '<p class="editor-dynamic-placeholder">Dynamic include - no source type selected.</p>';

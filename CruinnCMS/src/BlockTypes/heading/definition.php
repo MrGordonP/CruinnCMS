@@ -9,4 +9,7 @@ BlockRegistry::register([
     'dynamic'   => false,
     'container' => false,
     'isLayout'  => false,
+    'group'          => 'text',
+    'group_label'    => 'Text',
+    'palette_entries'=> [['label' => 'Heading']],
 ]);

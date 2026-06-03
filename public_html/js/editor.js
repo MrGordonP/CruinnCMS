@@ -62,13 +62,6 @@
         try { return JSON.parse(wrap.dataset.visibilityPositions || '[]'); } catch (e) { return []; }
     }());
 
-    var CORE_FRAGMENT_CATALOG = {
-        subjects: [
-            { key: 'subjects_quick_link', label: 'Subjects Quick Link' },
-            { key: 'subjects_status_summary', label: 'Subjects Status Summary' }
-        ]
-    };
-
     var inlineFocusOverlay = null;
     var inlineFocusFrame = null;
     var inlineFocusTitle = null;
@@ -1081,62 +1074,11 @@
                 sourceType = 'module_widget';
             } else if ((config.provider_key || '').toString() !== '') {
                 sourceType = 'module_content';
-            } else if ((config.core_fragment_key || '').toString() !== '') {
-                sourceType = 'core_fragment';
             } else {
                 sourceType = 'php_include';
             }
         }
         return sourceType;
-    }
-
-    function findCoreFragmentModule(fragmentKey) {
-        var key = (fragmentKey || '').toString();
-        if (!key) { return ''; }
-
-        var moduleKeys = Object.keys(CORE_FRAGMENT_CATALOG);
-        for (var i = 0; i < moduleKeys.length; i++) {
-            var moduleKey = moduleKeys[i];
-            var list = CORE_FRAGMENT_CATALOG[moduleKey] || [];
-            for (var j = 0; j < list.length; j++) {
-                if ((list[j].key || '').toString() === key) {
-                    return moduleKey;
-                }
-            }
-        }
-
-        return '';
-    }
-
-    function populateCoreFragmentOptions(moduleKey, selectedKey) {
-        var keyRow = document.getElementById('prop-dyn-core-fragment-key-row');
-        var fragmentSel = document.getElementById('prop-dyn-core-fragment');
-        if (!keyRow || !fragmentSel) {
-            return '';
-        }
-
-        var resolvedModule = (moduleKey || '').toString();
-        var resolvedSelected = (selectedKey || '').toString();
-        var options = CORE_FRAGMENT_CATALOG[resolvedModule] || [];
-
-        fragmentSel.innerHTML = '<option value="">— Select fragment —</option>';
-        options.forEach(function (entry) {
-            var opt = document.createElement('option');
-            opt.value = (entry.key || '').toString();
-            opt.textContent = (entry.label || entry.key || '').toString();
-            fragmentSel.appendChild(opt);
-        });
-
-        if (resolvedSelected && !Array.from(fragmentSel.options).some(function (opt) { return opt.value === resolvedSelected; })) {
-            var stale = document.createElement('option');
-            stale.value = resolvedSelected;
-            stale.textContent = '(missing) ' + resolvedSelected;
-            fragmentSel.appendChild(stale);
-        }
-
-        fragmentSel.value = resolvedSelected;
-        keyRow.style.display = resolvedModule ? '' : 'none';
-        return (fragmentSel.value || '').toString();
     }
 
     function syncDynamicIncludeContentUi(config) {
@@ -1146,8 +1088,6 @@
         var templateRow = document.getElementById('prop-dyn-template-row');
         var varsRow = document.getElementById('prop-dyn-vars-row');
         var editSourceRow = document.getElementById('prop-dyn-edit-source-row');
-        var coreFragmentModuleRow = document.getElementById('prop-dyn-core-fragment-row');
-        var coreFragmentModuleSel = document.getElementById('prop-dyn-core-fragment-module');
         var moduleWidgetGroup = panel.querySelector('.editor-content-group[data-content-type="module-widget"]');
         var moduleContentGroup = panel.querySelector('.editor-content-group[data-content-type="module-content"]');
 
@@ -1157,31 +1097,12 @@
         var isPhpInclude = sourceType === 'php_include';
         var isModuleWidget = sourceType === 'module_widget';
         var isModuleContent = sourceType === 'module_content';
-        var isCoreFragment = sourceType === 'core_fragment';
 
         if (templateRow) { templateRow.style.display = isPhpInclude ? '' : 'none'; }
         if (varsRow) { varsRow.style.display = isPhpInclude ? '' : 'none'; }
         if (editSourceRow) { editSourceRow.style.display = isPhpInclude ? '' : 'none'; }
-        if (coreFragmentModuleRow) { coreFragmentModuleRow.style.display = isCoreFragment ? '' : 'none'; }
         if (moduleWidgetGroup) { moduleWidgetGroup.style.display = isModuleWidget ? '' : 'none'; }
         if (moduleContentGroup) { moduleContentGroup.style.display = isModuleContent ? '' : 'none'; }
-
-        if (isCoreFragment) {
-            var selectedFragmentKey = (config.core_fragment_key || '').toString();
-            var resolvedModule = '';
-            if (coreFragmentModuleSel) {
-                resolvedModule = (coreFragmentModuleSel.value || '').toString();
-            }
-            if (!resolvedModule) {
-                resolvedModule = findCoreFragmentModule(selectedFragmentKey) || '';
-            }
-            if (coreFragmentModuleSel) {
-                coreFragmentModuleSel.value = resolvedModule;
-            }
-            populateCoreFragmentOptions(resolvedModule, selectedFragmentKey);
-        } else {
-            populateCoreFragmentOptions('', '');
-        }
     }
 
     function loadProps(block) {
@@ -1446,20 +1367,20 @@
         }
 
         // Visibility controls
-        var visibilitySel  = document.getElementById('prop-visibility');
-        var minRoleRow     = document.getElementById('prop-min-role-row');
-        var minRoleSel     = document.getElementById('prop-min-role');
-        var minGroupRow    = document.getElementById('prop-min-group-row');
-        var minGroupSel    = document.getElementById('prop-min-group');
+        var visibilitySel = document.getElementById('prop-visibility');
+        var minRoleRow = document.getElementById('prop-min-role-row');
+        var minRoleSel = document.getElementById('prop-min-role');
+        var minGroupRow = document.getElementById('prop-min-group-row');
+        var minGroupSel = document.getElementById('prop-min-group');
         var positionIdsRow = document.getElementById('prop-position-ids-row');
         var positionIdsSel = document.getElementById('prop-position-ids');
         if (visibilitySel) {
             visibilitySel.value = (config._visibility || 'always').toString();
             var showLoggedInRows = visibilitySel.value === 'logged_in';
-            if (minRoleRow)  { minRoleRow.style.display  = showLoggedInRows ? '' : 'none'; }
+            if (minRoleRow) { minRoleRow.style.display = showLoggedInRows ? '' : 'none'; }
             if (minGroupRow) { minGroupRow.style.display = showLoggedInRows ? '' : 'none'; }
             if (positionIdsRow) { positionIdsRow.style.display = showLoggedInRows ? '' : 'none'; }
-            if (minRoleSel)  { minRoleSel.value  = String(config._min_role  || 0); }
+            if (minRoleSel) { minRoleSel.value = String(config._min_role || 0); }
             if (minGroupSel) { minGroupSel.value = String(config._min_group || 0); }
             syncVisibilityPositionOptions(positionIdsSel, config._position_ids || []);
         }
@@ -2088,22 +2009,6 @@
                     refreshPhpIncludePreview(block);
                 };
             }
-
-            var dynCoreFragment = document.getElementById('prop-dyn-core-fragment');
-            var dynCoreFragmentModule = document.getElementById('prop-dyn-core-fragment-module');
-            if (dynCoreFragmentModule) {
-                dynCoreFragmentModule.onchange = function () {
-                    var nextKey = populateCoreFragmentOptions(dynCoreFragmentModule.value, '');
-                    writeConfig(block, 'core_fragment_key', nextKey);
-                    refreshPhpIncludePreview(block);
-                };
-            }
-            if (dynCoreFragment) {
-                dynCoreFragment.onchange = function () {
-                    writeConfig(block, 'core_fragment_key', dynCoreFragment.value);
-                    refreshPhpIncludePreview(block);
-                };
-            }
         }
 
         if (anchorHrefInput && block.dataset.blockType === 'anchor') {
@@ -2407,11 +2312,11 @@
         bindCollapseStyleSelector(uiCollapseStyleSel, collapsedStyleSel);
 
         // Visibility controls — write back
-        var visibilitySel2  = document.getElementById('prop-visibility');
-        var minRoleRow2     = document.getElementById('prop-min-role-row');
-        var minRoleSel2     = document.getElementById('prop-min-role');
-        var minGroupRow2    = document.getElementById('prop-min-group-row');
-        var minGroupSel2    = document.getElementById('prop-min-group');
+        var visibilitySel2 = document.getElementById('prop-visibility');
+        var minRoleRow2 = document.getElementById('prop-min-role-row');
+        var minRoleSel2 = document.getElementById('prop-min-role');
+        var minGroupRow2 = document.getElementById('prop-min-group-row');
+        var minGroupSel2 = document.getElementById('prop-min-group');
         var positionIdsRow2 = document.getElementById('prop-position-ids-row');
         var positionIdsSel2 = document.getElementById('prop-position-ids');
         var writeVisibility = function () {
@@ -2444,13 +2349,13 @@
         if (visibilitySel2) {
             visibilitySel2.onchange = function () {
                 var isLoggedIn = this.value === 'logged_in';
-                if (minRoleRow2)  { minRoleRow2.style.display  = isLoggedIn ? '' : 'none'; }
+                if (minRoleRow2) { minRoleRow2.style.display = isLoggedIn ? '' : 'none'; }
                 if (minGroupRow2) { minGroupRow2.style.display = isLoggedIn ? '' : 'none'; }
                 if (positionIdsRow2) { positionIdsRow2.style.display = isLoggedIn ? '' : 'none'; }
                 writeVisibility();
             };
         }
-        if (minRoleSel2)  { minRoleSel2.onchange  = writeVisibility; }
+        if (minRoleSel2) { minRoleSel2.onchange = writeVisibility; }
         if (minGroupSel2) { minGroupSel2.onchange = writeVisibility; }
         if (positionIdsSel2) { positionIdsSel2.onchange = writeVisibility; }
 
@@ -2706,7 +2611,6 @@
             return k !== 'template'
                 && k !== 'db'
                 && k !== 'source_type'
-                && k !== 'core_fragment_key'
                 && k !== 'widget_key'
                 && k !== 'provider_key'
                 && k !== 'settings_json'
@@ -2765,13 +2669,6 @@
                 }
                 return;
             }
-
-            if (sourceType === 'core_fragment') {
-                if (!block.innerHTML.trim()) {
-                    block.innerHTML = '<p class="editor-dynamic-placeholder">Dynamic Include: select a core fragment.</p>';
-                }
-                return;
-            }
         }
 
         var rel = cfg.template || '';
@@ -2784,7 +2681,6 @@
             if (k !== 'template'
                 && k !== 'db'
                 && k !== 'source_type'
-                && k !== 'core_fragment_key'
                 && k !== 'widget_key'
                 && k !== 'provider_key'
                 && k !== 'settings_json'
@@ -2799,8 +2695,8 @@
         fetch(API_BASE + '/php-include-preview?' + qs, {
             headers: { 'Accept': 'application/json' },
         })
-                .then(function (r) { return r.json(); })
-                .then(function (data) { block.innerHTML = data.html || ''; })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { block.innerHTML = data.html || ''; })
             .catch(function () { /* leave existing content on error */ });
     }
 

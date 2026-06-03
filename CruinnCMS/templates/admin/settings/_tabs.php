@@ -17,8 +17,9 @@ $tabs = [
     'oauth'    => ['label' => 'OAuth',          'url' => '/admin/settings/oauth',    'icon' => '🔗'],
     'system'   => ['label' => 'System Info',    'url' => '/admin/settings/system',   'icon' => 'ℹ️'],
     'database' => ['label' => 'Database',       'url' => '/admin/settings/database', 'icon' => '🗄️'],
-    'modules'     => ['label' => 'Modules',         'url' => '/admin/settings/modules',  'icon' => '🧩'],
-    'maintenance' => ['label' => 'Maintenance',     'url' => '/admin/maintenance/links',  'icon' => '🔧'],
+    'modules'     => ['label' => 'Modules',     'url' => '/admin/settings/modules',     'icon' => '🧩'],
+    'block-types' => ['label' => 'Block Types', 'url' => '/admin/settings/block-types', 'icon' => '🧱'],
+    'maintenance' => ['label' => 'Maintenance', 'url' => '/admin/maintenance/links',     'icon' => '🔧'],
 ];
 
 $currentTab = $tab ?? 'site';

@@ -22,9 +22,13 @@ use Cruinn\Database;
 
 class BlockRegistry
 {
-    private static array $types    = [];
-    private static bool  $loaded   = false;
-    private static bool  $editMode = false;
+    private static array $types     = [];
+    private static bool  $loaded    = false;
+    private static bool  $dbChecked = false;
+    private static bool  $editMode  = false;
+
+    /** Keyed by slug: 'discovered' | 'active' | 'offline' */
+    private static array $statuses  = [];
 
     /**
      * Set/unset edit mode.
@@ -112,7 +116,41 @@ class BlockRegistry
     }
 
     /**
-     * Discover and load all definition.php files on first use.
+     * Return the activation status of a block type for this instance.
+     * Returns 'discovered' for types on disk but not yet in the DB.
+     */
+    public static function statusOf(string $slug): string
+    {
+        self::load();
+        return self::$statuses[$slug] ?? 'discovered';
+    }
+
+    /**
+     * Return true if the named block type is active for this instance.
+     */
+    public static function isActive(string $slug): bool
+    {
+        return self::statusOf($slug) === 'active';
+    }
+
+    /**
+     * Return all slugs discovered on disk (active + discovered + offline).
+     * Used by the ACP browse screen.
+     */
+    public static function allDiscovered(): array
+    {
+        self::load();
+        return array_keys(self::$statuses);
+    }
+
+    /**
+     * Discover block types on disk and load active ones.
+     *
+     * On first call:
+     *  1. Scan all definition.php files to discover available slugs.
+     *  2. Load DB state from block_type_config.
+     *  3. Require definition.php only for active slugs.
+     *     (Falls back to loading all if the table doesn't exist yet.)
      */
     private static function load(): void
     {
@@ -121,9 +159,53 @@ class BlockRegistry
         }
         self::$loaded = true;
 
-        // __DIR__ = src/BlockTypes  →  sub-dirs hold the individual type definitions
+        // Step 1: discover all available slugs from the filesystem.
+        $available = [];
         foreach (glob(__DIR__ . '/*/definition.php') as $file) {
-            require $file;
+            $slug = basename(dirname($file));
+            $available[$slug] = $file;
+        }
+
+        // Step 2: load activation state from the DB.
+        self::loadDbState();
+
+        // Any slug on disk not in DB is 'discovered' (not yet activated).
+        foreach (array_keys($available) as $slug) {
+            if (!isset(self::$statuses[$slug])) {
+                self::$statuses[$slug] = 'discovered';
+            }
+        }
+
+        // Step 3: require definition files.
+        // If the DB table doesn't exist yet ($dbChecked is false after the
+        // catch), load everything so the platform still functions.
+        $loadAll = !self::$dbChecked;
+        foreach ($available as $slug => $file) {
+            if ($loadAll || (self::$statuses[$slug] ?? 'discovered') === 'active') {
+                require $file;
+            }
+        }
+    }
+
+    /**
+     * Load activation statuses from block_type_config.
+     * Sets $dbChecked = true on success; leaves it false on failure (table missing).
+     */
+    private static function loadDbState(): void
+    {
+        if (self::$dbChecked) {
+            return;
+        }
+
+        try {
+            $db   = Database::getInstance();
+            $rows = $db->fetchAll("SELECT slug, status FROM block_type_config");
+            foreach ($rows as $row) {
+                self::$statuses[$row['slug']] = $row['status'];
+            }
+            self::$dbChecked = true;
+        } catch (\Throwable) {
+            // block_type_config table doesn't exist yet — load everything.
         }
     }
 }

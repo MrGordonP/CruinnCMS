@@ -9,4 +9,7 @@ BlockRegistry::register([
     'dynamic'   => false,
     'container' => false,
     'isLayout'  => false,
+    'group'          => 'media',
+    'group_label'    => 'Media',
+    'palette_entries'=> [['label' => 'Image']],
 ]);

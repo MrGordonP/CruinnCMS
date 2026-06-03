@@ -238,42 +238,4 @@ $allAvailable = array_merge($available ?? [], []);
     <?php endif; ?>
 </section>
 
-<style>
-.module-section-title { font-size: 1rem; font-weight: 700; color: var(--text-muted,#6b7280); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 .75rem; }
-.module-list { display: flex; flex-direction: column; gap: 1rem; }
-.module-card { background: var(--acp-card-bg,#fff); border: 1px solid var(--border-color,#ddd); border-radius: 6px; padding: 1.25rem; }
-.module-card.status-active    { border-left: 4px solid #22c55e; }
-.module-card.status-offline   { border-left: 4px solid #94a3b8; }
-.module-card.status-available { border-left: 4px solid #3b82f6; }
-.module-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .5rem; }
-.module-card-title  { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-.module-card-title h4 { margin: 0; font-size: 1rem; }
-.module-version { font-size: .8rem; color: var(--text-muted,#6b7280); font-weight: normal; }
-.module-card-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
-.module-status-badge { font-size: .75rem; padding: .15rem .55rem; border-radius: 999px; font-weight: 600; }
-.module-status-badge.status-active    { background: #dcfce7; color: #166534; }
-.module-status-badge.status-offline   { background: #f1f5f9; color: #475569; }
-.module-status-badge.status-available { background: #dbeafe; color: #1e40af; }
-.module-description { color: var(--text-muted,#6b7280); font-size: .9rem; margin: .35rem 0 .6rem; }
-.module-meta { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .82rem; color: var(--text-muted,#6b7280); margin-bottom: .5rem; }
-.module-meta-item { display: flex; align-items: center; gap: .3rem; }
-.dep-badge { display: inline-block; padding: .1rem .4rem; border-radius: 4px; font-size: .78rem; }
-.dep-ok      { background: #dcfce7; color: #166534; }
-.dep-missing { background: #fee2e2; color: #991b1b; }
-.migrations-meta.has-pending { color: #d97706; font-weight: 600; }
-.module-settings-panel { margin-top: .75rem; border-top: 1px solid var(--border-color,#e5e7eb); padding-top: .75rem; }
-.module-settings-panel summary { cursor: pointer; font-weight: 600; font-size: .9rem; margin-bottom: .75rem; }
-.module-settings-form { display: grid; gap: .75rem; max-width: 480px; }
-.uninstall-panel { margin-top: .75rem; padding: .75rem 1rem; background: #fff5f5; border: 1px solid #fca5a5; border-radius: 4px; }
-.uninstall-warning { font-size: .9rem; margin: 0 0 .5rem; }
-.uninstall-actions { display: flex; gap: .5rem; margin-top: .6rem; }
-.install-panel { margin-top: .75rem; padding: .75rem 1rem; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 4px; }
-.install-actions { display: flex; gap: .5rem; margin-top: .75rem; }
-.submodule-fieldset { border: 1px solid var(--border-color,#ddd); border-radius: 4px; padding: .6rem .9rem; margin-bottom: .5rem; }
-.submodule-fieldset legend { font-weight: 600; font-size: .85rem; padding: 0 .3rem; }
-.submodule-option { display: flex; align-items: flex-start; gap: .4rem; padding: .3rem 0; font-size: .9rem; cursor: pointer; }
-.submodule-disabled { opacity: .55; cursor: not-allowed; }
-.acp-empty-state { text-align: center; padding: 2rem 1rem; color: var(--text-muted,#6b7280); }
-</style>
-
 <?php include __DIR__ . '/_tabs_end.php'; ?>

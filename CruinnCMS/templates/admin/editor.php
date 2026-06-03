@@ -57,7 +57,6 @@ $visibilityPositions = $visibilityPositions ?? [];
     data-blog-profiles="<?= htmlspecialchars(json_encode($blogProfiles), ENT_QUOTES, 'UTF-8') ?>"
     data-event-profiles="<?= htmlspecialchars(json_encode($eventProfiles), ENT_QUOTES, 'UTF-8') ?>"
     data-visibility-positions="<?= htmlspecialchars(json_encode($visibilityPositions), ENT_QUOTES, 'UTF-8') ?>"
-    data-core-fragment-styles="<?= htmlspecialchars(json_encode((object)($coreFragmentStyles ?? [])), ENT_QUOTES, 'UTF-8') ?>"
     data-content-sets="<?= htmlspecialchars(json_encode(array_map(function($cs) {
         return ['slug' => $cs['slug'], 'fields' => json_decode($cs['fields'] ?? '[]', true) ?: [], 'type' => $cs['type'] ?? 'manual'];
     }, $contentSets), JSON_HEX_TAG | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8') ?>"
@@ -474,28 +473,35 @@ $visibilityPositions = $visibilityPositions ?? [];
             <div class="editor-panel-section">
                 <h3 class="editor-panel-heading editor-panel-toggle">Add Block <span class="editor-panel-chevron">▾</span></h3>
                 <div class="editor-palette">
-                    <?php $_disableCanvasEditing = !$page; ?>
-                    <div class="editor-palette-group-label">Layout &amp; Containers</div>
-                    <button class="palette-btn" data-add-block="element" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Block</button>
-                    <button class="palette-btn" data-add-block="section" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Section</button>
-                    <button class="palette-btn" data-add-block="columns" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Columns</button>
-                    <button class="palette-btn" data-add-block="table" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Table</button>
-                    <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Zone</button>
+                    <?php
+                    $_disableCanvasEditing = !$page;
+                    $_disabledAttr = $_disableCanvasEditing ? 'disabled title="Select a page first"' : '';
 
-                    <div class="editor-palette-group-label">Text</div>
-                    <button class="palette-btn" data-add-block="heading" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Heading</button>
-                    <button class="palette-btn" data-add-block="text" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Text</button>
-                    <button class="palette-btn" data-add-block="list" data-add-tag="ul" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>List (UL)</button>
-                    <button class="palette-btn" data-add-block="list" data-add-tag="ol" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>List (OL)</button>
+                    // Build groups dynamically from registry — group order follows
+                    // first-seen order across BlockRegistry::all().
+                    $_paletteGroups      = []; // group_key => [entries]
+                    $_paletteGroupLabels = []; // group_key => display label
+                    foreach (\Cruinn\BlockTypes\BlockRegistry::all() as $_btSlug => $_bt) {
+                        $_gKey = $_bt['group'] ?? null;
+                        if (!$_gKey || empty($_bt['palette_entries'])) continue;
+                        if (!isset($_paletteGroupLabels[$_gKey])) {
+                            $_paletteGroupLabels[$_gKey] = $_bt['group_label'] ?? $_gKey;
+                        }
+                        foreach ($_bt['palette_entries'] as $_entry) {
+                            $_paletteGroups[$_gKey][] = array_merge($_entry, ['slug' => $_btSlug]);
+                        }
+                    }
 
-                    <div class="editor-palette-group-label">Media</div>
-                    <button class="palette-btn" data-add-block="image" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Image</button>
-                    <button class="palette-btn" data-add-block="gallery" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Gallery</button>
-
-                    <div class="editor-palette-group-label">Data &amp; Dynamic</div>
-                    <button class="palette-btn" data-add-block="html" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>HTML</button>
-                    <button class="palette-btn" data-add-block="dynamic-include" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Dynamic Include</button>
-                    <button class="palette-btn" data-add-block="data-list" <?= $_disableCanvasEditing ? 'disabled title="Select a page first"' : '' ?>>Data List</button>
+                    foreach ($_paletteGroups as $_gKey => $_entries):
+                    ?>
+                    <div class="editor-palette-group-label"><?= $_paletteGroupLabels[$_gKey] ?></div>
+                    <?php foreach ($_entries as $_pBtn): ?>
+                    <button class="palette-btn" data-add-block="<?= e($_pBtn['slug']) ?>"<?= isset($_pBtn['tag']) ? ' data-add-tag="' . e($_pBtn['tag']) . '"' : '' ?> <?= $_disabledAttr ?>><?= e($_pBtn['label']) ?></button>
+                    <?php endforeach; ?>
+                    <?php if ($_gKey === 'layout'): ?>
+                    <button class="palette-btn palette-btn--zone" data-add-block="zone" <?= $_disabledAttr ?>>Zone</button>
+                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
             </div>
             <div class="editor-panel-section" id="editor-tree-section">
@@ -1056,7 +1062,6 @@ $visibilityPositions = $visibilityPositions ?? [];
                                 <option value="php_include">PHP Include</option>
                                 <option value="module_widget">Module Widget</option>
                                 <option value="module_content">Module Content</option>
-                                <option value="core_fragment">Core Fragment</option>
                             </select>
                         </div>
                         <div class="editor-prop-row" id="prop-dyn-template-row">
@@ -1077,19 +1082,6 @@ $visibilityPositions = $visibilityPositions ?? [];
                         </div>
                         <div class="php-include-vars" id="prop-dyn-vars-row" style="margin-top: 0.5rem">
                             <p class="php-include-hint" style="font-size:0.75rem;color:#9ca3af;margin:0;padding:0.25rem 0">Select a template to see its variables.</p>
-                        </div>
-                        <div class="editor-prop-row" id="prop-dyn-core-fragment-row" style="margin-top:0.75rem;display:none">
-                            <label>Fragment Module</label>
-                            <select class="editor-prop-input" id="prop-dyn-core-fragment-module">
-                                <option value="">— Select module —</option>
-                                <option value="subjects">Subjects</option>
-                            </select>
-                        </div>
-                        <div class="editor-prop-row" id="prop-dyn-core-fragment-key-row" style="margin-top:0.5rem;display:none">
-                            <label>Core Fragment</label>
-                            <select class="editor-prop-input" id="prop-dyn-core-fragment" data-config="core_fragment_key">
-                                <option value="">— Select fragment —</option>
-                            </select>
                         </div>
                         <div class="editor-prop-row" id="prop-dyn-edit-source-row" style="margin-top:0.75rem">
                             <button type="button" id="prop-php-edit-source-btn" class="btn btn-small btn-outline" style="width:100%">&lt;/&gt; Edit Template Source</button>

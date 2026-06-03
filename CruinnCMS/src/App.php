@@ -103,6 +103,60 @@ class App
         // Discover and load all drop-in modules (no-op until modules/ has content)
         Modules\ModuleRegistry::load();
 
+        // Register core platform modules — always active, not tracked in module_config.
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'subjects',
+            'name'        => 'Subjects',
+            'description' => 'Core subject/category management.',
+            'acp_sections' => [
+                ['group' => 'Content', 'label' => 'Subjects', 'url' => '/admin/subjects', 'icon' => '🧭'],
+            ],
+            'widgets' => static function (): array {
+                try {
+                    $db       = \Cruinn\Database::getInstance();
+                    $total    = (int) $db->fetchColumn('SELECT COUNT(*) FROM subjects');
+                    $active   = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'active'");
+                    $draft    = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'draft'");
+                    $archived = (int) $db->fetchColumn("SELECT COUNT(*) FROM subjects WHERE status = 'archived'");
+                } catch (\Throwable) {
+                    $total = $active = $draft = $archived = 0;
+                }
+
+                return [
+                    [
+                        'key'   => 'subjects_quick_link',
+                        'title' => 'Subjects Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/subjects" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">🧭</span>'
+                            . '<span>Subjects</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                    [
+                        'key'   => 'subjects_status_summary',
+                        'title' => 'Subjects Status Summary',
+                        'html'  => '<div class="activity-header"><h2>Subjects Status</h2></div>'
+                            . '<div class="dash-quick-grid">'
+                            . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Total</span></a>'
+                            . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $active . '</strong><span>Active</span></a>'
+                            . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $draft . '</strong><span>Draft</span></a>'
+                            . '<a href="/admin/subjects" class="dash-quick-link"><strong class="dash-stat-num">' . $archived . '</strong><span>Archived</span></a>'
+                            . '</div>',
+                    ],
+                ];
+            },
+        ]);
+
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'accounts',
+            'name'        => 'Accounts',
+            'description' => 'Core user account management.',
+            'acp_sections' => [
+                ['group' => 'Admin', 'label' => 'Users', 'url' => '/admin/users', 'icon' => '👤'],
+            ],
+        ]);
+
         // Register each active module's template directory as a fallback path
         foreach (Modules\ModuleRegistry::templatePaths() as $path) {
             Template::addTemplatePath($path);

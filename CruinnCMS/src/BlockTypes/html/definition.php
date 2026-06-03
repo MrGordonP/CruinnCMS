@@ -9,4 +9,7 @@ BlockRegistry::register([
     'dynamic'   => false,
     'container' => false,
     'isLayout'  => false,
+    'group'          => 'dynamic',
+    'group_label'    => 'Data &amp; Dynamic',
+    'palette_entries'=> [['label' => 'HTML']],
 ]);
