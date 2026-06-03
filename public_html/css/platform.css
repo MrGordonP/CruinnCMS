@@ -1670,7 +1670,9 @@ html.platform-sidebar-collapsed .platform-sidebar {
 }
 
 @media (max-width: 500px) {
-    .form-row { grid-template-columns: 1fr; }
+    .form-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 .form-help {

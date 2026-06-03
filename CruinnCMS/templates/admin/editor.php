@@ -1082,7 +1082,6 @@ $visibilityPositions = $visibilityPositions ?? [];
                             <label>Fragment Module</label>
                             <select class="editor-prop-input" id="prop-dyn-core-fragment-module">
                                 <option value="">— Select module —</option>
-                                <option value="account">Account</option>
                                 <option value="subjects">Subjects</option>
                             </select>
                         </div>

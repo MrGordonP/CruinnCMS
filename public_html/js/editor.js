@@ -63,11 +63,6 @@
     }());
 
     var CORE_FRAGMENT_CATALOG = {
-        account: [
-            { key: 'account_details_form', label: 'Account Details Form' },
-            { key: 'account_password_form', label: 'Account Password Form' },
-            { key: 'account_information', label: 'Account Information' }
-        ],
         subjects: [
             { key: 'subjects_quick_link', label: 'Subjects Quick Link' },
             { key: 'subjects_status_summary', label: 'Subjects Status Summary' }
@@ -1178,7 +1173,7 @@
                 resolvedModule = (coreFragmentModuleSel.value || '').toString();
             }
             if (!resolvedModule) {
-                resolvedModule = findCoreFragmentModule(selectedFragmentKey) || 'account';
+                resolvedModule = findCoreFragmentModule(selectedFragmentKey) || '';
             }
             if (coreFragmentModuleSel) {
                 coreFragmentModuleSel.value = resolvedModule;
