@@ -217,16 +217,16 @@ class AuthController extends BaseController
     // ── User Profile ───────────────────────────────────────────────
 
     /**
-     * GET /profile — Show the logged-in user's profile.
+     * GET /profile — Profile hub (logged-in user landing page).
      */
-    public function showProfile(): void
+    public function showProfileHub(): void
     {
         if (!Auth::check()) {
             $_SESSION['redirect_after_login'] = '/profile';
             $this->redirect('/login');
         }
 
-        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [Auth::userId()]);
+        $user = $this->db->fetch('SELECT display_name FROM users WHERE id = ?', [Auth::userId()]);
         if (!$user) {
             Auth::logout();
             $this->redirect('/login');
@@ -239,91 +239,168 @@ class AuthController extends BaseController
     }
 
     /**
-     * POST /profile — Update the logged-in user's profile.
+     * GET /profile/account — Account information (read-only).
      */
-    public function updateProfile(): void
+    public function showProfileAccount(): void
+    {
+        if (!Auth::check()) {
+            $_SESSION['redirect_after_login'] = '/profile/account';
+            $this->redirect('/login');
+        }
+
+        $user = $this->db->fetch('SELECT created_at, last_login FROM users WHERE id = ?', [Auth::userId()]);
+        if (!$user) {
+            Auth::logout();
+            $this->redirect('/login');
+        }
+
+        $this->renderSystemPage('profile/account', [
+            'title' => 'Account Information',
+            'user'  => $user,
+        ]);
+    }
+
+    /**
+     * GET /profile/password — Change password form.
+     */
+    public function showProfilePassword(): void
+    {
+        if (!Auth::check()) {
+            $_SESSION['redirect_after_login'] = '/profile/password';
+            $this->redirect('/login');
+        }
+
+        $this->renderSystemPage('profile/password', [
+            'title' => 'Change Password',
+        ]);
+    }
+
+    /**
+     * POST /profile/password — Process password change.
+     */
+    public function postProfilePassword(): void
     {
         if (!Auth::check()) {
             $this->redirect('/login');
         }
 
         $userId = Auth::userId();
-        $user = $this->db->fetch('SELECT * FROM users WHERE id = ?', [$userId]);
+        $user = $this->db->fetch('SELECT id, password_hash FROM users WHERE id = ?', [$userId]);
+        if (!$user) {
+            Auth::logout();
+            $this->redirect('/login');
+        }
+
+        $currentPassword = $this->input('current_password', '');
+        $newPassword     = $this->input('new_password', '');
+        $confirmPassword = $this->input('confirm_password', '');
+
+        $errors = [];
+
+        if (empty($currentPassword)) {
+            $errors[] = 'Current password is required.';
+        } elseif (!password_verify($currentPassword, $user['password_hash'])) {
+            $errors[] = 'Current password is incorrect.';
+        }
+
+        if (strlen($newPassword) < 8) {
+            $errors[] = 'New password must be at least 8 characters.';
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            $errors[] = 'Passwords do not match.';
+        }
+
+        if (!empty($errors)) {
+            $this->renderSystemPage('profile/password', [
+                'title'  => 'Change Password',
+                'errors' => $errors,
+            ]);
+            return;
+        }
+
+        $this->db->update('users', ['password_hash' => Auth::hashPassword($newPassword)], 'id = ?', [$userId]);
+
+        $this->logActivity('password_change', 'user', $userId, 'Password changed');
+        Auth::flash('success', 'Your password has been changed.');
+        $this->redirect('/profile/password');
+    }
+
+    /**
+     * GET /profile/details — Account details form (name/email).
+     */
+    public function showProfileDetails(): void
+    {
+        if (!Auth::check()) {
+            $_SESSION['redirect_after_login'] = '/profile/details';
+            $this->redirect('/login');
+        }
+
+        $user = $this->db->fetch('SELECT display_name, email FROM users WHERE id = ?', [Auth::userId()]);
+        if (!$user) {
+            Auth::logout();
+            $this->redirect('/login');
+        }
+
+        $this->renderSystemPage('profile/details', [
+            'title' => 'Account Details',
+            'user'  => $user,
+        ]);
+    }
+
+    /**
+     * POST /profile/details — Update display name and email.
+     */
+    public function postProfileDetails(): void
+    {
+        if (!Auth::check()) {
+            $this->redirect('/login');
+        }
+
+        $userId = Auth::userId();
+        $user = $this->db->fetch('SELECT display_name, email FROM users WHERE id = ?', [$userId]);
         if (!$user) {
             Auth::logout();
             $this->redirect('/login');
         }
 
         $displayName = trim($this->input('display_name', ''));
-        $email = strtolower(trim($this->input('email', '')));
-        $currentPassword = $this->input('current_password', '');
-        $newPassword = $this->input('new_password', '');
-        $confirmPassword = $this->input('confirm_password', '');
+        $email       = strtolower(trim($this->input('email', '')));
 
         $errors = [];
 
-        // Validate display name
         if (empty($displayName)) {
-            $errors['display_name'] = 'Display name is required.';
+            $errors[] = 'Display name is required.';
         }
 
-        // Validate email
         if (empty($email)) {
-            $errors['email'] = 'Email is required.';
+            $errors[] = 'Email is required.';
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors['email'] = 'Invalid email address.';
+            $errors[] = 'Invalid email address.';
         } else {
-            // Check for uniqueness (excluding self)
             $existing = $this->db->fetchColumn(
                 'SELECT COUNT(*) FROM users WHERE email = ? AND id != ?',
                 [$email, $userId]
             );
             if ($existing) {
-                $errors['email'] = 'This email is already in use.';
-            }
-        }
-
-        // Password change (optional)
-        if (!empty($newPassword) || !empty($confirmPassword)) {
-            if (empty($currentPassword)) {
-                $errors['current_password'] = 'Current password is required to set a new password.';
-            } elseif (!password_verify($currentPassword, $user['password_hash'])) {
-                $errors['current_password'] = 'Current password is incorrect.';
-            }
-
-            if (strlen($newPassword) < 8) {
-                $errors['new_password'] = 'New password must be at least 8 characters.';
-            }
-
-            if ($newPassword !== $confirmPassword) {
-                $errors['confirm_password'] = 'Passwords do not match.';
+                $errors[] = 'This email is already in use.';
             }
         }
 
         if (!empty($errors)) {
-            $this->renderSystemPage('profile', [
-                'title'  => 'My Profile',
-                'user'   => array_merge($user, ['display_name' => $displayName, 'email' => $email]),
+            $this->renderSystemPage('profile/details', [
+                'title'  => 'Account Details',
+                'user'   => ['display_name' => $displayName, 'email' => $email],
                 'errors' => $errors,
             ]);
             return;
         }
 
-        // Update user
-        $updateData = [
-            'display_name' => $displayName,
-            'email'        => $email,
-        ];
+        $this->db->update('users', ['display_name' => $displayName, 'email' => $email], 'id = ?', [$userId]);
 
-        if (!empty($newPassword)) {
-            $updateData['password_hash'] = Auth::hashPassword($newPassword);
-        }
-
-        $this->db->update('users', $updateData, 'id = ?', [$userId]);
-
-        $this->logActivity('profile_update', 'user', $userId, 'Profile updated');
-        Auth::flash('success', 'Your profile has been updated.');
-        $this->redirect('/profile');
+        $this->logActivity('profile_update', 'user', $userId, 'Account details updated');
+        Auth::flash('success', 'Account details updated.');
+        $this->redirect('/profile/details');
     }
 
     /**

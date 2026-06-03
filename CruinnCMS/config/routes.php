@@ -93,8 +93,12 @@ return function (Cruinn\Router $router) {
     $router->post('/reset-password/{token}',   [AuthController::class, 'resetPassword']);
 
     // -- User Profile -----------------------------------------------
-    $router->get('/profile',                   [AuthController::class, 'showProfile']);
-    $router->post('/profile',                  [AuthController::class, 'updateProfile']);
+    $router->get('/profile',                   [AuthController::class, 'showProfileHub']);
+    $router->get('/profile/account',           [AuthController::class, 'showProfileAccount']);
+    $router->get('/profile/password',          [AuthController::class, 'showProfilePassword']);
+    $router->post('/profile/password',         [AuthController::class, 'postProfilePassword']);
+    $router->get('/profile/details',           [AuthController::class, 'showProfileDetails']);
+    $router->post('/profile/details',          [AuthController::class, 'postProfileDetails']);
 
     // -- Subjects ---------------------------------------------------
     $router->get('/subjects/{slug}',           [SubjectController::class, 'show']);

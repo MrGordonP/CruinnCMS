@@ -570,17 +570,18 @@ ON DUPLICATE KEY UPDATE `key` = VALUES(`key`);
 -- ── System Pages ─────────────────────────────────────────────
 -- Engine-level pages that exist outside the user's page tree but use the
 -- block/template system so they inherit site chrome (header, footer zones).
--- Most pages have a single php-include block pointing to the appropriate PHP
--- template partial. The profile page is seeded with dedicated core/system
--- account blocks so admins can compose account layouts directly in Cruinn.
+-- profile, profile/account, and profile/password are seeded as system pages.
+-- profile/details is instance-created if required.
 
 INSERT INTO `pages_index` (`title`, `slug`, `status`, `template`, `page_zone`, `render_mode`, `editor_mode`) VALUES
-    ('Login',              'login',             'published', 'default', 'main', 'block', 'structured'),
-    ('Create Account',     'register',          'published', 'default', 'main', 'block', 'structured'),
-    ('My Profile',         'profile',           'published', 'default', 'main', 'block', 'structured'),
-    ('Forgot Password',    'forgot-password',   'published', 'default', 'main', 'block', 'structured'),
-    ('Reset Password',     'reset-password',    'published', 'default', 'main', 'block', 'structured'),
-    ('Email Verification', 'verify-email-sent', 'published', 'default', 'main', 'block', 'structured');
+    ('Login',              'login',            'published', 'default', 'main', 'block', 'structured'),
+    ('Create Account',     'register',         'published', 'default', 'main', 'block', 'structured'),
+    ('My Profile',         'profile',          'published', 'default', 'main', 'block', 'structured'),
+    ('Account Information','profile/account',  'published', 'default', 'main', 'block', 'structured'),
+    ('Change Password',    'profile/password', 'published', 'default', 'main', 'block', 'structured'),
+    ('Forgot Password',    'forgot-password',  'published', 'default', 'main', 'block', 'structured'),
+    ('Reset Password',     'reset-password',   'published', 'default', 'main', 'block', 'structured'),
+    ('Email Verification', 'verify-email-sent','published', 'default', 'main', 'block', 'structured');
 
 -- php-include block for each system page
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
@@ -588,11 +589,11 @@ INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
     SELECT 'sys-register-01',     id, 'php-include', '{"template":"public/register.php"}',          0 FROM `pages_index` WHERE `slug` = 'register';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
-    SELECT 'sys-profile-details-01', id, 'account-details-form', NULL, 0 FROM `pages_index` WHERE `slug` = 'profile';
+    SELECT 'sys-profile-hub-01',  id, 'php-include', '{"template":"public/profile.php"}',           0 FROM `pages_index` WHERE `slug` = 'profile';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
-    SELECT 'sys-profile-password-01', id, 'account-password-form', NULL, 1 FROM `pages_index` WHERE `slug` = 'profile';
+    SELECT 'sys-profile-account-01', id, 'php-include', '{"template":"public/account/information.php"}', 0 FROM `pages_index` WHERE `slug` = 'profile/account';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
-    SELECT 'sys-profile-info-01', id, 'account-information', NULL, 2 FROM `pages_index` WHERE `slug` = 'profile';
+    SELECT 'sys-profile-password-01', id, 'php-include', '{"template":"public/account/password-form.php"}', 0 FROM `pages_index` WHERE `slug` = 'profile/password';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
     SELECT 'sys-forgot-pw-01',    id, 'php-include', '{"template":"public/forgot-password.php"}',   0 FROM `pages_index` WHERE `slug` = 'forgot-password';
 INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_order`)
@@ -604,6 +605,8 @@ INSERT INTO `pages` (`block_id`, `page_id`, `block_type`, `block_config`, `sort_
 INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'login',             id FROM `pages_index` WHERE `slug` = 'login';
 INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'register',          id FROM `pages_index` WHERE `slug` = 'register';
 INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'profile',           id FROM `pages_index` WHERE `slug` = 'profile';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'profile/account',   id FROM `pages_index` WHERE `slug` = 'profile/account';
+INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'profile/password',  id FROM `pages_index` WHERE `slug` = 'profile/password';
 INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'forgot-password',   id FROM `pages_index` WHERE `slug` = 'forgot-password';
 INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'reset-password',    id FROM `pages_index` WHERE `slug` = 'reset-password';
 INSERT INTO `system_pages` (`system_key`, `page_id`) SELECT 'verify-email-sent', id FROM `pages_index` WHERE `slug` = 'verify-email-sent';
