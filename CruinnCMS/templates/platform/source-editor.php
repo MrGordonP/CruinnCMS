@@ -178,8 +178,9 @@ if ($activeFile !== null && $fileContent !== null) {
             <?php $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
                   $_isProtected = false;
                   foreach ($protected as $_pg) { if (str_starts_with($activeFile, $_pg)) { $_isProtected = true; break; } }
+                $_allowProtectedPull = ($activeFile === 'config/routes.php');
             ?>
-            <?php if (!$_isProtected): ?>
+            <?php if (!$_isProtected || $_allowProtectedPull): ?>
             <div style="margin-top:1rem;">
                 <form id="props-pull-form" method="post" action="/cms/source/pull">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">

@@ -41,6 +41,8 @@ return function (Cruinn\Router $router) {
     $router->get('/cms/dashboard',                      [PlatformController::class, 'dashboard']);
     $router->get('/cms/settings',                       [PlatformController::class, 'showSettings']);
     $router->post('/cms/settings',                      [PlatformController::class, 'saveSettings']);
+    $router->post('/cms/settings/logs',                 [PlatformController::class, 'saveLinkedLogs']);
+    $router->get('/cms/settings/logs/view',             [PlatformController::class, 'viewLinkedLog']);
     $router->post('/cms/instances/{name}/toggle',     [PlatformController::class, 'toggleInstance']);
     $router->get('/cms/instances/new',                  [PlatformController::class, 'showProvisionInstance']);
     $router->post('/cms/instances/new',                 [PlatformController::class, 'provisionInstance']);

@@ -1,7 +1,7 @@
 <?php
 /**
- * Platform Settings — Change platform admin password
- * Variables: $username, $saved
+ * Platform Settings — Change platform admin password + linked log paths
+ * Variables: $username, $saved, $logsSaved, $logsError, $linkedLogs
  */
 ?>
 <?php ob_start(); ?>
@@ -13,6 +13,14 @@
 
     <?php if (!empty($saved)): ?>
     <div class="platform-alert platform-alert-success">Password updated successfully.</div>
+    <?php endif; ?>
+
+    <?php if (!empty($logsSaved)): ?>
+    <div class="platform-alert platform-alert-success">Linked logs updated successfully.</div>
+    <?php endif; ?>
+
+    <?php if (!empty($logsError)): ?>
+    <div class="platform-alert platform-alert-error"><?= e($logsError) ?></div>
     <?php endif; ?>
 
     <?php if (!empty($_SESSION['_platform_settings_error'])): ?>
@@ -49,7 +57,142 @@
             </form>
         </div>
     </section>
+
+    <section class="platform-section">
+        <div class="platform-section-header"><h2>Linked Error Logs</h2></div>
+
+        <div class="platform-settings-card">
+            <p class="text-muted" style="margin-top:0">Link one or more absolute log file paths from hosting so they can be viewed in-platform (read-only).</p>
+
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+                <button type="button" class="platform-btn platform-btn-primary" id="open-linked-logs-dialog">Manage Linked Logs</button>
+            </div>
+
+            <?php $linkedLogs = is_array($linkedLogs ?? null) ? $linkedLogs : []; ?>
+            <?php if (!empty($linkedLogs)): ?>
+            <div style="display:grid;gap:.5rem">
+                <?php foreach ($linkedLogs as $i => $log): ?>
+                <div style="border:1px solid #d1d5db;border-radius:6px;padding:.55rem .65rem;display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap">
+                    <div>
+                        <div style="font-weight:600"><?= e($log['label'] ?? 'Log') ?></div>
+                        <div style="font-family:monospace;font-size:.78rem;color:#6b7280"><?= e($log['path'] ?? '') ?></div>
+                    </div>
+                    <a class="platform-btn platform-btn-secondary" href="/cms/settings/logs/view?idx=<?= (int) $i ?>" target="_blank" rel="noopener">View</a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <p class="text-muted" style="margin-bottom:0">No linked logs configured yet.</p>
+            <?php endif; ?>
+        </div>
+    </section>
 </div>
+
+<dialog id="linked-logs-dialog" style="width:min(920px,96vw);border:1px solid #d1d5db;border-radius:10px;padding:0;box-shadow:0 25px 70px rgba(0,0,0,.35)">
+    <form method="post" action="/cms/settings/logs" style="margin:0">
+        <input type="hidden" name="csrf_token" value="<?= e(
+            \Cruinn\CSRF::getToken()
+        ) ?>">
+
+        <div style="padding:1rem 1rem .75rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+            <h3 style="margin:0;font-size:1rem">Linked Error Logs</h3>
+            <button type="button" id="close-linked-logs-dialog" class="platform-btn platform-btn-secondary">Close</button>
+        </div>
+
+        <div style="padding:1rem;max-height:min(66vh,560px);overflow:auto">
+            <p class="text-muted" style="margin-top:0">Use absolute file paths. Example: <code>/home/username/error_log</code></p>
+
+            <div id="linked-logs-rows" style="display:grid;gap:.6rem">
+                <?php if (!empty($linkedLogs)): ?>
+                    <?php foreach ($linkedLogs as $log): ?>
+                    <div class="linked-log-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:.5rem;align-items:center">
+                        <input type="text" name="log_label[]" value="<?= e($log['label'] ?? '') ?>" placeholder="Label (e.g. PHP Error Log)">
+                        <input type="text" name="log_path[]" value="<?= e($log['path'] ?? '') ?>" placeholder="/absolute/path/to/log/file.log">
+                        <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
+                    </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="linked-log-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:.5rem;align-items:center">
+                        <input type="text" name="log_label[]" value="PHP Error Log" placeholder="Label (e.g. PHP Error Log)">
+                        <input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">
+                        <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div style="margin-top:.75rem">
+                <button type="button" class="platform-btn platform-btn-secondary" id="add-linked-log-row">Add Log Link</button>
+            </div>
+        </div>
+
+        <div style="padding:.85rem 1rem;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:.5rem">
+            <button type="button" class="platform-btn platform-btn-secondary" id="cancel-linked-logs-dialog">Cancel</button>
+            <button type="submit" class="platform-btn platform-btn-primary">Save Linked Logs</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+(function () {
+    var dialog = document.getElementById('linked-logs-dialog');
+    var openBtn = document.getElementById('open-linked-logs-dialog');
+    var closeBtn = document.getElementById('close-linked-logs-dialog');
+    var cancelBtn = document.getElementById('cancel-linked-logs-dialog');
+    var addBtn = document.getElementById('add-linked-log-row');
+    var rows = document.getElementById('linked-logs-rows');
+
+    if (!dialog || !openBtn || !rows) {
+        return;
+    }
+
+    function bindRowRemoval(root) {
+        root.querySelectorAll('[data-remove-log-row]').forEach(function (btn) {
+            btn.onclick = function () {
+                var row = btn.closest('.linked-log-row');
+                if (!row) { return; }
+                row.remove();
+            };
+        });
+    }
+
+    function addRow() {
+        var row = document.createElement('div');
+        row.className = 'linked-log-row';
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '1fr 2fr auto';
+        row.style.gap = '.5rem';
+        row.style.alignItems = 'center';
+        row.innerHTML = ''
+            + '<input type="text" name="log_label[]" value="" placeholder="Label (e.g. PHP Error Log)">'
+            + '<input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">'
+            + '<button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>';
+        rows.appendChild(row);
+        bindRowRemoval(row);
+    }
+
+    openBtn.addEventListener('click', function () {
+        if (typeof dialog.showModal === 'function') {
+            dialog.showModal();
+        } else {
+            dialog.setAttribute('open', 'open');
+        }
+    });
+
+    function closeDialog() {
+        if (typeof dialog.close === 'function') {
+            dialog.close();
+        } else {
+            dialog.removeAttribute('open');
+        }
+    }
+
+    if (closeBtn) { closeBtn.addEventListener('click', closeDialog); }
+    if (cancelBtn) { cancelBtn.addEventListener('click', closeDialog); }
+    if (addBtn) { addBtn.addEventListener('click', addRow); }
+
+    bindRowRemoval(rows);
+}());
+</script>
 
 <?php $content = ob_get_clean(); ?>
 <?php include __DIR__ . '/layout.php'; ?>

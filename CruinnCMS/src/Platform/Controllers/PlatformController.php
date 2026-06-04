@@ -1091,12 +1091,27 @@ class PlatformController
     {
         if ($this->serveEditedPlatformPage('settings')) { return; }
 
+        $cfgPath = dirname(__DIR__, 3) . '/config/CruinnCMS.php';
+        $cfg = file_exists($cfgPath) ? require $cfgPath : [];
+        $linkedLogs = [];
+        foreach (($cfg['linked_logs'] ?? []) as $row) {
+            $label = trim((string) ($row['label'] ?? ''));
+            $path  = trim((string) ($row['path'] ?? ''));
+            if ($label === '' || $path === '') {
+                continue;
+            }
+            $linkedLogs[] = ['label' => $label, 'path' => $path];
+        }
+
         echo $this->view->render('platform/settings', [
             'title'    => 'Platform Settings',
             'username' => PlatformAuth::username(),
             'saved'    => !empty($_SESSION['_platform_settings_saved']),
+            'logsSaved' => !empty($_SESSION['_platform_logs_saved']),
+            'logsError' => $_SESSION['_platform_logs_error'] ?? null,
+            'linkedLogs' => $linkedLogs,
         ]);
-        unset($_SESSION['_platform_settings_saved']);
+        unset($_SESSION['_platform_settings_saved'], $_SESSION['_platform_logs_saved'], $_SESSION['_platform_logs_error']);
     }
 
     public function saveSettings(): void
@@ -1133,6 +1148,143 @@ class PlatformController
         $_SESSION['_platform_settings_saved'] = true;
         header('Location: /cms/settings');
         exit;
+    }
+
+    public function saveLinkedLogs(): void
+    {
+        if (!PlatformAuth::check()) {
+            header('Location: /cms/login');
+            exit;
+        }
+
+        $labels = $_POST['log_label'] ?? [];
+        $paths  = $_POST['log_path'] ?? [];
+        if (!is_array($labels)) { $labels = []; }
+        if (!is_array($paths))  { $paths = []; }
+
+        $rows = [];
+        $count = max(count($labels), count($paths));
+        for ($i = 0; $i < $count; $i++) {
+            $label = trim((string) ($labels[$i] ?? ''));
+            $path  = trim((string) ($paths[$i] ?? ''));
+            if ($label === '' && $path === '') {
+                continue;
+            }
+            if ($label === '' || $path === '') {
+                $_SESSION['_platform_logs_error'] = 'Each linked log row needs both a label and an absolute file path.';
+                header('Location: /cms/settings');
+                exit;
+            }
+            if (!str_starts_with($path, '/')) {
+                $_SESSION['_platform_logs_error'] = 'Log path must be an absolute path.';
+                header('Location: /cms/settings');
+                exit;
+            }
+            if (str_contains($path, "\0")) {
+                $_SESSION['_platform_logs_error'] = 'Invalid log path.';
+                header('Location: /cms/settings');
+                exit;
+            }
+
+            $real = realpath($path);
+            if ($real === false || !is_file($real)) {
+                $_SESSION['_platform_logs_error'] = 'Log file not found: ' . $path;
+                header('Location: /cms/settings');
+                exit;
+            }
+
+            $rows[] = [
+                'label' => mb_substr($label, 0, 80),
+                'path'  => $real,
+            ];
+        }
+
+        $cfgPath = dirname(__DIR__, 3) . '/config/CruinnCMS.php';
+        $existing = file_exists($cfgPath) ? require $cfgPath : [];
+        $existing['linked_logs'] = $rows;
+
+        $export = "<?php\n// CruinnCMS Platform Config — updated " . date('Y-m-d H:i:s') . "\nreturn " . var_export($existing, true) . ";\n";
+        if (file_put_contents($cfgPath, $export) === false) {
+            $_SESSION['_platform_logs_error'] = 'Could not write config/CruinnCMS.php. Check file permissions.';
+            header('Location: /cms/settings');
+            exit;
+        }
+
+        $_SESSION['_platform_logs_saved'] = true;
+        header('Location: /cms/settings');
+        exit;
+    }
+
+    public function viewLinkedLog(): void
+    {
+        if (!PlatformAuth::check()) {
+            http_response_code(403);
+            echo 'Unauthorized';
+            exit;
+        }
+
+        $idx = max(0, (int) ($_GET['idx'] ?? 0));
+        $cfgPath = dirname(__DIR__, 3) . '/config/CruinnCMS.php';
+        $cfg = file_exists($cfgPath) ? require $cfgPath : [];
+        $linkedLogs = $cfg['linked_logs'] ?? [];
+
+        if (!isset($linkedLogs[$idx]) || !is_array($linkedLogs[$idx])) {
+            http_response_code(404);
+            echo 'Linked log not found.';
+            exit;
+        }
+
+        $label = trim((string) ($linkedLogs[$idx]['label'] ?? 'Log'));
+        $path  = trim((string) ($linkedLogs[$idx]['path'] ?? ''));
+        if ($path === '' || !str_starts_with($path, '/')) {
+            http_response_code(400);
+            echo 'Invalid linked log path.';
+            exit;
+        }
+
+        $real = realpath($path);
+        if ($real === false || !is_file($real) || !is_readable($real)) {
+            http_response_code(404);
+            echo 'Linked log file is not readable.';
+            exit;
+        }
+
+        $content = $this->tailFile($real, 300 * 1024);
+
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+           . '<title>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</title>'
+           . '<style>body{margin:0;background:#0b0f14;color:#dbe4ee;font:13px/1.5 Consolas,Monaco,monospace;}header{padding:10px 14px;border-bottom:1px solid #243447;background:#101722;}pre{margin:0;padding:12px 14px;white-space:pre-wrap;word-break:break-word;}small{color:#9fb0c2;}</style>'
+           . '</head><body><header><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong><br><small>' . htmlspecialchars($real, ENT_QUOTES, 'UTF-8') . '</small></header><pre>'
+           . htmlspecialchars($content, ENT_QUOTES, 'UTF-8')
+           . '</pre></body></html>';
+        exit;
+    }
+
+    private function tailFile(string $path, int $maxBytes = 307200): string
+    {
+        $size = @filesize($path);
+        if (!is_int($size) || $size <= 0) {
+            return '';
+        }
+
+        $offset = max(0, $size - max(1024, $maxBytes));
+        $fh = @fopen($path, 'rb');
+        if ($fh === false) {
+            return '';
+        }
+
+        try {
+            if ($offset > 0) {
+                fseek($fh, $offset);
+                // Drop partial line at chunk boundary for cleaner output.
+                fgets($fh);
+            }
+            $buf = stream_get_contents($fh);
+            return is_string($buf) ? $buf : '';
+        } finally {
+            fclose($fh);
+        }
     }
 
     // â”€â”€ Instance Switching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -2407,6 +2559,9 @@ class PlatformController
         $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
         foreach ($protected as $guard) {
             if (str_starts_with($reqFile, $guard)) {
+                if ($reqFile === 'config/routes.php') {
+                    continue;
+                }
                 $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'That path is protected and cannot be pulled from GitHub.'];
                 header('Location: /cms/source?file=' . rawurlencode($reqFile));
                 exit;

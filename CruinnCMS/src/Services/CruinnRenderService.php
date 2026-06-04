@@ -679,10 +679,28 @@ class CruinnRenderService
                             if (!$this->canRenderByVisibility($pbCfg)) {
                                 continue;
                             }
+                            $pbCssProps = json_decode($pb['css_props'] ?? '{}', true) ?: [];
                             $pbTag      = $pbCfg['_tag'] ?? $this->tagForType($pb['block_type']);
                             $pbType     = htmlspecialchars($pb['block_type'], ENT_QUOTES, 'UTF-8');
                             $pbId       = htmlspecialchars($pb['block_id'], ENT_QUOTES, 'UTF-8');
                             $pbAttrs    = '';
+                            $pbClasses = [];
+                            $pbCssClass = trim((string) ($pbCssProps['_class'] ?? ''));
+                            if ($pbCssClass !== '') {
+                                $pbClasses[] = $pbCssClass;
+                            }
+                            $pbImportedClass = trim((string) ($pbCfg['_attrs']['class'] ?? ''));
+                            if ($pbImportedClass !== '') {
+                                $pbClasses[] = $pbImportedClass;
+                            }
+                            if (!empty($pbClasses)) {
+                                $pbAttrs .= ' class="' . htmlspecialchars(trim(implode(' ', $pbClasses)), ENT_QUOTES, 'UTF-8') . '"';
+                            }
+                            foreach ($pbCfg['_attrs'] ?? [] as $k => $v) {
+                                if ($k === 'id' || $k === 'class') { continue; }
+                                $pbAttrs .= ' ' . htmlspecialchars($k, ENT_QUOTES, 'UTF-8')
+                                         . '="' . htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8') . '"';
+                            }
                             $pbCollapse = (string) ($pbCfg['ui_collapse'] ?? '');
                             if ($pbCollapse === 'tablet' || $pbCollapse === 'mobile') {
                                 $pbAttrs .= ' data-ui-collapse="' . $pbCollapse . '"';
@@ -710,8 +728,21 @@ class CruinnRenderService
             } else {
                 // Regular template block
                 $extraAttrs = '';
+                $tCssProps = json_decode($row['css_props'] ?? '{}', true) ?: [];
+                $templateClasses = [];
+                $tCssClass = trim((string) ($tCssProps['_class'] ?? ''));
+                if ($tCssClass !== '') {
+                    $templateClasses[] = $tCssClass;
+                }
+                $tImportedClass = trim((string) ($tCfg['_attrs']['class'] ?? ''));
+                if ($tImportedClass !== '') {
+                    $templateClasses[] = $tImportedClass;
+                }
+                if (!empty($templateClasses)) {
+                    $extraAttrs .= ' class="' . htmlspecialchars(trim(implode(' ', $templateClasses)), ENT_QUOTES, 'UTF-8') . '"';
+                }
                 foreach ($tCfg['_attrs'] ?? [] as $k => $v) {
-                    if ($k === 'id') { continue; }
+                    if ($k === 'id' || $k === 'class') { continue; }
                     $extraAttrs .= ' ' . htmlspecialchars($k, ENT_QUOTES, 'UTF-8')
                                  . '="' . htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8') . '"';
                 }
