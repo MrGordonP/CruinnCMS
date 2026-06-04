@@ -1186,16 +1186,12 @@ class PlatformController
                 exit;
             }
 
-            $real = realpath($path);
-            if ($real === false || !is_file($real)) {
-                $_SESSION['_platform_logs_error'] = 'Log file not found: ' . $path;
-                header('Location: /cms/settings');
-                exit;
-            }
+            $resolved = realpath($path);
+            $storedPath = ($resolved !== false) ? $resolved : $path;
 
             $rows[] = [
                 'label' => mb_substr($label, 0, 80),
-                'path'  => $real,
+                'path'  => $storedPath,
             ];
         }
 
@@ -1242,20 +1238,25 @@ class PlatformController
             exit;
         }
 
+        $resolvedPath = $path;
         $real = realpath($path);
-        if ($real === false || !is_file($real) || !is_readable($real)) {
+        if ($real !== false) {
+            $resolvedPath = $real;
+        }
+
+        if (!is_file($resolvedPath) || !is_readable($resolvedPath)) {
             http_response_code(404);
             echo 'Linked log file is not readable.';
             exit;
         }
 
-        $content = $this->tailFile($real, 300 * 1024);
+        $content = $this->tailFile($resolvedPath, 300 * 1024);
 
         header('Content-Type: text/html; charset=utf-8');
         echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
            . '<title>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</title>'
            . '<style>body{margin:0;background:#0b0f14;color:#dbe4ee;font:13px/1.5 Consolas,Monaco,monospace;}header{padding:10px 14px;border-bottom:1px solid #243447;background:#101722;}pre{margin:0;padding:12px 14px;white-space:pre-wrap;word-break:break-word;}small{color:#9fb0c2;}</style>'
-           . '</head><body><header><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong><br><small>' . htmlspecialchars($real, ENT_QUOTES, 'UTF-8') . '</small></header><pre>'
+           . '</head><body><header><strong>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</strong><br><small>' . htmlspecialchars($resolvedPath, ENT_QUOTES, 'UTF-8') . '</small></header><pre>'
            . htmlspecialchars($content, ENT_QUOTES, 'UTF-8')
            . '</pre></body></html>';
         exit;
