@@ -122,10 +122,17 @@
 
     if (sourceTree) {
         sourceTree.addEventListener('click', function (event) {
-            var summary = event.target.closest('summary[data-dir]');
+            var target = event.target;
+            if (!(target instanceof Element)) {
+                target = target && target.parentElement ? target.parentElement : null;
+            }
+            var summary = target ? target.closest('summary[data-dir]') : null;
             if (!summary) return;
 
             currentDir = summary.dataset.dir;
+            if (summary.parentElement && summary.parentElement.tagName === 'DETAILS') {
+                summary.parentElement.open = true;
+            }
             loadLazyDirectory(summary);
 
             var propsFile = document.getElementById('props-file');
