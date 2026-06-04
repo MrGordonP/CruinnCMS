@@ -315,6 +315,40 @@ class ModuleRegistry
     }
 
     /**
+     * Return dashboard card entries used by the default dashboard layout.
+     * Entries are sourced from the same virtual/widget registry used by editor pickers.
+     *
+     * Each entry: ['key','module','title','kind','dashboard_group']
+     */
+    public static function dashboardCardCatalog(): array
+    {
+        self::load();
+
+        $cards = [];
+        foreach (self::virtualWidgetMap() as $key => $def) {
+            if (!is_array($def)) {
+                continue;
+            }
+
+            $type = (string) ($def['type'] ?? '');
+            $kind = $type === 'module-summary' ? 'summary-card' : 'quick-link';
+            if ($kind !== 'quick-link') {
+                continue;
+            }
+
+            $cards[] = [
+                'key' => (string) $key,
+                'module' => (string) ($def['module'] ?? 'core'),
+                'title' => (string) ($def['title'] ?? $key),
+                'kind' => $kind,
+                'dashboard_group' => trim((string) ($def['dashboard_group'] ?? $def['group'] ?? 'Other')),
+            ];
+        }
+
+        return $cards;
+    }
+
+    /**
      * Return key-addressable module content providers for editor selectors.
      * Each entry: ['key' => 'module:key', 'module' => slug, 'title' => title].
      */
@@ -661,6 +695,7 @@ class ModuleRegistry
                     'label' => $label,
                     'url' => $url,
                     'icon' => (string) ($section['icon'] ?? '🔗'),
+                    'dashboard_group' => (string) ($section['group'] ?? 'Other'),
                 ];
             }
 
@@ -709,6 +744,7 @@ class ModuleRegistry
                         'label' => $label,
                         'url' => $url,
                         'icon' => (string) ($link['icon'] ?? '🔗'),
+                        'dashboard_group' => (string) ($def['dashboard_group'] ?? 'Other'),
                     ];
                 }
             }
@@ -744,7 +780,79 @@ class ModuleRegistry
             }
         }
 
+        foreach (self::coreDashboardLinkDefinitions() as $idx => $card) {
+            if (!is_array($card)) {
+                continue;
+            }
+
+            $label = trim((string) ($card['label'] ?? ''));
+            $url = trim((string) ($card['url'] ?? ''));
+            if ($label === '' || $url === '') {
+                continue;
+            }
+
+            $group = trim((string) ($card['dashboard_group'] ?? 'Other'));
+            $module = trim((string) ($card['module'] ?? 'core'));
+
+            $rawKey = trim((string) ($card['slug'] ?? ($group . '-' . $label)));
+            $safe = self::normaliseWidgetKeyPart($rawKey);
+            if ($safe === '') {
+                $safe = 'core-link-' . ((int) $idx + 1);
+            }
+
+            $baseKey = $module . ':' . $safe;
+            $key = $baseKey;
+            $suffix = 2;
+            while (isset($seen[$key])) {
+                $key = $baseKey . '-' . $suffix;
+                $suffix++;
+            }
+            $seen[$key] = true;
+
+            $map[$key] = [
+                'type' => 'quick-link',
+                'module' => $module,
+                'title' => (string) ($card['title'] ?? $label),
+                'label' => $label,
+                'url' => $url,
+                'icon' => (string) ($card['icon'] ?? '🔗'),
+                'dashboard_group' => $group,
+            ];
+        }
+
         return $map;
+    }
+
+    private static function coreDashboardLinkDefinitions(): array
+    {
+        return [
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-site', 'label' => 'Site', 'url' => '/admin/settings/site', 'icon' => '🏠'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-email', 'label' => 'Email', 'url' => '/admin/settings/email', 'icon' => '✉️'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-auth', 'label' => 'Auth', 'url' => '/admin/settings/auth', 'icon' => '🔑'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-security', 'label' => 'Security', 'url' => '/admin/settings/security', 'icon' => '🛡️'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-system', 'label' => 'System', 'url' => '/admin/settings/system', 'icon' => 'ℹ️'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-database', 'label' => 'Database', 'url' => '/admin/settings/database', 'icon' => '🗄️'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-payments', 'label' => 'Payments', 'url' => '/admin/settings/payments', 'icon' => '💳'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-oauth', 'label' => 'OAuth', 'url' => '/admin/settings/oauth', 'icon' => '🔐'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-gdpr', 'label' => 'GDPR', 'url' => '/admin/settings/gdpr', 'icon' => '🔒'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-social', 'label' => 'Social Config', 'url' => '/admin/settings/social', 'icon' => '📡'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-modules', 'label' => 'Modules', 'url' => '/admin/settings/modules', 'icon' => '🧩'],
+            ['module' => 'core', 'dashboard_group' => 'Settings', 'slug' => 'settings-maintenance', 'label' => 'Maintenance', 'url' => '/admin/maintenance/links', 'icon' => '🔍'],
+
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-editor', 'label' => 'Open Editor', 'url' => '/admin/editor', 'icon' => '✏️'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-pages', 'label' => 'Pages', 'url' => '/admin/pages', 'icon' => '📄'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-templates', 'label' => 'Templates', 'url' => '/admin/templates', 'icon' => '📐'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-menus', 'label' => 'Menus', 'url' => '/admin/menus', 'icon' => '☰'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-structure', 'label' => 'Structure', 'url' => '/admin/site-builder/structure', 'icon' => '🗺️'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-global-header', 'label' => 'Global Header', 'url' => '/admin/site-builder/global-header', 'icon' => '⬆️'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-global-footer', 'label' => 'Global Footer', 'url' => '/admin/site-builder/global-footer', 'icon' => '⬇️'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-named-blocks', 'label' => 'Named Blocks', 'url' => '/admin/blocks/named', 'icon' => '🧱'],
+            ['module' => 'core', 'dashboard_group' => 'Site Builder', 'slug' => 'sitebuilder-import', 'label' => 'Import', 'url' => '/admin/import', 'icon' => '📥'],
+
+            ['module' => 'core', 'dashboard_group' => 'People', 'slug' => 'people-users', 'label' => 'Users', 'url' => '/admin/users', 'icon' => '👤'],
+            ['module' => 'core', 'dashboard_group' => 'People', 'slug' => 'people-roles', 'label' => 'Roles', 'url' => '/admin/roles', 'icon' => '🎭'],
+            ['module' => 'core', 'dashboard_group' => 'People', 'slug' => 'people-groups', 'label' => 'Groups', 'url' => '/admin/groups', 'icon' => '👥'],
+        ];
     }
 
     private static function virtualModuleSummaryDefinitions(string $slug): array
