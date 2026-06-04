@@ -958,6 +958,62 @@
         }) || null;
     }
 
+    function normaliseWidgetKind(kind) {
+        var value = (kind || '').toString();
+        if (value === 'quick-link' || value === 'summary-card' || value === 'function-card') {
+            return value;
+        }
+        return 'function-card';
+    }
+
+    function renderModuleWidgetOptions(selectEl, selectedKey) {
+        if (!selectEl) { return; }
+
+        var groups = {
+            'function-card': [],
+            'summary-card': [],
+            'quick-link': []
+        };
+        var groupLabels = {
+            'function-card': 'Function Cards',
+            'summary-card': 'Summary Cards',
+            'quick-link': 'Quick Link Cards'
+        };
+
+        MODULE_WIDGETS.forEach(function (widget) {
+            var key = (widget.key || '').toString();
+            if (!key) { return; }
+            var kind = normaliseWidgetKind(widget.kind);
+            groups[kind].push(widget);
+        });
+
+        selectEl.innerHTML = '<option value="">- Select widget -</option>';
+
+        ['function-card', 'summary-card', 'quick-link'].forEach(function (kind) {
+            if (!groups[kind].length) { return; }
+            var optgroup = document.createElement('optgroup');
+            optgroup.label = groupLabels[kind] || 'Widgets';
+            groups[kind].forEach(function (widget) {
+                var key = (widget.key || '').toString();
+                if (!key) { return; }
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = (widget.module || 'module') + ' - ' + (widget.title || key);
+                optgroup.appendChild(opt);
+            });
+            selectEl.appendChild(optgroup);
+        });
+
+        if (selectedKey && !Array.from(selectEl.options).some(function (option) { return option.value === selectedKey; })) {
+            var stale = document.createElement('option');
+            stale.value = selectedKey;
+            stale.textContent = '(missing) ' + selectedKey;
+            selectEl.appendChild(stale);
+        }
+
+        selectEl.value = selectedKey || '';
+    }
+
     function getModuleContentDisplayModeMeta(providerKey) {
         var provider = getModuleContentProvider(providerKey);
         var editor = provider && provider.editor && typeof provider.editor === 'object'
@@ -1518,22 +1574,7 @@
             var mwSettings = document.getElementById('prop-module-widget-settings');
             if (mwSel) {
                 var selectedKey = (config.widget_key || '').toString();
-                mwSel.innerHTML = '<option value="">� Select widget �</option>';
-                MODULE_WIDGETS.forEach(function (w) {
-                    var key = (w.key || '').toString();
-                    if (!key) { return; }
-                    var opt = document.createElement('option');
-                    opt.value = key;
-                    opt.textContent = (w.module || 'module') + ' � ' + (w.title || key);
-                    mwSel.appendChild(opt);
-                });
-                if (selectedKey && !Array.from(mwSel.options).some(function (o) { return o.value === selectedKey; })) {
-                    var stale = document.createElement('option');
-                    stale.value = selectedKey;
-                    stale.textContent = '(missing) ' + selectedKey;
-                    mwSel.appendChild(stale);
-                }
-                mwSel.value = selectedKey;
+                renderModuleWidgetOptions(mwSel, selectedKey);
             }
             if (mwSettings) {
                 mwSettings.value = (config.settings_json || '').toString();

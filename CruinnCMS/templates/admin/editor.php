@@ -1130,8 +1130,32 @@ $visibilityPositions = $visibilityPositions ?? [];
                             <label>Widget</label>
                             <select class="editor-prop-input" id="prop-module-widget-key" data-config="widget_key">
                                 <option value="">— Select widget —</option>
-                                <?php foreach (($moduleWidgets ?? []) as $_mw): ?>
-                                <option value="<?= e($_mw['key'] ?? '') ?>"><?= e(($_mw['module'] ?? 'module') . ' — ' . ($_mw['title'] ?? ($_mw['key'] ?? 'Widget'))) ?></option>
+                                <?php
+                                $_mwGroups = [
+                                    'function-card' => [],
+                                    'summary-card' => [],
+                                    'quick-link' => [],
+                                ];
+                                foreach (($moduleWidgets ?? []) as $_mw) {
+                                    $_mwKind = $_mw['kind'] ?? 'function-card';
+                                    if (!isset($_mwGroups[$_mwKind])) {
+                                        $_mwKind = 'function-card';
+                                    }
+                                    $_mwGroups[$_mwKind][] = $_mw;
+                                }
+                                $_mwLabels = [
+                                    'function-card' => 'Function Cards',
+                                    'summary-card' => 'Summary Cards',
+                                    'quick-link' => 'Quick Link Cards',
+                                ];
+                                foreach (['function-card', 'summary-card', 'quick-link'] as $_mwKindKey):
+                                    if (empty($_mwGroups[$_mwKindKey])) { continue; }
+                                ?>
+                                <optgroup label="<?= e($_mwLabels[$_mwKindKey]) ?>">
+                                    <?php foreach ($_mwGroups[$_mwKindKey] as $_mw): ?>
+                                    <option value="<?= e($_mw['key'] ?? '') ?>"><?= e(($_mw['module'] ?? 'module') . ' — ' . ($_mw['title'] ?? ($_mw['key'] ?? 'Widget'))) ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
                                 <?php endforeach; ?>
                             </select>
                         </div>
