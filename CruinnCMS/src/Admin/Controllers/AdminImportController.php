@@ -17,11 +17,10 @@ use Cruinn\Services\HtmlImportService;
 class AdminImportController extends \Cruinn\Controllers\BaseController
 {
     private ?HtmlImportService $importer = null;
-    private Database $db;
 
     public function __construct()
     {
-        $this->db       = Database::getInstance();
+        parent::__construct();
     }
 
     private function importer(): HtmlImportService

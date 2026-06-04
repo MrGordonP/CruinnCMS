@@ -315,6 +315,7 @@ return function (Cruinn\Router $router) {
     // Admin � Site Builder
     $router->get('/admin/site-builder',                       [SiteBuilderController::class, 'builderPages']);
     $router->get('/admin/site-builder/pages',                 [SiteBuilderController::class, 'builderPages']);
+    $router->get('/admin/site-builder/pages/new',             [AdminPageController::class, 'newPage']);
     $router->get('/admin/templates',                          [SiteBuilderController::class, 'builderTemplates']);
     $router->get('/admin/templates/{id}/edit',                [SiteBuilderController::class, 'builderEditTemplate']);
     $router->post('/admin/templates',                         [SiteBuilderController::class, 'builderCreateTemplate']);

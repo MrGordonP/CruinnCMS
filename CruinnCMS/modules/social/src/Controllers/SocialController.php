@@ -22,6 +22,8 @@ use Cruinn\Module\Social\Services\AbstractSocialService;
 
 class SocialController extends BaseController
 {
+    private array $columnExistsCache = [];
+
     // â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
@@ -261,13 +263,22 @@ class SocialController extends BaseController
         $contentType = $this->query('type', 'article');
         $contentId   = $this->query('id');
 
+        $articlesHaveSubjectId = $this->tableHasColumn('articles', 'subject_id');
+        $eventsHaveSubjectId   = $this->tableHasColumn('events', 'subject_id');
+
         // Get publishable content
         $articles = $this->db->fetchAll(
-            "SELECT id, title, slug, featured_image, subject_id FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 50"
+            $articlesHaveSubjectId
+                ? "SELECT id, title, slug, featured_image, subject_id FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 50"
+                : "SELECT id, title, slug, featured_image FROM articles WHERE status = 'published' ORDER BY published_at DESC LIMIT 50"
         );
         $events = $this->db->fetchAll(
-            "SELECT id, title, slug, featured_image, subject_id FROM events WHERE status = 'published' ORDER BY start_date DESC LIMIT 50"
+            $eventsHaveSubjectId
+                ? "SELECT id, title, slug, featured_image, subject_id FROM events WHERE status = 'published' ORDER BY start_date DESC LIMIT 50"
+                : "SELECT id, title, slug, featured_image FROM events WHERE status = 'published' ORDER BY start_date DESC LIMIT 50"
         );
+        $articles = $this->hydrateSubjectIds($articles, 'article');
+        $events   = $this->hydrateSubjectIds($events, 'event');
 
         // Get connected accounts
         $accounts = $this->db->fetchAll('SELECT * FROM social_accounts WHERE is_active = 1 ORDER BY platform');
@@ -279,6 +290,7 @@ class SocialController extends BaseController
         $selectedContent = null;
         if ($contentId && $contentType) {
             $selectedContent = $this->fetchContentRecord($contentType, (int) $contentId);
+            $selectedContent = $this->hydrateRecordSubjectId($selectedContent, $contentType);
         }
 
         // Distribution history
@@ -682,6 +694,107 @@ class SocialController extends BaseController
         }
 
         return $this->db->fetch("SELECT * FROM {$table} WHERE id = ?", [$contentId]) ?: null;
+    }
+
+    private function tableHasColumn(string $table, string $column): bool
+    {
+        $cacheKey = $table . '.' . $column;
+        if (array_key_exists($cacheKey, $this->columnExistsCache)) {
+            return $this->columnExistsCache[$cacheKey];
+        }
+
+        $count = (int) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            [$table, $column]
+        );
+
+        $this->columnExistsCache[$cacheKey] = $count > 0;
+        return $this->columnExistsCache[$cacheKey];
+    }
+
+    private function hydrateSubjectIds(array $rows, string $itemType): array
+    {
+        if (empty($rows)) {
+            return $rows;
+        }
+
+        $itemIds = [];
+        foreach ($rows as $row) {
+            if (!empty($row['id'])) {
+                $itemIds[] = (int) $row['id'];
+            }
+        }
+        $itemIds = array_values(array_unique(array_filter($itemIds, static fn (int $id): bool => $id > 0)));
+
+        if (empty($itemIds)) {
+            return $rows;
+        }
+
+        $subjectByItem = [];
+        $placeholders  = implode(',', array_fill(0, count($itemIds), '?'));
+        $params        = array_merge([$itemType], $itemIds);
+        $subjectRows   = $this->db->fetchAll(
+            "SELECT item_id, MIN(subject_id) AS subject_id
+             FROM subject_content
+             WHERE item_type = ? AND item_id IN ({$placeholders})
+             GROUP BY item_id",
+            $params
+        );
+
+        foreach ($subjectRows as $subjectRow) {
+            $subjectByItem[(int) $subjectRow['item_id']] = (int) $subjectRow['subject_id'];
+        }
+
+        foreach ($rows as &$row) {
+            $itemId = (int) ($row['id'] ?? 0);
+            if ($itemId <= 0) {
+                continue;
+            }
+
+            if (!isset($row['subject_id']) || (int) $row['subject_id'] <= 0) {
+                $row['subject_id'] = $subjectByItem[$itemId] ?? null;
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    private function hydrateRecordSubjectId(?array $record, string $contentType): ?array
+    {
+        if ($record === null) {
+            return null;
+        }
+
+        if (isset($record['subject_id']) && (int) $record['subject_id'] > 0) {
+            return $record;
+        }
+
+        $itemType = match ($contentType) {
+            'article' => 'article',
+            'event' => 'event',
+            default => null,
+        };
+
+        if ($itemType === null) {
+            return $record;
+        }
+
+        $itemId = (int) ($record['id'] ?? 0);
+        if ($itemId <= 0) {
+            return $record;
+        }
+
+        $subjectId = (int) $this->db->fetchColumn(
+            'SELECT MIN(subject_id) FROM subject_content WHERE item_type = ? AND item_id = ?',
+            [$itemType, $itemId]
+        );
+
+        if ($subjectId > 0) {
+            $record['subject_id'] = $subjectId;
+        }
+
+        return $record;
     }
 
     private function buildContentPublicUrl(string $contentType, array $content): string
