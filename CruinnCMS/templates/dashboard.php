@@ -20,104 +20,297 @@
     </div>
     <?php endif; ?>
 
-    <?php
-    $_dashUserContext = [
-        'user_id'      => (int) (\Cruinn\Auth::userId() ?: 0),
-        'role_id'      => (int) (\Cruinn\Auth::roleId() ?: 0),
-        'role_level'   => (int) (\Cruinn\Auth::roleLevel() ?: 0),
-        'position_ids' => \Cruinn\Auth::positionIds(),
-    ];
-    $_dashboardCatalog = \Cruinn\Modules\ModuleRegistry::widgetCatalog();
-
-    $_cardsByKind = [
-        'function-card' => [],
-        'summary-card'  => [],
-        'quick-link'    => [],
-    ];
-    $_cardsByModule = [];
-
-    foreach ($_dashboardCatalog as $_card) {
-        $_kind = $_card['kind'] ?? 'function-card';
-        if (!isset($_cardsByKind[$_kind])) {
-            $_kind = 'function-card';
-        }
-        $_cardsByKind[$_kind][] = $_card;
-
-        $_module = $_card['module'] ?? 'core';
-        if (!isset($_cardsByModule[$_module])) {
-            $_cardsByModule[$_module] = [];
-        }
-        $_cardsByModule[$_module][] = $_card;
-    }
-
-    $_kindLabels = [
-        'function-card' => 'Function Cards',
-        'summary-card'  => 'Summary Cards',
-        'quick-link'    => 'Quick Link Cards',
-    ];
-
-    $_renderCardHtml = static function (array $_card) use ($_dashUserContext): string {
-        $_key = (string) ($_card['key'] ?? '');
-        if ($_key === '') {
-            return '<p class="text-muted">Missing widget key.</p>';
-        }
-
-        $_html = \Cruinn\Modules\ModuleRegistry::renderProviderWidget($_key, [], $_dashUserContext);
-        if ($_html === '') {
-            $_html = \Cruinn\Modules\ModuleRegistry::renderWidgetByKey($_key);
-        }
-        if ($_html === '') {
-            return '<p class="text-muted">Widget not found: ' . e($_key) . '</p>';
-        }
-        return $_html;
-    };
-    ?>
-
     <?php if (($current_user['role_level'] ?? 0) >= 100 && ($dashboardView ?? 'groups') === 'groups'): ?>
     <div class="dashboard-widget-stack">
-        <?php foreach (['function-card', 'summary-card', 'quick-link'] as $_kind): ?>
-        <?php if (empty($_cardsByKind[$_kind])) { continue; } ?>
-        <section>
+
+        <div class="dashboard-widget">
             <div class="activity-header">
-                <h2><?= e($_kindLabels[$_kind] ?? 'Cards') ?></h2>
+                <h2>Settings</h2>
+                <a href="<?= url('/admin/settings/site') ?>" class="btn btn-primary btn-small">⚙ Open ACP</a>
             </div>
-            <div class="dashboard-widget-grid">
-            <?php foreach ($_cardsByKind[$_kind] as $_card): ?>
-            <div class="dashboard-widget">
-                <?= $_renderCardHtml($_card) ?>
+            <div class="dash-quick-grid">
+                <a href="<?= url('/admin/settings/site') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🏠</span><span>Site</span>
+                </a>
+                <a href="<?= url('/admin/settings/email') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">✉️</span><span>Email</span>
+                </a>
+                <a href="<?= url('/admin/settings/auth') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🔑</span><span>Auth</span>
+                </a>
+                <a href="<?= url('/admin/settings/security') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🛡️</span><span>Security</span>
+                </a>
+                <a href="<?= url('/admin/settings/system') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">ℹ️</span><span>System</span>
+                </a>
+                <a href="<?= url('/admin/settings/database') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🗄️</span><span>Database</span>
+                </a>
+                <a href="<?= url('/admin/settings/payments') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">💳</span><span>Payments</span>
+                </a>
+                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('oauth')): ?>
+                <a href="<?= url('/admin/settings/oauth') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🔐</span><span>OAuth</span>
+                </a>
+                <?php endif; ?>
+                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('gdpr')): ?>
+                <a href="<?= url('/admin/settings/gdpr') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🔒</span><span>GDPR</span>
+                </a>
+                <?php endif; ?>
+                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('social')): ?>
+                <a href="<?= url('/admin/settings/social') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📡</span><span>Social&nbsp;Config</span>
+                </a>
+                <?php endif; ?>
+                <a href="<?= url('/admin/settings/modules') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🧩</span><span>Modules</span>
+                </a>
+                <a href="<?= url('/admin/maintenance/links') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🔍</span><span>Maintenance</span>
+                </a>
+                <?php foreach (\Cruinn\Modules\ModuleRegistry::acpSections() as $_s):
+                    if (($_s['group'] ?? '') !== 'Settings') { continue; } ?>
+                <a href="<?= url($_s['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $_s['icon'] ?? '🧩' ?></span>
+                    <span><?= e($_s['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
+        </div>
+
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2>Site Builder</h2>
+                <a href="<?= url('/admin/editor') ?>" class="btn btn-primary btn-small">✏️ Open Editor</a>
             </div>
-        </section>
+            <div class="dash-quick-grid">
+                <a href="<?= url('/admin/editor') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">✏️</span><span>Open Editor</span>
+                </a>
+                <a href="<?= url('/admin/pages') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📄</span><span>Pages</span>
+                </a>
+                <a href="<?= url('/admin/templates') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📐</span><span>Templates</span>
+                </a>
+                <a href="<?= url('/admin/menus') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">☰</span><span>Menus</span>
+                </a>
+                <a href="<?= url('/admin/site-builder/structure') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🗺️</span><span>Structure</span>
+                </a>
+                <a href="<?= url('/admin/site-builder/global-header') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">⬆️</span><span>Global Header</span>
+                </a>
+                <a href="<?= url('/admin/site-builder/global-footer') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">⬇️</span><span>Global Footer</span>
+                </a>
+                <a href="<?= url('/admin/blocks/named') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🧱</span><span>Named Blocks</span>
+                </a>
+                <a href="<?= url('/admin/import') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📥</span><span>Import</span>
+                </a>
+            </div>
+        </div>
+
+        <?php
+        $acpGroups = [];
+        foreach (\Cruinn\Modules\ModuleRegistry::acpSections() as $s) {
+            $g = $s['group'] ?? 'Other';
+            if ($g === 'Settings') { continue; }
+            $acpGroups[$g][] = $s;
+        }
+        foreach ($acpGroups as $groupName => $groupItems):
+            if ($groupName === 'People') { continue; }
+        ?>
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2><?= e($groupName) ?></h2>
+            </div>
+            <div class="dash-quick-grid">
+                <?php foreach ($groupItems as $s): ?>
+                <a href="<?= url($s['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $s['icon'] ?? '🧩' ?></span>
+                    <span><?= e($s['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
         <?php endforeach; ?>
+
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2>People</h2>
+                <a href="<?= url('/admin/users/new') ?>" class="btn btn-primary btn-small">+ New User</a>
+            </div>
+            <div class="dash-quick-grid">
+                <a href="<?= url('/admin/users') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">👤</span><span>Users</span>
+                </a>
+                <a href="<?= url('/admin/roles') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🎭</span><span>Roles</span>
+                </a>
+                <a href="<?= url('/admin/groups') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">👥</span><span>Groups</span>
+                </a>
+                <?php foreach ($acpGroups['People'] ?? [] as $s): ?>
+                <a href="<?= url($s['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $s['icon'] ?? '🧩' ?></span>
+                    <span><?= e($s['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
     </div><!-- .dashboard-widget-stack groups view -->
 
     <?php elseif (($current_user['role_level'] ?? 0) >= 100 && ($dashboardView ?? 'groups') === 'modules'): ?>
     <div class="dashboard-widget-stack">
-        <?php foreach ($_cardsByModule as $_module => $_cards): ?>
-        <section>
+        <?php foreach (\Cruinn\Modules\ModuleRegistry::all() as $slug => $def):
+            if (!\Cruinn\Modules\ModuleRegistry::isActive($slug)) { continue; }
+            $sections = $def['dashboard_sections'] ?? [];
+            if (empty($sections)) { continue; }
+        ?>
+        <div class="dashboard-widget">
             <div class="activity-header">
-                <h2><?= e($_module) ?></h2>
+                <h2><?= e($def['name']) ?> <small class="text-muted" style="font-weight:normal;font-size:0.75em;">v<?= e($def['version'] ?? '') ?></small></h2>
             </div>
-            <div class="dashboard-widget-grid">
-            <?php foreach ($_cards as $_card): ?>
-            <div class="dashboard-widget">
-                <?= $_renderCardHtml($_card) ?>
+            <div class="dash-quick-grid">
+                <?php foreach ($sections as $s): ?>
+                <a href="<?= url($s['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $s['icon'] ?? '🧩' ?></span>
+                    <span><?= e($s['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
-            </div>
-        </section>
+        </div>
         <?php endforeach; ?>
     </div><!-- .dashboard-widget-stack modules view -->
 
     <?php elseif (($current_user['role_level'] ?? 0) >= 50): ?>
-    <div class="dashboard-widget-grid">
-        <?php foreach ($_cardsByKind['quick-link'] as $_card): ?>
+    <?php
+    $councilGroupMap = [
+        'Content'      => [],
+        'Organisation' => [],
+        'Community'    => [],
+        'Comms'        => [],
+        'People'       => [],
+    ];
+    foreach (\Cruinn\Modules\ModuleRegistry::acpSections() as $_cs) {
+        $g = $_cs['group'] ?? '';
+        if (array_key_exists($g, $councilGroupMap)) {
+            $councilGroupMap[$g][] = $_cs;
+        }
+    }
+    ?>
+    <div class="dashboard-widget-stack">
+
         <div class="dashboard-widget">
-            <?= $_renderCardHtml($_card) ?>
+            <div class="activity-header">
+                <h2>Content</h2>
+            </div>
+            <div class="dash-quick-grid">
+                <a href="<?= url('/admin/pages') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📄</span><span>Pages</span>
+                </a>
+                <?php foreach ($councilGroupMap['Content'] as $_cs): ?>
+                <a href="<?= url($_cs['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $_cs['icon'] ?? '🧩' ?></span>
+                    <span><?= e($_cs['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
         </div>
-        <?php endforeach; ?>
-    </div><!-- .dashboard-widget-grid council view -->
+
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2>Organisation</h2>
+            </div>
+            <div class="dash-quick-grid">
+                <?php foreach ($councilGroupMap['Organisation'] as $_cs): ?>
+                <a href="<?= url($_cs['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $_cs['icon'] ?? '🏛️' ?></span>
+                    <span><?= e($_cs['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+                <?php if (empty($councilGroupMap['Organisation'])): ?>
+                <a href="<?= url('/organisation') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">🏛️</span><span>Organisation</span>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2>Community</h2>
+            </div>
+            <div class="dash-quick-grid">
+                <?php foreach ($councilGroupMap['Community'] as $_cs): ?>
+                <a href="<?= url($_cs['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $_cs['icon'] ?? '💬' ?></span>
+                    <span><?= e($_cs['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('forum')): ?>
+                <a href="<?= url('/admin/forum') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">💬</span><span>Forum</span>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2>Comms</h2>
+            </div>
+            <div class="dash-quick-grid">
+                <?php foreach ($councilGroupMap['Comms'] as $_cs): ?>
+                <a href="<?= url($_cs['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $_cs['icon'] ?? '📢' ?></span>
+                    <span><?= e($_cs['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('mailout')): ?>
+                <a href="<?= url('/admin/broadcasts') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📢</span><span>Broadcasts</span>
+                </a>
+                <a href="<?= url('/admin/mailing-lists') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📋</span><span>Mailing Lists</span>
+                </a>
+                <?php endif; ?>
+                <?php if (\Cruinn\Modules\ModuleRegistry::isActive('mailbox')): ?>
+                <a href="<?= url('/mailbox') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">📬</span><span>Mailbox</span>
+                </a>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="dashboard-widget">
+            <div class="activity-header">
+                <h2>People</h2>
+            </div>
+            <div class="dash-quick-grid">
+                <a href="<?= url('/admin/users') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">👤</span><span>Users</span>
+                </a>
+                <a href="<?= url('/admin/groups') ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon">👥</span><span>Groups</span>
+                </a>
+                <?php foreach ($councilGroupMap['People'] as $_cs): ?>
+                <a href="<?= url($_cs['url']) ?>" class="dash-quick-link">
+                    <span class="dash-quick-icon"><?= $_cs['icon'] ?? '👤' ?></span>
+                    <span><?= e($_cs['label']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+    </div><!-- .dashboard-widget-stack council view -->
 
     <?php else: ?>
     <div class="dashboard-widget-grid">
