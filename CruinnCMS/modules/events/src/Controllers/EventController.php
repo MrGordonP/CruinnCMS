@@ -631,11 +631,14 @@ class EventController extends BaseController
 
         $articles = $this->fetchPublishedArticles();
         $subjects = $this->fetchSubjects();
+        $prefillSubjectId = (int) $this->input('subject_id', 0);
+        $prefillSubjectIds = $prefillSubjectId > 0 ? [$prefillSubjectId] : [];
         $this->renderAdmin('admin/events/edit', [
             'title'       => 'New Event',
             'event'       => null,
             'articles'    => $articles,
             'subjects'    => $subjects,
+            'eventSubjectIds' => $prefillSubjectIds,
             'eventBasePath' => $this->adminEventBasePath(),
             'breadcrumbs' => [['Admin', '/admin'], ['Events', '/admin/events'], ['New Event']],
         ]);

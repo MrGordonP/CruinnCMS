@@ -332,6 +332,8 @@ class ArticleController extends BaseController
             'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
             ['archived']
         );
+        $prefillSubjectId = (int) $this->input('subject_id', 0);
+        $prefillSubjectIds = $prefillSubjectId > 0 ? [$prefillSubjectId] : [];
 
         $this->renderAdmin('admin/articles/edit', [
             'title'             => 'New Blog Post',
@@ -339,7 +341,7 @@ class ArticleController extends BaseController
             'blocks'            => [],
             'blogBasePath'      => $this->adminBlogBasePath(),
             'subjects'          => $subjects,
-            'articleSubjectIds' => [],
+            'articleSubjectIds' => $prefillSubjectIds,
             'errors'            => [],
             'breadcrumbs'       => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Posts', '/admin/blog/posts'], ['New Blog Post']],
         ]);

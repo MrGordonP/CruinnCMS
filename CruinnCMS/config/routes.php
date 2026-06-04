@@ -203,6 +203,8 @@ return function (Cruinn\Router $router) {
     $router->get('/admin/subjects/{id}/edit',                [SubjectController::class, 'adminEdit']);
     $router->post('/admin/subjects/{id}',                    [SubjectController::class, 'adminUpdate']);
     $router->post('/admin/subjects/{id}/delete',             [SubjectController::class, 'adminDelete']);
+    $router->post('/admin/subjects/{id}/articles/attach',    [SubjectController::class, 'adminAttachArticle']);
+    $router->post('/admin/subjects/{id}/events/attach',      [SubjectController::class, 'adminAttachEvent']);
     $router->post('/admin/subjects/{id}/discussion',         [SubjectController::class, 'adminCreateDiscussion']);
     $router->post('/admin/subjects/{id}/forum-thread',       [SubjectController::class, 'adminProvisionForumThread']);
 

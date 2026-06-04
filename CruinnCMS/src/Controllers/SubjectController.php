@@ -151,6 +151,36 @@ class SubjectController extends BaseController
             );
         } catch (\Throwable) {}
 
+        $availableArticles = [];
+        try {
+            $availableArticles = $this->db->fetchAll(
+                'SELECT a.id, a.title, a.status, a.created_at
+                 FROM articles a
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM subject_content sc
+                     WHERE sc.item_type = ? AND sc.item_id = a.id AND sc.subject_id = ?
+                 )
+                 ORDER BY a.updated_at DESC
+                 LIMIT 150',
+                ['article', $id]
+            );
+        } catch (\Throwable) {}
+
+        $availableEvents = [];
+        try {
+            $availableEvents = $this->db->fetchAll(
+                'SELECT e.id, e.title, e.status, e.date_start
+                 FROM events e
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM subject_content sc
+                     WHERE sc.item_type = ? AND sc.item_id = e.id AND sc.subject_id = ?
+                 )
+                 ORDER BY COALESCE(e.date_start, e.created_at) DESC
+                 LIMIT 150',
+                ['event', $id]
+            );
+        } catch (\Throwable) {}
+
         $files = [];
         try {
             $files = $this->db->fetchAll(
@@ -217,6 +247,8 @@ class SubjectController extends BaseController
             'children'       => $children,
             'articles'       => $articles,
             'events'         => $events,
+            'availableArticles' => $availableArticles,
+            'availableEvents'   => $availableEvents,
             'files'          => $files,
             'folders'        => $folders,
             'parentSubjects' => $parentSubjects,
@@ -224,6 +256,90 @@ class SubjectController extends BaseController
             'forumThread'    => $forumThread,
             'breadcrumbs'    => [['Admin', '/admin'], ['Subjects', '/admin/subjects'], [$subject['title']]],
         ]);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/articles/attach — Attach an existing article to this subject.
+     */
+    public function adminAttachArticle(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $articleId = (int) $this->input('article_id', 0);
+        if ($articleId <= 0) {
+            Auth::flash('error', 'Select an article to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $articleExists = false;
+        try {
+            $articleExists = (bool) $this->db->fetchColumn('SELECT id FROM articles WHERE id = ? LIMIT 1', [$articleId]);
+        } catch (\Throwable) {}
+
+        if (!$articleExists) {
+            Auth::flash('error', 'Article not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->query(
+                'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                [(int) $id, 'article', $articleId]
+            );
+            Auth::flash('success', 'Article added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add article to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/events/attach — Attach an existing event to this subject.
+     */
+    public function adminAttachEvent(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $eventId = (int) $this->input('event_id', 0);
+        if ($eventId <= 0) {
+            Auth::flash('error', 'Select an event to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $eventExists = false;
+        try {
+            $eventExists = (bool) $this->db->fetchColumn('SELECT id FROM events WHERE id = ? LIMIT 1', [$eventId]);
+        } catch (\Throwable) {}
+
+        if (!$eventExists) {
+            Auth::flash('error', 'Event not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->query(
+                'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                [(int) $id, 'event', $eventId]
+            );
+            Auth::flash('success', 'Event added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add event to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
     }
 
     // ── Admin: New ────────────────────────────────────────────

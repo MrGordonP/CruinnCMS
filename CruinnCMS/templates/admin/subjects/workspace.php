@@ -281,6 +281,15 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
     border-radius: 4px;
 }
 .sws-discussion-form.is-open { display: block; }
+.sws-associate-form {
+    display: none;
+    margin: .4rem 0 .5rem;
+    padding: .6rem .75rem;
+    background: var(--color-bg-light, #f8f9fa);
+    border: 1px solid var(--color-border, #dee2e6);
+    border-radius: 4px;
+}
+.sws-associate-form.is-open { display: block; }
 .sws-form-input {
     display: block;
     width: 100%;
@@ -438,13 +447,31 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Articles (<?= count($articles) ?>)</span>
-                    <a href="/admin/blog/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/admin/blog/posts/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
                 </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/articles/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="article_id" class="sws-form-input" required>
+                        <option value="">Select article</option>
+                        <?php foreach (($availableArticles ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title']) ?> (<?= e($candidate['status'] ?? 'draft') ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <ul class="sws-item-list">
                     <?php foreach ($articles as $a): ?>
                     <li class="sws-item">
                         <span class="sws-item-title">
-                            <a href="/admin/blog/<?= (int) $a['id'] ?>/edit"><?= e($a['title']) ?></a>
+                            <a href="/admin/blog/posts/<?= (int) $a['id'] ?>/edit"><?= e($a['title']) ?></a>
                         </span>
                         <span class="sws-badge sws-badge--<?= e($a['status']) ?>"><?= e($a['status']) ?></span>
                         <span class="sws-item-meta"><?= format_date($a['created_at'], 'j M Y') ?></span>
@@ -454,7 +481,28 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             </div>
             <?php elseif (isset($articles)): ?>
             <div class="sws-section">
-                <div class="sws-section-title"><span>Articles</span><a href="/admin/blog/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a></div>
+                <div class="sws-section-title">
+                    <span>Articles</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/admin/blog/posts/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/articles/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="article_id" class="sws-form-input" required>
+                        <option value="">Select article</option>
+                        <?php foreach (($availableArticles ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title']) ?> (<?= e($candidate['status'] ?? 'draft') ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">None yet.</p>
             </div>
             <?php endif; ?>
@@ -464,8 +512,26 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Events (<?= count($events) ?>)</span>
-                    <a href="/admin/events/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/admin/events/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
                 </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/events/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="event_id" class="sws-form-input" required>
+                        <option value="">Select event</option>
+                        <?php foreach (($availableEvents ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title']) ?> (<?= e($candidate['status'] ?? 'draft') ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <ul class="sws-item-list">
                     <?php foreach ($events as $ev): ?>
                     <li class="sws-item">
@@ -480,7 +546,28 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             </div>
             <?php elseif (isset($events)): ?>
             <div class="sws-section">
-                <div class="sws-section-title"><span>Events</span><a href="/admin/events/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a></div>
+                <div class="sws-section-title">
+                    <span>Events</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/admin/events/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/events/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="event_id" class="sws-form-input" required>
+                        <option value="">Select event</option>
+                        <?php foreach (($availableEvents ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title']) ?> (<?= e($candidate['status'] ?? 'draft') ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">None yet.</p>
             </div>
             <?php endif; ?>
