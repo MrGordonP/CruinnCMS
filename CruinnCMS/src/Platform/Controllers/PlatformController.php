@@ -2276,19 +2276,10 @@ class PlatformController
         $allowedExt = ['php', 'html', 'css', 'js', 'sql', 'md', 'json', 'txt'];
         $skipDirs   = ['vendor', 'instance', 'storage', 'uploads', '.git', 'node_modules', '_template', basename($root)];
 
-        $walk = function (string $absDir, string $relDir, int $depth = 0) use (&$walk, $allowedExt, $skipDirs): array {
+        $walk = function (string $absDir, string $relDir) use (&$walk, $allowedExt, $skipDirs): array {
             $entries = [];
             $items   = @scandir($absDir);
             if (!$items) { return $entries; }
-
-            $isHostParentBranch = str_starts_with($relDir . '/', 'host-parent/');
-            $isHostParentRoot = $relDir === 'host-parent';
-
-            // Keep host-parent browsing intentionally shallow to avoid scanning
-            // large hosting trees that can trigger slow requests/timeouts.
-            if ($isHostParentBranch && $depth >= 2) {
-                return $entries;
-            }
 
             foreach ($items as $name) {
                 if ($name === '.' || $name === '..') { continue; }
@@ -2297,18 +2288,13 @@ class PlatformController
 
                 if (is_dir($abs)) {
                     if (in_array($name, $skipDirs, true)) { continue; }
-
-                    if ($isHostParentRoot && !preg_match('/log|logs|tmp|var|public|www|html/i', $name)) {
-                        continue;
-                    }
-
-                    $children = $walk($abs, $rel, $depth + 1);
+                    $children = $walk($abs, $rel);
                     if ($children !== []) {
                         $entries[] = ['name' => $name, 'rel' => $rel, 'type' => 'dir', 'children' => $children];
                     }
                 } elseif (is_file($abs)) {
                     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-                    $isHostParent = $isHostParentBranch;
+                    $isHostParent = str_starts_with($relDir . '/', 'host-parent/');
                     $allowLogNoExt = $isHostParent && $ext === '' && preg_match('/log/i', $name);
                     if (!in_array($ext, $allowedExt, true) && !$allowLogNoExt) { continue; }
                     $entries[] = ['name' => $name, 'rel' => $rel, 'type' => 'file'];
@@ -2326,7 +2312,7 @@ class PlatformController
         foreach ($rootDirs as $dir) {
             $abs = $dir['abs'];
             if (!is_dir($abs)) { continue; }
-            $children = $walk($abs, $dir['rel'], 0);
+            $children = $walk($abs, $dir['rel']);
             $tree[]   = ['name' => $dir['rel'], 'rel' => $dir['rel'], 'type' => 'dir', 'children' => $children];
         }
 
