@@ -369,9 +369,21 @@ $parentRoot = realpath(dirname($rcRoot));
     function bindRowBrowse(root) {
         root.querySelectorAll('.linked-log-row').forEach(function (row) {
             var pathInput = row.querySelector('input[name="log_path[]"]');
+            var browseLink = row.querySelector('[data-browse-log-row]');
             if (pathInput) {
                 pathInput.oninput = function () {
                     refreshBrowseLink(row);
+                };
+            }
+            if (browseLink && pathInput) {
+                browseLink.onclick = function (event) {
+                    var browsePath = toHostParentPath(pathInput.value);
+                    if (browsePath) {
+                        browseLink.setAttribute('href', '/cms/source?file=' + encodeURIComponent(browsePath));
+                        return;
+                    }
+                    event.preventDefault();
+                    openPicker(pathInput);
                 };
             }
             refreshBrowseLink(row);
