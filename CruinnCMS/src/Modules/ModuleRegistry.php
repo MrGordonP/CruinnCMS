@@ -243,11 +243,13 @@ class ModuleRegistry
         $seen = [];
 
         foreach (self::collectWidgetEntries() as $entry) {
+            $kind = self::inferWidgetKind($entry['key'], $entry['title']);
             $seen[$entry['key']] = true;
             $catalog[] = [
                 'key'    => $entry['key'],
                 'module' => $entry['module'],
-                'title'  => $entry['title'],
+                'title'  => self::formatWidgetCatalogTitle($entry['title'], $kind),
+                'kind'   => $kind,
             ];
         }
 
@@ -258,10 +260,12 @@ class ModuleRegistry
                 continue;
             }
             $seen[$entry['key']] = true;
+            $kind = (string) ($entry['kind'] ?? 'quick-link');
             $catalog[] = [
                 'key'    => $entry['key'],
                 'module' => $entry['module'],
-                'title'  => $entry['title'],
+                'title'  => self::formatWidgetCatalogTitle($entry['title'], $kind),
+                'kind'   => $kind,
             ];
         }
 
@@ -297,7 +301,8 @@ class ModuleRegistry
                 $catalog[] = [
                     'key'    => $key,
                     'module' => $slug,
-                    'title'  => $title,
+                    'title'  => self::formatWidgetCatalogTitle($title, 'function-card'),
+                    'kind'   => 'function-card',
                 ];
             }
         }
@@ -555,13 +560,50 @@ class ModuleRegistry
     {
         $entries = [];
         foreach (self::virtualWidgetMap() as $key => $def) {
+            $kind = ((string) ($def['type'] ?? '')) === 'module-summary' ? 'summary-card' : 'quick-link';
             $entries[] = [
                 'key' => $key,
                 'module' => (string) ($def['module'] ?? 'core'),
                 'title' => (string) ($def['title'] ?? $key),
+                'kind' => $kind,
             ];
         }
         return $entries;
+    }
+
+    private static function inferWidgetKind(string $widgetKey, string $title): string
+    {
+        $key = strtolower($widgetKey);
+        $titleLower = strtolower($title);
+
+        if (str_contains($key, 'quick-link') || str_contains($key, 'quick_link') || str_contains($titleLower, 'quick link')) {
+            return 'quick-link';
+        }
+
+        if (str_contains($key, 'summary') || str_contains($titleLower, 'summary')) {
+            return 'summary-card';
+        }
+
+        return 'function-card';
+    }
+
+    private static function formatWidgetCatalogTitle(string $title, string $kind): string
+    {
+        $trimmed = trim($title);
+        if ($trimmed === '') {
+            $trimmed = 'Widget';
+        }
+
+        $lower = strtolower($trimmed);
+        if (str_starts_with($lower, 'card:') || str_starts_with($lower, 'quick link:') || str_starts_with($lower, 'summary:')) {
+            return $trimmed;
+        }
+
+        return match ($kind) {
+            'quick-link' => 'Quick Link: ' . $trimmed,
+            'summary-card' => 'Summary: ' . $trimmed,
+            default => 'Card: ' . $trimmed,
+        };
     }
 
     private static function virtualWidgetMap(): array

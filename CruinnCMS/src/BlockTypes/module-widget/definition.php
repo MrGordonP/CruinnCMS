@@ -17,6 +17,9 @@ BlockRegistry::register([
     'dynamic'   => true,
     'container' => false,
     'isLayout'  => false,
+    'group'          => 'function-cards',
+    'group_label'    => 'Function Cards',
+    'palette_entries'=> [['label' => 'Function Card']],
     'renderer'  => function (array $config, Database $db): string {
         $widgetKey = trim((string) ($config['widget_key'] ?? ''));
         if ($widgetKey === '') {
