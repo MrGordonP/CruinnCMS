@@ -125,17 +125,42 @@ $parentRoot = realpath(dirname($rcRoot));
             <div id="linked-logs-rows" style="display:grid;gap:.6rem">
                 <?php if (!empty($linkedLogs)): ?>
                     <?php foreach ($linkedLogs as $log): ?>
+                    <?php
+                    $rowPath = trim((string) ($log['path'] ?? ''));
+                    $rowBrowsePath = null;
+                    if (str_starts_with($rowPath, 'host-parent/')) {
+                        $rowBrowsePath = $rowPath;
+                    } elseif (str_starts_with($rowPath, '/')) {
+                        $rowReal = @realpath($rowPath);
+                        if ($parentRoot && $rowReal && str_starts_with($rowReal, rtrim($parentRoot, '/') . '/')) {
+                            $rowBrowsePath = 'host-parent/' . ltrim(substr($rowReal, strlen(rtrim($parentRoot, '/'))), '/');
+                        }
+                    }
+                    ?>
                     <div class="linked-log-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:.5rem;align-items:center">
                         <input type="text" name="log_label[]" value="<?= e($log['label'] ?? '') ?>" placeholder="Label (e.g. PHP Error Log)">
                         <input type="text" name="log_path[]" value="<?= e($log['path'] ?? '') ?>" placeholder="/absolute/path/to/log/file.log">
-                        <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
+                        <div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">
+                            <a
+                                href="<?= $rowBrowsePath !== null ? '/cms/source?file=' . rawurlencode($rowBrowsePath) : '#' ?>"
+                                target="_blank"
+                                rel="noopener"
+                                class="platform-btn platform-btn-secondary"
+                                data-browse-log-row
+                                <?= $rowBrowsePath === null ? 'style="display:none"' : '' ?>
+                            >Browse</a>
+                            <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 <?php else: ?>
                     <div class="linked-log-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:.5rem;align-items:center">
                         <input type="text" name="log_label[]" value="PHP Error Log" placeholder="Label (e.g. PHP Error Log)">
                         <input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">
-                        <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
+                        <div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">
+                            <a href="#" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row style="display:none">Browse</a>
+                            <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
+                        </div>
                     </div>
                 <?php endif; ?>
             </div>
@@ -154,6 +179,7 @@ $parentRoot = realpath(dirname($rcRoot));
 
 <script>
 (function () {
+    var parentRoot = <?= json_encode((string) ($parentRoot ?: ''), JSON_UNESCAPED_SLASHES) ?>;
     var dialog = document.getElementById('linked-logs-dialog');
     var openBtn = document.getElementById('open-linked-logs-dialog');
     var closeBtn = document.getElementById('close-linked-logs-dialog');
@@ -165,6 +191,42 @@ $parentRoot = realpath(dirname($rcRoot));
         return;
     }
 
+    function toHostParentPath(path) {
+        var value = String(path || '').trim();
+        if (!value) { return null; }
+        if (value.indexOf('host-parent/') === 0) {
+            return value;
+        }
+        if (value.charAt(0) !== '/' || !parentRoot) {
+            return null;
+        }
+
+        var root = String(parentRoot || '').replace(/\/+$/, '');
+        if (!root) { return null; }
+        if (value.indexOf(root + '/') !== 0) {
+            return null;
+        }
+
+        return 'host-parent/' + value.slice(root.length + 1);
+    }
+
+    function refreshBrowseLink(row) {
+        if (!row) { return; }
+        var pathInput = row.querySelector('input[name="log_path[]"]');
+        var browseLink = row.querySelector('[data-browse-log-row]');
+        if (!pathInput || !browseLink) { return; }
+
+        var browsePath = toHostParentPath(pathInput.value);
+        if (!browsePath) {
+            browseLink.style.display = 'none';
+            browseLink.setAttribute('href', '#');
+            return;
+        }
+
+        browseLink.style.display = '';
+        browseLink.setAttribute('href', '/cms/source?file=' + encodeURIComponent(browsePath));
+    }
+
     function bindRowRemoval(root) {
         root.querySelectorAll('[data-remove-log-row]').forEach(function (btn) {
             btn.onclick = function () {
@@ -172,6 +234,18 @@ $parentRoot = realpath(dirname($rcRoot));
                 if (!row) { return; }
                 row.remove();
             };
+        });
+    }
+
+    function bindRowBrowse(root) {
+        root.querySelectorAll('.linked-log-row').forEach(function (row) {
+            var pathInput = row.querySelector('input[name="log_path[]"]');
+            if (pathInput) {
+                pathInput.oninput = function () {
+                    refreshBrowseLink(row);
+                };
+            }
+            refreshBrowseLink(row);
         });
     }
 
@@ -185,9 +259,13 @@ $parentRoot = realpath(dirname($rcRoot));
         row.innerHTML = ''
             + '<input type="text" name="log_label[]" value="" placeholder="Label (e.g. PHP Error Log)">'
             + '<input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">'
-            + '<button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>';
+            + '<div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">'
+            + '<a href="#" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row style="display:none">Browse</a>'
+            + '<button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>'
+            + '</div>';
         rows.appendChild(row);
         bindRowRemoval(row);
+        bindRowBrowse(row);
     }
 
     openBtn.addEventListener('click', function () {
@@ -211,6 +289,7 @@ $parentRoot = realpath(dirname($rcRoot));
     if (addBtn) { addBtn.addEventListener('click', addRow); }
 
     bindRowRemoval(rows);
+    bindRowBrowse(rows);
 }());
 </script>
 
