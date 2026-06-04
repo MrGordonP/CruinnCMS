@@ -1239,12 +1239,12 @@ class PlatformController
         }
 
         $resolvedPath = $path;
-        $real = realpath($path);
-        if ($real !== false) {
+        $real = @realpath($path);
+        if (is_string($real) && $real !== '') {
             $resolvedPath = $real;
         }
 
-        if (!is_file($resolvedPath) || !is_readable($resolvedPath)) {
+        if (!@is_file($resolvedPath) || !@is_readable($resolvedPath)) {
             http_response_code(404);
             echo 'Linked log file is not readable.';
             exit;
