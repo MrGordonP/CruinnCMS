@@ -92,10 +92,9 @@ $parentRoot = realpath(dirname($rcRoot));
                                 $browsePath = 'host-parent/' . ltrim(substr($realLogPath, strlen(rtrim($parentRoot, '/'))), '/');
                             }
                         }
+                        $browseHref = '/cms/source?file=' . rawurlencode($browsePath ?? 'host-parent');
                         ?>
-                        <?php if ($browsePath !== null): ?>
-                        <a class="platform-btn platform-btn-secondary" href="/cms/source?file=<?= rawurlencode($browsePath) ?>" target="_blank" rel="noopener">Browse</a>
-                        <?php endif; ?>
+                        <a class="platform-btn platform-btn-secondary" href="<?= $browseHref ?>" target="_blank" rel="noopener">Browse</a>
                         <a class="platform-btn platform-btn-secondary" href="/cms/settings/logs/view?idx=<?= (int) $i ?>" target="_blank" rel="noopener">View</a>
                     </div>
                 </div>
@@ -136,18 +135,18 @@ $parentRoot = realpath(dirname($rcRoot));
                             $rowBrowsePath = 'host-parent/' . ltrim(substr($rowReal, strlen(rtrim($parentRoot, '/'))), '/');
                         }
                     }
+                    $rowBrowseHref = '/cms/source?file=' . rawurlencode($rowBrowsePath ?? 'host-parent');
                     ?>
                     <div class="linked-log-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:.5rem;align-items:center">
                         <input type="text" name="log_label[]" value="<?= e($log['label'] ?? '') ?>" placeholder="Label (e.g. PHP Error Log)">
                         <input type="text" name="log_path[]" value="<?= e($log['path'] ?? '') ?>" placeholder="/absolute/path/to/log/file.log">
                         <div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">
                             <a
-                                href="<?= $rowBrowsePath !== null ? '/cms/source?file=' . rawurlencode($rowBrowsePath) : '#' ?>"
+                                href="<?= $rowBrowseHref ?>"
                                 target="_blank"
                                 rel="noopener"
                                 class="platform-btn platform-btn-secondary"
                                 data-browse-log-row
-                                <?= $rowBrowsePath === null ? 'style="display:none"' : '' ?>
                             >Browse</a>
                             <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
                         </div>
@@ -158,7 +157,7 @@ $parentRoot = realpath(dirname($rcRoot));
                         <input type="text" name="log_label[]" value="PHP Error Log" placeholder="Label (e.g. PHP Error Log)">
                         <input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">
                         <div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">
-                            <a href="#" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row style="display:none">Browse</a>
+                            <a href="/cms/source?file=host-parent" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row>Browse</a>
                             <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
                         </div>
                     </div>
@@ -217,14 +216,8 @@ $parentRoot = realpath(dirname($rcRoot));
         if (!pathInput || !browseLink) { return; }
 
         var browsePath = toHostParentPath(pathInput.value);
-        if (!browsePath) {
-            browseLink.style.display = 'none';
-            browseLink.setAttribute('href', '#');
-            return;
-        }
-
-        browseLink.style.display = '';
-        browseLink.setAttribute('href', '/cms/source?file=' + encodeURIComponent(browsePath));
+        var target = browsePath || 'host-parent';
+        browseLink.setAttribute('href', '/cms/source?file=' + encodeURIComponent(target));
     }
 
     function bindRowRemoval(root) {
@@ -260,7 +253,7 @@ $parentRoot = realpath(dirname($rcRoot));
             + '<input type="text" name="log_label[]" value="" placeholder="Label (e.g. PHP Error Log)">'
             + '<input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">'
             + '<div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">'
-            + '<a href="#" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row style="display:none">Browse</a>'
+            + '<a href="/cms/source?file=host-parent" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row>Browse</a>'
             + '<button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>'
             + '</div>';
         rows.appendChild(row);
