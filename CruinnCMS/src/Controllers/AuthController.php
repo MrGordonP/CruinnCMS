@@ -620,4 +620,43 @@ class AuthController extends BaseController
             // membership table may not exist on this instance — non-fatal
         }
     }
+
+    // ── Module content providers ──────────────────────────────────────────
+
+    /**
+     * Content provider: Account Information (created_at, last_login).
+     */
+    public static function contentProviderAccountInformation(array $settings, array $context): array
+    {
+        if (!Auth::check()) {
+            return [];
+        }
+        $db   = Database::getInstance();
+        $user = $db->fetch('SELECT created_at, last_login FROM users WHERE id = ?', [Auth::userId()]);
+        return $user ? ['user' => $user] : [];
+    }
+
+    /**
+     * Content provider: Account Details form (display_name, email).
+     */
+    public static function contentProviderAccountDetails(array $settings, array $context): array
+    {
+        if (!Auth::check()) {
+            return [];
+        }
+        $db   = Database::getInstance();
+        $user = $db->fetch('SELECT display_name, email FROM users WHERE id = ?', [Auth::userId()]);
+        return $user ? ['user' => $user] : [];
+    }
+
+    /**
+     * Content provider: Change Password form (no user data needed).
+     */
+    public static function contentProviderAccountPassword(array $settings, array $context): array
+    {
+        if (!Auth::check()) {
+            return [];
+        }
+        return [];
+    }
 }

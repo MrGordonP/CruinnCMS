@@ -155,6 +155,319 @@ class App
             'acp_sections' => [
                 ['group' => 'Admin', 'label' => 'Users', 'url' => '/admin/users', 'icon' => '👤'],
             ],
+            'template_path' => dirname(__DIR__) . '/templates',
+            'widget_providers' => [
+                [
+                    'slug'     => 'recent-activity',
+                    'label'    => 'Recent Activity',
+                    'provider' => Services\DashboardService::class . '::recentActivityData',
+                    'template' => 'admin/widgets/recent-activity',
+                ],
+                [
+                    'slug'     => 'notifications-summary',
+                    'label'    => 'Notifications Summary',
+                    'provider' => Services\DashboardService::class . '::notificationsSummaryData',
+                    'template' => 'admin/widgets/notifications-summary',
+                ],
+                [
+                    'slug'     => 'member-profile',
+                    'label'    => 'Member Profile',
+                    'provider' => Services\DashboardService::class . '::memberProfileData',
+                    'template' => 'admin/widgets/member-profile',
+                ],
+            ],
+            'content_providers' => [
+                [
+                    'slug'     => 'account-information',
+                    'title'    => 'Account Information',
+                    'provider' => Controllers\AuthController::class . '::contentProviderAccountInformation',
+                    'template' => 'public/account/information',
+                ],
+                [
+                    'slug'     => 'account-details',
+                    'title'    => 'Account Details Form',
+                    'provider' => Controllers\AuthController::class . '::contentProviderAccountDetails',
+                    'template' => 'public/account/details-form',
+                ],
+                [
+                    'slug'     => 'account-password',
+                    'title'    => 'Account Password Form',
+                    'provider' => Controllers\AuthController::class . '::contentProviderAccountPassword',
+                    'template' => 'public/account/password-form',
+                ],
+            ],
+            'widgets' => static function (): array {
+                try {
+                    $db      = \Cruinn\Database::getInstance();
+                    $total   = (int) $db->fetchColumn('SELECT COUNT(*) FROM users');
+                    $active  = (int) $db->fetchColumn("SELECT COUNT(*) FROM users WHERE active = 1");
+                    $recent  = (int) $db->fetchColumn("SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+                } catch (\Throwable) {
+                    $total = $active = $recent = 0;
+                }
+
+                return [
+                    [
+                        'key'   => 'accounts_quick_link',
+                        'title' => 'Users Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/users" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">👤</span>'
+                            . '<span>Users</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                    [
+                        'key'   => 'accounts_status_summary',
+                        'title' => 'Users Status Summary',
+                        'html'  => '<div class="activity-header"><h2>Users</h2></div>'
+                            . '<div class="dash-quick-grid">'
+                            . '<a href="/admin/users" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Total</span></a>'
+                            . '<a href="/admin/users" class="dash-quick-link"><strong class="dash-stat-num">' . $active . '</strong><span>Active</span></a>'
+                            . '<a href="/admin/users" class="dash-quick-link"><strong class="dash-stat-num">' . $recent . '</strong><span>Last 30d</span></a>'
+                            . '</div>',
+                    ],
+                ];
+            },
+        ]);
+
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'pages',
+            'name'        => 'Pages',
+            'description' => 'Core page tree, block editor, and HTML editor.',
+            'acp_sections' => [
+                ['group' => 'Content', 'label' => 'Pages', 'url' => '/admin/pages', 'icon' => '📄'],
+                ['group' => 'Content', 'label' => 'Templates', 'url' => '/admin/templates', 'icon' => '🗂️'],
+            ],
+            'template_path' => dirname(__DIR__) . '/templates',
+            'widget_providers' => [
+                [
+                    'slug'     => 'stats-overview',
+                    'label'    => 'Stats Overview',
+                    'provider' => Services\DashboardService::class . '::statsOverviewData',
+                    'template' => 'admin/widgets/stats-overview',
+                ],
+                [
+                    'slug'     => 'communications',
+                    'label'    => 'Communications',
+                    'provider' => Services\DashboardService::class . '::communicationsData',
+                    'template' => 'admin/widgets/communications',
+                ],
+                [
+                    'slug'     => 'comms-social',
+                    'label'    => 'Communications &amp; Social',
+                    'provider' => Services\DashboardService::class . '::commsSocialData',
+                    'template' => 'admin/widgets/comms-social',
+                ],
+                [
+                    'slug'     => 'social-links',
+                    'label'    => 'Social Links',
+                    'provider' => Services\DashboardService::class . '::socialLinksData',
+                    'template' => 'admin/widgets/social-links',
+                ],
+                [
+                    'slug'     => 'upcoming-events',
+                    'label'    => 'Upcoming Events',
+                    'provider' => Services\DashboardService::class . '::upcomingEventsData',
+                    'template' => 'admin/widgets/upcoming-events',
+                ],
+                [
+                    'slug'     => 'forum-recent',
+                    'label'    => 'Recent Forum Activity',
+                    'provider' => Services\DashboardService::class . '::forumRecentData',
+                    'template' => 'admin/widgets/forum-recent',
+                ],
+                [
+                    'slug'     => 'active-discussions',
+                    'label'    => 'Active Discussions',
+                    'provider' => Services\DashboardService::class . '::activeDiscussionsData',
+                    'template' => 'admin/widgets/active-discussions',
+                ],
+                [
+                    'slug'     => 'council-stats',
+                    'label'    => 'Council Stats',
+                    'provider' => Services\DashboardService::class . '::councilStatsData',
+                    'template' => 'admin/widgets/council-stats',
+                ],
+                [
+                    'slug'     => 'recent-documents',
+                    'label'    => 'Recent Documents',
+                    'provider' => Services\DashboardService::class . '::recentDocumentsData',
+                    'template' => 'admin/widgets/recent-documents',
+                ],
+            ],
+            'widgets' => static function (): array {
+                try {
+                    $db        = \Cruinn\Database::getInstance();
+                    $total     = (int) $db->fetchColumn('SELECT COUNT(*) FROM pages');
+                    $published = (int) $db->fetchColumn("SELECT COUNT(*) FROM pages WHERE status = 'published'");
+                    $draft     = (int) $db->fetchColumn("SELECT COUNT(*) FROM pages WHERE status = 'draft'");
+                } catch (\Throwable) {
+                    $total = $published = $draft = 0;
+                }
+
+                return [
+                    [
+                        'key'   => 'pages_quick_link',
+                        'title' => 'Pages Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/pages" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">📄</span>'
+                            . '<span>Pages</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                    [
+                        'key'   => 'pages_status_summary',
+                        'title' => 'Pages Status Summary',
+                        'html'  => '<div class="activity-header"><h2>Pages</h2></div>'
+                            . '<div class="dash-quick-grid">'
+                            . '<a href="/admin/pages" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Total</span></a>'
+                            . '<a href="/admin/pages" class="dash-quick-link"><strong class="dash-stat-num">' . $published . '</strong><span>Published</span></a>'
+                            . '<a href="/admin/pages" class="dash-quick-link"><strong class="dash-stat-num">' . $draft . '</strong><span>Draft</span></a>'
+                            . '</div>',
+                    ],
+                ];
+            },
+        ]);
+
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'menus',
+            'name'        => 'Menus',
+            'description' => 'Core navigation menu management.',
+            'acp_sections' => [
+                ['group' => 'Content', 'label' => 'Menus', 'url' => '/admin/menus', 'icon' => '🔗'],
+            ],
+            'widgets' => static function (): array {
+                try {
+                    $db    = \Cruinn\Database::getInstance();
+                    $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM menus');
+                    $items = (int) $db->fetchColumn('SELECT COUNT(*) FROM menu_items');
+                } catch (\Throwable) {
+                    $total = $items = 0;
+                }
+
+                return [
+                    [
+                        'key'   => 'menus_quick_link',
+                        'title' => 'Menus Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/menus" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">🔗</span>'
+                            . '<span>Menus</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                    [
+                        'key'   => 'menus_status_summary',
+                        'title' => 'Menus Summary',
+                        'html'  => '<div class="activity-header"><h2>Menus</h2></div>'
+                            . '<div class="dash-quick-grid">'
+                            . '<a href="/admin/menus" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Menus</span></a>'
+                            . '<a href="/admin/menus" class="dash-quick-link"><strong class="dash-stat-num">' . $items . '</strong><span>Items</span></a>'
+                            . '</div>',
+                    ],
+                ];
+            },
+        ]);
+
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'media',
+            'name'        => 'Media',
+            'description' => 'Core media library and file management.',
+            'acp_sections' => [
+                ['group' => 'Content', 'label' => 'Media', 'url' => '/admin/media', 'icon' => '🖼️'],
+            ],
+            'widgets' => static function (): array {
+                return [
+                    [
+                        'key'   => 'media_quick_link',
+                        'title' => 'Media Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/media" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">🖼️</span>'
+                            . '<span>Media</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                ];
+            },
+        ]);
+
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'roles',
+            'name'        => 'Roles',
+            'description' => 'Core role and permission management.',
+            'acp_sections' => [
+                ['group' => 'Admin', 'label' => 'Roles', 'url' => '/admin/roles', 'icon' => '🛡️'],
+            ],
+            'widgets' => static function (): array {
+                try {
+                    $db    = \Cruinn\Database::getInstance();
+                    $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM roles');
+                } catch (\Throwable) {
+                    $total = 0;
+                }
+
+                return [
+                    [
+                        'key'   => 'roles_quick_link',
+                        'title' => 'Roles Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/roles" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">🛡️</span>'
+                            . '<span>Roles</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                    [
+                        'key'   => 'roles_status_summary',
+                        'title' => 'Roles Summary',
+                        'html'  => '<div class="activity-header"><h2>Roles</h2></div>'
+                            . '<div class="dash-quick-grid">'
+                            . '<a href="/admin/roles" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Roles</span></a>'
+                            . '</div>',
+                    ],
+                ];
+            },
+        ]);
+
+        Modules\ModuleRegistry::registerCore([
+            'slug'        => 'groups',
+            'name'        => 'Groups',
+            'description' => 'Core group and group membership management.',
+            'acp_sections' => [
+                ['group' => 'Admin', 'label' => 'Groups', 'url' => '/admin/groups', 'icon' => '👥'],
+            ],
+            'widgets' => static function (): array {
+                try {
+                    $db    = \Cruinn\Database::getInstance();
+                    $total = (int) $db->fetchColumn('SELECT COUNT(*) FROM groups');
+                } catch (\Throwable) {
+                    $total = 0;
+                }
+
+                return [
+                    [
+                        'key'   => 'groups_quick_link',
+                        'title' => 'Groups Quick Link',
+                        'html'  => '<div class="dash-quick-grid">'
+                            . '<a href="/admin/groups" class="dash-quick-link">'
+                            . '<span class="dash-quick-icon">👥</span>'
+                            . '<span>Groups</span>'
+                            . '</a>'
+                            . '</div>',
+                    ],
+                    [
+                        'key'   => 'groups_status_summary',
+                        'title' => 'Groups Summary',
+                        'html'  => '<div class="activity-header"><h2>Groups</h2></div>'
+                            . '<div class="dash-quick-grid">'
+                            . '<a href="/admin/groups" class="dash-quick-link"><strong class="dash-stat-num">' . $total . '</strong><span>Groups</span></a>'
+                            . '</div>',
+                    ],
+                ];
+            },
         ]);
 
         // Register each active module's template directory as a fallback path
