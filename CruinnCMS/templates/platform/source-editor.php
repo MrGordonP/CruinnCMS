@@ -16,9 +16,14 @@
 $_fileStat = null;
 if ($activeFile !== null && $fileContent !== null) {
     $rcRoot  = dirname(__DIR__, 2);
-    $absPath = realpath(str_starts_with($activeFile, 'public/')
-        ? CRUINN_PUBLIC . '/' . substr($activeFile, 7)
-        : $rcRoot . '/' . $activeFile);
+    $parentRoot = realpath(dirname($rcRoot));
+    if (str_starts_with($activeFile, 'host-parent/')) {
+        $absPath = $parentRoot ? realpath($parentRoot . '/' . substr($activeFile, 12)) : false;
+    } else {
+        $absPath = realpath(str_starts_with($activeFile, 'public/')
+            ? CRUINN_PUBLIC . '/' . substr($activeFile, 7)
+            : $rcRoot . '/' . $activeFile);
+    }
     if ($absPath && is_file($absPath)) {
         $st = stat($absPath);
         $_fileStat = [
@@ -33,6 +38,7 @@ if ($activeFile !== null && $fileContent !== null) {
 <?php ob_start(); ?>
 <div id="source-wrap" class="panel-layout"
     data-csrf-token="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>"
+    data-source-list-url="/cms/source/list"
     data-preview-url="<?= htmlspecialchars(($activeFile !== null && $fileContent !== null && in_array(strtolower(pathinfo($activeFile, PATHINFO_EXTENSION)), ['php', 'html'], true)) ? '/cms/source/preview?file=' . rawurlencode($activeFile) : '', ENT_QUOTES, 'UTF-8') ?>">
 
     <!-- ── Left: File tree ────────────────────────────────────── -->
@@ -49,9 +55,14 @@ if ($activeFile !== null && $fileContent !== null) {
                 if ($_e['type'] === 'dir') {
                     $_open = $_stActive !== '' && str_starts_with($_stActive, $_e['rel'] . '/');
                     $_drel = htmlspecialchars($_e['rel'], ENT_QUOTES, 'UTF-8');
+                    $_lazy = !empty($_e['lazy']);
                     echo '<details' . ($_open ? ' open' : '') . '>';
-                    echo '<summary data-dir="' . $_drel . '">' . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8') . '</summary>';
-                    $_stRender($_e['children']);
+                    echo '<summary data-dir="' . $_drel . '"' . ($_lazy ? ' data-lazy="1"' : '') . '>'
+                       . htmlspecialchars($_e['name'], ENT_QUOTES, 'UTF-8')
+                       . '</summary>';
+                    if (!$_lazy) {
+                        $_stRender($_e['children']);
+                    }
                     echo '</details>';
                 } else {
                     $_act = $_stActive === $_e['rel'];
@@ -101,7 +112,9 @@ if ($activeFile !== null && $fileContent !== null) {
                         <button type="button" id="btn-view-preview" data-source-view="preview" class="btn btn-small btn-secondary">Preview</button>
                     </div>
                     <?php endif; ?>
+                    <?php if (empty($isReadOnly)): ?>
                     <button type="submit" class="btn btn-small btn-primary">Save</button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -112,6 +125,7 @@ if ($activeFile !== null && $fileContent !== null) {
                     class="source-code-textarea"
                     spellcheck="false"
                     autocomplete="off"
+                    <?= !empty($isReadOnly) ? 'readonly' : '' ?>
                 ><?= htmlspecialchars($fileContent, ENT_QUOTES, 'UTF-8') ?></textarea>
                 <?php if ($canPreview): ?>
                 <iframe
@@ -178,6 +192,7 @@ if ($activeFile !== null && $fileContent !== null) {
             <?php $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
                   $_isProtected = false;
                   foreach ($protected as $_pg) { if (str_starts_with($activeFile, $_pg)) { $_isProtected = true; break; } }
+                                if (str_starts_with($activeFile, 'host-parent/')) { $_isProtected = true; }
                 $_allowProtectedPull = ($activeFile === 'config/routes.php');
             ?>
             <?php if (!$_isProtected || $_allowProtectedPull): ?>

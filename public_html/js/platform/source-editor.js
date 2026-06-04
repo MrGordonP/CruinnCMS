@@ -4,6 +4,7 @@
 
     var csrfToken = wrap.dataset.csrfToken || '';
     var previewUrl = wrap.dataset.previewUrl || '';
+    var sourceListUrl = wrap.dataset.sourceListUrl || '/cms/source/list';
     var currentDir = null;
     var loaded = false;
 
@@ -19,6 +20,62 @@
     var viewButtons = document.querySelectorAll('[data-source-view]');
     var filePullForm = document.getElementById('props-pull-form');
     var filePullBtn = document.getElementById('props-file-pull-btn');
+
+    function appendDirEntries(details, entries) {
+        entries.forEach(function (entry) {
+            if (!entry || !entry.rel || !entry.name) return;
+
+            if (entry.type === 'dir') {
+                var dirDetails = document.createElement('details');
+                var summary = document.createElement('summary');
+                summary.setAttribute('data-dir', entry.rel);
+                if (entry.lazy) {
+                    summary.setAttribute('data-lazy', '1');
+                }
+                summary.textContent = entry.name;
+                dirDetails.appendChild(summary);
+                details.appendChild(dirDetails);
+                return;
+            }
+
+            var link = document.createElement('a');
+            link.href = '/cms/source?file=' + encodeURIComponent(entry.rel);
+            link.className = 'source-tree-file';
+            link.title = entry.rel;
+            link.textContent = entry.name;
+            details.appendChild(link);
+        });
+    }
+
+    function loadLazyDirectory(summary) {
+        if (!summary || summary.dataset.lazy !== '1' || summary.dataset.loaded === '1') {
+            return;
+        }
+
+        var dir = summary.dataset.dir || '';
+        var details = summary.parentElement;
+        if (!dir || !details) return;
+
+        summary.dataset.loaded = 'loading';
+
+        fetch(sourceListUrl + '?dir=' + encodeURIComponent(dir), { method: 'GET' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data || !data.ok || !Array.isArray(data.entries)) {
+                    throw new Error((data && data.error) ? data.error : 'Failed to load directory');
+                }
+                appendDirEntries(details, data.entries);
+                summary.dataset.loaded = '1';
+            })
+            .catch(function (error) {
+                summary.dataset.loaded = '';
+                var errorRow = document.createElement('div');
+                errorRow.style.color = '#dc2626';
+                errorRow.style.fontSize = '.75rem';
+                errorRow.textContent = 'Load failed: ' + error.message;
+                details.appendChild(errorRow);
+            });
+    }
 
     function loadPreview() {
         if (!sourcePreviewFrame || !previewUrl || loaded) return;
@@ -69,6 +126,7 @@
             if (!summary) return;
 
             currentDir = summary.dataset.dir;
+            loadLazyDirectory(summary);
 
             var propsFile = document.getElementById('props-file');
             var propsDir = document.getElementById('props-dir');
@@ -85,8 +143,11 @@
             }
 
             if (dirPullBtn) {
-                dirPullBtn.disabled = false;
-                dirPullBtn.textContent = '\u2193 Pull Folder from Repo';
+                var isReadOnlyDir = currentDir === 'host-parent' || currentDir.indexOf('host-parent/') === 0;
+                dirPullBtn.disabled = isReadOnlyDir;
+                dirPullBtn.textContent = isReadOnlyDir
+                    ? 'Read-only folder'
+                    : '\u2193 Pull Folder from Repo';
             }
 
             if (propsDir) propsDir.style.display = '';

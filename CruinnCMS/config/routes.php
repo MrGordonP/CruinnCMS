@@ -50,6 +50,7 @@ return function (Cruinn\Router $router) {
     $router->post('/cms/source/save',                   [PlatformController::class, 'platformSourceSave']);
     $router->post('/cms/source/pull',                   [PlatformController::class, 'platformSourcePull']);
     $router->post('/cms/source/pull-dir',               [PlatformController::class, 'platformSourcePullDir']);
+    $router->get('/cms/source/list',                    [PlatformController::class, 'platformSourceList']);
     $router->get('/cms/source/preview',                 [PlatformController::class, 'platformSourcePreview']);
     $router->get('/cms/editor',                         [PlatformController::class, 'editorPicker']);
     $router->get('/cms/editor/files',                   [PlatformController::class, 'editorFiles']);

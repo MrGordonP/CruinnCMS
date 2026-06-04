@@ -2312,6 +2312,15 @@ class PlatformController
             $tree[]   = ['name' => $dir['rel'], 'rel' => $dir['rel'], 'type' => 'dir', 'children' => $children];
         }
 
+        // Host parent is intentionally lazy-loaded to avoid expensive scans.
+        $tree[] = [
+            'name' => 'host-parent',
+            'rel' => 'host-parent',
+            'type' => 'dir',
+            'lazy' => true,
+            'children' => [],
+        ];
+
         return $tree;
     }
 
@@ -2331,8 +2340,20 @@ class PlatformController
         if ($relPath === '') { return null; }
 
         $rcRoot     = dirname(__DIR__, 3);
+        $parentRoot = realpath(dirname($rcRoot));
         $rcRootReal = realpath($rcRoot);
         $publicRoot = realpath(CRUINN_PUBLIC);
+
+        if (str_starts_with($relPath, 'host-parent/')) {
+            if (!$parentRoot) { return null; }
+            $suffix = substr($relPath, 12);
+            if ($suffix === '') { return null; }
+            $target = realpath($parentRoot . '/' . $suffix);
+            if ($target && str_starts_with($target, $parentRoot . DIRECTORY_SEPARATOR)) {
+                return [$target, $parentRoot];
+            }
+            return null;
+        }
 
         if (str_starts_with($relPath, 'public/')) {
             if (!$publicRoot) { return null; }
@@ -2394,8 +2415,19 @@ class PlatformController
         if ($relDir === '') { return null; }
 
         $rcRoot     = dirname(__DIR__, 3);
+        $parentRoot = realpath(dirname($rcRoot));
         $rcRootReal = realpath($rcRoot);
         $publicRoot = realpath(CRUINN_PUBLIC);
+
+        if ($relDir === 'host-parent' || str_starts_with($relDir, 'host-parent/')) {
+            if (!$parentRoot) { return null; }
+            $suffix = $relDir === 'host-parent' ? '' : substr($relDir, 12);
+            $target = realpath($parentRoot . ($suffix !== '' ? '/' . $suffix : ''));
+            if ($target && ($target === $parentRoot || str_starts_with($target, $parentRoot . DIRECTORY_SEPARATOR))) {
+                return [$target, $parentRoot];
+            }
+            return null;
+        }
 
         if ($relDir === 'public' || str_starts_with($relDir, 'public/')) {
             if (!$publicRoot) { return null; }
@@ -2458,16 +2490,20 @@ class PlatformController
         $activeFile  = null;
         $fileError   = null;
         $activeGroup = null;
+        $isReadOnly  = false;
 
         if ($reqFile !== null && $reqFile !== '') {
             $resolved = $this->resolveSourcePath($reqFile);
             if ($resolved) {
                 [$absPath] = $resolved;
+                $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
+                $isHostParent = str_starts_with($reqFile, 'host-parent/');
                 if (is_file($absPath)
-                    && in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
+                    && (in_array($ext, $allowedExt, true) || ($isHostParent && $ext === ''))
                 ) {
                     $fileContent = file_get_contents($absPath);
                     $activeFile  = $reqFile;
+                    $isReadOnly  = $isHostParent;
                     foreach ($groups as $groupName => $files) {
                         if (isset($files[$activeFile])) { $activeGroup = $groupName; break; }
                     }
@@ -2491,9 +2527,91 @@ class PlatformController
             'activeGroup'    => $activeGroup,
             'fileContent'    => $fileContent,
             'fileError'      => $fileError,
+            'isReadOnly'     => $isReadOnly,
             'savedFlash'     => $savedFlash,
             'csrfToken'      => \Cruinn\CSRF::getToken(),
         ]);
+    }
+
+    public function platformSourceList(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if (!PlatformAuth::check()) {
+            echo json_encode(['ok' => false, 'error' => 'Unauthorized']);
+            exit;
+        }
+
+        $reqDir = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_GET['dir'] ?? '')), '/');
+        if ($reqDir === '') {
+            echo json_encode(['ok' => false, 'error' => 'No directory specified']);
+            exit;
+        }
+
+        $resolved = $this->resolveSourceDirPath($reqDir);
+        if (!$resolved) {
+            echo json_encode(['ok' => false, 'error' => 'Directory not found']);
+            exit;
+        }
+        [$absDir] = $resolved;
+        if (!is_dir($absDir)) {
+            echo json_encode(['ok' => false, 'error' => 'Directory not found']);
+            exit;
+        }
+
+        $items = @scandir($absDir);
+        if (!is_array($items)) {
+            echo json_encode(['ok' => false, 'error' => 'Cannot read directory']);
+            exit;
+        }
+
+        $isHostParent = ($reqDir === 'host-parent' || str_starts_with($reqDir, 'host-parent/'));
+        $allowedExt = ['php', 'html', 'css', 'js', 'sql', 'md', 'json', 'txt'];
+        $skipDirs = ['.', '..', '.git', 'node_modules', 'vendor'];
+        $entries = [];
+        $count = 0;
+        foreach ($items as $name) {
+            if (in_array($name, $skipDirs, true)) { continue; }
+            $childAbs = $absDir . DIRECTORY_SEPARATOR . $name;
+            $childRel = $reqDir . '/' . $name;
+
+            if (is_dir($childAbs)) {
+                $entries[] = [
+                    'type' => 'dir',
+                    'name' => $name,
+                    'rel'  => str_replace('\\', '/', $childRel),
+                    'lazy' => true,
+                ];
+                $count++;
+                continue;
+            }
+
+            if (!is_file($childAbs)) { continue; }
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+            if (!in_array($ext, $allowedExt, true) && !($isHostParent && $ext === '')) {
+                continue;
+            }
+            $entries[] = [
+                'type' => 'file',
+                'name' => $name,
+                'rel'  => str_replace('\\', '/', $childRel),
+            ];
+            $count++;
+
+            if ($count >= 400) {
+                break;
+            }
+        }
+
+        usort($entries, static function (array $a, array $b): int {
+            if ($a['type'] === $b['type']) {
+                return strnatcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+            }
+            return ($a['type'] === 'dir') ? -1 : 1;
+        });
+
+        echo json_encode(['ok' => true, 'entries' => $entries]);
+        exit;
     }
 
     /**
@@ -2510,6 +2628,12 @@ class PlatformController
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
         $content    = $_POST['content'] ?? '';
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        if (str_starts_with($reqFile, 'host-parent/')) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Read-only path - saving is disabled.'];
+            header('Location: /cms/source?file=' . rawurlencode($reqFile));
+            exit;
+        }
 
         $resolved = $this->resolveSourcePath($reqFile);
         if (!$resolved) {
@@ -2555,6 +2679,12 @@ class PlatformController
 
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        if (str_starts_with($reqFile, 'host-parent/')) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Read-only path - pull is disabled.'];
+            header('Location: /cms/source?file=' . rawurlencode($reqFile));
+            exit;
+        }
 
         // Block protected paths
         $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];
@@ -3084,6 +3214,11 @@ class PlatformController
 
         $reqDir     = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['dir'] ?? '')), '/');
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        if ($reqDir === 'host-parent' || str_starts_with($reqDir, 'host-parent/')) {
+            echo json_encode(['ok' => false, 'error' => 'Read-only path - pull is disabled.']);
+            exit;
+        }
 
         // Validate the directory exists within root
         if ($reqDir === '') {
