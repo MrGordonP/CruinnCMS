@@ -387,15 +387,19 @@ class DashboardService
             return ['unread' => 0, 'notifications' => []];
         }
 
-        $unread = $db->fetchColumn(
-            'SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL',
-            [$userId]
-        );
+        try {
+            $unread = $db->fetchColumn(
+                'SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL',
+                [$userId]
+            );
 
-        $notifications = $db->fetchAll(
-            'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ' . $limit,
-            [$userId]
-        );
+            $notifications = $db->fetchAll(
+                'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ' . $limit,
+                [$userId]
+            );
+        } catch (\Throwable) {
+            return ['unread' => 0, 'notifications' => []];
+        }
 
         return [
             'unread'        => (int) $unread,
@@ -415,10 +419,24 @@ class DashboardService
             return ['member' => null];
         }
 
-        $member = $db->fetch(
-            'SELECT * FROM members WHERE user_id = ?',
-            [$userId]
-        );
+        try {
+            $member = $db->fetch(
+                'SELECT * FROM members WHERE user_id = ?',
+                [$userId]
+            );
+        } catch (\Throwable) {
+            return ['member' => null];
+        }
+
+        if (!$member) {
+            return ['member' => null];
+        }
+
+        $member['forenames'] = (string) ($member['forenames'] ?? $member['firstname'] ?? $member['first_name'] ?? '');
+        $member['surnames'] = (string) ($member['surnames'] ?? $member['lastname'] ?? $member['last_name'] ?? '');
+        $member['email'] = (string) ($member['email'] ?? '');
+        $member['status'] = (string) ($member['status'] ?? 'unknown');
+        $member['institute'] = (string) ($member['institute'] ?? $member['organisation'] ?? $member['organization'] ?? '');
 
         return ['member' => $member ?: null];
     }

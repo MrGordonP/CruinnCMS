@@ -5,30 +5,44 @@
  * Data keys: member (may be null)
  */
 $member = $data['member'] ?? null;
+$memberName = '';
+$memberEmail = '';
+$memberStatus = 'unknown';
+$memberInstitute = '';
+
+if (is_array($member)) {
+    $memberName = trim((string) (($member['forenames'] ?? '') . ' ' . ($member['surnames'] ?? '')));
+    if ($memberName === '') {
+        $memberName = trim((string) ($member['display_name'] ?? $member['name'] ?? $member['full_name'] ?? ''));
+    }
+    $memberEmail = (string) ($member['email'] ?? '');
+    $memberStatus = (string) ($member['status'] ?? 'unknown');
+    $memberInstitute = trim((string) ($member['institute'] ?? ''));
+}
 ?>
 <div class="activity-header">
     <h2>My Member Profile</h2>
     <a href="/members/profile" class="btn btn-outline btn-small">Edit Profile</a>
 </div>
-<?php if ($member): ?>
+<?php if (is_array($member)): ?>
 <div class="detail-card" style="margin-bottom: 0;">
     <table class="detail-table" style="margin-bottom: 0;">
         <tr>
             <th>Name</th>
-            <td><?= e($member['forenames'] . ' ' . $member['surnames']) ?></td>
+            <td><?= e($memberName !== '' ? $memberName : 'Not set') ?></td>
         </tr>
         <tr>
             <th>Email</th>
-            <td><?= e($member['email']) ?></td>
+            <td><?= e($memberEmail !== '' ? $memberEmail : 'Not set') ?></td>
         </tr>
         <tr>
             <th>Status</th>
-            <td><span class="badge badge-<?= $member['status'] === 'active' ? 'success' : 'muted' ?>"><?= e(ucfirst($member['status'])) ?></span></td>
+            <td><span class="badge badge-<?= $memberStatus === 'active' ? 'success' : 'muted' ?>"><?= e(ucfirst($memberStatus)) ?></span></td>
         </tr>
-        <?php if ($member['institute']): ?>
+        <?php if ($memberInstitute !== ''): ?>
         <tr>
             <th>Institute</th>
-            <td><?= e($member['institute']) ?></td>
+            <td><?= e($memberInstitute) ?></td>
         </tr>
         <?php endif; ?>
     </table>
