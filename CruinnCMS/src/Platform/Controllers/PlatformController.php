@@ -1175,8 +1175,10 @@ class PlatformController
                 header('Location: /cms/settings');
                 exit;
             }
-            if (!str_starts_with($path, '/')) {
-                $_SESSION['_platform_logs_error'] = 'Log path must be an absolute path.';
+            $isAbsolutePath = str_starts_with($path, '/');
+            $isHostParentPath = str_starts_with($path, 'host-parent/');
+            if (!$isAbsolutePath && !$isHostParentPath) {
+                $_SESSION['_platform_logs_error'] = 'Log path must be absolute (/...) or host-parent/...';
                 header('Location: /cms/settings');
                 exit;
             }
@@ -1186,8 +1188,18 @@ class PlatformController
                 exit;
             }
 
-            $resolved = realpath($path);
-            $storedPath = ($resolved !== false) ? $resolved : $path;
+            if ($isHostParentPath) {
+                $normalized = ltrim(str_replace(['..', '\\'], ['', '/'], $path), '/');
+                if (!str_starts_with($normalized, 'host-parent/')) {
+                    $_SESSION['_platform_logs_error'] = 'Invalid host-parent path.';
+                    header('Location: /cms/settings');
+                    exit;
+                }
+                $storedPath = $normalized;
+            } else {
+                $resolved = realpath($path);
+                $storedPath = ($resolved !== false) ? $resolved : $path;
+            }
 
             $rows[] = [
                 'label' => mb_substr($label, 0, 80),
@@ -1232,16 +1244,33 @@ class PlatformController
 
         $label = trim((string) ($linkedLogs[$idx]['label'] ?? 'Log'));
         $path  = trim((string) ($linkedLogs[$idx]['path'] ?? ''));
-        if ($path === '' || !str_starts_with($path, '/')) {
+        $isHostParentPath = str_starts_with($path, 'host-parent/');
+        $isAbsolutePath = str_starts_with($path, '/');
+        if ($path === '' || (!$isHostParentPath && !$isAbsolutePath)) {
             http_response_code(400);
             echo 'Invalid linked log path.';
             exit;
         }
 
-        $resolvedPath = $path;
-        $real = @realpath($path);
-        if (is_string($real) && $real !== '') {
-            $resolvedPath = $real;
+        $resolvedPath = null;
+        if ($isHostParentPath) {
+            $normalized = ltrim(str_replace(['..', '\\'], ['', '/'], $path), '/');
+            $resolved = $this->resolveSourcePath($normalized);
+            if ($resolved) {
+                [$resolvedPath] = $resolved;
+            }
+        } else {
+            $resolvedPath = $path;
+            $real = @realpath($path);
+            if (is_string($real) && $real !== '') {
+                $resolvedPath = $real;
+            }
+        }
+
+        if (!is_string($resolvedPath) || $resolvedPath === '') {
+            http_response_code(404);
+            echo 'Linked log file is not readable.';
+            exit;
         }
 
         if (!@is_file($resolvedPath) || !@is_readable($resolvedPath)) {

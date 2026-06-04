@@ -3,6 +3,9 @@
  * Platform Settings — Change platform admin password + linked log paths
  * Variables: $username, $saved, $logsSaved, $logsError, $linkedLogs
  */
+
+$rcRoot = dirname(__DIR__, 2);
+$parentRoot = realpath(dirname($rcRoot));
 ?>
 <?php ob_start(); ?>
 
@@ -77,7 +80,24 @@
                         <div style="font-weight:600"><?= e($log['label'] ?? 'Log') ?></div>
                         <div style="font-family:monospace;font-size:.78rem;color:#6b7280"><?= e($log['path'] ?? '') ?></div>
                     </div>
-                    <a class="platform-btn platform-btn-secondary" href="/cms/settings/logs/view?idx=<?= (int) $i ?>" target="_blank" rel="noopener">View</a>
+                    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                        <?php
+                        $logPath = (string) ($log['path'] ?? '');
+                        $browsePath = null;
+                        if (str_starts_with($logPath, 'host-parent/')) {
+                            $browsePath = $logPath;
+                        } elseif (str_starts_with($logPath, '/')) {
+                            $realLogPath = @realpath($logPath);
+                            if ($parentRoot && $realLogPath && str_starts_with($realLogPath, rtrim($parentRoot, '/') . '/')) {
+                                $browsePath = 'host-parent/' . ltrim(substr($realLogPath, strlen(rtrim($parentRoot, '/'))), '/');
+                            }
+                        }
+                        ?>
+                        <?php if ($browsePath !== null): ?>
+                        <a class="platform-btn platform-btn-secondary" href="/cms/source?file=<?= rawurlencode($browsePath) ?>" target="_blank" rel="noopener">Browse</a>
+                        <?php endif; ?>
+                        <a class="platform-btn platform-btn-secondary" href="/cms/settings/logs/view?idx=<?= (int) $i ?>" target="_blank" rel="noopener">View</a>
+                    </div>
                 </div>
                 <?php endforeach; ?>
             </div>
