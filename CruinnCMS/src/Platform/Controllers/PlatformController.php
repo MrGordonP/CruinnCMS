@@ -2260,6 +2260,7 @@ class PlatformController
     private function buildSourceFileTree(): array
     {
         $root = dirname(__DIR__, 3);
+        $parentRoot = dirname($root);
         $publicRoot = realpath(CRUINN_PUBLIC) ?: CRUINN_PUBLIC;
         $rootDirs = [
             ['abs' => $root . '/src',        'rel' => 'src'],
@@ -2270,9 +2271,10 @@ class PlatformController
             ['abs' => $root . '/themes',     'rel' => 'themes'],
             ['abs' => $publicRoot,           'rel' => 'public'],
             ['abs' => $root . '/modules',    'rel' => 'modules'],
+            ['abs' => $parentRoot,           'rel' => 'host-parent'],
         ];
         $allowedExt = ['php', 'html', 'css', 'js', 'sql', 'md', 'json', 'txt'];
-        $skipDirs   = ['vendor', 'instance', 'storage', 'uploads', '.git', 'node_modules', '_template'];
+        $skipDirs   = ['vendor', 'instance', 'storage', 'uploads', '.git', 'node_modules', '_template', basename($root)];
 
         $walk = function (string $absDir, string $relDir) use (&$walk, $allowedExt, $skipDirs): array {
             $entries = [];
@@ -2292,7 +2294,9 @@ class PlatformController
                     }
                 } elseif (is_file($abs)) {
                     $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-                    if (!in_array($ext, $allowedExt, true)) { continue; }
+                    $isHostParent = str_starts_with($relDir . '/', 'host-parent/');
+                    $allowLogNoExt = $isHostParent && $ext === '' && preg_match('/log/i', $name);
+                    if (!in_array($ext, $allowedExt, true) && !$allowLogNoExt) { continue; }
                     $entries[] = ['name' => $name, 'rel' => $rel, 'type' => 'file'];
                 }
             }
@@ -2331,8 +2335,18 @@ class PlatformController
         if ($relPath === '') { return null; }
 
         $rcRoot     = dirname(__DIR__, 3);
+        $parentRoot = realpath(dirname($rcRoot));
         $rcRootReal = realpath($rcRoot);
         $publicRoot = realpath(CRUINN_PUBLIC);
+
+        if (str_starts_with($relPath, 'host-parent/')) {
+            if (!$parentRoot) { return null; }
+            $target = realpath($parentRoot . '/' . substr($relPath, 12));
+            if ($target && str_starts_with($target, $parentRoot . DIRECTORY_SEPARATOR)) {
+                return [$target, $parentRoot];
+            }
+            return null;
+        }
 
         if (str_starts_with($relPath, 'public/')) {
             if (!$publicRoot) { return null; }
@@ -2458,16 +2472,21 @@ class PlatformController
         $activeFile  = null;
         $fileError   = null;
         $activeGroup = null;
+        $isReadOnly  = false;
 
         if ($reqFile !== null && $reqFile !== '') {
             $resolved = $this->resolveSourcePath($reqFile);
             if ($resolved) {
                 [$absPath] = $resolved;
+                $ext = strtolower(pathinfo($absPath, PATHINFO_EXTENSION));
+                $isHostParent = str_starts_with($reqFile, 'host-parent/');
+                $allowLogNoExt = $isHostParent && $ext === '' && preg_match('/log/i', basename($absPath));
                 if (is_file($absPath)
-                    && in_array(strtolower(pathinfo($absPath, PATHINFO_EXTENSION)), $allowedExt, true)
+                    && (in_array($ext, $allowedExt, true) || $allowLogNoExt)
                 ) {
                     $fileContent = file_get_contents($absPath);
                     $activeFile  = $reqFile;
+                    $isReadOnly  = $isHostParent;
                     foreach ($groups as $groupName => $files) {
                         if (isset($files[$activeFile])) { $activeGroup = $groupName; break; }
                     }
@@ -2491,6 +2510,7 @@ class PlatformController
             'activeGroup'    => $activeGroup,
             'fileContent'    => $fileContent,
             'fileError'      => $fileError,
+            'isReadOnly'     => $isReadOnly,
             'savedFlash'     => $savedFlash,
             'csrfToken'      => \Cruinn\CSRF::getToken(),
         ]);
@@ -2510,6 +2530,12 @@ class PlatformController
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
         $content    = $_POST['content'] ?? '';
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        if (str_starts_with($reqFile, 'host-parent/')) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Read-only path — saving is disabled.'];
+            header('Location: /cms/source?file=' . rawurlencode($reqFile));
+            exit;
+        }
 
         $resolved = $this->resolveSourcePath($reqFile);
         if (!$resolved) {
@@ -2555,6 +2581,12 @@ class PlatformController
 
         $reqFile    = ltrim(str_replace(['..', '\\'], ['', '/'], (string) ($_POST['file'] ?? '')), '/');
         $allowedExt = ['php', 'css', 'js', 'html', 'json', 'md', 'sql', 'txt'];
+
+        if (str_starts_with($reqFile, 'host-parent/')) {
+            $_SESSION['_source_flash'] = ['type' => 'error', 'message' => 'Read-only path — pull is disabled.'];
+            header('Location: /cms/source?file=' . rawurlencode($reqFile));
+            exit;
+        }
 
         // Block protected paths
         $protected = ['config/', 'instance/', 'public/uploads/', 'public/storage/'];

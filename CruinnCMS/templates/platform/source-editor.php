@@ -8,6 +8,7 @@
  *
  * Variables: $sourceFileTree (array), $groups (array), $activeFile (?string), $activeGroup (?string),
  *            $fileContent (?string), $fileError (?string),
+ *            $isReadOnly (bool),
  *            $savedFlash (?array), $csrfToken (string)
  */
 
@@ -86,7 +87,12 @@ if ($activeFile !== null && $fileContent !== null) {
         <?php if ($activeFile !== null && $fileContent !== null):
             $activeExt      = strtolower(pathinfo($activeFile, PATHINFO_EXTENSION));
             $canPreview     = in_array($activeExt, ['php', 'html'], true);
+                    $isReadOnlyFile = !empty($isReadOnly);
         ?>
+
+                <?php if ($isReadOnlyFile): ?>
+                <div class="source-flash source-flash-warning">Read-only path: saving and GitHub pull are disabled for this file.</div>
+                <?php endif; ?>
 
         <form method="post" action="/cms/source/save" class="source-code-form" id="source-form">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
@@ -101,7 +107,9 @@ if ($activeFile !== null && $fileContent !== null) {
                         <button type="button" id="btn-view-preview" data-source-view="preview" class="btn btn-small btn-secondary">Preview</button>
                     </div>
                     <?php endif; ?>
+                    <?php if (!$isReadOnlyFile): ?>
                     <button type="submit" class="btn btn-small btn-primary">Save</button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -110,6 +118,7 @@ if ($activeFile !== null && $fileContent !== null) {
                     id="source-textarea"
                     name="content"
                     class="source-code-textarea"
+                    <?= $isReadOnlyFile ? 'readonly' : '' ?>
                     spellcheck="false"
                     autocomplete="off"
                 ><?= htmlspecialchars($fileContent, ENT_QUOTES, 'UTF-8') ?></textarea>
@@ -179,8 +188,9 @@ if ($activeFile !== null && $fileContent !== null) {
                   $_isProtected = false;
                   foreach ($protected as $_pg) { if (str_starts_with($activeFile, $_pg)) { $_isProtected = true; break; } }
                 $_allowProtectedPull = ($activeFile === 'config/routes.php');
+                $_isReadOnlyPath = !empty($isReadOnly);
             ?>
-            <?php if (!$_isProtected || $_allowProtectedPull): ?>
+            <?php if ((!$_isProtected || $_allowProtectedPull) && !$_isReadOnlyPath): ?>
             <div style="margin-top:1rem;">
                 <form id="props-pull-form" method="post" action="/cms/source/pull">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
