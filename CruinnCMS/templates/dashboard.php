@@ -77,52 +77,47 @@
     <div class="dashboard-widget-stack">
         <?php foreach (['function-card', 'summary-card', 'quick-link'] as $_kind): ?>
         <?php if (empty($_cardsByKind[$_kind])) { continue; } ?>
-        <div class="dashboard-widget">
+        <section>
             <div class="activity-header">
                 <h2><?= e($_kindLabels[$_kind] ?? 'Cards') ?></h2>
             </div>
+            <div class="dashboard-widget-grid">
             <?php foreach ($_cardsByKind[$_kind] as $_card): ?>
-            <div class="dashboard-widget" style="margin-top:0.75rem;">
-                <div class="activity-header">
-                    <h2><?= e($_card['module'] ?? 'core') ?> — <?= e($_card['title'] ?? ($_card['key'] ?? 'Card')) ?></h2>
-                </div>
+            <div class="dashboard-widget">
                 <?= $_renderCardHtml($_card) ?>
             </div>
-                <?php endforeach; ?>
-        </div>
+            <?php endforeach; ?>
+            </div>
+        </section>
         <?php endforeach; ?>
     </div><!-- .dashboard-widget-stack groups view -->
 
     <?php elseif (($current_user['role_level'] ?? 0) >= 100 && ($dashboardView ?? 'groups') === 'modules'): ?>
     <div class="dashboard-widget-stack">
         <?php foreach ($_cardsByModule as $_module => $_cards): ?>
-        <div class="dashboard-widget">
+        <section>
             <div class="activity-header">
                 <h2><?= e($_module) ?></h2>
             </div>
+            <div class="dashboard-widget-grid">
             <?php foreach ($_cards as $_card): ?>
-            <div class="dashboard-widget" style="margin-top:0.75rem;">
-                <div class="activity-header">
-                    <h2><?= e($_card['title'] ?? ($_card['key'] ?? 'Card')) ?></h2>
-                </div>
+            <div class="dashboard-widget">
                 <?= $_renderCardHtml($_card) ?>
             </div>
-                <?php endforeach; ?>
-        </div>
+            <?php endforeach; ?>
+            </div>
+        </section>
         <?php endforeach; ?>
     </div><!-- .dashboard-widget-stack modules view -->
 
     <?php elseif (($current_user['role_level'] ?? 0) >= 50): ?>
-    <div class="dashboard-widget-stack">
+    <div class="dashboard-widget-grid">
         <?php foreach ($_cardsByKind['quick-link'] as $_card): ?>
         <div class="dashboard-widget">
-            <div class="activity-header">
-                <h2><?= e($_card['module'] ?? 'core') ?> — <?= e($_card['title'] ?? ($_card['key'] ?? 'Quick Link')) ?></h2>
-            </div>
             <?= $_renderCardHtml($_card) ?>
         </div>
         <?php endforeach; ?>
-    </div><!-- .dashboard-widget-stack council view -->
+    </div><!-- .dashboard-widget-grid council view -->
 
     <?php else: ?>
     <div class="dashboard-widget-grid">

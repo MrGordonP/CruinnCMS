@@ -281,6 +281,10 @@ class ModuleRegistry
                     continue;
                 }
 
+                if (self::isBundledQuickLinkProvider($provider)) {
+                    continue;
+                }
+
                 $raw = trim((string) ($provider['slug'] ?? ''));
                 $safeRaw = self::normaliseWidgetKeyPart($raw);
                 if ($safeRaw === '') {
@@ -612,6 +616,7 @@ class ModuleRegistry
 
         $map = [];
         $seen = [];
+        $userContext = self::currentWidgetUserContext();
 
         foreach (self::$modules as $slug => $def) {
             if ((self::$statuses[$slug] ?? 'discovered') !== 'active') {
@@ -657,6 +662,55 @@ class ModuleRegistry
                     'url' => $url,
                     'icon' => (string) ($section['icon'] ?? '🔗'),
                 ];
+            }
+
+            foreach ((array) ($def['widget_providers'] ?? []) as $idx => $provider) {
+                if (!is_array($provider) || !self::isBundledQuickLinkProvider($provider)) {
+                    continue;
+                }
+
+                $providerData = self::invokeWidgetProviderData($provider, $userContext);
+                $links = is_array($providerData['links'] ?? null) ? $providerData['links'] : [];
+                if (empty($links)) {
+                    continue;
+                }
+
+                $providerSlug = trim((string) ($provider['slug'] ?? 'quick-links'));
+                foreach (array_values($links) as $linkIdx => $link) {
+                    if (!is_array($link)) {
+                        continue;
+                    }
+
+                    $label = trim((string) ($link['label'] ?? ''));
+                    $url = trim((string) ($link['url'] ?? ''));
+                    if ($label === '' || $url === '') {
+                        continue;
+                    }
+
+                    $raw = $providerSlug . '-' . $label;
+                    $safe = self::normaliseWidgetKeyPart($raw);
+                    if ($safe === '') {
+                        $safe = 'quick-link-' . ((int) $idx + 1) . '-' . ((int) $linkIdx + 1);
+                    }
+
+                    $baseKey = $slug . ':' . $safe;
+                    $key = $baseKey;
+                    $suffix = 2;
+                    while (isset($seen[$key])) {
+                        $key = $baseKey . '-' . $suffix;
+                        $suffix++;
+                    }
+                    $seen[$key] = true;
+
+                    $map[$key] = [
+                        'type' => 'quick-link',
+                        'module' => $slug,
+                        'title' => $label,
+                        'label' => $label,
+                        'url' => $url,
+                        'icon' => (string) ($link['icon'] ?? '🔗'),
+                    ];
+                }
             }
 
             // For modules that do not expose their own dashboard widgets yet,
@@ -985,6 +1039,44 @@ class ModuleRegistry
         }
 
         return '<p class="cruinn-module-widget-error">Unsupported virtual widget.</p>';
+    }
+
+    private static function currentWidgetUserContext(): array
+    {
+        return [
+            'user_id' => (int) (\Cruinn\Auth::userId() ?: 0),
+            'role_id' => (int) (\Cruinn\Auth::roleId() ?: 0),
+            'role_level' => (int) (\Cruinn\Auth::roleLevel() ?: 0),
+            'position_ids' => \Cruinn\Auth::positionIds(),
+        ];
+    }
+
+    private static function isBundledQuickLinkProvider(array $provider): bool
+    {
+        $template = trim((string) ($provider['template'] ?? ''));
+        return $template === 'widgets/dashboard-quick-links' || $template === 'widgets/quick-links';
+    }
+
+    private static function invokeWidgetProviderData(array $providerDef, array $userContext): array
+    {
+        $provider = trim((string) ($providerDef['provider'] ?? ''));
+        if ($provider === '' || !str_contains($provider, '::')) {
+            return [];
+        }
+
+        [$class, $method] = explode('::', $provider, 2);
+        if (!class_exists($class) || !method_exists($class, $method)) {
+            return [];
+        }
+
+        try {
+            $data = $class::$method([], $userContext);
+        } catch (\Throwable $e) {
+            error_log('ModuleRegistry: Widget provider expansion failed: ' . $provider . ' - ' . $e->getMessage());
+            return [];
+        }
+
+        return is_array($data) ? $data : [];
     }
 
     private static function expandWidgetSettings(array $settings): array
