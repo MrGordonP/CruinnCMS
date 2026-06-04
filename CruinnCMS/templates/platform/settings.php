@@ -145,6 +145,7 @@ $parentRoot = realpath(dirname($rcRoot));
                         <input type="text" name="log_label[]" value="<?= e($log['label'] ?? '') ?>" placeholder="Label (e.g. PHP Error Log)">
                         <input type="text" name="log_path[]" value="<?= e($log['path'] ?? '') ?>" placeholder="/absolute/path/to/log/file.log">
                         <div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">
+                            <button type="button" class="platform-btn platform-btn-secondary" data-pick-log-row>Pick</button>
                             <a
                                 href="<?= $rowBrowseHref ?>"
                                 target="_blank"
@@ -161,6 +162,7 @@ $parentRoot = realpath(dirname($rcRoot));
                         <input type="text" name="log_label[]" value="PHP Error Log" placeholder="Label (e.g. PHP Error Log)">
                         <input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">
                         <div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">
+                            <button type="button" class="platform-btn platform-btn-secondary" data-pick-log-row>Pick</button>
                             <a href="/cms/source" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row>Browse</a>
                             <button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>
                         </div>
@@ -180,15 +182,38 @@ $parentRoot = realpath(dirname($rcRoot));
     </form>
 </dialog>
 
+<dialog id="linked-log-file-picker" style="width:min(760px,96vw);border:1px solid #d1d5db;border-radius:10px;padding:0;box-shadow:0 25px 70px rgba(0,0,0,.35)">
+    <div style="padding:1rem 1rem .75rem;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+        <h3 style="margin:0;font-size:1rem">Pick Linked Log File</h3>
+        <button type="button" id="close-linked-log-file-picker" class="platform-btn platform-btn-secondary">Close</button>
+    </div>
+    <div style="padding:1rem;display:grid;gap:.75rem">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <button type="button" id="picker-up-dir" class="platform-btn platform-btn-secondary">Up</button>
+            <code id="picker-current-dir" style="font-size:.8rem">host-parent</code>
+        </div>
+        <div id="picker-results" style="border:1px solid #e5e7eb;border-radius:8px;max-height:52vh;overflow:auto;padding:.5rem;display:grid;gap:.35rem"></div>
+    </div>
+</dialog>
+
 <script>
 (function () {
     var parentRoot = <?= json_encode((string) ($parentRoot ?: ''), JSON_UNESCAPED_SLASHES) ?>;
+    var sourceListUrl = '/cms/source/list';
     var dialog = document.getElementById('linked-logs-dialog');
     var openBtn = document.getElementById('open-linked-logs-dialog');
     var closeBtn = document.getElementById('close-linked-logs-dialog');
     var cancelBtn = document.getElementById('cancel-linked-logs-dialog');
     var addBtn = document.getElementById('add-linked-log-row');
     var rows = document.getElementById('linked-logs-rows');
+
+    var pickerDialog = document.getElementById('linked-log-file-picker');
+    var pickerCloseBtn = document.getElementById('close-linked-log-file-picker');
+    var pickerUpBtn = document.getElementById('picker-up-dir');
+    var pickerCurrentDir = document.getElementById('picker-current-dir');
+    var pickerResults = document.getElementById('picker-results');
+    var pickerPathInput = null;
+    var pickerDir = 'host-parent';
 
     if (!dialog || !openBtn || !rows) {
         return;
@@ -237,6 +262,110 @@ $parentRoot = realpath(dirname($rcRoot));
         });
     }
 
+    function setPickerLoading(message) {
+        if (!pickerResults) { return; }
+        pickerResults.innerHTML = '<div style="color:#6b7280;font-size:.85rem">' + message + '</div>';
+    }
+
+    function closePicker() {
+        if (!pickerDialog) { return; }
+        if (typeof pickerDialog.close === 'function') {
+            pickerDialog.close();
+        } else {
+            pickerDialog.removeAttribute('open');
+        }
+    }
+
+    function openPicker(pathInput) {
+        if (!pickerDialog || !pathInput) { return; }
+        pickerPathInput = pathInput;
+        pickerDir = 'host-parent';
+        renderPickerDir();
+        if (typeof pickerDialog.showModal === 'function') {
+            pickerDialog.showModal();
+        } else {
+            pickerDialog.setAttribute('open', 'open');
+        }
+    }
+
+    function renderPickerEntries(entries) {
+        if (!pickerResults) { return; }
+        pickerResults.innerHTML = '';
+        if (!entries || entries.length === 0) {
+            setPickerLoading('No files found in this folder.');
+            return;
+        }
+
+        entries.forEach(function (entry) {
+            var row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.justifyContent = 'space-between';
+            row.style.gap = '.5rem';
+            row.style.border = '1px solid #f0f1f3';
+            row.style.borderRadius = '6px';
+            row.style.padding = '.35rem .45rem';
+
+            var label = document.createElement('span');
+            label.style.fontFamily = 'monospace';
+            label.style.fontSize = '.8rem';
+            label.textContent = entry.name || entry.rel || '(unnamed)';
+            row.appendChild(label);
+
+            var action = document.createElement('button');
+            action.type = 'button';
+            action.className = 'platform-btn platform-btn-secondary';
+
+            if (entry.type === 'dir') {
+                action.textContent = 'Open';
+                action.onclick = function () {
+                    pickerDir = entry.rel;
+                    renderPickerDir();
+                };
+            } else {
+                action.textContent = 'Select';
+                action.onclick = function () {
+                    if (!pickerPathInput) { return; }
+                    pickerPathInput.value = entry.rel;
+                    pickerPathInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    closePicker();
+                };
+            }
+
+            row.appendChild(action);
+            pickerResults.appendChild(row);
+        });
+    }
+
+    function renderPickerDir() {
+        if (!pickerResults || !pickerCurrentDir) { return; }
+        pickerCurrentDir.textContent = pickerDir;
+        setPickerLoading('Loading folder...');
+
+        fetch(sourceListUrl + '?dir=' + encodeURIComponent(pickerDir), { method: 'GET' })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (!data || !data.ok || !Array.isArray(data.entries)) {
+                    throw new Error((data && data.error) ? data.error : 'Could not load folder');
+                }
+                renderPickerEntries(data.entries);
+            })
+            .catch(function (error) {
+                setPickerLoading('Load failed: ' + error.message);
+            });
+    }
+
+    function bindRowPick(root) {
+        root.querySelectorAll('[data-pick-log-row]').forEach(function (btn) {
+            btn.onclick = function () {
+                var row = btn.closest('.linked-log-row');
+                if (!row) { return; }
+                var pathInput = row.querySelector('input[name="log_path[]"]');
+                openPicker(pathInput);
+            };
+        });
+    }
+
     function bindRowBrowse(root) {
         root.querySelectorAll('.linked-log-row').forEach(function (row) {
             var pathInput = row.querySelector('input[name="log_path[]"]');
@@ -260,12 +389,14 @@ $parentRoot = realpath(dirname($rcRoot));
             + '<input type="text" name="log_label[]" value="" placeholder="Label (e.g. PHP Error Log)">'
             + '<input type="text" name="log_path[]" value="" placeholder="/absolute/path/to/log/file.log">'
             + '<div style="display:flex;gap:.35rem;justify-content:flex-end;flex-wrap:wrap">'
+            + '<button type="button" class="platform-btn platform-btn-secondary" data-pick-log-row>Pick</button>'
             + '<a href="/cms/source" target="_blank" rel="noopener" class="platform-btn platform-btn-secondary" data-browse-log-row>Browse</a>'
             + '<button type="button" class="platform-btn platform-btn-secondary" data-remove-log-row>Remove</button>'
             + '</div>';
         rows.appendChild(row);
         bindRowRemoval(row);
         bindRowBrowse(row);
+        bindRowPick(row);
     }
 
     openBtn.addEventListener('click', function () {
@@ -287,9 +418,19 @@ $parentRoot = realpath(dirname($rcRoot));
     if (closeBtn) { closeBtn.addEventListener('click', closeDialog); }
     if (cancelBtn) { cancelBtn.addEventListener('click', closeDialog); }
     if (addBtn) { addBtn.addEventListener('click', addRow); }
+    if (pickerCloseBtn) { pickerCloseBtn.addEventListener('click', closePicker); }
+    if (pickerUpBtn) {
+        pickerUpBtn.addEventListener('click', function () {
+            if (pickerDir === 'host-parent') { return; }
+            var idx = pickerDir.lastIndexOf('/');
+            pickerDir = idx > 0 ? pickerDir.slice(0, idx) : 'host-parent';
+            renderPickerDir();
+        });
+    }
 
     bindRowRemoval(rows);
     bindRowBrowse(rows);
+    bindRowPick(rows);
 }());
 </script>
 
