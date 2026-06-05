@@ -1,21 +1,27 @@
 <?php
-/**
- * Organisation Admin — Meetings
- */
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 
 $meetingTypes = ['agm' => 'AGM', 'egm' => 'EGM', 'committee' => 'Committee', 'working_group' => 'Working Group', 'other' => 'Other'];
 $statusLabels  = ['scheduled' => 'Scheduled', 'completed' => 'Completed', 'cancelled' => 'Cancelled'];
 $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' => 'secondary'];
 ?>
 
-<div class="admin-section">
-    <div class="admin-section-header">
-        <h1>Meetings</h1>
-        <div class="admin-section-header-actions">
-            <a href="/admin/organisation/profile"  class="btn btn-secondary btn-sm">Profile</a>
-            <a href="/admin/organisation/officers" class="btn btn-secondary btn-sm">Officers</a>
-        </div>
+<div class="panel-layout no-detail" id="org-admin-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Organisation</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item" href="<?= url('/admin/organisation/finance') ?>">Finance</a>
+        <a class="pl-nav-item active" href="<?= url('/admin/organisation/meetings') ?>">Meetings</a>
+        <a class="pl-nav-item" href="<?= url('/admin/organisation/officers') ?>">Officers</a>
     </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Meetings</span>
+    </div>
+    <div class="pl-main-scroll">
 
 
 
@@ -272,6 +278,6 @@ $statusBadge   = ['scheduled' => 'info', 'completed' => 'success', 'cancelled' =
     <?php endif; ?>
 </div>
 
-<style>
-.form-group-grow { flex: 1; }
-</style>
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

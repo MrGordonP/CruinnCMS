@@ -1,8 +1,25 @@
-<?php \Cruinn\Template::requireCss('admin-social.css'); ?>
-<div class="social-hub">
-    <div class="social-hub-header">
-        <h1>Distribute Content</h1>
-        <a href="<?= url('/admin/social') ?>" class="btn btn-outline">Back to Hub</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-social.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="social-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Social</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item" href="<?= url('/admin/social') ?>">Dashboard</a>
+        <a class="pl-nav-item" href="<?= url('/admin/social/accounts') ?>">Accounts</a>
+        <a class="pl-nav-item active" href="<?= url('/admin/social/distribute') ?>">Distribute</a>
+        <a class="pl-nav-item" href="<?= url('/admin/social/inbox') ?>">Inbox</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Distribute Content</span>
+    </div>
+    <div class="pl-main-scroll">
     </div>
 
     <form action="<?= url('/admin/social/distribute') ?>" method="POST" class="distribute-form" id="distributeForm">
@@ -154,3 +171,7 @@
     </div>
     <?php endif; ?>
 </div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

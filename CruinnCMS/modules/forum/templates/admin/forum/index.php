@@ -1,4 +1,6 @@
 <?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 $forumBasePath = trim((string) ($forumBasePath ?? ''));
 $status = (string)($filters['status'] ?? 'all');
 $categoryTree = is_array($categoryTree ?? null) ? $categoryTree : [];
@@ -237,15 +239,20 @@ $renderSection = function (array $section, int $depth = 0) use (&$renderSection,
 };
 ?>
 
-<div class="admin-page-header">
-    <div>
-        <h1>Forum Moderation</h1>
-        <p class="text-muted">Moderate threads within their forum hierarchy and administer section structure.</p>
-    </div>
-    <div class="admin-page-header-actions">
-        <a href="<?= url('/admin/forum/reports') ?>" class="btn btn-outline">Post Reports</a>
+<div class="panel-layout no-detail" id="forum-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Forum</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Moderation</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/forum') ?>">Categories &amp; Threads</a>
+        <a class="pl-nav-item" href="<?= url('/admin/forum/reports') ?>">Post Reports</a>
     </div>
 </div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Forum Moderation</span>
+    </div>
+    <div class="pl-main-scroll">
 
 <form method="get" action="/admin/forum" class="card" style="margin-bottom: var(--space-lg);">
     <div class="form-grid" style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:var(--space-md);align-items:end;">
@@ -364,3 +371,7 @@ $renderSection = function (array $section, int $depth = 0) use (&$renderSection,
         <?= $renderSection($section, 0) ?>
     <?php endforeach; ?>
 <?php endif; ?>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

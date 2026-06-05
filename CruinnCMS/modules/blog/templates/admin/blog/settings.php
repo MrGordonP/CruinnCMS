@@ -1,11 +1,26 @@
-<?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
-<?php $blogNav = 'settings'; ?>
-<?php include __DIR__ . '/_nav.php'; ?>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-site-builder.css');
+$GLOBALS['admin_flush_layout'] = true;
+$settings = $settings ?? [];
+?>
 
-<?php $settings = $settings ?? []; ?>
-
-<div class="admin-article-edit">
-    <h1>Blog Settings</h1>
+<div class="panel-layout no-detail" id="blog-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Blog</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item" href="<?= url('/admin/blog') ?>">Overview</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/posts') ?>">Posts</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/profiles') ?>">Profiles</a>
+        <a class="pl-nav-item active" href="<?= url('/admin/blog/settings') ?>">Settings</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Blog Settings</span>
+    </div>
+    <div class="pl-main-scroll">
 
     <form method="post" action="/admin/blog/settings" class="form-article-meta">
         <?= csrf_field() ?>
@@ -69,4 +84,7 @@
             <a href="/admin/blog" class="btn btn-outline">Back to Blog</a>
         </div>
     </form>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

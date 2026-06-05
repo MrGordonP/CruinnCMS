@@ -1,22 +1,35 @@
-<?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
-<?php $blogNav = 'overview'; ?>
-<?php include __DIR__ . '/_nav.php'; ?>
-
 <?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-site-builder.css');
+$GLOBALS['admin_flush_layout'] = true;
+
 $settings = $settings ?? [];
 $recentArticles = $recentArticles ?? [];
 $listPage = $listPage ?? null;
 ?>
 
-<div class="admin-article-list">
-    <div class="admin-list-header">
-        <h1>Blog</h1>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-            <a href="/admin/blog/posts/new" class="btn btn-primary">+ New Blog Post</a>
-            <a href="/admin/blog/profiles" class="btn btn-outline">Profiles</a>
-            <a href="/admin/blog/settings" class="btn btn-outline">Settings</a>
+<div class="panel-layout no-detail" id="blog-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Blog</h3>
+        <a href="<?= url('/admin/blog/posts/new') ?>" class="btn btn-sm btn-primary">+ New</a>
+    </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/blog') ?>">Overview</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/posts') ?>">Posts</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/profiles') ?>">Profiles</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/settings') ?>">Settings</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Blog</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/blog/posts/new') ?>" class="btn btn-small btn-primary">+ New Post</a>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
     <div class="dash-quick-grid" style="margin-bottom:1.5rem;">
         <a href="/admin/blog/posts" class="dash-quick-link">
@@ -90,4 +103,7 @@ $listPage = $listPage ?? null;
             <?php endif; ?>
         </section>
     </div>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

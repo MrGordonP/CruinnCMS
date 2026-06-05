@@ -1,8 +1,27 @@
-<div class="organisation-discussions">
-    <div class="page-header">
-        <h1>Discussions</h1>
-        <a href="/organisation/discussions/new" class="btn btn-primary">New Discussion</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="org-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Workspace</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Navigation</div>
+        <a class="pl-nav-item" href="<?= url('/organisation') ?>">Dashboard</a>
+        <a class="pl-nav-item" href="<?= url('/documents') ?>">Documents</a>
+        <a class="pl-nav-item active" href="<?= url('/organisation/discussions') ?>">Discussions</a>
+        <a class="pl-nav-item" href="<?= url('/organisation/inbox') ?>">Inbox</a>
     </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Discussions</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/organisation/discussions/new') ?>" class="btn btn-small btn-primary">New Discussion</a>
+        </div>
+    </div>
+    <div class="pl-main-scroll">
 
     <!-- Filters -->
     <form class="filter-bar" method="get" action="/organisation/discussions">
@@ -79,3 +98,7 @@
         <?php endif; ?>
     <?php endif; ?>
 </div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

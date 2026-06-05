@@ -1,17 +1,32 @@
-<?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
-<?php $eventNav = 'profiles'; ?>
-<?php include dirname(__DIR__) . '/_nav.php'; ?>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-site-builder.css');
+$GLOBALS['admin_flush_layout'] = true;
+$profiles = $profiles ?? [];
+?>
 
-<?php $profiles = $profiles ?? []; ?>
-
-<div class="admin-article-list">
-    <div class="admin-list-header">
-        <h1>Events Profiles</h1>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-            <a href="/admin/events/profiles/new" class="btn btn-primary">+ New Profile</a>
-            <a href="/admin/events" class="btn btn-outline">Back to Events</a>
+<div class="panel-layout no-detail" id="events-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Events</h3>
+        <a href="<?= url('/admin/events/profiles/new') ?>" class="btn btn-sm btn-primary">+ New</a>
+    </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item" href="<?= url('/admin/events') ?>">Overview</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/list') ?>">Events</a>
+        <a class="pl-nav-item active" href="<?= url('/admin/events/profiles') ?>">Profiles</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/settings') ?>">Settings</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Events Profiles</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/events/profiles/new') ?>" class="btn btn-small btn-primary">+ New Profile</a>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
     <?php if (empty($profiles)): ?>
         <div class="admin-empty">
@@ -56,4 +71,7 @@
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

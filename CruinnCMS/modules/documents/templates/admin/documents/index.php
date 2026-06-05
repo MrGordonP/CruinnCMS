@@ -1,7 +1,27 @@
-<div class="page-header">
-    <h1>Documents</h1>
-    <a href="/documents/new" class="btn btn-primary">Upload Document</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="org-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Workspace</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Navigation</div>
+        <a class="pl-nav-item" href="<?= url('/organisation') ?>">Dashboard</a>
+        <a class="pl-nav-item active" href="<?= url('/documents') ?>">Documents</a>
+        <a class="pl-nav-item" href="<?= url('/organisation/discussions') ?>">Discussions</a>
+        <a class="pl-nav-item" href="<?= url('/organisation/inbox') ?>">Inbox</a>
+    </div>
 </div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Documents</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/documents/new') ?>" class="btn btn-small btn-primary">Upload Document</a>
+        </div>
+    </div>
+    <div class="pl-main-scroll">
 
 <form class="filter-bar" method="get" action="/documents">
     <div class="filter-group">
@@ -72,3 +92,7 @@
     </nav>
     <?php endif; ?>
 <?php endif; ?>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

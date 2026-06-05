@@ -1,14 +1,30 @@
-<?php \Cruinn\Template::requireCss('admin-social.css'); ?>
-<div class="social-hub">
-    <div class="social-hub-header">
-        <h1>Social Media Command Centre</h1>
-        <div class="social-hub-actions">
-            <a href="<?= url('/admin/social/inbox') ?>" class="btn btn-outline">
-                Inbox <?php if ($unreadCount): ?><span class="badge badge-danger"><?= $unreadCount ?></span><?php endif; ?>
-            </a>
-            <a href="<?= url('/admin/social/distribute') ?>" class="btn btn-primary">Distribute Content</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-social.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="social-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Social</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/social') ?>">Dashboard</a>
+        <a class="pl-nav-item" href="<?= url('/admin/social/accounts') ?>">Accounts</a>
+        <a class="pl-nav-item" href="<?= url('/admin/social/distribute') ?>">Distribute</a>
+        <a class="pl-nav-item" href="<?= url('/admin/social/inbox') ?>">Inbox
+            <?php if (!empty($unreadCount)): ?><span class="pl-nav-count" style="background:#dc2626;color:#fff;border-radius:9px;padding:0 5px"><?= (int)$unreadCount ?></span><?php endif; ?>
+        </a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Social Media</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/social/distribute') ?>" class="btn btn-small btn-primary">Distribute Content</a>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
     <!-- Platform Overview Cards -->
     <div class="social-platforms-grid">
@@ -180,9 +196,9 @@
         </div>
     </div>
 
-    <!-- Sub-navigation -->
-    <div class="social-subnav">
-        <a href="<?= url('/admin/social/accounts') ?>" class="btn btn-outline">Manage Accounts</a>
-        <a href="<?= url('/admin/social/mailing-lists') ?>" class="btn btn-outline">Mailing Lists</a>
-    </div>
+    <!-- Sub-navigation removed — now in sidebar -->
 </div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

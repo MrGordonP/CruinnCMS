@@ -5,14 +5,8 @@
 
 /* ── Layout ─────────────────────────────────────────────────── */
 
-.drivespace {
-    display: grid;
-    grid-template-columns: 240px 1fr 300px;
-    height: calc(100vh - 52px);
-    /* subtract admin header */
-    overflow: hidden;
-    background: var(--color-bg-light, #f2f5f3);
-}
+/* Layout is now provided by the shared .panel-layout grid in admin-panel-layout.css.
+ * Use --pl-right-width:300px on the panel-layout element to keep the wider right panel. */
 
 /* ── Tree Panel (left) ───────────────────────────────────────── */
 

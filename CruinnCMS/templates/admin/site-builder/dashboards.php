@@ -1,19 +1,27 @@
 <?php
-/**
- * Site Builder — Widget Dashboards
- *
- * Variables:
- * - $canvases: Array of dashboard canvas pages (canvas_type='widget-dashboard')
- */
+\Cruinn\Template::requireCss('admin-panel-layout.css');
 \Cruinn\Template::requireCss('admin-site-builder.css');
+$GLOBALS['admin_flush_layout'] = true;
 ?>
 
-<div class="admin-page-header">
-    <h1>Widget Dashboards</h1>
-    <div class="header-actions">
-        <a href="/admin/site-builder" class="btn btn-outline btn-small">Back to Site Builder</a>
+<div class="panel-layout no-detail" id="dashboards-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Site Builder</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Content</div>
+        <a class="pl-nav-item" href="<?= url('/admin/site-builder') ?>">Structure</a>
+        <a class="pl-nav-item" href="<?= url('/admin/pages') ?>">Pages</a>
+        <a class="pl-nav-item" href="<?= url('/admin/templates') ?>">Templates</a>
+        <a class="pl-nav-item" href="<?= url('/admin/site-builder/zones') ?>">Zones</a>
+        <div class="pl-nav-section">Custom</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/site-builder/dashboards') ?>">Widget Dashboards</a>
     </div>
 </div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Widget Dashboards</span>
+    </div>
+    <div class="pl-main-scroll">
 
 <p class="text-muted" style="margin-bottom: var(--space-lg);">
     Dashboards are block-based canvases that can be assigned to roles, positions, or individual users.
@@ -93,9 +101,6 @@
     </p>
 </div>
 
-<style>
-.action-buttons {
-    display: flex;
-    gap: var(--space-sm);
-}
-</style>
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

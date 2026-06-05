@@ -1,11 +1,26 @@
-<?php \Cruinn\Template::requireCss('admin-members.css'); ?>
-<div class="admin-users">
-    <div class="admin-page-header">
-        <h1>Users</h1>
-        <div class="header-actions">
-            <a href="/admin/users/new" class="btn btn-primary btn-small">New User</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-members.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="users-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Users</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/users') ?>">All Users</a>
+        <a class="pl-nav-item" href="<?= url('/admin/users/new') ?>">New User</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Users</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/users/new') ?>" class="btn btn-small btn-primary">+ New User</a>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
     <!-- Role Summary -->
     <div class="role-summary">
@@ -111,4 +126,7 @@
         </nav>
         <?php endif; ?>
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

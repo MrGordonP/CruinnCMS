@@ -1,22 +1,30 @@
 <?php
-/**
- * Finance Admin — Ledger Index
- */
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 ?>
 
-<div class="admin-section">
-    <div class="admin-section-header">
-        <h1>Finance</h1>
-        <div class="admin-section-header-actions">
-            <a href="/admin/organisation/finance/periods" class="btn btn-secondary btn-sm">Periods</a>
+<div class="panel-layout no-detail" id="org-admin-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Organisation</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/organisation/finance') ?>">Finance</a>
+        <a class="pl-nav-item" href="<?= url('/admin/organisation/meetings') ?>">Meetings</a>
+        <a class="pl-nav-item" href="<?= url('/admin/organisation/officers') ?>">Officers</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Finance</span>
+        <div class="pl-main-toolbar-actions">
             <?php if ($activePeriod): ?>
-                <a href="/admin/organisation/finance/export/<?= (int) $activePeriod['id'] ?>" class="btn btn-secondary btn-sm">Export CSV</a>
-            <?php endif; ?>
-            <?php if ($activePeriod): ?>
-                <a href="/admin/organisation/finance/new?period_id=<?= (int) $activePeriod['id'] ?>" class="btn btn-primary btn-sm">+ New Entry</a>
+            <a href="<?= url('/admin/organisation/finance/periods') ?>" class="btn btn-small">Periods</a>
+            <a href="<?= url('/admin/organisation/finance/export/' . (int)$activePeriod['id']) ?>" class="btn btn-small">Export CSV</a>
+            <a href="<?= url('/admin/organisation/finance/new?period_id=' . (int)$activePeriod['id']) ?>" class="btn btn-small btn-primary">+ New Entry</a>
             <?php endif; ?>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
     <?php
     $msg = $_GET['msg'] ?? '';
@@ -132,4 +140,7 @@
     </div>
 
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

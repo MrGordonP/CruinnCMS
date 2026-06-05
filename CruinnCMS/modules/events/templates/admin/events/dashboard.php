@@ -1,22 +1,35 @@
-<?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
-<?php $eventNav = 'overview'; ?>
-<?php include __DIR__ . '/_nav.php'; ?>
-
 <?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-site-builder.css');
+$GLOBALS['admin_flush_layout'] = true;
+
 $settings = $settings ?? [];
 $recentEvents = $recentEvents ?? [];
 $listPage = $listPage ?? null;
 ?>
 
-<div class="admin-article-list">
-    <div class="admin-list-header">
-        <h1>Events</h1>
-        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
-            <a href="/admin/events/new" class="btn btn-primary">+ New Event</a>
-            <a href="/admin/events/profiles" class="btn btn-outline">Profiles</a>
-            <a href="/admin/events/settings" class="btn btn-outline">Settings</a>
+<div class="panel-layout no-detail" id="events-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Events</h3>
+        <a href="<?= url('/admin/events/new') ?>" class="btn btn-sm btn-primary">+ New</a>
+    </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/events') ?>">Overview</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/list') ?>">Events</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/profiles') ?>">Profiles</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/settings') ?>">Settings</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Events</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/events/new') ?>" class="btn btn-small btn-primary">+ New Event</a>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
     <div class="dash-quick-grid" style="margin-bottom:1.5rem;">
         <a href="/admin/events/list?status=published" class="dash-quick-link">
@@ -93,4 +106,7 @@ $listPage = $listPage ?? null;
             <?php endif; ?>
         </section>
     </div>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

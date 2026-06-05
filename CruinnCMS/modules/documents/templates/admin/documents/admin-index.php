@@ -1,18 +1,29 @@
 <?php
-/**
- * Documents — Admin Document List
- * Full list across all statuses with workflow action buttons.
- */
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
 ?>
 
-<div class="admin-section">
-    <div class="admin-section-header">
-        <h1>Documents — Admin</h1>
-        <div class="admin-section-header-actions">
-            <a href="/admin/documents/categories" class="btn btn-secondary btn-sm">Manage Categories</a>
-            <a href="/documents/new" class="btn btn-primary btn-sm">Upload Document</a>
+<div class="panel-layout no-detail" id="documents-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Documents</h3>
+        <a href="<?= url('/documents/new') ?>" class="btn btn-sm btn-primary">Upload</a>
+    </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/documents') ?>">All Documents</a>
+        <a class="pl-nav-item" href="<?= url('/admin/documents/categories') ?>">Categories</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Documents</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/documents/categories') ?>" class="btn btn-small">Categories</a>
+            <a href="<?= url('/documents/new') ?>" class="btn btn-small btn-primary">Upload</a>
         </div>
     </div>
+    <div class="pl-main-scroll">
 
 
     <!-- Filters -->
@@ -120,4 +131,7 @@
             </div>
         <?php endif; ?>
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

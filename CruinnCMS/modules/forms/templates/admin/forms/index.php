@@ -1,9 +1,28 @@
-<?php \Cruinn\Template::requireCss('admin-forms.css'); ?>
-<div class="admin-form-list">
-    <div class="admin-list-header">
-        <h1>Forms</h1>
-        <a href="/admin/forms/new" class="btn btn-primary">+ New Form</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-forms.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="forms-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Forms</h3>
+        <a href="<?= url('/admin/forms/new') ?>" class="btn btn-sm btn-primary">+ New</a>
     </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/forms') ?>">All Forms</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Forms</span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/forms/new') ?>" class="btn btn-small btn-primary">+ New Form</a>
+        </div>
+    </div>
+    <div class="pl-main-scroll">
 
     <?php if (empty($forms)): ?>
         <p class="admin-empty">No forms created yet.</p>
@@ -54,4 +73,7 @@
         </tbody>
     </table>
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

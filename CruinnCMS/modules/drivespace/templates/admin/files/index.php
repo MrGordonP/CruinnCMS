@@ -6,7 +6,10 @@
  * Middle: folder contents (subfolders + files; single-click = select, double-click = open/navigate)
  * Right:  properties / permissions panel (populated via AJAX on selection)
  */
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
 \Cruinn\Template::requireCss('admin-drivespace.css');
+$GLOBALS['admin_flush_layout'] = true;
 
 // Fetch roles for the new-folder form (visibility = role)
 $db = \Cruinn\Database::getInstance();
@@ -57,10 +60,10 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
 
 ?>
 
-<div class="drivespace" id="drivespace-app">
+<div class="panel-layout" id="drivespace-app" style="--pl-right-width:300px">
 
     <!-- ── Left: Source Panes ────────────────────────────────── -->
-    <div class="fm-tree-panel">
+    <div class="pl-sidebar fm-tree-panel">
 
         <!-- Local Folders source pane -->
         <div class="fm-source-pane" id="src-pane-local">
@@ -117,7 +120,7 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
     </div>
 
     <!-- ── Middle: Contents ───────────────────────────────────── -->
-    <div class="fm-content-panel">
+    <div class="pl-main fm-content-panel">
 
         <!-- ── Local contents section ───────────────────────── -->
         <div class="fm-content-source" id="content-source-local">
@@ -281,7 +284,7 @@ function renderTreeNodes(array $nodes, ?int $activeId, int $depth = 0): void {
     </div>
 
     <!-- ── Right: Properties Panel ────────────────────────────── -->
-    <div class="fm-properties-panel">
+    <div class="pl-detail fm-properties-panel">
         <div class="fm-props-header">
             <h3>Properties</h3>
         </div>

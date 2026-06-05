@@ -1,12 +1,33 @@
-<?php \Cruinn\Template::requireCss('admin-site-builder.css'); ?>
-<div class="admin-article-list">
-    <?php $blogBasePath = trim((string) ($blogBasePath ?? '')); ?>
-    <?php $blogNav = 'posts'; ?>
-    <?php include dirname(__DIR__) . '/blog/_nav.php'; ?>
-    <div class="admin-list-header">
-        <h1>Blog <span class="count"><?= (int)$total ?></span></h1>
-        <a href="/admin/blog/posts/new" class="btn btn-primary">+ New Blog Post</a>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-site-builder.css');
+$GLOBALS['admin_flush_layout'] = true;
+
+$blogBasePath = trim((string) ($blogBasePath ?? ''));
+?>
+
+<div class="panel-layout no-detail" id="blog-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Blog</h3>
+        <a href="<?= url('/admin/blog/posts/new') ?>" class="btn btn-sm btn-primary">+ New</a>
     </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item" href="<?= url('/admin/blog') ?>">Overview</a>
+        <a class="pl-nav-item active" href="<?= url('/admin/blog/posts') ?>">Posts</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/profiles') ?>">Profiles</a>
+        <a class="pl-nav-item" href="<?= url('/admin/blog/settings') ?>">Settings</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Blog Posts <span style="font-weight:400;color:#aaa">(<?= (int)$total ?>)</span></span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/blog/posts/new') ?>" class="btn btn-small btn-primary">+ New Post</a>
+        </div>
+    </div>
+    <div class="pl-main-scroll">
 
     <!-- Search & Filters -->
     <form method="get" action="/admin/blog/posts" class="admin-filters">
@@ -100,4 +121,7 @@
     </nav>
     <?php endif; ?>
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

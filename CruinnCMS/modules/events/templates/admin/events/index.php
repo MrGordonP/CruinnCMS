@@ -1,14 +1,33 @@
-<?php \Cruinn\Template::requireCss('admin-events.css'); ?>
-<?php $eventNav = 'events'; ?>
-<?php include __DIR__ . '/_nav.php'; ?>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireCss('admin-events.css');
+$GLOBALS['admin_flush_layout'] = true;
 
-<?php $eventBasePath = trim((string) ($eventBasePath ?? '')); ?>
+$eventBasePath = trim((string) ($eventBasePath ?? ''));
+?>
 
-<div class="admin-events">
-    <div class="admin-header-row">
-        <h1>Event List <span class="count">(<?= (int) $totalCount ?>)</span></h1>
-        <a href="/admin/events/new" class="btn btn-primary">+ New Event</a>
+<div class="panel-layout no-detail" id="events-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header">
+        <h3>Events</h3>
+        <a href="<?= url('/admin/events/new') ?>" class="btn btn-sm btn-primary">+ New</a>
     </div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Manage</div>
+        <a class="pl-nav-item" href="<?= url('/admin/events') ?>">Overview</a>
+        <a class="pl-nav-item active" href="<?= url('/admin/events/list') ?>">Events</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/profiles') ?>">Profiles</a>
+        <a class="pl-nav-item" href="<?= url('/admin/events/settings') ?>">Settings</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Events <span style="font-weight:400;color:#aaa">(<?= (int)$totalCount ?>)</span></span>
+        <div class="pl-main-toolbar-actions">
+            <a href="<?= url('/admin/events/new') ?>" class="btn btn-small btn-primary">+ New Event</a>
+        </div>
+    </div>
+    <div class="pl-main-scroll">
 
     <!-- Search & Filters -->
     <form class="admin-search-bar" method="get" action="/admin/events/list">
@@ -92,4 +111,7 @@
     <?php endif; ?>
 
     <?php endif; ?>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->

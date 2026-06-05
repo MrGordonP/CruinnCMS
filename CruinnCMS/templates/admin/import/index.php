@@ -1,8 +1,23 @@
-<div class="acp-page">
-  <div class="acp-page-header">
-    <h1>Import Pages</h1>
-    <p class="acp-page-subtitle">Import HTML files as new pages. Choose file-mode (served as-is) or convert to Cruinn blocks.</p>
-  </div>
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;
+?>
+
+<div class="panel-layout no-detail" id="import-layout">
+<div class="pl-sidebar">
+    <div class="pl-sidebar-header"><h3>Import</h3></div>
+    <div class="pl-sidebar-scroll" style="padding:0">
+        <div class="pl-nav-section">Tools</div>
+        <a class="pl-nav-item active" href="<?= url('/admin/import') ?>">Import Pages</a>
+    </div>
+</div>
+<div class="pl-main">
+    <div class="pl-main-toolbar">
+        <span class="pl-main-title">Import Pages</span>
+    </div>
+    <div class="pl-main-scroll">
+
+  <p class="text-muted" style="margin-bottom: var(--space-md);">Import HTML files as new pages. Choose file-mode (served as-is) or convert to Cruinn blocks.</p>
 
   <?php if (!empty($errors)): ?>
     <div class="alert alert-error">
@@ -61,4 +76,7 @@
       <li>Files named <code>index</code> or <code>home</code> appear at the top of the review list.</li>
     </ul>
   </div>
-</div>
+
+    </div><!-- /pl-main-scroll -->
+</div><!-- /pl-main -->
+</div><!-- /panel-layout -->
