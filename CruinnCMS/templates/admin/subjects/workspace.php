@@ -2,6 +2,11 @@
 \Cruinn\Template::requireCss('admin-acp.css');
 
 $activeId = $subject['id'] ?? null;
+$subjectSectionCatalog = is_array($subjectSectionCatalog ?? null) ? $subjectSectionCatalog : [];
+$selectedSectionKeys = is_array($selectedSectionKeys ?? null) ? $selectedSectionKeys : array_keys($subjectSectionCatalog);
+$isSectionEnabled = static function (string $key) use ($selectedSectionKeys): bool {
+    return in_array($key, $selectedSectionKeys, true);
+};
 
 // Build a parent→children map for tree rendering
 $treeChildren = [];
@@ -422,6 +427,25 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
         </div>
         <div class="sws-middle-body">
 
+            <?php if (!empty($subjectSectionCatalog)): ?>
+            <div class="sws-section" style="margin-bottom:.8rem">
+                <form method="get" action="/admin/subjects/<?= (int) $subject['id'] ?>" style="display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap">
+                    <div style="min-width:260px; flex:1">
+                        <label for="sws-sections" style="font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--color-text-light,#6c757d)">Visible Sections</label>
+                        <select id="sws-sections" name="sections[]" class="sws-form-input" multiple size="5" style="margin-bottom:0">
+                            <?php foreach ($subjectSectionCatalog as $key => $def): ?>
+                                <option value="<?= e((string) $key) ?>" <?= in_array($key, $selectedSectionKeys, true) ? 'selected' : '' ?>><?= e((string) ($def['label'] ?? $key)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:.4rem">
+                        <button type="submit" class="btn btn-small btn-primary">Apply</button>
+                        <a href="/admin/subjects/<?= (int) $subject['id'] ?>" class="btn btn-small btn-outline">Reset</a>
+                    </div>
+                </form>
+            </div>
+            <?php endif; ?>
+
             <!-- Child subjects (collapsible) -->
             <?php if (!empty($children)): ?>
             <div class="sws-section">
@@ -443,7 +467,7 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <?php endif; ?>
 
             <!-- Articles -->
-            <?php if (!empty($articles)): ?>
+            <?php if ($isSectionEnabled('articles') && !empty($articles)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Articles (<?= count($articles) ?>)</span>
@@ -479,7 +503,7 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                     <?php endforeach; ?>
                 </ul>
             </div>
-            <?php elseif (isset($articles)): ?>
+            <?php elseif ($isSectionEnabled('articles') && isset($articles)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Articles</span>
@@ -508,7 +532,7 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <?php endif; ?>
 
             <!-- Events -->
-            <?php if (!empty($events)): ?>
+            <?php if ($isSectionEnabled('events') && !empty($events)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Events (<?= count($events) ?>)</span>
@@ -544,7 +568,7 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                     <?php endforeach; ?>
                 </ul>
             </div>
-            <?php elseif (isset($events)): ?>
+            <?php elseif ($isSectionEnabled('events') && isset($events)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Events</span>
@@ -572,8 +596,26 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             </div>
             <?php endif; ?>
 
+            <!-- Media -->
+            <?php if ($isSectionEnabled('media')): ?>
+            <div class="sws-section">
+                <div class="sws-section-title">
+                    <span>Media</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/admin/media">Open Library</a>
+                        <a href="/drivespace/upload?subject_id=<?= (int) $subject['id'] ?>">+ Upload</a>
+                    </span>
+                </div>
+                <p style="font-size:.82rem; color:#6b7280; margin:.25rem 0">
+                    Files: <?= count($files ?? []) ?>
+                    &nbsp;&middot;&nbsp;
+                    Folders: <?= count($folders ?? []) ?>
+                </p>
+            </div>
+            <?php endif; ?>
+
             <!-- Files / Documents -->
-            <?php if (!empty($files)): ?>
+            <?php if ($isSectionEnabled('files') && !empty($files)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Files (<?= count($files) ?>)</span>
@@ -607,7 +649,7 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                     <?php endforeach; ?>
                 </ul>
             </div>
-            <?php elseif (isset($files)): ?>
+            <?php elseif ($isSectionEnabled('files') && isset($files)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Files</span>
@@ -635,8 +677,72 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             </div>
             <?php endif; ?>
 
+            <!-- Documents -->
+            <?php if ($isSectionEnabled('documents') && !empty($documents)): ?>
+            <div class="sws-section">
+                <div class="sws-section-title">
+                    <span>Documents (<?= count($documents) ?>)</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/documents/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/documents/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="document_id" class="sws-form-input" required>
+                        <option value="">Select document</option>
+                        <?php foreach (($availableDocuments ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title'] ?? ('Document #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
+                <ul class="sws-item-list">
+                    <?php foreach ($documents as $doc): ?>
+                    <li class="sws-item">
+                        <span class="sws-item-title">
+                            <a href="/documents/<?= (int) $doc['id'] ?>"><?= e($doc['title']) ?></a>
+                        </span>
+                        <span class="sws-item-meta"><?= format_date($doc['created_at'], 'j M Y') ?></span>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+            <?php elseif ($isSectionEnabled('documents') && isset($documents)): ?>
+            <div class="sws-section">
+                <div class="sws-section-title">
+                    <span>Documents</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/documents/new?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/documents/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="document_id" class="sws-form-input" required>
+                        <option value="">Select document</option>
+                        <?php foreach (($availableDocuments ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title'] ?? ('Document #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
+                <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">None yet.</p>
+            </div>
+            <?php endif; ?>
+
             <!-- Folders -->
-            <?php if (!empty($folders)): ?>
+            <?php if ($isSectionEnabled('folders') && !empty($folders)): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Folders (<?= count($folders) ?>)</span>
@@ -669,6 +775,7 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <?php endif; ?>
 
             <!-- Discussions -->
+            <?php if ($isSectionEnabled('discussions')): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Discussions (<?= count($discussions ?? []) ?>)</span>
@@ -757,8 +864,10 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                 <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">No discussions yet.</p>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
 
             <!-- Forum Thread -->
+            <?php if ($isSectionEnabled('forum_thread')): ?>
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Forum Thread</span>
@@ -801,6 +910,33 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                 <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">No forum thread provisioned.</p>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
+
+            <!-- Meetings -->
+            <?php if ($isSectionEnabled('meetings')): ?>
+            <div class="sws-section">
+                <div class="sws-section-title">
+                    <span>Meetings</span>
+                    <a href="/admin/organisation/meetings">Open</a>
+                </div>
+                <p style="font-size:.82rem; color:#6b7280; margin:.25rem 0">
+                    Organisation meetings available: <?= (int) ($meetingCount ?? 0) ?>
+                </p>
+            </div>
+            <?php endif; ?>
+
+            <!-- Finance -->
+            <?php if ($isSectionEnabled('finance')): ?>
+            <div class="sws-section">
+                <div class="sws-section-title">
+                    <span>Finance</span>
+                    <a href="/admin/organisation/finance">Open</a>
+                </div>
+                <p style="font-size:.82rem; color:#6b7280; margin:.25rem 0">
+                    Finance ledger entries: <?= (int) ($financeEntryCount ?? 0) ?>
+                </p>
+            </div>
+            <?php endif; ?>
 
         </div><!-- /sws-middle-body -->
         <?php endif; ?>

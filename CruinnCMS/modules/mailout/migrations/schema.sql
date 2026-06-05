@@ -12,10 +12,12 @@ CREATE TABLE IF NOT EXISTS `mailing_lists` (
     `is_public`         TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1 = visible in subscription prefs',
     `subscription_mode` ENUM('open','request') NOT NULL DEFAULT 'open',
     `is_active`         TINYINT(1)   NOT NULL DEFAULT 1,
+    `subject_id`        INT UNSIGNED NULL,
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_mailing_lists_slug` (`slug`)
+    UNIQUE KEY `uk_mailing_lists_slug` (`slug`),
+    KEY `idx_mailing_lists_subject` (`subject_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `mailing_list_subscriptions` (
@@ -39,6 +41,7 @@ CREATE TABLE IF NOT EXISTS `mailing_list_subscriptions` (
 CREATE TABLE IF NOT EXISTS `email_broadcasts` (
     `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `list_id`          INT UNSIGNED NULL COMMENT 'NULL = ad-hoc, not tied to a list',
+    `subject_id`       INT UNSIGNED NULL,
     `target_type`      ENUM('list','members','portal_users') NOT NULL DEFAULT 'list',
     `target_config`    JSON         NULL COMMENT 'Filter params: {"member_status":["active"],"membership_year":2025}',
     `subject`          VARCHAR(255) NOT NULL,
@@ -55,7 +58,9 @@ CREATE TABLE IF NOT EXISTS `email_broadcasts` (
     `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_broadcast_status` (`status`),
+    KEY `idx_broadcast_subject` (`subject_id`),
     CONSTRAINT `fk_broadcast_list`       FOREIGN KEY (`list_id`)    REFERENCES `mailing_lists`(`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_broadcast_subject`    FOREIGN KEY (`subject_id`) REFERENCES `subjects`(`id`) ON DELETE SET NULL,
     CONSTRAINT `fk_broadcast_created_by` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`)         ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

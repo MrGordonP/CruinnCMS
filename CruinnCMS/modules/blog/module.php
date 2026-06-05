@@ -80,6 +80,13 @@ return [
 
     'provides' => ['articles'],
 
+    'subject_sections' => [
+        [
+            'key'   => 'articles',
+            'label' => 'Articles',
+        ],
+    ],
+
     'public_routes' => [],
 
     'public_path_resolver' => ArticleController::class . '::resolvePublicPath',

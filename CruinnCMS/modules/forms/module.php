@@ -12,6 +12,7 @@ return [
     'provides'     => ['forms'],
     'migrations'   => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/002_forms_subject_id.sql',
     ],
 
     'submodules' => [

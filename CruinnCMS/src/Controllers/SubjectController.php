@@ -9,6 +9,7 @@
 namespace Cruinn\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\Modules\ModuleRegistry;
 
 class SubjectController extends BaseController
 {
@@ -125,6 +126,10 @@ class SubjectController extends BaseController
         $allSubjects = $this->db->fetchAll(
             'SELECT id, parent_id, code, title, type, status FROM subjects ORDER BY title ASC'
         );
+
+        $sectionCatalog = ModuleRegistry::subjectSections();
+        $defaultSectionKeys = array_keys($sectionCatalog);
+        $selectedSectionKeys = $this->parseRequestedSectionKeys($this->query('sections', []), $defaultSectionKeys);
 
         // Content associations via subject_content bridge — each wrapped in try/catch; modules may not be installed
         $articles = [];
@@ -296,6 +301,43 @@ class SubjectController extends BaseController
             );
         } catch (\Throwable) {}
 
+        $documents = [];
+        try {
+            $documents = $this->db->fetchAll(
+                'SELECT d.id, d.title, d.created_at
+                 FROM documents d
+                 INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = d.id
+                 WHERE sc.subject_id = ?
+                 ORDER BY d.created_at DESC',
+                ['document', $id]
+            );
+        } catch (\Throwable) {}
+
+        $availableDocuments = [];
+        try {
+            $availableDocuments = $this->db->fetchAll(
+                'SELECT d.id, d.title, d.created_at
+                 FROM documents d
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM subject_content sc
+                     WHERE sc.item_type = ? AND sc.item_id = d.id AND sc.subject_id = ?
+                 )
+                 ORDER BY d.created_at DESC
+                 LIMIT 150',
+                ['document', $id]
+            );
+        } catch (\Throwable) {}
+
+        $meetingCount = 0;
+        try {
+            $meetingCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM organisation_meetings');
+        } catch (\Throwable) {}
+
+        $financeEntryCount = 0;
+        try {
+            $financeEntryCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM finance_entries');
+        } catch (\Throwable) {}
+
         $this->renderAdmin('admin/subjects/workspace', [
             'title'          => $subject['title'] . ' — Subjects',
             'allSubjects'    => $allSubjects,
@@ -315,8 +357,42 @@ class SubjectController extends BaseController
             'availableDiscussions' => $availableDiscussions,
             'forumThread'    => $forumThread,
             'availableForumThreads' => $availableForumThreads,
+            'documents'      => $documents,
+            'availableDocuments' => $availableDocuments,
+            'meetingCount'   => $meetingCount,
+            'financeEntryCount' => $financeEntryCount,
+            'subjectSectionCatalog' => $sectionCatalog,
+            'selectedSectionKeys' => $selectedSectionKeys,
             'breadcrumbs'    => [['Admin', '/admin'], ['Subjects', '/admin/subjects'], [$subject['title']]],
         ]);
+    }
+
+    /**
+     * Normalize requested workspace section keys against the available catalog.
+     */
+    private function parseRequestedSectionKeys(mixed $requested, array $defaultKeys): array
+    {
+        $allowed = array_fill_keys($defaultKeys, true);
+        if (empty($allowed)) {
+            return [];
+        }
+
+        $raw = [];
+        if (is_array($requested)) {
+            $raw = $requested;
+        } elseif (is_string($requested) && trim($requested) !== '') {
+            $raw = array_map('trim', explode(',', $requested));
+        }
+
+        $out = [];
+        foreach ($raw as $key) {
+            $k = trim((string) $key);
+            if ($k !== '' && isset($allowed[$k])) {
+                $out[$k] = true;
+            }
+        }
+
+        return !empty($out) ? array_keys($out) : $defaultKeys;
     }
 
     /**
@@ -482,6 +558,48 @@ class SubjectController extends BaseController
             Auth::flash('success', 'Folder added to subject.');
         } catch (\Throwable) {
             Auth::flash('error', 'Could not add folder to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/documents/attach — Attach an existing document to this subject.
+     */
+    public function adminAttachDocument(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $documentId = (int) $this->input('document_id', 0);
+        if ($documentId <= 0) {
+            Auth::flash('error', 'Select a document to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $documentExists = false;
+        try {
+            $documentExists = (bool) $this->db->fetchColumn('SELECT id FROM documents WHERE id = ? LIMIT 1', [$documentId]);
+        } catch (\Throwable) {}
+
+        if (!$documentExists) {
+            Auth::flash('error', 'Document not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->execute(
+                'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                [(int) $id, 'document', $documentId]
+            );
+            Auth::flash('success', 'Document added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add document to subject.');
         }
 
         $this->redirect('/admin/subjects/' . (int) $id);

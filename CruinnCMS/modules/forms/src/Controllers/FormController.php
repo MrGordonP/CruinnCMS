@@ -36,10 +36,11 @@ class FormController extends BaseController
         Auth::requirePermission('forms.manage');
 
         $this->renderAdmin('admin/forms/edit', [
-            'title'       => 'New Form',
-            'form'        => null,
+            'title'          => 'New Form',
+            'form'           => null,
             'paymentOptions' => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Forms', '/admin/forms'], ['New']],
+            'subjects'       => $this->fetchSubjects(),
+            'breadcrumbs'    => [['Admin', '/admin'], ['Forms', '/admin/forms'], ['New']],
         ]);
     }
 
@@ -59,10 +60,11 @@ class FormController extends BaseController
 
         if ($errors) {
             $this->renderAdmin('admin/forms/edit', [
-                'title'  => 'New Form',
-                'form'   => $_POST,
+                'title'          => 'New Form',
+                'form'           => $_POST,
                 'paymentOptions' => [],
-                'errors' => $errors,
+                'subjects'       => $this->fetchSubjects(),
+                'errors'         => $errors,
             ]);
             return;
         }
@@ -77,12 +79,13 @@ class FormController extends BaseController
         if ($this->input('max_submissions'))    $settings['max_submissions'] = (int) $this->input('max_submissions');
 
         $id = $this->formService->createForm([
-            'title'     => $this->input('title'),
-            'slug'      => $slug,
+            'title'       => $this->input('title'),
+            'slug'        => $slug,
+            'subject_id'  => (int) $this->input('subject_id'),
             'description' => $this->input('description'),
-            'form_type' => $this->input('form_type') ?: 'general',
-            'status'    => $this->input('status') ?: 'draft',
-            'settings'  => $settings,
+            'form_type'   => $this->input('form_type') ?: 'general',
+            'status'      => $this->input('status') ?: 'draft',
+            'settings'    => $settings,
         ]);
 
         $this->logActivity('create', 'form', (int) $id, $this->input('title'));
@@ -107,6 +110,7 @@ class FormController extends BaseController
             'title'          => 'Edit: ' . $form['title'],
             'form'           => $form,
             'paymentOptions' => $paymentOptions,
+            'subjects'       => $this->fetchSubjects(),
             'breadcrumbs'    => [['Admin', '/admin'], ['Forms', '/admin/forms'], [$form['title']]],
         ]);
     }
@@ -127,10 +131,11 @@ class FormController extends BaseController
             $formData = $this->formService->getFormWithFields($id);
             $formData = array_merge($formData, $_POST);
             $this->renderAdmin('admin/forms/edit', [
-                'title'  => 'Edit: ' . ($form['title'] ?? ''),
-                'form'   => $formData,
+                'title'          => 'Edit: ' . ($form['title'] ?? ''),
+                'form'           => $formData,
                 'paymentOptions' => $this->formService->getPaymentOptions($id),
-                'errors' => $errors,
+                'subjects'       => $this->fetchSubjects(),
+                'errors'         => $errors,
             ]);
             return;
         }
@@ -146,6 +151,7 @@ class FormController extends BaseController
 
         $this->formService->updateForm($id, [
             'title'       => $this->input('title'),
+            'subject_id'  => (int) $this->input('subject_id'),
             'description' => $this->input('description'),
             'form_type'   => $this->input('form_type') ?: 'general',
             'status'      => $this->input('status') ?: 'draft',
@@ -518,5 +524,10 @@ class FormController extends BaseController
             'form'    => $form,
             'message' => $successMessage,
         ]);
+    }
+
+    private function fetchSubjects(): array
+    {
+        return $this->db->fetchAll('SELECT id, title FROM subjects ORDER BY title ASC');
     }
 }

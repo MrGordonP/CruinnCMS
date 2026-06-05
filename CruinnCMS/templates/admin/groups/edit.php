@@ -1,6 +1,7 @@
 <?php
 \Cruinn\Template::requireCss('admin-members.css');
 $formAction = '/admin/groups';
+$subjects = is_array($subjects ?? null) ? $subjects : [];
 ?>
 
 <div class="admin-page-header">
@@ -67,6 +68,16 @@ $formAction = '/admin/groups';
                 </select>
                 <p class="form-help">Members inherit the linked role's permissions.</p>
             </div>
+        </div>
+
+        <div class="form-group">
+            <label for="subject_id">Subject</label>
+            <select name="subject_id" id="subject_id" class="form-select">
+                <option value="">— None —</option>
+                <?php foreach ($subjects as $subject): ?>
+                <option value="<?= (int)$subject['id'] ?>" <?= ((int)($group['subject_id'] ?? 0)) === (int)$subject['id'] ? 'selected' : '' ?>><?= e($subject['title']) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
     </div>
 

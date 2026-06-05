@@ -25,6 +25,13 @@ return [
         ['group' => 'Organisation', 'label' => 'Documents', 'url' => '/documents', 'icon' => '📄', 'roles' => ['admin', 'organisation']],
     ],
 
+    'subject_sections' => [
+        [
+            'key'   => 'documents',
+            'label' => 'Documents',
+        ],
+    ],
+
     'dashboard_widgets' => [
         [
             'slug'     => 'documents-summary',

@@ -69,6 +69,7 @@ ALTER TABLE `membership_plans`
 CREATE TABLE IF NOT EXISTS `payments` (
     `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `subscription_id` INT UNSIGNED  NULL,
+    `subject_id`      INT UNSIGNED  NULL,
     `transaction_id`  VARCHAR(120)  NOT NULL,
     `gateway`         VARCHAR(60)   NULL,
     `amount`          DECIMAL(10,2) NOT NULL,
@@ -79,7 +80,8 @@ CREATE TABLE IF NOT EXISTS `payments` (
     `created_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     INDEX `idx_payments_transaction`  (`transaction_id`),
-    INDEX `idx_payments_subscription` (`subscription_id`)
+    INDEX `idx_payments_subscription` (`subscription_id`),
+    INDEX `idx_payments_subject`      (`subject_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── membership_subscriptions — redesigned ─────────────────────
@@ -88,6 +90,7 @@ CREATE TABLE IF NOT EXISTS `membership_subscriptions` (
     `id`                  INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `member_id`           INT UNSIGNED  NOT NULL,
     `plan_id`             INT UNSIGNED  NULL,
+    `subject_id`          INT UNSIGNED  NULL,
     `period_start`        DATE          NOT NULL,
     `period_end`          DATE          NOT NULL,
     `member_type`         ENUM('new','renewal') NOT NULL DEFAULT 'new',
@@ -110,11 +113,14 @@ CREATE TABLE IF NOT EXISTS `membership_subscriptions` (
     INDEX `idx_membership_subscriptions_member` (`member_id`),
     INDEX `idx_membership_subscriptions_period` (`period_start`, `period_end`),
     INDEX `idx_membership_subscriptions_plan`   (`plan_id`),
+    INDEX `idx_membership_subscriptions_subject` (`subject_id`),
     INDEX `idx_membership_subscriptions_tx`     (`transaction_id`),
     CONSTRAINT `fk_membership_subscriptions_member`
         FOREIGN KEY (`member_id`)  REFERENCES `members`(`id`)             ON DELETE CASCADE,
     CONSTRAINT `fk_membership_subscriptions_plan`
         FOREIGN KEY (`plan_id`)    REFERENCES `membership_plans`(`id`)    ON DELETE SET NULL,
+    CONSTRAINT `fk_membership_subscriptions_subject`
+        FOREIGN KEY (`subject_id`) REFERENCES `subjects`(`id`)            ON DELETE SET NULL,
     CONSTRAINT `fk_membership_subscriptions_payment`
         FOREIGN KEY (`payment_id`) REFERENCES `payments`(`id`)            ON DELETE SET NULL,
     CONSTRAINT `fk_membership_subscriptions_verifier`
@@ -127,6 +133,10 @@ CREATE TABLE IF NOT EXISTS `membership_subscriptions` (
 ALTER TABLE `payments`
     ADD CONSTRAINT `fk_payments_subscription`
         FOREIGN KEY (`subscription_id`) REFERENCES `membership_subscriptions`(`id`) ON DELETE SET NULL;
+
+ALTER TABLE `payments`
+    ADD CONSTRAINT `fk_payments_subject`
+        FOREIGN KEY (`subject_id`) REFERENCES `subjects`(`id`) ON DELETE SET NULL;
 
 -- ── subscription_members — junction with approval state ───────
 

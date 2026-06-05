@@ -55,6 +55,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
             'page'        => null,
             'blocks'      => [],
             'templates'   => $templates,
+            'subjects'    => $this->fetchSubjects(),
             'breadcrumbs' => [['Admin', '/admin'], ['Pages', '/admin/pages'], ['New Page']],
         ]);
     }
@@ -94,6 +95,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
         $id = $this->db->insert('pages_index', [
             'title'            => $this->input('title'),
             'slug'             => $slug,
+            'subject_id'       => (int) $this->input('subject_id') > 0 ? (int) $this->input('subject_id') : null,
             'status'           => $this->input('status', 'draft'),
             'template'         => $templateSlug,
             'page_zone'        => $pageZone,
@@ -147,6 +149,7 @@ class AdminPageController extends \Cruinn\Controllers\BaseController
         $this->db->update('pages_index', [
             'title'            => $this->input('title'),
             'slug'             => $slug,
+            'subject_id'       => (int) $this->input('subject_id') > 0 ? (int) $this->input('subject_id') : null,
             'status'           => $this->input('status', 'draft'),
             'template'         => $templateSlug,
             'page_zone'        => $pageZone,
@@ -386,6 +389,11 @@ HTML;
 
         $this->logActivity('reparent', 'page', (int) $id, "{$oldSlug} → {$newSlug}");
         $this->json(['success' => true, 'old_slug' => $oldSlug, 'new_slug' => $newSlug]);
+    }
+
+    private function fetchSubjects(): array
+    {
+        return $this->db->fetchAll('SELECT id, title FROM subjects ORDER BY title ASC');
     }
 
     /**

@@ -6,6 +6,7 @@
  * Editing existing pages redirects to the Cruinn editor (/admin/editor/{id}/edit).
  */
 \Cruinn\Template::requireCss('admin-site-builder.css');
+$subjects = is_array($subjects ?? null) ? $subjects : [];
 
 if (!$page) {
     $templateZoneMap = [];
@@ -64,6 +65,15 @@ if (!$page) {
                         <option value="main" selected>Main</option>
                     </select>
                 </div>
+            </div>
+            <div class="form-group">
+                <label for="subject_id">Subject</label>
+                <select id="subject_id" name="subject_id" class="form-input">
+                    <option value="">— None —</option>
+                    <?php foreach ($subjects as $subject): ?>
+                    <option value="<?= (int)$subject['id'] ?>"><?= e($subject['title']) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Create Page</button>
@@ -142,6 +152,15 @@ if (!$page) {
                     <?php endforeach; ?>
                 </select>
             </div>
+        </div>
+        <div class="form-group">
+            <label for="subject_id">Subject</label>
+            <select id="subject_id" name="subject_id" class="form-input">
+                <option value="">— None —</option>
+                <?php foreach ($subjects as $subject): ?>
+                <option value="<?= (int)$subject['id'] ?>" <?= ((int)($page['subject_id'] ?? 0)) === (int)$subject['id'] ? 'selected' : '' ?>><?= e($subject['title']) ?></option>
+                <?php endforeach; ?>
+            </select>
         </div>
         <div class="form-group">
             <label for="meta_description">Meta Description</label>

@@ -34,6 +34,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
             'allGroups'       => $this->roles->allGroups(),
             'group'           => $group ?: null,
             'allRoles'        => $this->roles->all(),
+            'subjects'        => $this->fetchSubjects(),
             'members'         => $group ? $this->roles->getGroupMembersWithPositions($groupId) : [],
             'usersNotInGroup' => $group ? $this->roles->getUsersNotInGroup($groupId) : [],
             'positions'       => $group ? $this->roles->getGroupPositions($groupId) : [],
@@ -52,6 +53,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
             'title'       => 'New Group',
             'group'       => null,
             'allRoles'    => $this->roles->all(),
+            'subjects'    => $this->fetchSubjects(),
             'members'     => [],
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Groups', '/admin/groups'], ['New Group']],
@@ -71,6 +73,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
             'description' => $this->input('description', ''),
             'group_type'  => $this->input('group_type', 'custom'),
             'role_id'     => $this->input('role_id', '') ?: null,
+            'subject_id'  => $this->input('subject_id', '') ?: null,
         ];
 
         $errors = [];
@@ -87,6 +90,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
                 'title'       => 'New Group',
                 'group'       => $data,
                 'allRoles'    => $this->roles->all(),
+                'subjects'    => $this->fetchSubjects(),
                 'members'     => [],
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Groups', '/admin/groups'], ['New Group']],
@@ -126,6 +130,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
             'description' => $this->input('description', ''),
             'group_type'  => $this->input('group_type', 'custom'),
             'role_id'     => $this->input('role_id', '') ?: null,
+            'subject_id'  => $this->input('subject_id', '') ?: null,
         ];
 
         $errors = [];
@@ -137,6 +142,7 @@ class GroupController extends \Cruinn\Controllers\BaseController
                 'allGroups'       => $this->roles->allGroups(),
                 'group'           => array_merge($group, $data),
                 'allRoles'        => $this->roles->all(),
+                'subjects'        => $this->fetchSubjects(),
                 'members'         => $this->roles->getGroupMembersWithPositions($id),
                 'usersNotInGroup' => $this->roles->getUsersNotInGroup($id),
                 'positions'       => $this->roles->getGroupPositions($id),
@@ -167,6 +173,11 @@ class GroupController extends \Cruinn\Controllers\BaseController
         $this->roles->deleteGroup($id);
         Auth::flash('success', "Group \"{$group['name']}\" deleted.");
         $this->redirect('/admin/groups');
+    }
+
+    private function fetchSubjects(): array
+    {
+        return $this->db->fetchAll('SELECT id, title FROM subjects ORDER BY title ASC');
     }
 
     /**

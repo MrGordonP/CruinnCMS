@@ -86,6 +86,7 @@ class FormService
         return $this->db->insert('forms', [
             'title'       => $data['title'],
             'slug'        => $data['slug'],
+            'subject_id'  => !empty($data['subject_id']) ? (int) $data['subject_id'] : null,
             'description' => $data['description'] ?? '',
             'form_type'   => $data['form_type'] ?? 'general',
             'status'      => $data['status'] ?? 'draft',
@@ -101,6 +102,7 @@ class FormService
     {
         $update = [
             'title'       => $data['title'],
+            'subject_id'  => !empty($data['subject_id']) ? (int) $data['subject_id'] : null,
             'description' => $data['description'] ?? '',
             'form_type'   => $data['form_type'] ?? 'general',
             'status'      => $data['status'] ?? 'draft',

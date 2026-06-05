@@ -107,6 +107,13 @@ return [
 
     'provides' => ['forum'],
 
+    'subject_sections' => [
+        [
+            'key'   => 'forum_thread',
+            'label' => 'Forum Thread',
+        ],
+    ],
+
     'public_routes' => [],
 
     'public_path_resolver' => ForumController::class . '::resolvePublicPath',

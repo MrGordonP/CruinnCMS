@@ -5,6 +5,7 @@
 $GLOBALS['admin_flush_layout'] = true;
 $selectedId = $group ? (int)$group['id'] : 0;
 $formAction = $selectedId ? '/admin/groups/' . $selectedId : '/admin/groups';
+$subjects = is_array($subjects ?? null) ? $subjects : [];
 ?>
 
 <div class="panel-layout" id="groups-layout" data-group-id="<?= $selectedId ?>">
@@ -85,6 +86,15 @@ $formAction = $selectedId ? '/admin/groups/' . $selectedId : '/admin/groups';
                             <?php endforeach; ?>
                         </select>
                         <p class="form-help">Members inherit permissions from the linked role.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="subject_id">Subject</label>
+                        <select name="subject_id" id="subject_id" class="form-select">
+                            <option value="">— None —</option>
+                            <?php foreach ($subjects as $subject): ?>
+                            <option value="<?= (int)$subject['id'] ?>" <?= ((int)($group['subject_id'] ?? 0)) === (int)$subject['id'] ? 'selected' : '' ?>><?= e($subject['title']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
 

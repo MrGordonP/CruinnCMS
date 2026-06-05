@@ -2,6 +2,8 @@
     $isNew = empty($form['id']);
 \Cruinn\Template::requireCss('admin-forms.css');
     $settings = is_string($form['settings'] ?? '') ? json_decode($form['settings'] ?? '{}', true) : ($form['settings'] ?? []);
+    $subjects = is_array($subjects ?? null) ? $subjects : [];
+    $currentSubjectId = (int) ($form['subject_id'] ?? 0);
 ?>
 <div class="admin-form-edit">
     <h1><?= $isNew ? 'New Form' : 'Edit: ' . e($form['title']) ?></h1>
@@ -33,6 +35,18 @@
                        value="<?= e($form['slug'] ?? '') ?>" class="form-input"
                        placeholder="auto-generated from title">
             </div>
+        </div>
+
+        <div class="form-group">
+            <label for="subject_id">Subject</label>
+            <select id="subject_id" name="subject_id" class="form-input">
+                <option value="">No subject</option>
+                <?php foreach ($subjects as $subject): ?>
+                    <option value="<?= (int) $subject['id'] ?>" <?= $currentSubjectId === (int) $subject['id'] ? 'selected' : '' ?>>
+                        <?= e($subject['title']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </div>
 
         <div class="form-group">

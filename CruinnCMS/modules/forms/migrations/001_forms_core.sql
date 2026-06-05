@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `forms` (
     `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `title`       VARCHAR(200) NOT NULL,
     `slug`        VARCHAR(200) NOT NULL,
+    `subject_id`  INT UNSIGNED NULL,
     `description` TEXT NULL,
     `form_type`   ENUM('general','membership_application','survey','feedback') NOT NULL DEFAULT 'general',
     `status`      ENUM('draft','published','closed') NOT NULL DEFAULT 'draft',
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `forms` (
     `updated_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_forms_slug` (`slug`),
+    KEY `idx_forms_subject_id` (`subject_id`),
     CONSTRAINT `fk_forms_creator` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

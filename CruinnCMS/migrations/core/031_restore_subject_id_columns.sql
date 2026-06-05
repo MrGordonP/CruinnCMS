@@ -198,3 +198,113 @@ LEFT JOIN (
 SET f.subject_id = sc.subject_id
 WHERE f.subject_id IS NULL
   AND sc.subject_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------------
+-- Pages index
+-- ---------------------------------------------------------------------------
+
+SET @pages_index_has_subject_id := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pages_index'
+      AND COLUMN_NAME = 'subject_id'
+);
+
+SET @pages_index_add_subject_sql := IF(
+    @pages_index_has_subject_id = 0,
+    'ALTER TABLE `pages_index` ADD COLUMN `subject_id` INT UNSIGNED NULL AFTER `slug`',
+    'SELECT 1'
+);
+PREPARE pages_index_add_subject_stmt FROM @pages_index_add_subject_sql;
+EXECUTE pages_index_add_subject_stmt;
+DEALLOCATE PREPARE pages_index_add_subject_stmt;
+
+SET @pages_index_has_subject_idx := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pages_index'
+      AND INDEX_NAME = 'idx_pages_index_subject'
+);
+
+SET @pages_index_add_subject_idx_sql := IF(
+    @pages_index_has_subject_idx = 0,
+    'ALTER TABLE `pages_index` ADD KEY `idx_pages_index_subject` (`subject_id`)',
+    'SELECT 1'
+);
+PREPARE pages_index_add_subject_idx_stmt FROM @pages_index_add_subject_idx_sql;
+EXECUTE pages_index_add_subject_idx_stmt;
+DEALLOCATE PREPARE pages_index_add_subject_idx_stmt;
+
+-- ---------------------------------------------------------------------------
+-- Groups
+-- ---------------------------------------------------------------------------
+
+SET @groups_has_subject_id := (
+    SELECT COUNT(*)
+    FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'groups'
+      AND COLUMN_NAME = 'subject_id'
+);
+
+SET @groups_add_subject_sql := IF(
+    @groups_has_subject_id = 0,
+    'ALTER TABLE `groups` ADD COLUMN `subject_id` INT UNSIGNED NULL AFTER `description`',
+    'SELECT 1'
+);
+PREPARE groups_add_subject_stmt FROM @groups_add_subject_sql;
+EXECUTE groups_add_subject_stmt;
+DEALLOCATE PREPARE groups_add_subject_stmt;
+
+SET @groups_has_subject_idx := (
+    SELECT COUNT(*)
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'groups'
+      AND INDEX_NAME = 'idx_groups_subject'
+);
+
+SET @groups_add_subject_idx_sql := IF(
+    @groups_has_subject_idx = 0,
+    'ALTER TABLE `groups` ADD KEY `idx_groups_subject` (`subject_id`)',
+    'SELECT 1'
+);
+PREPARE groups_add_subject_idx_stmt FROM @groups_add_subject_idx_sql;
+EXECUTE groups_add_subject_idx_stmt;
+DEALLOCATE PREPARE groups_add_subject_idx_stmt;
+
+SET @pages_index_has_subject_fk := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'pages_index'
+      AND CONSTRAINT_NAME = 'fk_pages_index_subject'
+);
+
+SET @pages_index_add_subject_fk_sql := IF(
+    @pages_index_has_subject_fk = 0,
+    'ALTER TABLE `pages_index` ADD CONSTRAINT `fk_pages_index_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE SET NULL',
+    'SELECT 1'
+);
+PREPARE pages_index_add_subject_fk_stmt FROM @pages_index_add_subject_fk_sql;
+EXECUTE pages_index_add_subject_fk_stmt;
+DEALLOCATE PREPARE pages_index_add_subject_fk_stmt;
+
+SET @groups_has_subject_fk := (
+    SELECT COUNT(*)
+    FROM information_schema.TABLE_CONSTRAINTS
+    WHERE CONSTRAINT_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'groups'
+      AND CONSTRAINT_NAME = 'fk_groups_subject'
+);
+
+SET @groups_add_subject_fk_sql := IF(
+    @groups_has_subject_fk = 0,
+    'ALTER TABLE `groups` ADD CONSTRAINT `fk_groups_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE SET NULL',
+    'SELECT 1'
+);
+PREPARE groups_add_subject_fk_stmt FROM @groups_add_subject_fk_sql;
+EXECUTE groups_add_subject_fk_stmt;
+DEALLOCATE PREPARE groups_add_subject_fk_stmt;

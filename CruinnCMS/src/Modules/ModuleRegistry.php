@@ -46,6 +46,17 @@ class ModuleRegistry
         ['group' => 'Content', 'label' => 'Media',  'url' => '/admin/media',  'icon' => '🖼️'],
     ];
 
+    /**
+     * Core Subject workspace sections shown even without module manifests.
+     */
+    private static array $coreSubjectSections = [
+        'media' => [
+            'key'   => 'media',
+            'label' => 'Media',
+            'module'=> 'core',
+        ],
+    ];
+
     // ── Registration ─────────────────────────────────────────────────────────
 
     /**
@@ -72,6 +83,7 @@ class ModuleRegistry
                 'widget_providers' => [],
                 'content_providers' => [],
                 'public_path_resolver' => null,
+                'subject_sections' => [],
             ], $def);
         }
     }
@@ -1239,6 +1251,39 @@ class ModuleRegistry
                 $sections[] = $section;
             }
         }
+        return $sections;
+    }
+
+    /**
+     * Return Subject workspace section definitions from active modules.
+     * Each definition is module-provided metadata consumed by SubjectController.
+     */
+    public static function subjectSections(): array
+    {
+        self::load();
+
+        $sections = self::$coreSubjectSections;
+        foreach (self::$modules as $slug => $def) {
+            if ((self::$statuses[$slug] ?? 'discovered') !== 'active') {
+                continue;
+            }
+
+            foreach ((array) ($def['subject_sections'] ?? []) as $section) {
+                if (!is_array($section)) {
+                    continue;
+                }
+
+                $key = trim((string) ($section['key'] ?? ''));
+                $label = trim((string) ($section['label'] ?? ''));
+                if ($key === '' || $label === '') {
+                    continue;
+                }
+
+                $section['module'] = $slug;
+                $sections[$key] = $section;
+            }
+        }
+
         return $sections;
     }
 

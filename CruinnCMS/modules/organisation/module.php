@@ -15,6 +15,7 @@ return [
     'provides'     => ['organisation'],
     'migrations'   => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/003_groups_subject_id.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 
@@ -29,6 +30,21 @@ return [
 
     'dashboard_sections' => [
         ['group' => 'Organisation', 'label' => 'Workspace', 'url' => '/organisation', 'icon' => '🏢', 'roles' => ['admin', 'organisation']],
+    ],
+
+    'subject_sections' => [
+        [
+            'key'   => 'discussions',
+            'label' => 'Discussions',
+        ],
+        [
+            'key'   => 'meetings',
+            'label' => 'Meetings',
+        ],
+        [
+            'key'   => 'finance',
+            'label' => 'Finance',
+        ],
     ],
 
     'dashboard_widgets' => [

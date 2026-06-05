@@ -335,6 +335,7 @@ class RoleService
             'description' => $data['description'] ?? '',
             'group_type'  => $data['group_type'] ?? 'custom',
             'role_id'     => $data['role_id'] ?: null,
+            'subject_id'  => $data['subject_id'] ?: null,
         ]);
     }
 
@@ -348,6 +349,7 @@ class RoleService
             'description' => $data['description'] ?? '',
             'group_type'  => $data['group_type'] ?? 'custom',
             'role_id'     => $data['role_id'] ?: null,
+            'subject_id'  => $data['subject_id'] ?: null,
         ], 'id = ?', [$id]);
     }
 

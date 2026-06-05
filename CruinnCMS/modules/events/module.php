@@ -72,6 +72,13 @@ return [
 
     'provides' => ['events'],
 
+    'subject_sections' => [
+        [
+            'key'   => 'events',
+            'label' => 'Events',
+        ],
+    ],
+
     'public_routes' => [],
 
     'public_path_resolver' => EventController::class . '::resolvePublicPath',

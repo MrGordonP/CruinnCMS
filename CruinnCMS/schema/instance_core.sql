@@ -135,12 +135,14 @@ CREATE TABLE `groups` (
     `slug`        VARCHAR(50)  NOT NULL,
     `name`        VARCHAR(100) NOT NULL,
     `description` VARCHAR(255) DEFAULT '',
+    `subject_id`  INT UNSIGNED NULL,
     `level`       INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Content access level; higher = more access',
     `is_system`   TINYINT(1)   NOT NULL DEFAULT 0 COMMENT 'System groups cannot be deleted',
     `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_groups_slug` (`slug`),
-    INDEX `idx_groups_level` (`level`)
+    INDEX `idx_groups_level` (`level`),
+    INDEX `idx_groups_subject` (`subject_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `user_groups` (
@@ -263,6 +265,12 @@ CREATE TABLE `subjects` (
     CONSTRAINT `fk_subjects_created_by` FOREIGN KEY (`created_by`) REFERENCES `users`    (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE `pages_index`
+    ADD CONSTRAINT `fk_pages_index_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `groups`
+    ADD CONSTRAINT `fk_groups_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE SET NULL;
+
 -- ============================================================
 -- PAGES
 -- ============================================================
@@ -272,6 +280,7 @@ CREATE TABLE `pages_index` (
     `id`               INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `title`            VARCHAR(255)  NOT NULL,
     `slug`             VARCHAR(255)  NOT NULL,
+    `subject_id`       INT UNSIGNED  NULL,
     `status`           ENUM('draft','published','archived') NOT NULL DEFAULT 'draft',
     `template`         VARCHAR(50)   NOT NULL DEFAULT 'default',
     `page_zone`        VARCHAR(50)   NOT NULL DEFAULT 'main' COMMENT 'Target template zone for this page\'s content',
@@ -286,6 +295,7 @@ CREATE TABLE `pages_index` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_pages_index_slug` (`slug`),
     KEY `idx_pages_index_status` (`status`),
+    KEY `idx_pages_index_subject` (`subject_id`),
     CONSTRAINT `fk_pages_index_created_by` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

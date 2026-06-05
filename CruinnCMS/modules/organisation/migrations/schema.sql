@@ -41,11 +41,13 @@ CREATE TABLE IF NOT EXISTS `groups` (
     `description` VARCHAR(255) DEFAULT '',
     `group_type`  ENUM('committee','working_group','interest','custom') NOT NULL DEFAULT 'custom',
     `role_id`     INT UNSIGNED NULL,
+    `subject_id`  INT UNSIGNED NULL,
     `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_groups_slug` (`slug`),
-    CONSTRAINT `fk_groups_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL
+    CONSTRAINT `fk_groups_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_groups_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `user_groups` (

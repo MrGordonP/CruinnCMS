@@ -29,6 +29,21 @@ return [
         ['group' => 'Community', 'label' => 'Drivespace', 'url' => '/drivespace', 'icon' => '📁', 'roles' => ['admin']],
     ],
 
+    'subject_sections' => [
+        [
+            'key'   => 'media',
+            'label' => 'Media',
+        ],
+        [
+            'key'   => 'files',
+            'label' => 'Files',
+        ],
+        [
+            'key'   => 'folders',
+            'label' => 'Folders',
+        ],
+    ],
+
     'routes' => function (Cruinn\Router $router) {
         // ── Local Drivespace ──────────────────────────────────────
         $router->get('/drivespace',                               [FileManagerController::class, 'index']);
