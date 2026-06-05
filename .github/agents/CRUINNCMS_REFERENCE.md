@@ -192,6 +192,110 @@ Apache: `public_html/.htaccess` handles rewrites + directory listing protection 
 
 ---
 
+## Admin Panel Layout System
+
+All admin and member-facing module pages use the shared three-panel CSS grid from `public_html/css/admin-panel-layout.css`.
+
+### Activation
+
+```php
+<?php
+\Cruinn\Template::requireCss('admin-panel-layout.css');
+$GLOBALS['admin_flush_layout'] = true;  // removes padding, sets overflow:hidden + flex on .admin-content
+?>
+```
+
+`admin_flush_layout = true` causes `admin/layout.php` to add `.admin-content--flush`, which sets `padding:0; overflow:hidden; display:flex; flex-direction:column` so the panel grid fills the viewport below the header bar.
+
+### HTML Shell
+
+```html
+<!-- Two-column (sidebar + main) -->
+<div class="panel-layout no-detail">
+    <div class="pl-sidebar">
+        <div class="pl-sidebar-header"><h3>Section Title</h3></div>
+        <div class="pl-sidebar-scroll" style="padding:0">
+            <div class="pl-nav-section">Group Label</div>
+            <a class="pl-nav-item active" href="...">Active Page</a>
+            <a class="pl-nav-item" href="...">Other Page</a>
+        </div>
+    </div>
+    <div class="pl-main">
+        <div class="pl-main-toolbar">
+            <span class="pl-main-title">Page Title</span>
+            <div class="pl-main-toolbar-actions">
+                <a href="..." class="btn btn-small btn-primary">+ Action</a>
+            </div>
+        </div>
+        <div class="pl-main-scroll">
+            <!-- page content -->
+        </div>
+    </div>
+</div>
+
+<!-- Three-column (sidebar + main + detail) — omit no-detail -->
+<div class="panel-layout" style="--pl-right-width:300px">
+    ...
+    <div class="pl-detail"> ... </div>
+</div>
+```
+
+### CSS Variables
+- `--pl-left-width`: sidebar width (default `240px`)
+- `--pl-right-width`: detail panel width (default `280px`; override inline when wider is needed, e.g. drivespace uses `300px`)
+
+### When to use `pl-detail`
+Only add a third column when there is a genuine contextual panel that populates on selection (e.g. drivespace properties panel). For list/settings pages use `.no-detail`.
+
+### Pages on panel-layout (as of beta.19)
+
+| Page | Template | Sidebar group |
+|---|---|---|
+| `/admin/site-builder/dashboards` | `templates/admin/site-builder/dashboards.php` | Site Builder |
+| `/admin/import` | `templates/admin/import/index.php` | Import |
+| `/admin/users` | `templates/admin/users/index.php` | Users |
+| `/admin/blog` (+ posts, settings, profiles) | `modules/blog/templates/admin/blog/` | Blog |
+| `/admin/events` (+ list, settings, profiles) | `modules/events/templates/admin/events/` | Events |
+| `/admin/forms` | `modules/forms/templates/admin/forms/index.php` | Forms |
+| `/admin/forum` | `modules/forum/templates/admin/forum/index.php` | Forum |
+| `/admin/mailout` | `modules/mailout/templates/admin/broadcasts/index.php` | Mailout |
+| `/documents` (org member) | `modules/documents/templates/admin/documents/index.php` | Workspace |
+| `/admin/documents` | `modules/documents/templates/admin/documents/admin-index.php` | Documents |
+| `/drivespace` | `modules/drivespace/templates/admin/files/index.php` | (3-col; `fm-*` classes preserved) |
+| `/admin/organisation/finance` | `modules/organisation/templates/admin/organisation/finance/index.php` | Organisation |
+| `/admin/organisation/meetings` | `modules/organisation/templates/admin/organisation/meetings.php` | Organisation |
+| `/admin/organisation/officers` | `modules/organisation/templates/admin/organisation/officers.php` | Organisation |
+| `/admin/social` (+ accounts, distribute) | `modules/social/templates/admin/social/` | Social |
+| `/organisation/discussions` | `modules/organisation/templates/organisation/discussions/index.php` | Workspace |
+| `/organisation/documents` | `modules/organisation/templates/organisation/documents/index.php` | Workspace |
+| `/admin/content` | already on panel-layout (pre-beta.19) | Content |
+| `/organisation` (dashboard) | already on panel-layout (pre-beta.19) | Workspace |
+
+---
+
+## Module Status Map
+
+Quick reference for what is wired and working vs stub.
+
+| Module | Admin pages | Member pages | Status |
+|---|---|---|---|
+| **blog** | dashboard, posts, settings, profiles | public article list/view | ✅ Full |
+| **events** | dashboard, list, settings, profiles | public event list/view | ✅ Full |
+| **forms** | list, builder, responses | public form view | ✅ Full |
+| **forum** | categories/threads, reports | thread list/view/post | ✅ Full |
+| **mailout** | broadcasts, mailing lists | — | ✅ Full |
+| **documents** | admin list | org member list (`/documents`) | ✅ Full |
+| **drivespace** | 3-panel file manager | — | ✅ Full (Google Drive integration optional) |
+| **membership** | user/role/group admin | profile, registration | ✅ Full |
+| **organisation** | finance, meetings, officers | dashboard, documents, discussions, inbox | ✅ Full |
+| **social** | dashboard, accounts, distribute | — | ✅ Full |
+| **oauth** | — | login flow (GitHub, Microsoft, LinkedIn) | ✅ Full |
+| **payments** | — | — | ⚠️ Stub only |
+| **gdpr** | — | consent/data request | ⚠️ Partial |
+| **mailbox** | — | IMAP webmail | ⚠️ Partial |
+
+---
+
 ## Version History
 
 - **v1.0.0-beta.1** (`95d8895`) — Initial public release: full engine extracted from IGAPortal RC. 22 block types, install wizard, multi-instance platform, block editor, DB browser, module registry stub.
@@ -212,3 +316,7 @@ Apache: `public_html/.htaccess` handles rewrites + directory listing protection 
 - **v1.0.0-beta.15** (`7882387`) — Subject-linked discussion flow landed across forum/social integration baseline.
 - **v1.0.0-beta.15 follow-up** (`3d98e5c`) — Conversion safety fix (defer html->block switch to publish), social boundary reset (remove forum thread provisioning from Social), and core publish-time subject-thread provisioning service wired to Blog/Events with forum category configuration support.
 - **v1.0.0-beta.15 follow-up** (`06032cb`) — Editor/include follow-up landed: include child-style controls moved into the right-hand inspector, CSRF autosave retry added, heading blocks gained explicit level selection, include inspector context leakage was cleaned up, and collapse behavior was split into always-on vs responsive with heading-bar presentation support and always-on style controls.
+- **v1.0.0-beta.16** — Subject system: subject workspace UI, subject-article/event attach, `+ Add existing` flows, subject-context preselect on new blog/event forms. (See beta.17 follow-up for completion.)
+- **v1.0.0-beta.17 follow-up** (`1208625`) — Added subject workspace `+ Add existing` flows for articles/events, subject attach endpoints/routes, and blog/events new-form subject preselect handling from subject context.
+- **v1.0.0-beta.18** (`a94cf18`) — Restored subject coverage and section propagation for forms, mailout, and organisation.
+- **v1.0.0-beta.19** (`346479e`) — Migrated all module admin and member-facing pages to shared `panel-layout` CSS grid system (25 template files). Removed bespoke `.drivespace { display:grid }` rule; drivespace now uses shared grid with `fm-*` classes as content-layer overlays. Fixed duplicate `<?php` opener in drivespace template introduced during migration.
