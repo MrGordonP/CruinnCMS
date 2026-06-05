@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.17` (follow-up complete)
-**HEAD:** `1208625` — fix(subjects,events,blog): add existing attach flow and subject-context preselect [v1.0.0-beta.17]
+**Current version:** `v1.0.0-beta.19`
+**HEAD:** `346479e` — fix(ui): migrate all module admin pages to shared panel-layout [v1.0.0-beta.19]
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
@@ -76,5 +76,7 @@ Keep this file focused on session behavior and execution workflow rules.
 
 ## Version History
 
+- **v1.0.0-beta.19** (`346479e`) — migrated all module admin and member-facing pages (blog, events, forms, forum, mailout, documents, drivespace, organisation admin, social, organisation member pages) to shared `panel-layout` CSS grid system; removed bespoke `.drivespace { display:grid }` rule.
+- **v1.0.0-beta.18** (`a94cf18`) — restored subject coverage and section propagation for forms, mailout, and organisation.
 - **v1.0.0-beta.17 follow-up** (`1208625`) — added subject workspace `+ Add existing` flows for articles/events, subject attach endpoints/routes, and blog/events new-form subject preselect handling from subject context.
 - **v1.0.0-beta.15 follow-up** (`d5193bc`) — active editor runtime gained dynamic-include child-style editing scaffolding, editor-visible collapsed state, initial core-fragment style plumbing, and safer canvas insertion/selectability fixes for table/list/image/gallery/html blocks.

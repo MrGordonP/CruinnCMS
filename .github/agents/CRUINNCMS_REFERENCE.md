@@ -2,8 +2,8 @@
 
 Reference documentation for the CruinnCMS platform engine. This file is for context lookup — the agent reads it when architectural knowledge is needed.
 
-**Current version:** `v1.0.0-beta.15` (follow-up work in progress)
-**HEAD:** `06032cb` — fix(editor,collapse): expose collapse style for always-on collapsed blocks [v1.0.0-beta.15]
+**Current version:** `v1.0.0-beta.19`
+**HEAD:** `346479e` — fix(ui): migrate all module admin pages to shared panel-layout [v1.0.0-beta.19]
 **Schema:** `CruinnCMS/schema/platform.sql` + `CruinnCMS/schema/instance_core.sql`
 
 ---
