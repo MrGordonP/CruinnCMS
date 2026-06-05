@@ -577,8 +577,26 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Files (<?= count($files) ?>)</span>
-                    <a href="/admin/drivespace?subject_id=<?= (int) $subject['id'] ?>">View in DriveSpace</a>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/drivespace/upload?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
                 </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/files/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="file_id" class="sws-form-input" required>
+                        <option value="">Select file</option>
+                        <?php foreach (($availableFiles ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['name'] ?? ('File #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <ul class="sws-item-list">
                     <?php foreach ($files as $f): ?>
                     <li class="sws-item">
@@ -591,7 +609,28 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             </div>
             <?php elseif (isset($files)): ?>
             <div class="sws-section">
-                <div class="sws-section-title"><span>Files</span><a href="/admin/drivespace">DriveSpace</a></div>
+                <div class="sws-section-title">
+                    <span>Files</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <a href="/drivespace/upload?subject_id=<?= (int) $subject['id'] ?>">+ New</a>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/files/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="file_id" class="sws-form-input" required>
+                        <option value="">Select file</option>
+                        <?php foreach (($availableFiles ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['name'] ?? ('File #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">None yet.</p>
             </div>
             <?php endif; ?>
@@ -599,7 +638,25 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <!-- Folders -->
             <?php if (!empty($folders)): ?>
             <div class="sws-section">
-                <div class="sws-section-title"><span>Folders (<?= count($folders) ?>)</span></div>
+                <div class="sws-section-title">
+                    <span>Folders (<?= count($folders) ?>)</span>
+                    <button type="button" class="sws-link-btn"
+                            onclick="this.closest('.sws-section').querySelector('.sws-associate-form').classList.toggle('is-open')">+ Add existing</button>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/folders/attach" class="sws-associate-form">
+                    <?= csrf_field() ?>
+                    <select name="folder_id" class="sws-form-input" required>
+                        <option value="">Select folder</option>
+                        <?php foreach (($availableFolders ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['name'] ?? ('Folder #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <ul class="sws-item-list">
                     <?php foreach ($folders as $fo): ?>
                     <li class="sws-item">
@@ -615,8 +672,12 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
             <div class="sws-section">
                 <div class="sws-section-title">
                     <span>Discussions (<?= count($discussions ?? []) ?>)</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
                     <button type="button" class="sws-link-btn"
-                            onclick="this.closest('.sws-section').querySelector('.sws-discussion-form').classList.toggle('is-open')">+ New</button>
+                        onclick="this.closest('.sws-section').querySelector('.sws-discussion-form').classList.toggle('is-open')">+ New</button>
+                    <button type="button" class="sws-link-btn"
+                        onclick="this.closest('.sws-section').querySelector('.sws-associate-form.sws-associate-discussion').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
                 </div>
                 <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/discussion"
                       class="sws-discussion-form">
@@ -627,6 +688,57 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                         <button type="submit" class="btn btn-primary btn-small">Create</button>
                         <button type="button" class="btn btn-small btn-outline"
                                 onclick="this.closest('.sws-discussion-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/discussions/attach"
+                      class="sws-associate-form sws-associate-discussion">
+                    <?= csrf_field() ?>
+                    <select name="discussion_id" class="sws-form-input" required>
+                        <option value="">Select discussion</option>
+                        <?php foreach (($availableDiscussions ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
+                <div style="display:flex; gap:.45rem; margin:.35rem 0 .5rem">
+                    <button type="button" class="btn btn-small btn-outline"
+                            onclick="this.closest('.sws-section').querySelector('.sws-associate-form.sws-associate-file').classList.toggle('is-open')">+ Add file</button>
+                    <button type="button" class="btn btn-small btn-outline"
+                            onclick="this.closest('.sws-section').querySelector('.sws-associate-form.sws-associate-folder').classList.toggle('is-open')">+ Add folder</button>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/files/attach"
+                      class="sws-associate-form sws-associate-file">
+                    <?= csrf_field() ?>
+                    <select name="file_id" class="sws-form-input" required>
+                        <option value="">Select file</option>
+                        <?php foreach (($availableFiles ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['name'] ?? ('File #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add File</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/folders/attach"
+                      class="sws-associate-form sws-associate-folder">
+                    <?= csrf_field() ?>
+                    <select name="folder_id" class="sws-form-input" required>
+                        <option value="">Select folder</option>
+                        <?php foreach (($availableFolders ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['name'] ?? ('Folder #' . (int) $candidate['id'])) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add Folder</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
                     </div>
                 </form>
                 <?php if (!empty($discussions)): ?>
@@ -648,7 +760,32 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
 
             <!-- Forum Thread -->
             <div class="sws-section">
-                <div class="sws-section-title"><span>Forum Thread</span></div>
+                <div class="sws-section-title">
+                    <span>Forum Thread</span>
+                    <span style="display:flex; align-items:center; gap:.55rem">
+                        <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/forum-thread" style="display:inline">
+                            <?= csrf_field() ?>
+                            <button type="submit" class="sws-link-btn">+ New</button>
+                        </form>
+                        <button type="button" class="sws-link-btn"
+                                onclick="this.closest('.sws-section').querySelector('.sws-associate-form.sws-associate-forum-thread').classList.toggle('is-open')">+ Add existing</button>
+                    </span>
+                </div>
+                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/forum-thread/attach"
+                      class="sws-associate-form sws-associate-forum-thread">
+                    <?= csrf_field() ?>
+                    <select name="thread_id" class="sws-form-input" required>
+                        <option value="">Select forum thread</option>
+                        <?php foreach (($availableForumThreads ?? []) as $candidate): ?>
+                        <option value="<?= (int) $candidate['id'] ?>"><?= e($candidate['title']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <div style="display:flex; gap:.4rem; margin-top:.3rem">
+                        <button type="submit" class="btn btn-primary btn-small">Add</button>
+                        <button type="button" class="btn btn-small btn-outline"
+                                onclick="this.closest('.sws-associate-form').classList.remove('is-open')">Cancel</button>
+                    </div>
+                </form>
                 <?php if (!empty($forumThread)): ?>
                 <div style="font-size:.83rem; padding:.3rem 0">
                     <a href="/forum/thread/<?= (int) $forumThread['id'] ?>" style="font-weight:600"><?= e($forumThread['title']) ?></a>
@@ -662,10 +799,6 @@ function renderSubjectTreeNode(array $node, array $childMap, ?int $activeId, int
                 </div>
                 <?php else: ?>
                 <p style="font-size:.82rem; color:#9ca3af; margin:.25rem 0">No forum thread provisioned.</p>
-                <form method="post" action="/admin/subjects/<?= (int) $subject['id'] ?>/forum-thread" style="margin-top:.4rem">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-small btn-outline">Provision Forum Thread</button>
-                </form>
                 <?php endif; ?>
             </div>
 

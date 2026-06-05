@@ -193,6 +193,21 @@ class SubjectController extends BaseController
             );
         } catch (\Throwable) {}
 
+        $availableFiles = [];
+        try {
+            $availableFiles = $this->db->fetchAll(
+                'SELECT f.id, f.name, f.mime_type, f.created_at
+                 FROM files f
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM subject_content sc
+                     WHERE sc.item_type = ? AND sc.item_id = f.id AND sc.subject_id = ?
+                 )
+                 ORDER BY f.created_at DESC
+                 LIMIT 150',
+                ['file', $id]
+            );
+        } catch (\Throwable) {}
+
         $folders = [];
         try {
             $folders = $this->db->fetchAll(
@@ -201,6 +216,21 @@ class SubjectController extends BaseController
                  INNER JOIN subject_content sc ON sc.item_type = ? AND sc.item_id = fo.id
                  WHERE sc.subject_id = ?
                  ORDER BY fo.name ASC',
+                ['folder', $id]
+            );
+        } catch (\Throwable) {}
+
+        $availableFolders = [];
+        try {
+            $availableFolders = $this->db->fetchAll(
+                'SELECT fo.id, fo.name, fo.created_at
+                 FROM folders fo
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM subject_content sc
+                     WHERE sc.item_type = ? AND sc.item_id = fo.id AND sc.subject_id = ?
+                 )
+                 ORDER BY fo.name ASC
+                 LIMIT 150',
                 ['folder', $id]
             );
         } catch (\Throwable) {}
@@ -225,6 +255,20 @@ class SubjectController extends BaseController
             );
         } catch (\Throwable) {}
 
+        $availableDiscussions = [];
+        try {
+            $availableDiscussions = $this->db->fetchAll(
+                'SELECT d.id, d.title, d.category, d.post_count, d.last_post_at, d.created_at,
+                        u.display_name AS created_by_name
+                 FROM discussions d
+                 LEFT JOIN users u ON u.id = d.created_by
+                 WHERE d.context_type IS NULL OR d.context_type = ?
+                 ORDER BY COALESCE(d.last_post_at, d.created_at) DESC
+                 LIMIT 150',
+                ['']
+            );
+        } catch (\Throwable) {}
+
         // Existing forum thread for this subject (forum module may not be installed)
         $forumThread = null;
         try {
@@ -239,6 +283,19 @@ class SubjectController extends BaseController
             ) ?: null;
         } catch (\Throwable) {}
 
+        $availableForumThreads = [];
+        try {
+            $availableForumThreads = $this->db->fetchAll(
+                'SELECT t.id, t.title, t.reply_count, t.last_post_at,
+                        c.title AS category_title
+                 FROM forum_threads t
+                 JOIN forum_categories c ON c.id = t.category_id
+                 WHERE t.subject_id IS NULL
+                 ORDER BY COALESCE(t.last_post_at, t.created_at) DESC
+                 LIMIT 150'
+            );
+        } catch (\Throwable) {}
+
         $this->renderAdmin('admin/subjects/workspace', [
             'title'          => $subject['title'] . ' — Subjects',
             'allSubjects'    => $allSubjects,
@@ -250,10 +307,14 @@ class SubjectController extends BaseController
             'availableArticles' => $availableArticles,
             'availableEvents'   => $availableEvents,
             'files'          => $files,
+            'availableFiles' => $availableFiles,
             'folders'        => $folders,
+            'availableFolders' => $availableFolders,
             'parentSubjects' => $parentSubjects,
             'discussions'    => $discussions,
+            'availableDiscussions' => $availableDiscussions,
             'forumThread'    => $forumThread,
+            'availableForumThreads' => $availableForumThreads,
             'breadcrumbs'    => [['Admin', '/admin'], ['Subjects', '/admin/subjects'], [$subject['title']]],
         ]);
     }
@@ -337,6 +398,187 @@ class SubjectController extends BaseController
             Auth::flash('success', 'Event added to subject.');
         } catch (\Throwable) {
             Auth::flash('error', 'Could not add event to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/files/attach — Attach an existing file to this subject.
+     */
+    public function adminAttachFile(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $fileId = (int) $this->input('file_id', 0);
+        if ($fileId <= 0) {
+            Auth::flash('error', 'Select a file to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $fileExists = false;
+        try {
+            $fileExists = (bool) $this->db->fetchColumn('SELECT id FROM files WHERE id = ? LIMIT 1', [$fileId]);
+        } catch (\Throwable) {}
+
+        if (!$fileExists) {
+            Auth::flash('error', 'File not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->execute(
+                'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                [(int) $id, 'file', $fileId]
+            );
+            Auth::flash('success', 'File added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add file to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/folders/attach — Attach an existing folder to this subject.
+     */
+    public function adminAttachFolder(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $folderId = (int) $this->input('folder_id', 0);
+        if ($folderId <= 0) {
+            Auth::flash('error', 'Select a folder to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $folderExists = false;
+        try {
+            $folderExists = (bool) $this->db->fetchColumn('SELECT id FROM folders WHERE id = ? LIMIT 1', [$folderId]);
+        } catch (\Throwable) {}
+
+        if (!$folderExists) {
+            Auth::flash('error', 'Folder not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->execute(
+                'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
+                [(int) $id, 'folder', $folderId]
+            );
+            Auth::flash('success', 'Folder added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add folder to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/discussions/attach — Attach an existing discussion to this subject.
+     */
+    public function adminAttachDiscussion(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $discussionId = (int) $this->input('discussion_id', 0);
+        if ($discussionId <= 0) {
+            Auth::flash('error', 'Select a discussion to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $discussion = null;
+        try {
+            $discussion = $this->db->fetch('SELECT id, context_type, context_id FROM discussions WHERE id = ? LIMIT 1', [$discussionId]);
+        } catch (\Throwable) {}
+
+        if (!$discussion) {
+            Auth::flash('error', 'Discussion not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $ctxType = (string) ($discussion['context_type'] ?? '');
+        $ctxId   = (int) ($discussion['context_id'] ?? 0);
+        if ($ctxType === 'subject' && $ctxId > 0 && $ctxId !== (int) $id) {
+            Auth::flash('error', 'Discussion is already attached to another subject.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->execute(
+                'UPDATE discussions SET context_type = ?, context_id = ? WHERE id = ?',
+                ['subject', (int) $id, $discussionId]
+            );
+            Auth::flash('success', 'Discussion added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add discussion to subject.');
+        }
+
+        $this->redirect('/admin/subjects/' . (int) $id);
+    }
+
+    /**
+     * POST /admin/subjects/{id}/forum-thread/attach — Attach an existing forum thread.
+     */
+    public function adminAttachForumThread(string $id): void
+    {
+        Auth::requireAdmin();
+
+        $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [$id]);
+        if (!$subject) {
+            Auth::flash('error', 'Subject not found.');
+            $this->redirect('/admin/subjects');
+        }
+
+        $threadId = (int) $this->input('thread_id', 0);
+        if ($threadId <= 0) {
+            Auth::flash('error', 'Select a thread to add.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $thread = null;
+        try {
+            $thread = $this->db->fetch('SELECT id, subject_id FROM forum_threads WHERE id = ? LIMIT 1', [$threadId]);
+        } catch (\Throwable) {}
+
+        if (!$thread) {
+            Auth::flash('error', 'Forum thread not found.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        $attachedSubjectId = (int) ($thread['subject_id'] ?? 0);
+        if ($attachedSubjectId > 0 && $attachedSubjectId !== (int) $id) {
+            Auth::flash('error', 'Forum thread is already attached to another subject.');
+            $this->redirect('/admin/subjects/' . (int) $id);
+        }
+
+        try {
+            $this->db->execute(
+                'UPDATE forum_threads SET subject_id = ? WHERE id = ?',
+                [(int) $id, $threadId]
+            );
+            Auth::flash('success', 'Forum thread added to subject.');
+        } catch (\Throwable) {
+            Auth::flash('error', 'Could not add forum thread to subject.');
         }
 
         $this->redirect('/admin/subjects/' . (int) $id);

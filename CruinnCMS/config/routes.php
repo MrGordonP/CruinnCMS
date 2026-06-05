@@ -205,8 +205,12 @@ return function (Cruinn\Router $router) {
     $router->post('/admin/subjects/{id}/delete',             [SubjectController::class, 'adminDelete']);
     $router->post('/admin/subjects/{id}/articles/attach',    [SubjectController::class, 'adminAttachArticle']);
     $router->post('/admin/subjects/{id}/events/attach',      [SubjectController::class, 'adminAttachEvent']);
+    $router->post('/admin/subjects/{id}/files/attach',       [SubjectController::class, 'adminAttachFile']);
+    $router->post('/admin/subjects/{id}/folders/attach',     [SubjectController::class, 'adminAttachFolder']);
+    $router->post('/admin/subjects/{id}/discussions/attach', [SubjectController::class, 'adminAttachDiscussion']);
     $router->post('/admin/subjects/{id}/discussion',         [SubjectController::class, 'adminCreateDiscussion']);
     $router->post('/admin/subjects/{id}/forum-thread',       [SubjectController::class, 'adminProvisionForumThread']);
+    $router->post('/admin/subjects/{id}/forum-thread/attach',[SubjectController::class, 'adminAttachForumThread']);
 
     // Admin � Menus
     $router->get('/admin/menus',                              [MenuController::class, 'adminList']);
