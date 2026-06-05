@@ -79,7 +79,8 @@
                                     <span class="badge badge-info"><?= ($item['visibility'] ?? 'always') === 'logged_in' ? 'Auth' : 'Guest' ?></span>
                                 <?php endif; ?>
                                 <?php if (!empty($item['min_role'])): ?>
-                                    <span class="badge badge-info"><?= e(ucfirst($item['min_role'])) ?>+</span>
+                                    <?php $roleLabel = [10 => 'Member', 50 => 'Council', 100 => 'Admin'][(int) $item['min_role']] ?? ('Role ' . (int) $item['min_role']); ?>
+                                    <span class="badge badge-info"><?= e($roleLabel) ?>+</span>
                                 <?php endif; ?>
                             </span>
                             <span class="menu-tree-actions">
@@ -175,9 +176,9 @@
                                     <label>Min Role</label>
                                     <select class="form-input mi-min-role">
                                         <option value=""        <?= empty($item['min_role'])                         ? 'selected' : '' ?>>— Any —</option>
-                                        <option value="member"  <?= ($item['min_role'] ?? '') === 'member'  ? 'selected' : '' ?>>Member</option>
-                                        <option value="council" <?= ($item['min_role'] ?? '') === 'council' ? 'selected' : '' ?>>Council</option>
-                                        <option value="admin"   <?= ($item['min_role'] ?? '') === 'admin'   ? 'selected' : '' ?>>Admin</option>
+                                        <option value="10"      <?= (int)($item['min_role'] ?? 0) === 10  ? 'selected' : '' ?>>Member</option>
+                                        <option value="50"      <?= (int)($item['min_role'] ?? 0) === 50 ? 'selected' : '' ?>>Council</option>
+                                        <option value="100"     <?= (int)($item['min_role'] ?? 0) === 100 ? 'selected' : '' ?>>Admin</option>
                                     </select>
                                 </div>
                             </div>

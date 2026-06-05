@@ -288,7 +288,7 @@ class SubjectController extends BaseController
         }
 
         try {
-            $this->db->query(
+            $this->db->execute(
                 'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
                 [(int) $id, 'article', $articleId]
             );
@@ -330,7 +330,7 @@ class SubjectController extends BaseController
         }
 
         try {
-            $this->db->query(
+            $this->db->execute(
                 'INSERT IGNORE INTO subject_content (subject_id, item_type, item_id) VALUES (?, ?, ?)',
                 [(int) $id, 'event', $eventId]
             );

@@ -320,7 +320,7 @@ class MenuController extends BaseController
         if (!in_array($visibility, ['always', 'logged_in', 'logged_out'])) {
             $visibility = 'always';
         }
-        $minRole = $this->input('min_role', '') ?: null;
+        $minRole = $this->normalizeMinRole($this->input('min_role', ''));
 
         $itemId = $this->db->insert('menu_items', [
             'menu_id'      => $menuId,
@@ -365,7 +365,7 @@ class MenuController extends BaseController
         if (!in_array($visibility, ['always', 'logged_in', 'logged_out'])) {
             $visibility = 'always';
         }
-        $minRole = $this->input('min_role', '') ?: null;
+        $minRole = $this->normalizeMinRole($this->input('min_role', ''));
 
         $this->db->update('menu_items', [
             'label'        => $label,
@@ -498,6 +498,32 @@ class MenuController extends BaseController
             'route'   => ucfirst(trim($this->input('route', '/'), '/')),
             default   => '',
         };
+    }
+
+    /**
+     * Normalize min_role input to canonical numeric role levels.
+     * Accepts both legacy slugs and numeric values.
+     */
+    private function normalizeMinRole(mixed $value): ?int
+    {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+
+        $slugMap = [
+            'member'  => 10,
+            'council' => 50,
+            'admin'   => 100,
+        ];
+
+        $lower = strtolower($raw);
+        if (isset($slugMap[$lower])) {
+            return $slugMap[$lower];
+        }
+
+        $level = (int) $raw;
+        return in_array($level, [10, 50, 100], true) ? $level : null;
     }
 
     // ══════════════════════════════════════════════════════════════
