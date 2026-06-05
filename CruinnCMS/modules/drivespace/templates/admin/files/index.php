@@ -6,7 +6,6 @@
  * Middle: folder contents (subfolders + files; single-click = select, double-click = open/navigate)
  * Right:  properties / permissions panel (populated via AJAX on selection)
  */
-<?php
 \Cruinn\Template::requireCss('admin-panel-layout.css');
 \Cruinn\Template::requireCss('admin-drivespace.css');
 $GLOBALS['admin_flush_layout'] = true;
