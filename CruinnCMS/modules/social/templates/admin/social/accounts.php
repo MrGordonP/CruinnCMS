@@ -5,9 +5,9 @@ $GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <div class="panel-layout no-detail" id="social-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Social</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><h3>Social</h3></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Manage</div>
         <a class="pl-nav-item" href="<?= url('/admin/social') ?>">Dashboard</a>
         <a class="pl-nav-item active" href="<?= url('/admin/social/accounts') ?>">Accounts</a>

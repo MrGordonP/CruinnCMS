@@ -5,12 +5,12 @@ $GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <div class="panel-layout no-detail" id="forms-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header">
         <h3>Forms</h3>
         <a href="<?= url('/admin/forms/new') ?>" class="btn btn-sm btn-primary">+ New</a>
     </div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Manage</div>
         <a class="pl-nav-item active" href="<?= url('/admin/forms') ?>">All Forms</a>
     </div>

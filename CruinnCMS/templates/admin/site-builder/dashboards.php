@@ -5,9 +5,9 @@ $GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <div class="panel-layout no-detail" id="dashboards-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Site Builder</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><span class="pl-panel-title">Site Builder</span><button type="button" class="pl-panel-toggle" title="Collapse">&#x25C0;</button></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Content</div>
         <a class="pl-nav-item" href="<?= url('/admin/site-builder') ?>">Structure</a>
         <a class="pl-nav-item" href="<?= url('/admin/pages') ?>">Pages</a>

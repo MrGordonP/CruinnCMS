@@ -4,9 +4,9 @@ $GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <div class="panel-layout no-detail" id="org-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Workspace</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><h3>Workspace</h3></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Navigation</div>
         <a class="pl-nav-item" href="<?= url('/organisation') ?>">Dashboard</a>
         <a class="pl-nav-item active" href="<?= url('/documents') ?>">Documents</a>

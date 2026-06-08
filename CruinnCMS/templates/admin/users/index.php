@@ -5,9 +5,9 @@ $GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <div class="panel-layout no-detail" id="users-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Users</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><span class="pl-panel-title">Users</span><button type="button" class="pl-panel-toggle" title="Collapse">&#x25C0;</button></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Manage</div>
         <a class="pl-nav-item active" href="<?= url('/admin/users') ?>">All Users</a>
         <a class="pl-nav-item" href="<?= url('/admin/users/new') ?>">New User</a>

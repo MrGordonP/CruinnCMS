@@ -152,6 +152,84 @@ var PanelCollapse = (function () {
         });
     }
 
+    function _ensureToggleButton(panel, side) {
+        var header = panel.querySelector('.pl-panel-header');
+        if (!header) return null;
+
+        var btn = header.querySelector('.pl-panel-toggle');
+        if (btn) return btn;
+
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pl-panel-toggle';
+        btn.title = 'Collapse';
+
+        if (side === 'right') {
+            header.insertBefore(btn, header.firstChild);
+        } else {
+            header.appendChild(btn);
+        }
+
+        return btn;
+    }
+
+    function autoInitLayout(layout) {
+        if (!layout) return;
+
+        var panels = layout.querySelectorAll(':scope > .pl-panel, :scope > .pl-main');
+
+        panels.forEach(function (panel) {
+            if (!panel || _panels[panel.id]) {
+                return;
+            }
+
+            var side = panel.classList.contains('pl-panel-right') ? 'right' : 'left';
+            var panelId = panel.id;
+            if (!panelId) {
+                var layoutId = layout.id ? layout.id : 'panel-layout';
+                panelId = layoutId + '-' + side;
+                var suffix = 2;
+                while (document.getElementById(panelId)) {
+                    panelId = layoutId + '-' + side + '-' + suffix;
+                    suffix++;
+                }
+                panel.id = panelId;
+            }
+
+            var btn = _ensureToggleButton(panel, side);
+            if (!btn) return;
+
+            if (!btn.id) {
+                btn.id = panelId + '-toggle';
+            }
+
+            init([{
+                panelId: panelId,
+                toggleId: btn.id,
+                storeKey: panelId + '-collapsed',
+                side: side,
+            }]);
+
+            var resize = panel.querySelector('.pl-panel-resize');
+            if (resize && panel.classList.contains('pl-panel-left')) {
+                if (!resize.id) {
+                    resize.id = panelId + '-resize';
+                }
+                initResize(resize.id, panelId, panelId + '_w');
+            }
+        });
+    }
+
+    function bootstrap() {
+        document.querySelectorAll('.panel-layout').forEach(autoInitLayout);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootstrap);
+    } else {
+        bootstrap();
+    }
+
     return { init: init, expand: expand, initResize: initResize };
 
 }());

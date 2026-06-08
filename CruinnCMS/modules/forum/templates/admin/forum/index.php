@@ -240,9 +240,9 @@ $renderSection = function (array $section, int $depth = 0) use (&$renderSection,
 ?>
 
 <div class="panel-layout no-detail" id="forum-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Forum</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><h3>Forum</h3></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Moderation</div>
         <a class="pl-nav-item active" href="<?= url('/admin/forum') ?>">Categories &amp; Threads</a>
         <a class="pl-nav-item" href="<?= url('/admin/forum/reports') ?>">Post Reports</a>

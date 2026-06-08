@@ -6,9 +6,9 @@ $status = is_array($members ?? null) ? $members : [];
 ?>
 
 <div class="panel-layout no-detail" id="membership-hub-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Membership</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><h3>Membership</h3></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Workspace</div>
         <a class="pl-nav-item active" href="<?= url('/admin/membership') ?>">Hub</a>
         <a class="pl-nav-item" href="<?= url('/admin/membership/members') ?>">Members</a>

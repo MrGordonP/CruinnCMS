@@ -4,12 +4,12 @@ $GLOBALS['admin_flush_layout'] = true;
 ?>
 
 <div class="panel-layout no-detail" id="documents-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header">
         <h3>Documents</h3>
         <a href="<?= url('/documents/new') ?>" class="btn btn-sm btn-primary">Upload</a>
     </div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Manage</div>
         <a class="pl-nav-item active" href="<?= url('/admin/documents') ?>">All Documents</a>
         <a class="pl-nav-item" href="<?= url('/admin/documents/categories') ?>">Categories</a>

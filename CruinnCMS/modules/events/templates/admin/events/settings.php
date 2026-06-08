@@ -6,9 +6,9 @@ $settings = $settings ?? [];
 ?>
 
 <div class="panel-layout no-detail" id="events-layout">
-<div class="pl-sidebar">
-    <div class="pl-sidebar-header"><h3>Events</h3></div>
-    <div class="pl-sidebar-scroll" style="padding:0">
+<div class="pl-panel pl-panel-left">
+    <div class="pl-panel-header"><h3>Events</h3></div>
+    <div class="pl-panel-body" style="padding:0">
         <div class="pl-nav-section">Manage</div>
         <a class="pl-nav-item" href="<?= url('/admin/events') ?>">Overview</a>
         <a class="pl-nav-item" href="<?= url('/admin/events/list') ?>">Events</a>
