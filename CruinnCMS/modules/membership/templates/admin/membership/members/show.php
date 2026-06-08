@@ -70,7 +70,19 @@
             <select class="form-input" name="plan_id">
                 <option value="">No plan</option>
                 <?php foreach ($plans as $plan): ?>
-                <option value="<?= (int) $plan['id'] ?>"><?= e($plan['name']) ?></option>
+                <?php
+                    $parentName = '';
+                    if (!empty($plan['parent_plan_id'])) {
+                        foreach ($plans as $gp) {
+                            if ((int) $gp['id'] === (int) $plan['parent_plan_id']) {
+                                $parentName = (string) $gp['name'];
+                                break;
+                            }
+                        }
+                    }
+                    $label = $parentName !== '' ? ($parentName . ' -> ' . $plan['name']) : $plan['name'];
+                ?>
+                <option value="<?= (int) $plan['id'] ?>"><?= e($label) ?></option>
                 <?php endforeach; ?>
             </select>
             <select class="form-input" name="member_type">

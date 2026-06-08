@@ -542,9 +542,17 @@ class MembershipAdminController extends BaseController
     {
         Auth::requireAdmin();
 
+        $groupPlans = array_values(array_filter(
+            $this->membership->allPlans(),
+            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+        ));
+        $subjects = $this->activeSubjects();
+
         $this->renderAdmin('admin/membership/plans/form', [
             'title'       => 'New Membership Plan',
             'plan'        => null,
+            'groupPlans'  => $groupPlans,
+            'subjects'    => $subjects,
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['New Plan']],
         ]);
@@ -556,11 +564,18 @@ class MembershipAdminController extends BaseController
 
         $data = $this->planPayload();
         $errors = $this->validatePlanPayload($data, null);
+        $groupPlans = array_values(array_filter(
+            $this->membership->allPlans(),
+            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+        ));
+        $subjects = $this->activeSubjects();
 
         if ($errors) {
             $this->renderAdmin('admin/membership/plans/form', [
                 'title'       => 'New Membership Plan',
                 'plan'        => $data,
+                'groupPlans'  => $groupPlans,
+                'subjects'    => $subjects,
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['New Plan']],
             ]);
@@ -584,9 +599,21 @@ class MembershipAdminController extends BaseController
             return;
         }
 
+        $groupPlans = array_values(array_filter(
+            $this->membership->allPlans(),
+            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+        ));
+        $groupPlans = array_values(array_filter(
+            $groupPlans,
+            static fn(array $p): bool => (int) ($p['id'] ?? 0) !== $id
+        ));
+        $subjects = $this->activeSubjects();
+
         $this->renderAdmin('admin/membership/plans/form', [
             'title'       => 'Edit Membership Plan',
             'plan'        => $plan,
+            'groupPlans'  => $groupPlans,
+            'subjects'    => $subjects,
             'errors'      => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['Edit Plan']],
         ]);
@@ -605,11 +632,22 @@ class MembershipAdminController extends BaseController
 
         $data = $this->planPayload();
         $errors = $this->validatePlanPayload($data, $id);
+        $groupPlans = array_values(array_filter(
+            $this->membership->allPlans(),
+            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+        ));
+        $groupPlans = array_values(array_filter(
+            $groupPlans,
+            static fn(array $p): bool => (int) ($p['id'] ?? 0) !== $id
+        ));
+        $subjects = $this->activeSubjects();
 
         if ($errors) {
             $this->renderAdmin('admin/membership/plans/form', [
                 'title'       => 'Edit Membership Plan',
                 'plan'        => array_merge($plan, $data),
+                'groupPlans'  => $groupPlans,
+                'subjects'    => $subjects,
                 'errors'      => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['Edit Plan']],
             ]);
@@ -752,6 +790,10 @@ class MembershipAdminController extends BaseController
             'price'          => (float) $this->input('price', 0),
             'currency'       => strtoupper((string) $this->input('currency', 'EUR')),
             'is_active'      => $this->input('is_active') ? 1 : 0,
+            'is_group'       => $this->input('is_group') ? 1 : 0,
+            'max_members'    => (int) $this->input('max_members', 0),
+            'parent_plan_id' => (int) $this->input('parent_plan_id', 0),
+            'subject_id'     => (int) $this->input('subject_id', 0),
         ];
     }
 
@@ -767,6 +809,18 @@ class MembershipAdminController extends BaseController
         }
         if ($data['price'] < 0) {
             $errors['price'] = 'Price cannot be negative.';
+        }
+
+        if (!empty($data['parent_plan_id']) && !empty($data['is_group'])) {
+            $errors['parent_plan_id'] = 'A group plan cannot be assigned to a parent group.';
+        }
+
+        if (!empty($data['parent_plan_id']) && $planId !== null && (int) $data['parent_plan_id'] === (int) $planId) {
+            $errors['parent_plan_id'] = 'A plan cannot be its own parent.';
+        }
+
+        if (!empty($data['is_group']) && (int) ($data['max_members'] ?? 0) <= 1) {
+            $errors['max_members'] = 'Group plans must allow at least 2 members.';
         }
 
         $allowedPeriods = ['annual', 'monthly', 'quarterly', 'lifetime', 'custom'];
@@ -790,6 +844,30 @@ class MembershipAdminController extends BaseController
             $errors['slug'] = 'A plan with this slug already exists.';
         }
 
+        if (!empty($data['parent_plan_id'])) {
+            $parent = $this->db->fetch('SELECT id, is_group FROM membership_plans WHERE id = ?', [(int) $data['parent_plan_id']]);
+            if (!$parent) {
+                $errors['parent_plan_id'] = 'Selected parent group does not exist.';
+            } elseif ((int) ($parent['is_group'] ?? 0) !== 1) {
+                $errors['parent_plan_id'] = 'Parent plan must be marked as a group.';
+            }
+        }
+
+        if (!empty($data['subject_id'])) {
+            $subject = $this->db->fetch('SELECT id FROM subjects WHERE id = ?', [(int) $data['subject_id']]);
+            if (!$subject) {
+                $errors['subject_id'] = 'Selected subject does not exist.';
+            }
+        }
+
         return $errors;
+    }
+
+    private function activeSubjects(): array
+    {
+        return $this->db->fetchAll(
+            'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
+            ['active']
+        );
     }
 }

@@ -2,6 +2,8 @@
 <?php
 $isEdit = !empty($plan['id']);
 $periods = ['annual','monthly','quarterly','lifetime','custom'];
+$groupPlans = $groupPlans ?? [];
+$subjects = $subjects ?? [];
 ?>
 
 <h1><?= $isEdit ? 'Edit Plan' : 'New Plan' ?></h1>
@@ -24,6 +26,19 @@ $periods = ['annual','monthly','quarterly','lifetime','custom'];
     <div>
         <label class="form-label" for="description">Description</label>
         <textarea class="form-input" id="description" name="description" rows="4"><?= e($plan['description'] ?? '') ?></textarea>
+    </div>
+
+    <div>
+        <label class="form-label" for="subject_id">Subject</label>
+        <select class="form-input" id="subject_id" name="subject_id">
+            <option value="">No subject</option>
+            <?php foreach ($subjects as $subject): ?>
+            <option value="<?= (int) $subject['id'] ?>"<?= (int) ($plan['subject_id'] ?? 0) === (int) $subject['id'] ? ' selected' : '' ?>>
+                <?= e($subject['title']) ?>
+            </option>
+            <?php endforeach; ?>
+        </select>
+        <?php if (!empty($errors['subject_id'])): ?><small class="text-danger"><?= e($errors['subject_id']) ?></small><?php endif; ?>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;">
@@ -52,6 +67,31 @@ $periods = ['annual','monthly','quarterly','lifetime','custom'];
         <input type="checkbox" name="is_active" value="1"<?= !isset($plan['is_active']) || !empty($plan['is_active']) ? ' checked' : '' ?>>
         Active
     </label>
+
+    <label style="display:flex;align-items:center;gap:0.5rem;">
+        <input type="checkbox" name="is_group" value="1"<?= !empty($plan['is_group']) ? ' checked' : '' ?>>
+        Group plan
+    </label>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.75rem;">
+        <div>
+            <label class="form-label" for="max_members">Max Members (Group)</label>
+            <input class="form-input" id="max_members" name="max_members" type="number" min="0" step="1" value="<?= e((string) ($plan['max_members'] ?? '0')) ?>" placeholder="0 = none">
+            <?php if (!empty($errors['max_members'])): ?><small class="text-danger"><?= e($errors['max_members']) ?></small><?php endif; ?>
+        </div>
+        <div>
+            <label class="form-label" for="parent_plan_id">Parent Group (Tier)</label>
+            <select class="form-input" id="parent_plan_id" name="parent_plan_id">
+                <option value="">No parent group</option>
+                <?php foreach ($groupPlans as $gp): ?>
+                <option value="<?= (int) $gp['id'] ?>"<?= (int) ($plan['parent_plan_id'] ?? 0) === (int) $gp['id'] ? ' selected' : '' ?>>
+                    <?= e($gp['name']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
+            <?php if (!empty($errors['parent_plan_id'])): ?><small class="text-danger"><?= e($errors['parent_plan_id']) ?></small><?php endif; ?>
+        </div>
+    </div>
 
     <div style="display:flex;gap:0.5rem;">
         <button class="btn btn-primary" type="submit"><?= $isEdit ? 'Save Plan' : 'Create Plan' ?></button>

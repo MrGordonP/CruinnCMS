@@ -1,4 +1,16 @@
 <?php \Cruinn\Template::requireCss('admin-acp.css'); ?>
+<?php
+$topLevel = [];
+$tiersByParent = [];
+foreach ($plans as $p) {
+    $parentId = (int) ($p['parent_plan_id'] ?? 0);
+    if ($parentId > 0) {
+        $tiersByParent[$parentId][] = $p;
+    } else {
+        $topLevel[] = $p;
+    }
+}
+?>
 
 <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
     <div>
@@ -20,6 +32,9 @@
             <tr>
                 <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Name</th>
                 <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Slug</th>
+                <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Type</th>
+                <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Group</th>
+                <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Subject</th>
                 <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Period</th>
                 <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Price</th>
                 <th style="text-align:left;padding:0.75rem;border-bottom:1px solid #e5e7eb;">Active</th>
@@ -27,15 +42,31 @@
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($plans as $plan): ?>
+            <?php foreach ($topLevel as $plan): ?>
             <tr>
                 <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($plan['name']) ?></td>
                 <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><code><?= e($plan['slug']) ?></code></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= !empty($plan['is_group']) ? 'Group' : 'Plan' ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;">—</td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($plan['subject_title'] ?? '—') ?></td>
                 <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($plan['billing_period']) ?></td>
                 <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($plan['currency']) ?> <?= number_format((float) $plan['price'], 2) ?></td>
                 <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= !empty($plan['is_active']) ? 'Yes' : 'No' ?></td>
                 <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><a href="<?= url('/admin/membership/plans/' . (int) $plan['id'] . '/edit') ?>">Edit</a></td>
             </tr>
+            <?php foreach (($tiersByParent[(int) $plan['id']] ?? []) as $tier): ?>
+            <tr>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;padding-left:2rem;">↳ <?= e($tier['name']) ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><code><?= e($tier['slug']) ?></code></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;">Tier</td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($plan['name']) ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($tier['subject_title'] ?? '—') ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($tier['billing_period']) ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= e($tier['currency']) ?> <?= number_format((float) $tier['price'], 2) ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><?= !empty($tier['is_active']) ? 'Yes' : 'No' ?></td>
+                <td style="padding:0.75rem;border-bottom:1px solid #f1f5f9;"><a href="<?= url('/admin/membership/plans/' . (int) $tier['id'] . '/edit') ?>">Edit</a></td>
+            </tr>
+            <?php endforeach; ?>
             <?php endforeach; ?>
         </tbody>
     </table>

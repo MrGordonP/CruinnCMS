@@ -17,12 +17,26 @@ class MembershipService
     {
         if ($activeOnly) {
             return $this->db->fetchAll(
-                'SELECT * FROM membership_plans WHERE is_active = 1 ORDER BY name ASC'
+                'SELECT p.*, s.title AS subject_title
+                 FROM membership_plans p
+                 LEFT JOIN subjects s ON s.id = p.subject_id
+                 WHERE p.is_active = 1
+                 ORDER BY
+                    COALESCE(p.parent_plan_id, p.id) ASC,
+                    CASE WHEN p.parent_plan_id IS NULL THEN 0 ELSE 1 END ASC,
+                    p.name ASC'
             );
         }
 
         return $this->db->fetchAll(
-            'SELECT * FROM membership_plans ORDER BY is_active DESC, name ASC'
+            'SELECT p.*, s.title AS subject_title
+             FROM membership_plans p
+             LEFT JOIN subjects s ON s.id = p.subject_id
+             ORDER BY
+                COALESCE(p.parent_plan_id, p.id) ASC,
+                CASE WHEN p.parent_plan_id IS NULL THEN 0 ELSE 1 END ASC,
+                p.is_active DESC,
+                p.name ASC'
         );
     }
 
@@ -44,6 +58,8 @@ class MembershipService
             'is_active'      => !empty($data['is_active']) ? 1 : 0,
             'is_group'       => !empty($data['is_group']) ? 1 : 0,
             'max_members'    => !empty($data['max_members']) ? (int) $data['max_members'] : null,
+            'parent_plan_id' => !empty($data['parent_plan_id']) ? (int) $data['parent_plan_id'] : null,
+            'subject_id'     => !empty($data['subject_id']) ? (int) $data['subject_id'] : null,
         ]);
     }
 
@@ -59,6 +75,8 @@ class MembershipService
             'is_active'      => !empty($data['is_active']) ? 1 : 0,
             'is_group'       => !empty($data['is_group']) ? 1 : 0,
             'max_members'    => !empty($data['max_members']) ? (int) $data['max_members'] : null,
+            'parent_plan_id' => !empty($data['parent_plan_id']) ? (int) $data['parent_plan_id'] : null,
+            'subject_id'     => !empty($data['subject_id']) ? (int) $data['subject_id'] : null,
         ], 'id = ?', [$id]);
     }
 
