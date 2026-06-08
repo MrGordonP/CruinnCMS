@@ -3,7 +3,7 @@ $recentMembers = $data['recent_members'] ?? [];
 ?>
 <div class="activity-header">
     <h2>Membership Summary</h2>
-    <a href="<?= url('/admin/membership') ?>" class="btn btn-primary btn-small">Open Membership</a>
+    <a href="<?= url('/admin/membership') ?>" class="btn btn-primary btn-small">Open Membership Hub</a>
 </div>
 
 <div class="dash-quick-grid">

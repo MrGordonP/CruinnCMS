@@ -16,6 +16,64 @@ class MembershipAdminController extends BaseController
         $this->membership = new MembershipService();
     }
 
+    public function hub(): void
+    {
+        Auth::requireAdmin();
+
+        $members = $this->membership->countByStatus();
+
+        $plansCount = 0;
+        $subscriptionsCount = 0;
+        $paymentsCount = 0;
+        $formsCount = 0;
+        $responsesCount = 0;
+        $pendingResponsesCount = 0;
+        $latestForm = null;
+
+        try {
+            $plansCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM membership_plans');
+        } catch (\Throwable) {
+            $plansCount = 0;
+        }
+
+        try {
+            $subscriptionsCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM membership_subscriptions');
+        } catch (\Throwable) {
+            $subscriptionsCount = 0;
+        }
+
+        try {
+            $paymentsCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM payments WHERE subscription_id IS NOT NULL');
+        } catch (\Throwable) {
+            $paymentsCount = 0;
+        }
+
+        try {
+            $formsCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM forms');
+            $responsesCount = (int) $this->db->fetchColumn('SELECT COUNT(*) FROM form_submissions');
+            $pendingResponsesCount = (int) $this->db->fetchColumn("SELECT COUNT(*) FROM form_submissions WHERE status = 'pending'");
+            $latestForm = $this->db->fetch('SELECT id, title FROM forms ORDER BY updated_at DESC, id DESC LIMIT 1') ?: null;
+        } catch (\Throwable) {
+            $formsCount = 0;
+            $responsesCount = 0;
+            $pendingResponsesCount = 0;
+            $latestForm = null;
+        }
+
+        $this->renderAdmin('admin/membership/hub', [
+            'title'                 => 'Membership Hub',
+            'members'               => $members,
+            'plansCount'            => $plansCount,
+            'subscriptionsCount'    => $subscriptionsCount,
+            'paymentsCount'         => $paymentsCount,
+            'formsCount'            => $formsCount,
+            'responsesCount'        => $responsesCount,
+            'pendingResponsesCount' => $pendingResponsesCount,
+            'latestForm'            => $latestForm,
+            'breadcrumbs'           => [['Admin', '/admin'], ['Membership']],
+        ]);
+    }
+
     public function indexMembers(): void
     {
         Auth::requireAdmin();
@@ -50,14 +108,14 @@ class MembershipAdminController extends BaseController
             'payments'      => $payments,
             'linkedUser'    => $linkedUser,
             'errors'        => [],
-            'breadcrumbs'   => [['Admin', '/admin'], ['Membership']],
+            'breadcrumbs'   => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members']],
         ]);
     }
 
     public function showMember(int $id): void
     {
         Auth::requireAdmin();
-        $this->redirect('/admin/membership?member=' . $id);
+        $this->redirect('/admin/membership/members?member=' . $id);
     }
 
     public function newMember(): void
@@ -69,7 +127,7 @@ class MembershipAdminController extends BaseController
             'member'      => null,
             'plans'       => $this->membership->allPlans(true),
             'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['New Member']],
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['New Member']],
         ]);
     }
 
@@ -86,7 +144,7 @@ class MembershipAdminController extends BaseController
                 'member'      => $data,
                 'plans'       => $this->membership->allPlans(true),
                 'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['New Member']],
+                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['New Member']],
             ]);
             return;
         }
@@ -94,13 +152,13 @@ class MembershipAdminController extends BaseController
         $memberId = $this->membership->createMember($data);
         $this->logActivity('create', 'member', $memberId, 'Membership record created.');
         Auth::flash('success', 'Member created.');
-        $this->redirect('/admin/membership?member=' . $memberId);
+        $this->redirect('/admin/membership/members?member=' . $memberId);
     }
 
     public function editMember(int $id): void
     {
         Auth::requireAdmin();
-        $this->redirect('/admin/membership?member=' . $id);
+        $this->redirect('/admin/membership/members?member=' . $id);
     }
 
     public function updateMember(int $id): void
@@ -130,7 +188,7 @@ class MembershipAdminController extends BaseController
                 'subscriptions' => $this->membership->subscriptionsForMember($id),
                 'payments'      => $this->membership->paymentsForMember($id),
                 'errors'        => $errors,
-                'breadcrumbs'   => [['Admin', '/admin'], ['Membership']],
+                'breadcrumbs'   => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members']],
             ]);
             return;
         }
@@ -138,7 +196,7 @@ class MembershipAdminController extends BaseController
         $this->membership->updateMember($id, $data);
         $this->logActivity('update', 'member', $id, 'Membership record updated.');
         Auth::flash('success', 'Member updated.');
-        $this->redirect('/admin/membership?member=' . $id);
+        $this->redirect('/admin/membership/members?member=' . $id);
     }
 
     public function createSubscription(int $id): void
@@ -148,7 +206,7 @@ class MembershipAdminController extends BaseController
         $member = $this->membership->findById($id);
         if (!$member) {
             Auth::flash('error', 'Member not found.');
-            $this->redirect('/admin/membership');
+            $this->redirect('/admin/membership/members');
         }
 
         $data = [
@@ -170,13 +228,13 @@ class MembershipAdminController extends BaseController
 
         if ($data['period_start'] === '' || $data['period_end'] === '') {
             Auth::flash('error', 'Period start and end dates are required to create a subscription.');
-            $this->redirect('/admin/membership/members/' . $id);
+            $this->redirect('/admin/membership/members?member=' . $id);
         }
 
         $subId = $this->membership->createSubscription($id, $data);
         $this->logActivity('create', 'membership_subscription', $subId, 'Subscription created for member #' . $id . '.');
         Auth::flash('success', 'Subscription created.');
-        $this->redirect('/admin/membership?member=' . $id);
+        $this->redirect('/admin/membership/members?member=' . $id);
     }
 
     public function updateSubscriptionStatus(int $id): void
@@ -187,7 +245,7 @@ class MembershipAdminController extends BaseController
         $allowed = ['unverified', 'verified', 'disputed', 'waived'];
         if (!in_array($status, $allowed, true)) {
             Auth::flash('error', 'Invalid verification status.');
-            $this->redirect('/admin/membership');
+            $this->redirect('/admin/membership/members');
         }
 
         $this->membership->updateVerificationStatus($id, $status);
@@ -196,10 +254,10 @@ class MembershipAdminController extends BaseController
 
         $memberId = (int) $this->input('member_id', 0);
         if ($memberId > 0) {
-            $this->redirect('/admin/membership?member=' . $memberId);
+            $this->redirect('/admin/membership/members?member=' . $memberId);
         }
 
-        $this->redirect('/admin/membership');
+        $this->redirect('/admin/membership/members');
     }
 
     public function recordPayment(int $id): void
@@ -217,7 +275,7 @@ class MembershipAdminController extends BaseController
 
         if ($data['amount'] <= 0) {
             Auth::flash('error', 'Payment amount must be greater than zero.');
-            $this->redirect('/admin/membership');
+            $this->redirect('/admin/membership/members');
         }
 
         try {
@@ -230,10 +288,10 @@ class MembershipAdminController extends BaseController
 
         $memberId = (int) $this->input('member_id', 0);
         if ($memberId > 0) {
-            $this->redirect('/admin/membership?member=' . $memberId);
+            $this->redirect('/admin/membership/members?member=' . $memberId);
         }
 
-        $this->redirect('/admin/membership');
+        $this->redirect('/admin/membership/members');
     }
 
     public function importForm(): void
@@ -243,7 +301,7 @@ class MembershipAdminController extends BaseController
         $this->renderAdmin('admin/membership/members/import', [
             'title'       => 'Import Members',
             'plans'       => $this->membership->allPlans(true),
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Import']],
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['Import']],
         ]);
     }
 
@@ -391,7 +449,7 @@ class MembershipAdminController extends BaseController
             'totalRows'      => $totalRows,
             'onDuplicate'    => $onDuplicate,
             'defaultStatus'  => $defaultStatus,
-            'breadcrumbs'    => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Import', '/admin/membership/import'], ['Map Columns']],
+            'breadcrumbs'    => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['Import', '/admin/membership/import'], ['Map Columns']],
         ]);
     }
 
@@ -465,7 +523,7 @@ class MembershipAdminController extends BaseController
             'title'       => 'Import Members',
             'plans'       => $this->membership->allPlans(true),
             'result'      => $result,
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Import']],
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['Import']],
         ]);
     }
 
@@ -594,14 +652,14 @@ class MembershipAdminController extends BaseController
         $member = $this->membership->findById($id);
         if (!$member) {
             Auth::flash('error', 'Member not found.');
-            $this->redirect('/admin/membership');
+            $this->redirect('/admin/membership/members');
             return;
         }
 
         $q = trim((string) $this->input('user_search', ''));
         if ($q === '') {
             Auth::flash('error', 'Enter a user email or display name.');
-            $this->redirect('/admin/membership?member=' . $id);
+            $this->redirect('/admin/membership/members?member=' . $id);
             return;
         }
 
@@ -611,7 +669,7 @@ class MembershipAdminController extends BaseController
         );
         if (!$user) {
             Auth::flash('error', 'No user found matching "' . htmlspecialchars($q, ENT_QUOTES) . '".');
-            $this->redirect('/admin/membership?member=' . $id);
+            $this->redirect('/admin/membership/members?member=' . $id);
             return;
         }
 
@@ -621,14 +679,14 @@ class MembershipAdminController extends BaseController
         );
         if ($conflict) {
             Auth::flash('error', 'That user is already linked to a different member record.');
-            $this->redirect('/admin/membership?member=' . $id);
+            $this->redirect('/admin/membership/members?member=' . $id);
             return;
         }
 
         $this->membership->linkUser($id, (int) $user['id']);
         $this->logActivity('update', 'member', $id, 'Linked to user #' . $user['id'] . ' (' . $user['email'] . ').');
         Auth::flash('success', 'User account linked to member.');
-        $this->redirect('/admin/membership?member=' . $id);
+        $this->redirect('/admin/membership/members?member=' . $id);
     }
 
     public function unlinkUser(int $id): void
@@ -638,14 +696,14 @@ class MembershipAdminController extends BaseController
         $member = $this->membership->findById($id);
         if (!$member) {
             Auth::flash('error', 'Member not found.');
-            $this->redirect('/admin/membership');
+            $this->redirect('/admin/membership/members');
             return;
         }
 
         $this->membership->unlinkUser($id);
         $this->logActivity('update', 'member', $id, 'User account unlinked.');
         Auth::flash('success', 'User account unlinked.');
-        $this->redirect('/admin/membership?member=' . $id);
+        $this->redirect('/admin/membership/members?member=' . $id);
     }
 
     private function memberPayload(): array

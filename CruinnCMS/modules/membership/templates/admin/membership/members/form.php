@@ -49,6 +49,6 @@ $isEdit = !empty($member['id']);
 
     <div style="display:flex;gap:0.5rem;">
         <button class="btn btn-primary" type="submit"><?= $isEdit ? 'Save Member' : 'Create Member' ?></button>
-        <a class="btn btn-outline" href="<?= url('/admin/membership') ?>">Cancel</a>
+        <a class="btn btn-outline" href="<?= url('/admin/membership/members') ?>">Cancel</a>
     </div>
 </form>

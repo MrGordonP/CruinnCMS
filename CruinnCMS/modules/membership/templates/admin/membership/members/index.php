@@ -33,7 +33,7 @@ $verificationStatuses = ['unverified','verified','disputed','waived'];
             </div>
 
             <!-- Search -->
-            <form method="get" action="<?= url('/admin/membership') ?>" style="display:flex;gap:0.3rem">
+            <form method="get" action="<?= url('/admin/membership/members') ?>" style="display:flex;gap:0.3rem">
                 <input class="form-input" type="text" name="q" value="<?= e($filters['q'] ?? '') ?>"
                        placeholder="Search…" style="flex:1;font-size:0.8rem;padding:0.3rem 0.5rem">
                 <button class="btn btn-secondary btn-small" type="submit">Go</button>
@@ -51,7 +51,7 @@ $verificationStatuses = ['unverified','verified','disputed','waived'];
                 $vsBg = $vs === 'verified' ? '#e8f5ef' : ($vs === 'waived' ? '#e8f5ef' : ($vs === 'disputed' ? '#fee2e2' : '#fef3c7'));
                 $vsColor = $vs === 'verified' ? '#1d9e75' : ($vs === 'waived' ? '#1d9e75' : ($vs === 'disputed' ? '#b91c1c' : '#92400e'));
             ?>
-            <a href="<?= url('/admin/membership?member=' . (int)$m['id'] . ($filters['q'] ? '&q=' . urlencode($filters['q']) : '')) ?>"
+                <a href="<?= url('/admin/membership/members?member=' . (int)$m['id'] . ($filters['q'] ? '&q=' . urlencode($filters['q']) : '')) ?>"
                class="pl-sidebar-item<?= $m['id'] == $selectedId ? ' active' : '' ?>">
                 <span style="flex:1">
                     <?= e($mName ?: '(unnamed)') ?>
@@ -341,6 +341,7 @@ $verificationStatuses = ['unverified','verified','disputed','waived'];
 
     <!-- Plans / Import quick links at top -->
     <div style="display:flex;gap:0.5rem;padding:0.5rem 0.75rem;border-top:1px solid #e5e7eb;background:#fafafa;flex-shrink:0">
+        <a href="<?= url('/admin/membership') ?>" class="btn btn-outline btn-small" style="flex:1;text-align:center">🏠 Hub</a>
         <a href="<?= url('/admin/membership/plans') ?>" class="btn btn-outline btn-small" style="flex:1;text-align:center">📋 Plans</a>
         <a href="<?= url('/admin/membership/import') ?>" class="btn btn-outline btn-small" style="flex:1;text-align:center">⬆ Import</a>
     </div>

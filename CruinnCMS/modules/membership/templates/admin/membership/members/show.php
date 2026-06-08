@@ -8,7 +8,7 @@
     </div>
     <div style="display:flex;gap:0.5rem;">
         <a class="btn btn-outline" href="<?= url('/admin/membership/members/' . (int) $member['id'] . '/edit') ?>">Edit Member</a>
-        <a class="btn btn-outline" href="<?= url('/admin/membership') ?>">Back</a>
+        <a class="btn btn-outline" href="<?= url('/admin/membership/members') ?>">Back</a>
     </div>
 </div>
 

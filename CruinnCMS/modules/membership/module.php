@@ -12,8 +12,11 @@ return [
     'dependencies' => [],
 
     'routes' => static function (object $router): void {
+        // Hub
+        $router->get('/admin/membership',                             [MembershipAdminController::class, 'hub']);
+
         // Members
-        $router->get('/admin/membership',                             [MembershipAdminController::class, 'indexMembers']);
+        $router->get('/admin/membership/members',                     [MembershipAdminController::class, 'indexMembers']);
         $router->get('/admin/membership/members/new',                 [MembershipAdminController::class, 'newMember']);
         $router->post('/admin/membership/members',                    [MembershipAdminController::class, 'createMember']);
         $router->get('/admin/membership/members/{id}',                [MembershipAdminController::class, 'showMember']);

@@ -5,7 +5,7 @@
         <h1 style="margin:0;">Import Members</h1>
         <p class="text-muted" style="margin:0.25rem 0 0;">Upload a CSV file to import or update membership records. You will map your columns to the correct fields before the import runs.</p>
     </div>
-    <a class="btn btn-outline" href="<?= url('/admin/membership') ?>">Back to Members</a>
+    <a class="btn btn-outline" href="<?= url('/admin/membership/members') ?>">Back to Members</a>
 </div>
 
 <?php if (!empty($result)): ?>
