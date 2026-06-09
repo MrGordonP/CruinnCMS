@@ -60,6 +60,9 @@ return [
 
     'migrations' => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/001_membership_core.sql',
+        __DIR__ . '/migrations/002_membership_year.sql',
+        __DIR__ . '/migrations/003_remove_plan_slug.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
