@@ -234,7 +234,7 @@ $verifiedBadge = static function(?string $vs): string {
                             data-row-profile-url="<?= e(url('/admin/membership/members/' . $mId)) ?>">
                             <td data-stop-propagation><input type="checkbox" class="member-cb" name="member_ids[]" value="<?= $mId ?>"></td>
                             <td>
-                                <a href="<?= e(url('/admin/membership/members/' . $mId)) ?>" data-stop-propagation style="color:inherit;text-decoration:none;font-weight:inherit;"><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></a>
+                                <a href="<?= e(url('/admin/membership/members/' . $mId)) ?>" data-stop-propagation><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></a>
                                 <?php if (!empty($mSubs)): ?>
                                 <button type="button" class="sub-expand-btn" data-mid="<?= $mId ?>"
                                     title="Show subscriptions"
