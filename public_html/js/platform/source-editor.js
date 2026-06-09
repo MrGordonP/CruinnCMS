@@ -130,9 +130,6 @@
             if (!summary) return;
 
             currentDir = summary.dataset.dir;
-            if (summary.parentElement && summary.parentElement.tagName === 'DETAILS') {
-                summary.parentElement.open = true;
-            }
             loadLazyDirectory(summary);
 
             var propsFile = document.getElementById('props-file');

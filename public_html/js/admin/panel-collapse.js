@@ -82,9 +82,21 @@ var PanelCollapse = (function () {
             var btn = cfg.toggleId ? document.getElementById(cfg.toggleId) : null;
             if (!panel) return;
 
+            // Remove old listener if this panel was already registered
+            var prev = _panels[cfg.panelId];
+            if (prev && prev.btn && prev.handler) {
+                prev.btn.removeEventListener('click', prev.handler);
+            }
+
+            var handler = null;
+            if (btn) {
+                handler = function () { _toggle(cfg.panelId); };
+            }
+
             _panels[cfg.panelId] = {
                 panel: panel,
                 btn: btn,
+                handler: handler,
                 storeKey: cfg.storeKey || null,
                 side: cfg.side || 'left',
             };
@@ -93,10 +105,8 @@ var PanelCollapse = (function () {
             var stored = cfg.storeKey ? localStorage.getItem(cfg.storeKey) : null;
             _apply(cfg.panelId, stored === '1');
 
-            if (btn) {
-                btn.addEventListener('click', function () {
-                    _toggle(cfg.panelId);
-                });
+            if (btn && handler) {
+                btn.addEventListener('click', handler);
             }
         });
     }
