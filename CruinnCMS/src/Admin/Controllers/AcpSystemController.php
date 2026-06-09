@@ -547,6 +547,16 @@ class AcpSystemController extends BaseController
             $sortCol = '';
         }
 
+        // Sanitise filter: only columns that actually exist
+        $rawFilter = is_array($_GET['filter'] ?? null) ? $_GET['filter'] : [];
+        $filters   = [];
+        foreach ($rawFilter as $col => $val) {
+            $val = trim((string)$val);
+            if ($val !== '' && in_array($col, $allCols, true)) {
+                $filters[$col] = $val;
+            }
+        }
+
         // Fetch column metadata for inline editor
         $columnMeta = [];
         $pdo = $db->pdo();
@@ -565,9 +575,27 @@ class AcpSystemController extends BaseController
             ];
         }
 
-        $total    = (int)$db->fetchColumn("SELECT COUNT(*) FROM `{$table}`");
+        // Build WHERE clause from filters
+        $whereSql = '';
+        $whereVals = [];
+        if (!empty($filters)) {
+            $clauses = [];
+            foreach ($filters as $col => $val) {
+                $clauses[]   = "`{$col}` LIKE ?";
+                $whereVals[] = '%' . $val . '%';
+            }
+            $whereSql = ' WHERE ' . implode(' AND ', $clauses);
+        }
+
+        $total    = (int)$db->fetchColumn("SELECT COUNT(*) FROM `{$table}`{$whereSql}", $whereVals);
+        $pages    = (int)ceil($total / $perPage) ?: 1;
+        $page     = min($page, $pages); // clamp after filter changes result count
+        $offset   = ($page - 1) * $perPage;
         $orderSql = $sortCol !== '' ? " ORDER BY `{$sortCol}` {$sortDir}" : '';
-        $rows     = $db->fetchAll("SELECT * FROM `{$table}`{$orderSql} LIMIT {$perPage} OFFSET {$offset}");
+        $rows     = $db->fetchAll(
+            "SELECT * FROM `{$table}`{$whereSql}{$orderSql} LIMIT {$perPage} OFFSET {$offset}",
+            $whereVals
+        );
         $columns  = !empty($rows) ? array_keys($rows[0]) : $allCols;
 
         $data = [
@@ -580,10 +608,11 @@ class AcpSystemController extends BaseController
             'total'      => $total,
             'page'       => $page,
             'perPage'    => $perPage,
-            'pages'      => (int)ceil($total / $perPage) ?: 1,
+            'pages'      => $pages,
             'pkCol'      => $pkCol,
             'sortCol'    => $sortCol,
             'sortDir'    => $sortDir,
+            'filters'    => $filters,
         ];
         $this->renderAcp('admin/settings/database-browse', $data);
     }
@@ -640,6 +669,16 @@ class AcpSystemController extends BaseController
         $dir    = strtoupper((string)($_POST['_dir'] ?? '')) === 'DESC' ? 'DESC' : 'ASC';
         $sortParam = $sort !== '' ? '&sort=' . urlencode($sort) . '&dir=' . $dir : '';
 
+        // Rebuild filter params for redirect
+        $filterParam = '';
+        $rawFilter = is_array($_POST['_filter'] ?? null) ? $_POST['_filter'] : [];
+        foreach ($rawFilter as $col => $val) {
+            $val = trim((string)$val);
+            if ($val !== '') {
+                $filterParam .= '&' . urlencode('filter[' . $col . ']') . '=' . urlencode($val);
+            }
+        }
+
         if (!$pkCol || $pkVal === '') {
             Auth::flash('error', 'Missing primary key.');
             $this->redirect('/admin/settings/database/browse/' . urlencode($table));
@@ -659,7 +698,7 @@ class AcpSystemController extends BaseController
 
         if (empty($setClauses)) {
             Auth::flash('error', 'Nothing to update.');
-            $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam);
+            $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam . $filterParam);
         }
 
         $values[] = $pkVal;
@@ -669,7 +708,7 @@ class AcpSystemController extends BaseController
         );
 
         Auth::flash('success', 'Row updated.');
-        $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam);
+        $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam . $filterParam);
     }
 
     public function deleteRow(string $table): void

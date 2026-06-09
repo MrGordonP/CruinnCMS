@@ -1,10 +1,11 @@
 (function () {
-    // Delete confirmation
+    // Delete: button triggers associated hidden form
     document.querySelectorAll('button.admin-db-delete-btn').forEach(function (button) {
-        button.addEventListener('click', function (event) {
-            if (!window.confirm('Delete this row?')) {
-                event.preventDefault();
-            }
+        button.addEventListener('click', function () {
+            if (!window.confirm('Delete this row?')) return;
+            var rowId = button.getAttribute('data-rowid');
+            var form = document.getElementById(rowId + '-delete-form');
+            if (form) form.submit();
         });
     });
 
