@@ -6,5 +6,5 @@
 SET NAMES utf8mb4;
 
 ALTER TABLE `membership_plans`
-    DROP INDEX `uk_membership_plans_slug`,
-    DROP COLUMN `slug`;
+    DROP INDEX IF EXISTS `uk_membership_plans_slug`,
+    DROP COLUMN IF EXISTS `slug`;
