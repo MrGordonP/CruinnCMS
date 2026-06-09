@@ -174,6 +174,7 @@ class MembershipAdminController extends BaseController
         $subscriptions = $this->membership->subscriptionsForMember($id);
         $payments      = $this->membership->paymentsForMember($id);
         $plans         = $this->membership->allPlans(true);
+        $memberAdmin   = $this->membership->memberAdminForMember($id);
 
         $linkedUser = null;
         if (!empty($member['user_id'])) {
@@ -188,19 +189,23 @@ class MembershipAdminController extends BaseController
             [$id]
         );
 
+        $memberName = trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? ''));
+
         $this->renderAdmin('admin/membership/members/show', [
-            'title'         => trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? '')),
+            'title'         => $memberName,
             'member'        => $member,
             'subscriptions' => $subscriptions,
             'payments'      => $payments,
             'plans'         => $plans,
+            'memberAdmin'   => $memberAdmin,
             'linkedUser'    => $linkedUser,
             'address'       => $address,
+            'errors'        => [],
             'breadcrumbs'   => [
                 ['Admin', '/admin'],
                 ['Membership', '/admin/membership'],
                 ['Members', '/admin/membership/members'],
-                [trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? ''))],
+                [$memberName],
             ],
         ]);
     }
@@ -245,28 +250,7 @@ class MembershipAdminController extends BaseController
     public function editMember(int $id): void
     {
         Auth::requireAdmin();
-
-        $member = $this->membership->findById($id);
-        if (!$member) {
-            http_response_code(404);
-            $this->render('errors/404');
-            return;
-        }
-
-        $memberName = trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? ''));
-        $this->renderAdmin('admin/membership/members/form', [
-            'title'       => 'Edit Member',
-            'member'      => $member,
-            'plans'       => $this->membership->allPlans(true),
-            'errors'      => [],
-            'breadcrumbs' => [
-                ['Admin', '/admin'],
-                ['Membership', '/admin/membership'],
-                ['Members', '/admin/membership/members'],
-                [$memberName, '/admin/membership/members/' . $id],
-                ['Edit'],
-            ],
-        ]);
+        $this->redirect('/admin/membership/members/' . $id);
     }
 
     public function updateMember(int $id): void
@@ -280,28 +264,43 @@ class MembershipAdminController extends BaseController
             return;
         }
 
-        $data = $this->memberPayload();
+        $data   = $this->memberPayload();
         $errors = $this->validateMemberPayload($data, $id);
 
         if ($errors) {
+            $subscriptions = $this->membership->subscriptionsForMember($id);
+            $payments      = $this->membership->paymentsForMember($id);
+            $plans         = $this->membership->allPlans(true);
+            $memberAdmin   = $this->membership->memberAdminForMember($id);
+            $address       = $this->db->fetch('SELECT * FROM member_addresses WHERE member_id = ?', [$id]);
+            $linkedUser    = null;
+            if (!empty($existing['user_id'])) {
+                $linkedUser = $this->db->fetch('SELECT id, display_name, email FROM users WHERE id = ?', [(int) $existing['user_id']]);
+            }
             $memberName = trim((string) ($existing['forenames'] ?? '') . ' ' . (string) ($existing['surnames'] ?? ''));
-            $this->renderAdmin('admin/membership/members/form', [
-                'title'       => 'Edit Member',
-                'member'      => array_merge($existing, $data),
-                'plans'       => $this->membership->allPlans(true),
-                'errors'      => $errors,
-                'breadcrumbs' => [
+            $this->renderAdmin('admin/membership/members/show', [
+                'title'         => $memberName,
+                'member'        => array_merge($existing, $data),
+                'subscriptions' => $subscriptions,
+                'payments'      => $payments,
+                'plans'         => $plans,
+                'memberAdmin'   => $memberAdmin,
+                'linkedUser'    => $linkedUser,
+                'address'       => $address,
+                'errors'        => $errors,
+                'breadcrumbs'   => [
                     ['Admin', '/admin'],
                     ['Membership', '/admin/membership'],
                     ['Members', '/admin/membership/members'],
-                    [$memberName, '/admin/membership/members/' . $id],
-                    ['Edit'],
+                    [$memberName],
                 ],
             ]);
             return;
         }
 
         $this->membership->updateMember($id, $data);
+        $this->membership->upsertAddress($id, $this->addressPayload());
+        $this->membership->upsertMemberAdmin($id, $this->adminNotesPayload());
         $this->logActivity('update', 'member', $id, 'Membership record updated.');
         Auth::flash('success', 'Member updated.');
         $this->redirect('/admin/membership/members/' . $id);
@@ -1390,7 +1389,31 @@ class MembershipAdminController extends BaseController
             'forenames'         => $this->input('forenames', ''),
             'surnames'          => $this->input('surnames', ''),
             'email'             => $this->input('email', ''),
+            'phone'             => $this->input('phone', ''),
             'organisation'      => $this->input('organisation', ''),
+            'status'            => $this->input('status', 'applicant'),
+            'joined_at'         => $this->input('joined_at', ''),
+            'lapsed_at'         => $this->input('lapsed_at', ''),
+        ];
+    }
+
+    private function addressPayload(): array
+    {
+        return [
+            'line_1'   => $this->input('addr_line_1', ''),
+            'line_2'   => $this->input('addr_line_2', ''),
+            'city'     => $this->input('addr_city', ''),
+            'county'   => $this->input('addr_county', ''),
+            'postcode' => $this->input('addr_postcode', ''),
+            'country'  => $this->input('addr_country', ''),
+            'phone'    => $this->input('phone', ''),
+        ];
+    }
+
+    private function adminNotesPayload(): array
+    {
+        return [
+            'notes' => $this->input('admin_notes', ''),
         ];
     }
 

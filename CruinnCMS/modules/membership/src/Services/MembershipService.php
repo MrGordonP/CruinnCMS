@@ -304,14 +304,20 @@ class MembershipService
 
     public function updateMember(int $id, array $data): void
     {
-        $this->db->update('members', [
+        $allowed = ['applicant','active','lapsed','suspended','resigned','archived'];
+        $status  = in_array($data['status'] ?? '', $allowed, true) ? $data['status'] : 'applicant';
+        $payload = [
             'user_id'           => $data['user_id'] !== '' ? (int) $data['user_id'] : null,
             'membership_number' => $data['membership_number'] ?: null,
             'forenames'         => $data['forenames'],
             'surnames'          => $data['surnames'],
             'email'             => strtolower($data['email']),
             'organisation'      => $data['organisation'] ?: null,
-        ], 'id = ?', [$id]);
+            'status'            => $status,
+            'joined_at'         => $data['joined_at'] !== '' ? $data['joined_at'] : null,
+            'lapsed_at'         => $data['lapsed_at'] !== '' ? $data['lapsed_at'] : null,
+        ];
+        $this->db->update('members', $payload, 'id = ?', [$id]);
     }
 
     public function createSubscription(int $memberId, array $data): int
@@ -377,6 +383,41 @@ class MembershipService
         ], 'id = ?', [$subscriptionId]);
 
         return $paymentId;
+    }
+
+    public function memberAdminForMember(int $memberId): ?array
+    {
+        $row = $this->db->fetch('SELECT * FROM member_admin WHERE member_id = ?', [$memberId]);
+        return $row ?: null;
+    }
+
+    public function upsertMemberAdmin(int $memberId, array $data): void
+    {
+        $existing = $this->db->fetch('SELECT id FROM member_admin WHERE member_id = ?', [$memberId]);
+        if ($existing) {
+            $this->db->update('member_admin', ['notes' => $data['notes'] ?: null], 'member_id = ?', [$memberId]);
+        } else {
+            $this->db->insert('member_admin', ['member_id' => $memberId, 'notes' => $data['notes'] ?: null]);
+        }
+    }
+
+    public function upsertAddress(int $memberId, array $data): void
+    {
+        $fields = [
+            'line_1'   => $data['line_1']   ?: null,
+            'line_2'   => $data['line_2']   ?: null,
+            'city'     => $data['city']     ?: null,
+            'county'   => $data['county']   ?: null,
+            'postcode' => $data['postcode'] ?: null,
+            'country'  => $data['country']  ?: null,
+            'phone'    => $data['phone']    ?: null,
+        ];
+        $existing = $this->db->fetch('SELECT id FROM member_addresses WHERE member_id = ?', [$memberId]);
+        if ($existing) {
+            $this->db->update('member_addresses', $fields, 'member_id = ?', [$memberId]);
+        } else {
+            $this->db->insert('member_addresses', array_merge(['member_id' => $memberId], $fields));
+        }
     }
 
     public function linkUser(int $memberId, int $userId): void
