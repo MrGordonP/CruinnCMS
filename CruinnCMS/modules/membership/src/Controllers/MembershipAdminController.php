@@ -239,13 +239,34 @@ class MembershipAdminController extends BaseController
         $memberId = $this->membership->createMember($data);
         $this->logActivity('create', 'member', $memberId, 'Membership record created.');
         Auth::flash('success', 'Member created.');
-        $this->redirect('/admin/membership/members?member=' . $memberId);
+        $this->redirect('/admin/membership/members/' . $memberId);
     }
 
     public function editMember(int $id): void
     {
         Auth::requireAdmin();
-        $this->redirect('/admin/membership/members?member=' . $id);
+
+        $member = $this->membership->findById($id);
+        if (!$member) {
+            http_response_code(404);
+            $this->render('errors/404');
+            return;
+        }
+
+        $memberName = trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? ''));
+        $this->renderAdmin('admin/membership/members/form', [
+            'title'       => 'Edit Member',
+            'member'      => $member,
+            'plans'       => $this->membership->allPlans(true),
+            'errors'      => [],
+            'breadcrumbs' => [
+                ['Admin', '/admin'],
+                ['Membership', '/admin/membership'],
+                ['Members', '/admin/membership/members'],
+                [$memberName, '/admin/membership/members/' . $id],
+                ['Edit'],
+            ],
+        ]);
     }
 
     public function updateMember(int $id): void
@@ -263,19 +284,19 @@ class MembershipAdminController extends BaseController
         $errors = $this->validateMemberPayload($data, $id);
 
         if ($errors) {
-            $filters = ['q' => ''];
-            $this->renderAdmin('admin/membership/members/index', [
-                'title'         => 'Membership',
-                'members'       => $this->membership->listMembers($filters),
-                'plans'         => $this->membership->allPlans(true),
-                'filters'       => $filters,
-                'statusCount'   => $this->membership->countByStatus(),
-                'member'        => array_merge($existing, $data),
-                'memberId'      => $id,
-                'subscriptions' => $this->membership->subscriptionsForMember($id),
-                'payments'      => $this->membership->paymentsForMember($id),
-                'errors'        => $errors,
-                'breadcrumbs'   => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members']],
+            $memberName = trim((string) ($existing['forenames'] ?? '') . ' ' . (string) ($existing['surnames'] ?? ''));
+            $this->renderAdmin('admin/membership/members/form', [
+                'title'       => 'Edit Member',
+                'member'      => array_merge($existing, $data),
+                'plans'       => $this->membership->allPlans(true),
+                'errors'      => $errors,
+                'breadcrumbs' => [
+                    ['Admin', '/admin'],
+                    ['Membership', '/admin/membership'],
+                    ['Members', '/admin/membership/members'],
+                    [$memberName, '/admin/membership/members/' . $id],
+                    ['Edit'],
+                ],
             ]);
             return;
         }
@@ -283,7 +304,7 @@ class MembershipAdminController extends BaseController
         $this->membership->updateMember($id, $data);
         $this->logActivity('update', 'member', $id, 'Membership record updated.');
         Auth::flash('success', 'Member updated.');
-        $this->redirect('/admin/membership/members?member=' . $id);
+        $this->redirect('/admin/membership/members/' . $id);
     }
 
     public function createSubscription(int $id): void
@@ -1314,7 +1335,7 @@ class MembershipAdminController extends BaseController
         $q = trim((string) $this->input('user_search', ''));
         if ($q === '') {
             Auth::flash('error', 'Enter a user email or display name.');
-            $this->redirect('/admin/membership/members?member=' . $id);
+            $this->redirect('/admin/membership/members/' . $id);
             return;
         }
 
@@ -1324,7 +1345,7 @@ class MembershipAdminController extends BaseController
         );
         if (!$user) {
             Auth::flash('error', 'No user found matching "' . htmlspecialchars($q, ENT_QUOTES) . '".');
-            $this->redirect('/admin/membership/members?member=' . $id);
+            $this->redirect('/admin/membership/members/' . $id);
             return;
         }
 
@@ -1334,14 +1355,14 @@ class MembershipAdminController extends BaseController
         );
         if ($conflict) {
             Auth::flash('error', 'That user is already linked to a different member record.');
-            $this->redirect('/admin/membership/members?member=' . $id);
+            $this->redirect('/admin/membership/members/' . $id);
             return;
         }
 
         $this->membership->linkUser($id, (int) $user['id']);
         $this->logActivity('update', 'member', $id, 'Linked to user #' . $user['id'] . ' (' . $user['email'] . ').');
         Auth::flash('success', 'User account linked to member.');
-        $this->redirect('/admin/membership/members?member=' . $id);
+        $this->redirect('/admin/membership/members/' . $id);
     }
 
     public function unlinkUser(int $id): void
@@ -1358,7 +1379,7 @@ class MembershipAdminController extends BaseController
         $this->membership->unlinkUser($id);
         $this->logActivity('update', 'member', $id, 'User account unlinked.');
         Auth::flash('success', 'User account unlinked.');
-        $this->redirect('/admin/membership/members?member=' . $id);
+        $this->redirect('/admin/membership/members/' . $id);
     }
 
     private function memberPayload(): array

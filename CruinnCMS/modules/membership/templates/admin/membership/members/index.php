@@ -1,6 +1,7 @@
 <?php
 \Cruinn\Template::requireCss('admin-acp.css');
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireJs('membership.js');
 $GLOBALS['admin_flush_layout'] = true;
 
 $selectedId       = (int) ($memberId ?? 0);
@@ -187,8 +188,8 @@ $verifiedBadge = static function(?string $vs): string {
                         <option value="<?= e($st) ?>"><?= e(ucfirst($st)) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('Apply bulk action to selected members?')">Apply</button>
-                    <button type="button" class="btn btn-outline btn-small" onclick="document.querySelectorAll('.member-cb').forEach(cb=>cb.checked=false);updateBulkBar();">Deselect all</button>
+                    <button type="submit" class="btn btn-primary btn-small" data-confirm="Apply bulk action to selected members?">Apply</button>
+                    <button type="button" class="btn btn-outline btn-small" data-action="deselect-all">Deselect all</button>
                 </div>
                 <table class="pl-table" style="table-layout:fixed;">
                     <colgroup>
@@ -229,14 +230,13 @@ $verifiedBadge = static function(?string $vs): string {
                             $mSubs = $subsByMember[$mId] ?? [];
                         ?>
                         <tr<?= $mId === $selectedId ? ' class="selected"' : '' ?> style="cursor:pointer;"
-                            onclick="window.location='<?= url($memberUrl) ?>'"
-                            ondblclick="event.preventDefault();window.location='<?= url('/admin/membership/members/' . $mId) ?>'">
-                            <td onclick="event.stopPropagation()"><input type="checkbox" class="member-cb" name="member_ids[]" value="<?= $mId ?>" onchange="updateBulkBar()"></td>
+                            data-row-url="<?= e(url($memberUrl)) ?>"
+                            data-row-profile-url="<?= e(url('/admin/membership/members/' . $mId)) ?>">
+                            <td data-stop-propagation><input type="checkbox" class="member-cb" name="member_ids[]" value="<?= $mId ?>"></td>
                             <td>
-                                <span><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></span>
+                                <a href="<?= e(url('/admin/membership/members/' . $mId)) ?>" data-stop-propagation style="color:inherit;text-decoration:none;font-weight:inherit;"><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></a>
                                 <?php if (!empty($mSubs)): ?>
                                 <button type="button" class="sub-expand-btn" data-mid="<?= $mId ?>"
-                                    onclick="event.stopPropagation();toggleSubRow(<?= $mId ?>)"
                                     title="Show subscriptions"
                                     style="margin-left:0.3rem;background:none;border:none;cursor:pointer;font-size:0.75rem;color:#6b7280;padding:0;">
                                     ▸ <?= count($mSubs) ?>
@@ -251,7 +251,7 @@ $verifiedBadge = static function(?string $vs): string {
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['group_name'] ?? '—')) ?></td>
                             <td>
                                 <?= $verifiedBadge((string) ($m['verification_status'] ?? '')) ?>
-                                <a href="<?= url('/admin/membership/members/' . $mId) ?>" onclick="event.stopPropagation()" title="Open profile" style="margin-left:0.3rem;color:#6b7280;text-decoration:none;font-size:0.75rem;">↗</a>
+                                <a href="<?= e(url('/admin/membership/members/' . $mId)) ?>" data-stop-propagation title="Open profile" style="margin-left:0.3rem;color:#6b7280;text-decoration:none;font-size:0.75rem;">↗</a>
                             </td>
                         </tr>
                         <?php if (!empty($mSubs)): ?>
@@ -286,32 +286,7 @@ $verifiedBadge = static function(?string $vs): string {
                     </tbody>
                 </table>
             </form>
-            <script>
-            (function(){
-                var selectAll = document.getElementById('select-all');
-                if (selectAll) {
-                    selectAll.addEventListener('change', function() {
-                        document.querySelectorAll('.member-cb').forEach(function(cb){ cb.checked = selectAll.checked; });
-                        updateBulkBar();
-                    });
-                }
-            })();
-            function updateBulkBar() {
-                var checked = document.querySelectorAll('.member-cb:checked');
-                var bar = document.getElementById('bulk-bar');
-                var count = document.getElementById('bulk-count');
-                if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
-                if (count) count.textContent = checked.length + ' selected';
-            }
-            function toggleSubRow(mid) {
-                var row = document.getElementById('sub-row-' + mid);
-                var btn = document.querySelector('.sub-expand-btn[data-mid="' + mid + '"]');
-                if (!row) return;
-                var open = row.style.display !== 'none';
-                row.style.display = open ? 'none' : 'table-row';
-                if (btn) btn.textContent = (open ? '▸' : '▾') + ' ' + btn.textContent.trim().slice(2);
-            }
-            </script>
+
             <?php endif; ?>
         </div>
     </div>

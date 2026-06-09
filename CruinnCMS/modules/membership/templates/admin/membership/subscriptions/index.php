@@ -1,6 +1,7 @@
 <?php
 \Cruinn\Template::requireCss('admin-acp.css');
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireJs('membership.js');
 $GLOBALS['admin_flush_layout'] = true;
 
 $subscriptions     = $subscriptions ?? [];
@@ -135,7 +136,7 @@ $verBadge = static function (string $status): string {
                         $subUrl  = url('/admin/membership/subscriptions?' . http_build_query(array_merge($baseParams, ['sub' => $subId, 'sort' => $sort, 'dir' => $dir])));
                         $hasPayment = !empty($sub['payment_id']);
                     ?>
-                    <tr<?= $subId === $selectedId ? ' class="selected"' : '' ?> onclick="window.location='<?= $subUrl ?>'">
+                    <tr<?= $subId === $selectedId ? ' class="selected"' : '' ?> data-row-url="<?= e($subUrl) ?>">
                         <td>
                             <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($subName ?: '(unnamed)') ?></div>
                             <?php if (!empty($sub['membership_number'])): ?><small class="text-muted"><?= e((string) $sub['membership_number']) ?></small><?php endif; ?>
@@ -173,7 +174,7 @@ $verBadge = static function (string $status): string {
                 <tr><th>Member</th><td>
                     <?= e($subName ?: '(unnamed)') ?>
                     <?php if (!empty($selectedSub['membership_number'])): ?><br><small class="text-muted"><?= e((string) $selectedSub['membership_number']) ?></small><?php endif; ?>
-                    <br><a href="<?= url('/admin/membership/members?member=' . (int) $selectedSub['member_id']) ?>" style="font-size:0.8rem;">View member →</a>
+                    <br><a href="<?= url('/admin/membership/members/' . (int) $selectedSub['member_id']) ?>" style="font-size:0.8rem;">View member →</a>
                 </td></tr>
                 <tr><th>Plan</th><td><?= e((string) ($selectedSub['plan_name'] ?? '—')) ?></td></tr>
                 <tr><th>Period</th><td><?= e((string) ($selectedSub['period_start'] ?? '')) ?> – <?= e((string) ($selectedSub['period_end'] ?? '')) ?></td></tr>
@@ -199,7 +200,7 @@ $verBadge = static function (string $status): string {
                 <form method="post" action="<?= url('/admin/membership/subscriptions/' . (int) $selectedSub['id'] . '/link-payment') ?>" style="margin-top:0.5rem;">
                     <?= csrf_field() ?>
                     <input type="hidden" name="payment_id" value="0">
-                    <button class="btn btn-outline btn-small" type="submit" onclick="return confirm('Unlink this payment from the subscription?')">Unlink payment</button>
+                    <button class="btn btn-outline btn-small" type="submit" data-confirm="Unlink this payment from the subscription?">Unlink payment</button>
                 </form>
             </div>
             <?php else: ?>

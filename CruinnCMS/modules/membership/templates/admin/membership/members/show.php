@@ -1,6 +1,7 @@
 <?php
 \Cruinn\Template::requireCss('admin-acp.css');
 \Cruinn\Template::requireCss('admin-panel-layout.css');
+\Cruinn\Template::requireJs('membership.js');
 $GLOBALS['admin_flush_layout'] = true;
 
 $member        = $member ?? [];
@@ -77,7 +78,7 @@ $statusBadge = static function (string $status): string {
 
             <div style="display:flex;flex-direction:column;gap:0.4rem;">
                 <a class="btn btn-primary btn-small" href="<?= url('/admin/membership/members/' . $memberId . '/edit') ?>">Edit Member</a>
-                <a class="btn btn-outline btn-small" href="<?= url('/admin/membership/members?member=' . $memberId) ?>">View in Members List</a>
+
                 <a class="btn btn-outline btn-small" href="<?= url('/admin/membership/members') ?>">← Back to Members</a>
             </div>
         </div>
@@ -190,9 +191,20 @@ $statusBadge = static function (string $status): string {
                 <strong style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;display:block;margin-bottom:0.4rem;">Linked User Account</strong>
                 <?php if ($linkedUser): ?>
                 <div style="font-size:0.85rem;margin-bottom:0.4rem;"><?= e((string) ($linkedUser['display_name'] ?? '')) ?><br><span style="color:#6b7280;font-size:0.8rem;"><?= e((string) ($linkedUser['email'] ?? '')) ?></span></div>
-                <a class="btn btn-outline btn-small" href="<?= url('/admin/users/' . (int) $linkedUser['id']) ?>">View user account →</a>
+                <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                    <a class="btn btn-outline btn-small" href="<?= url('/admin/users/' . (int) $linkedUser['id']) ?>">View user account →</a>
+                    <form method="post" action="<?= url('/admin/membership/members/' . $memberId . '/unlink-user') ?>">
+                        <?= csrf_field() ?>
+                        <button class="btn btn-outline btn-small" type="submit" data-confirm="Unlink this user account from the member?">Unlink user account</button>
+                    </form>
+                </div>
                 <?php else: ?>
-                <p style="font-size:0.82rem;color:#6b7280;margin:0 0 0.4rem;">No user account linked.</p>
+                <p style="font-size:0.82rem;color:#6b7280;margin:0 0 0.5rem;">No user account linked.</p>
+                <form method="post" action="<?= url('/admin/membership/members/' . $memberId . '/link-user') ?>" style="display:grid;gap:0.4rem;">
+                    <?= csrf_field() ?>
+                    <input class="form-input" style="font-size:0.82rem;" type="text" name="user_search" placeholder="Email or display name" required>
+                    <button class="btn btn-primary btn-small" type="submit">Link user account</button>
+                </form>
                 <?php endif; ?>
             </div>
 
