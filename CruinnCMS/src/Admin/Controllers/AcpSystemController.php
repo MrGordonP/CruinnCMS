@@ -654,12 +654,23 @@ class AcpSystemController extends BaseController
 
     public function saveRow(string $table): void
     {
+        $isXhr = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
+
         $db     = Database::getInstance();
         $dbName = App::config('db.name');
 
+        $jsonError = function(string $msg) use ($isXhr, $table): void {
+            if ($isXhr) {
+                header('Content-Type: application/json');
+                echo json_encode(['ok' => false, 'error' => $msg]);
+                exit;
+            }
+            Auth::flash('error', $msg);
+            $this->redirect('/admin/settings/database/browse/' . urlencode($table));
+        };
+
         if (!in_array($table, $this->getTableNames($db, $dbName), true)) {
-            Auth::flash('error', 'Unknown table.');
-            $this->redirect('/admin/settings/database');
+            $jsonError('Unknown table.');
         }
 
         $pkCol  = $this->getTablePk($db, $dbName, $table);
@@ -669,7 +680,6 @@ class AcpSystemController extends BaseController
         $dir    = strtoupper((string)($_POST['_dir'] ?? '')) === 'DESC' ? 'DESC' : 'ASC';
         $sortParam = $sort !== '' ? '&sort=' . urlencode($sort) . '&dir=' . $dir : '';
 
-        // Rebuild filter params for redirect
         $filterParam = '';
         $rawFilter = is_array($_POST['_filter'] ?? null) ? $_POST['_filter'] : [];
         foreach ($rawFilter as $col => $val) {
@@ -680,25 +690,22 @@ class AcpSystemController extends BaseController
         }
 
         if (!$pkCol || $pkVal === '') {
-            Auth::flash('error', 'Missing primary key.');
-            $this->redirect('/admin/settings/database/browse/' . urlencode($table));
+            $jsonError('Missing primary key.');
         }
 
-        // Only set columns that actually exist in the table
-        $validCols = $this->getTableColumns($db, $dbName, $table);
+        $validCols  = $this->getTableColumns($db, $dbName, $table);
         $setClauses = [];
         $values     = [];
 
         foreach ($validCols as $col) {
-            if ($col === $pkCol) continue; // never update PK
+            if ($col === $pkCol) continue;
             if (!array_key_exists($col, $_POST)) continue;
             $setClauses[] = "`{$col}` = ?";
             $values[]     = $_POST[$col] === '' ? null : $_POST[$col];
         }
 
         if (empty($setClauses)) {
-            Auth::flash('error', 'Nothing to update.');
-            $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam . $filterParam);
+            $jsonError('Nothing to update.');
         }
 
         $values[] = $pkVal;
@@ -707,16 +714,24 @@ class AcpSystemController extends BaseController
             $values
         );
 
+        if ($isXhr) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => true]);
+            exit;
+        }
+
         Auth::flash('success', 'Row updated.');
         $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam . $filterParam);
     }
 
     public function deleteRow(string $table): void
     {
+        $isXhr  = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
         $db     = Database::getInstance();
         $dbName = App::config('db.name');
 
         if (!in_array($table, $this->getTableNames($db, $dbName), true)) {
+            if ($isXhr) { header('Content-Type: application/json'); echo json_encode(['ok'=>false,'error'=>'Unknown table.']); exit; }
             Auth::flash('error', 'Unknown table.');
             $this->redirect('/admin/settings/database');
         }
@@ -726,11 +741,18 @@ class AcpSystemController extends BaseController
         $page  = (int)($_POST['_page'] ?? 1);
 
         if (!$pkCol || $pkVal === '') {
+            if ($isXhr) { header('Content-Type: application/json'); echo json_encode(['ok'=>false,'error'=>'Missing primary key.']); exit; }
             Auth::flash('error', 'Missing primary key.');
             $this->redirect('/admin/settings/database/browse/' . urlencode($table));
         }
 
         $db->execute("DELETE FROM `{$table}` WHERE `{$pkCol}` = ?", [$pkVal]);
+
+        if ($isXhr) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => true]);
+            exit;
+        }
 
         Auth::flash('success', 'Row deleted.');
         $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page);
