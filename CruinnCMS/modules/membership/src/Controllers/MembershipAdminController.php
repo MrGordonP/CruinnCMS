@@ -517,7 +517,7 @@ class MembershipAdminController extends BaseController
             'membership_number' => ['membership_number', 'membership_no', 'member_number', 'member_no', 'number'],
             'membership_year' => ['membership_year', 'year'],
             'status'          => ['status'],
-            'plan'            => ['plan', 'plan_id', 'plan_slug', 'plan_name'],
+            'plan'            => ['plan', 'plan_id', 'plan_name'],
             'joined_at'       => ['joined_at', 'joined', 'join_date'],
             'lapsed_at'       => ['lapsed_at', 'lapsed'],
             'notes'           => ['notes', 'note', 'comments'],
@@ -561,7 +561,8 @@ class MembershipAdminController extends BaseController
     }
 
     /**
-     * Step 2: Apply column mapping, run import, show result.
+     * Step 2: Apply column mapping. If plan column mapped, redirect to plan-value mapping.
+     * Otherwise run import immediately.
      */
     public function confirmImport(): void
     {
@@ -573,15 +574,12 @@ class MembershipAdminController extends BaseController
             $this->redirect('/admin/membership/import');
         }
 
-        unset($_SESSION['cruinn_import']);
-
         $tmpPath       = $importMeta['tmp'];
         $onDuplicate   = $importMeta['on_duplicate'];
         $defaultStatus = $importMeta['default_status'];
 
-        // Read the mapping from POST: map[system_field] = csv_column_name (or '' to ignore)
         $rawMapping = isset($_POST['map']) && is_array($_POST['map']) ? $_POST['map'] : [];
-        $mapping    = []; // canonical_field => csv_column_name
+        $mapping    = [];
         foreach ($rawMapping as $field => $csvCol) {
             $csvCol = trim((string) $csvCol);
             if ($csvCol !== '') {
@@ -589,9 +587,105 @@ class MembershipAdminController extends BaseController
             }
         }
 
+        // If plan column is mapped, extract unique values and show plan-value mapping step
+        if (!empty($mapping['plan'])) {
+            $handle = fopen($tmpPath, 'r');
+            if ($handle === false) {
+                unlink($tmpPath);
+                Auth::flash('error', 'Could not reopen import file.');
+                $this->redirect('/admin/membership/import');
+            }
+            $rawHeaders = fgetcsv($handle, 0, ',', '"', '');
+            $csvHeaders = $rawHeaders ? array_map(fn($h) => trim((string) $h), $rawHeaders) : [];
+            $planColName = $mapping['plan'];
+            $uniquePlanValues = [];
+            while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
+                if (count($row) !== count($csvHeaders)) continue;
+                $csvRow = array_combine($csvHeaders, $row);
+                $val = trim((string) ($csvRow[$planColName] ?? ''));
+                if ($val !== '' && !in_array($val, $uniquePlanValues, true)) {
+                    $uniquePlanValues[] = $val;
+                }
+            }
+            fclose($handle);
+            sort($uniquePlanValues);
+
+            $_SESSION['cruinn_import']['mapping']          = $mapping;
+            $_SESSION['cruinn_import']['plan_col_values']  = $uniquePlanValues;
+
+            $this->redirect('/admin/membership/import/map-plans');
+        }
+
+        // No plan column — run import directly
+        $_SESSION['cruinn_import']['mapping'] = $mapping;
+        $this->executeImport($tmpPath, $mapping, [], $onDuplicate, $defaultStatus);
+    }
+
+    /**
+     * Step 2b (GET): Show plan-value mapping UI.
+     */
+    public function mapPlansForm(): void
+    {
+        Auth::requireAdmin();
+
+        $importMeta = $_SESSION['cruinn_import'] ?? null;
+        if (!$importMeta || !isset($importMeta['tmp']) || !file_exists($importMeta['tmp'])) {
+            Auth::flash('error', 'Import session expired. Please upload the file again.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $uniquePlanValues = $importMeta['plan_col_values'] ?? [];
+        $allPlans = $this->membership->allPlans();
+
+        $this->renderAdmin('admin/membership/members/import_plan_map', [
+            'title'            => 'Import Members — Match Plan Values',
+            'uniquePlanValues' => $uniquePlanValues,
+            'allPlans'         => $allPlans,
+            'breadcrumbs'      => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['Import', '/admin/membership/import'], ['Map Plan Values']],
+        ]);
+    }
+
+    /**
+     * Step 3 (POST): Accept plan-value mapping, run import.
+     */
+    public function runImport(): void
+    {
+        Auth::requireAdmin();
+
+        $importMeta = $_SESSION['cruinn_import'] ?? null;
+        if (!$importMeta || !isset($importMeta['tmp']) || !file_exists($importMeta['tmp'])) {
+            Auth::flash('error', 'Import session expired. Please upload the file again.');
+            $this->redirect('/admin/membership/import');
+        }
+
+        $tmpPath       = $importMeta['tmp'];
+        $mapping       = $importMeta['mapping'] ?? [];
+        $onDuplicate   = $importMeta['on_duplicate'];
+        $defaultStatus = $importMeta['default_status'];
+
+        // Build plan value map: csv_value => plan_id
+        $rawPlanMap = isset($_POST['plan_map']) && is_array($_POST['plan_map']) ? $_POST['plan_map'] : [];
+        $planValueMap = [];
+        foreach ($rawPlanMap as $csvValue => $planId) {
+            $planId = (int) $planId;
+            if ($planId > 0) {
+                $planValueMap[(string) $csvValue] = $planId;
+            }
+        }
+
+        $this->executeImport($tmpPath, $mapping, $planValueMap, $onDuplicate, $defaultStatus);
+    }
+
+    /**
+     * Shared import runner — reads file, applies mapping & plan map, calls importMembers.
+     */
+    private function executeImport(string $tmpPath, array $mapping, array $planValueMap, string $onDuplicate, string $defaultStatus): void
+    {
+        unset($_SESSION['cruinn_import']);
+
         $handle = fopen($tmpPath, 'r');
         if ($handle === false) {
-            unlink($tmpPath);
+            @unlink($tmpPath);
             Auth::flash('error', 'Could not reopen import file.');
             $this->redirect('/admin/membership/import');
         }
@@ -601,9 +695,7 @@ class MembershipAdminController extends BaseController
 
         $rows = [];
         while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
-            if (count($row) !== count($csvHeaders)) {
-                continue;
-            }
+            if (count($row) !== count($csvHeaders)) continue;
             $csvRow    = array_combine($csvHeaders, $row);
             $canonical = [];
             foreach ($mapping as $field => $csvCol) {
@@ -612,14 +704,14 @@ class MembershipAdminController extends BaseController
             $rows[] = $canonical;
         }
         fclose($handle);
-        unlink($tmpPath);
+        @unlink($tmpPath);
 
         if (empty($rows)) {
             Auth::flash('error', 'No data rows found after applying mapping.');
             $this->redirect('/admin/membership/import');
         }
 
-        $result = $this->membership->importMembers($rows, $onDuplicate, $defaultStatus);
+        $result = $this->membership->importMembers($rows, $onDuplicate, $defaultStatus, $planValueMap);
 
         $this->logActivity('import', 'member', null,
             sprintf('CSV import: %d created, %d updated, %d skipped, %d errors.',
@@ -705,7 +797,52 @@ class MembershipAdminController extends BaseController
                 'max_members' => 0, 'parent_plan_id' => $prefillParent,
                 'billing_period' => $prefillBilling, 'currency' => 'EUR',
             ];
-        }
+        } elseif ($inlineAction === 'clone-tier') {
+            $fromId = (int) $this->query('from', 0);
+            $source = $fromId > 0 ? $this->membership->findPlan($fromId) : null;
+            if ($source && !$this->isStructuralGroupPlan($source)) {
+                $inlineMode = 'tier';
+                $inlinePlan = [
+                    'is_plan_group'  => 0,
+                    'is_group'       => (int) ($source['is_group'] ?? 0),
+                    'is_active'      => 1,
+                    'max_members'    => (int) ($source['max_members'] ?? 0),
+                    'parent_plan_id' => (int) ($source['parent_plan_id'] ?? 0),
+                    'billing_period' => (string) ($source['billing_period'] ?? 'annual'),
+                    'currency'       => (string) ($source['currency'] ?? 'EUR'),
+                    'price'          => $source['price'] ?? 0,
+                    'subject_id'     => (int) ($source['subject_id'] ?? 0),
+                    'description'    => (string) ($source['description'] ?? ''),
+                    'promo_type'     => (string) ($source['promo_type'] ?? ''),
+                    'promo_value'    => $source['promo_value'] ?? '',
+                    'promo_starts_at'=> (string) ($source['promo_starts_at'] ?? ''),
+                    'promo_ends_at'  => (string) ($source['promo_ends_at'] ?? ''),
+                    'name'           => '',
+                    '_clone_from_name' => (string) ($source['name'] ?? ''),
+                ];
+            }
+        } elseif ($inlineAction === 'clone-group') {
+            $fromId = (int) $this->query('from', 0);
+            $source = $fromId > 0 ? $this->membership->findPlan($fromId) : null;
+            if ($source && $this->isStructuralGroupPlan($source)) {
+                $inlineMode = 'group';
+                $inlinePlan = [
+                    'is_plan_group'  => 1,
+                    'is_group'       => (int) ($source['is_group'] ?? 1),
+                    'is_active'      => 1,
+                    'max_members'    => (int) ($source['max_members'] ?? 2),
+                    'parent_plan_id' => 0,
+                    'billing_period' => (string) ($source['billing_period'] ?? 'annual'),
+                    'currency'       => 'EUR',
+                    'subject_id'     => (int) ($source['subject_id'] ?? 0),
+                    'description'    => (string) ($source['description'] ?? ''),
+                    'name'           => '',
+                    'promo_type'     => '', 'promo_value' => '',
+                    'promo_starts_at'=> '', 'promo_ends_at' => '',
+                    '_clone_from'    => $fromId,
+                    '_clone_from_name' => (string) ($source['name'] ?? ''),
+                ];
+            }
 
         $this->renderAdmin('admin/membership/plans/index', [
             'title'            => 'Membership Plans',
@@ -825,6 +962,40 @@ class MembershipAdminController extends BaseController
             return;
         }
         $this->logActivity('create', 'membership_plan', $planId, 'Membership plan created.');
+
+        // Clone child tiers if creating a group from another group
+        $cloneFrom = (int) ($_POST['clone_from'] ?? 0);
+        if ($cloneFrom > 0 && !empty($data['is_plan_group'])) {
+            $sourceTiers = $this->db->fetchAll(
+                'SELECT * FROM membership_plans WHERE parent_plan_id = ?',
+                [$cloneFrom]
+            );
+            foreach ($sourceTiers as $tier) {
+                $tierData = [
+                    'name'           => (string) $tier['name'] . ' (Copy)',
+                    'description'    => $tier['description'] ?: null,
+                    'billing_period' => $data['billing_period'],
+                    'price'          => $tier['price'],
+                    'currency'       => $tier['currency'],
+                    'is_active'      => 0,
+                    'is_group'       => (int) $tier['is_group'],
+                    'is_plan_group'  => 0,
+                    'max_members'    => $tier['max_members'] ? (int) $tier['max_members'] : null,
+                    'parent_plan_id' => $planId,
+                    'subject_id'     => $tier['subject_id'] ? (int) $tier['subject_id'] : null,
+                    'promo_type'     => null,
+                    'promo_value'    => null,
+                    'promo_starts_at'=> null,
+                    'promo_ends_at'  => null,
+                ];
+                $this->db->insert('membership_plans', $tierData);
+            }
+            if (!empty($sourceTiers)) {
+                $this->logActivity('create', 'membership_plan', $planId,
+                    'Cloned ' . count($sourceTiers) . ' tier(s) from group #' . $cloneFrom . '.');
+            }
+        }
+
         Auth::flash('success', 'Plan created.');
         $this->redirect('/admin/membership/plans?plan=' . $planId);
     }
@@ -840,7 +1011,6 @@ class MembershipAdminController extends BaseController
         }
 
         return [
-            'slug' => trim((string) ($_POST['slug'] ?? '')),
             'name' => trim((string) ($_POST['name'] ?? '')),
             'description' => trim((string) ($_POST['description'] ?? '')),
             'billing_period' => trim((string) ($_POST['billing_period'] ?? 'annual')),
@@ -1484,7 +1654,6 @@ class MembershipAdminController extends BaseController
         }
 
         return [
-            'slug'           => $this->sanitiseSlug((string) $this->input('slug', '')),
             'name'           => $this->input('name', ''),
             'description'    => $this->input('description', ''),
             'billing_period' => $billingPeriod,
@@ -1507,9 +1676,6 @@ class MembershipAdminController extends BaseController
     {
         $errors = [];
 
-        if ($data['slug'] === '') {
-            $errors['slug'] = 'Slug is required.';
-        }
         if ($data['name'] === '') {
             $errors['name'] = 'Name is required.';
         }
@@ -1583,17 +1749,6 @@ class MembershipAdminController extends BaseController
             if (!empty($data['promo_starts_at']) || !empty($data['promo_ends_at'])) {
                 $errors['promo_type'] = 'Promotions apply to billable plans/tiers, not groups.';
             }
-        }
-
-        $sql = 'SELECT id FROM membership_plans WHERE slug = ?';
-        $params = [$data['slug']];
-        if ($planId !== null) {
-            $sql .= ' AND id != ?';
-            $params[] = $planId;
-        }
-        $existing = $this->db->fetch($sql, $params);
-        if ($existing) {
-            $errors['slug'] = 'A plan with this slug already exists.';
         }
 
         if (!empty($data['parent_plan_id'])) {

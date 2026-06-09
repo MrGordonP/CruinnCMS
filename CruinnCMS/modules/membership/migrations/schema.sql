@@ -6,7 +6,6 @@ SET NAMES utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `membership_plans` (
     `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `slug`           VARCHAR(80)   NOT NULL,
     `name`           VARCHAR(160)  NOT NULL,
     `description`    TEXT          NULL,
     `billing_period` ENUM('annual','monthly','quarterly','lifetime','custom') NOT NULL DEFAULT 'annual',
@@ -15,8 +14,7 @@ CREATE TABLE IF NOT EXISTS `membership_plans` (
     `is_active`      TINYINT(1)    NOT NULL DEFAULT 1,
     `created_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_membership_plans_slug` (`slug`)
+    PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `members` (

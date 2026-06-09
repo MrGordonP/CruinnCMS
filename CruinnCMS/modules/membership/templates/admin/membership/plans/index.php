@@ -201,7 +201,7 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
 
     <div class="pl-panel pl-panel-right">
         <div class="pl-panel-header">
-            <span class="pl-panel-title"><?= $inlineMode ? ($inlineIsEdit ? 'Edit Plan' : ($inlineIsGroupMode ? 'New Group' : 'New Tier')) : 'Plan Detail' ?></span>
+            <span class="pl-panel-title"><?= $inlineMode ? ($inlineIsEdit ? 'Edit Plan' : ($inlineIsGroupMode ? ($inlinePlan['_clone_from_name'] ?? null ? 'New Group — From: ' . e($inlinePlan['_clone_from_name']) : 'New Group') : ($inlinePlan['_clone_from_name'] ?? null ? 'New Tier — From: ' . e($inlinePlan['_clone_from_name']) : 'New Tier'))) : 'Plan Detail' ?></span>
         </div>
         <div class="pl-panel-body" style="padding:0.75rem;">
         <?php if ($inlineMode && $inlinePlan !== null): ?>
@@ -221,16 +221,14 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                 <?= csrf_field() ?>
                 <input type="hidden" name="mode" value="<?= e($inlineMode) ?>">
                 <input type="hidden" name="is_plan_group" value="<?= $inlineIsGroupMode ? '1' : '0' ?>">
+                <?php if (!empty($inlinePlan['_clone_from'])): ?>
+                <input type="hidden" name="clone_from" value="<?= (int) $inlinePlan['_clone_from'] ?>">
+                <?php endif; ?>
 
                 <div>
                     <label class="form-label">Name</label>
                     <input class="form-input" name="name" type="text" value="<?= e($inlinePlan['name'] ?? '') ?>">
                     <?php if (!empty($inlineErrors['name'])): ?><small class="text-danger"><?= e($inlineErrors['name']) ?></small><?php endif; ?>
-                </div>
-                <div>
-                    <label class="form-label">Slug</label>
-                    <input class="form-input" name="slug" type="text" value="<?= e($inlinePlan['slug'] ?? '') ?>">
-                    <?php if (!empty($inlineErrors['slug'])): ?><small class="text-danger"><?= e($inlineErrors['slug']) ?></small><?php endif; ?>
                 </div>
                 <div>
                     <label class="form-label">Description</label>
@@ -332,7 +330,6 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
         <?php else: ?>
             <table class="pl-meta">
                 <tr><th>Name</th><td><?= e($selectedPlan['name']) ?></td></tr>
-                <tr><th>Slug</th><td><code><?= e($selectedPlan['slug']) ?></code></td></tr>
                 <tr><th>Type</th><td><?= isset($groupById[(int) $selectedPlan['id']]) ? 'Group' : ((int) ($selectedPlan['parent_plan_id'] ?? 0) > 0 ? 'Tier' : 'Plan') ?></td></tr>
                 <tr><th>Subject</th><td><?= e($selectedPlan['subject_title'] ?? '—') ?></td></tr>
                 <tr><th>Billing</th><td><?= e($selectedPlan['billing_period']) ?></td></tr>
@@ -360,7 +357,10 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
             <div class="pl-detail-actions-stack">
                 <a class="btn btn-primary btn-small" href="<?= url('/admin/membership/plans?edit=' . (int) $selectedPlan['id']) ?>">Edit Plan</a>
                 <?php if (isset($groupById[(int) $selectedPlan['id']])): ?>
+                <a class="btn btn-outline btn-small" href="<?= url('/admin/membership/plans?action=clone-group&from=' . (int) $selectedPlan['id']) ?>">Create From</a>
                 <a class="btn btn-outline btn-small" href="<?= url('/admin/membership/plans?action=new-tier&parent_id=' . (int) $selectedPlan['id']) ?>">Add Tier to Group</a>
+                <?php else: ?>
+                <a class="btn btn-outline btn-small" href="<?= url('/admin/membership/plans?action=clone-tier&from=' . (int) $selectedPlan['id']) ?>">Create From</a>
                 <?php endif; ?>
                 <a class="btn btn-outline btn-small" href="<?= url('/admin/membership/members') ?>">Open Members Workspace</a>
             </div>

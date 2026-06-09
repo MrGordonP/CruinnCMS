@@ -86,12 +86,13 @@ if ($sqlMode) {
 
     // ── Plans ──────────────────────────────────────────────────
     sql_write($fout, '-- ── Membership plans ────────────────────────────────────────');
-    foreach ($planDefs as $slug => $def) {
+    foreach ($planDefs as $def) {
         sql_write($fout, sprintf(
-            "INSERT IGNORE INTO `membership_plans`"
-            . " (`slug`,`name`,`billing_period`,`price`,`currency`,`is_active`,`is_group`,`max_members`)"
-            . " VALUES (%s,%s,'annual',%.2f,'EUR',1,%d,NULL);",
-            qs($slug), qs($def['name']), $def['price'], $def['is_group']
+            "INSERT INTO `membership_plans`"
+            . " (`name`,`billing_period`,`price`,`currency`,`is_active`,`is_group`,`max_members`)"
+            . " SELECT %s,'annual',%.2f,'EUR',1,%d,NULL"
+            . " WHERE NOT EXISTS (SELECT 1 FROM `membership_plans` WHERE LOWER(`name`) = LOWER(%s));",
+            qs($def['name']), $def['price'], $def['is_group'], qs($def['name'])
         ));
     }
     sql_write($fout, '');
@@ -170,12 +171,22 @@ if ($sqlMode) {
             $data = normalize_row($year, $row);
             if (!$data) continue;
 
-            $planSlug = parse_plan_slug($data['membership_type']);
-            if (!$planSlug) continue;
+            $planName = parse_plan_name($data['membership_type']);
+            if (!$planName) continue;
 
             $key = $data['email'] . ':' . $year;
             if (isset($seenSubs[$key])) continue;
             $seenSubs[$key] = true;
+
+            // Find matching plan def for price
+            $matchedDef = null;
+            foreach ($planDefs as $def) {
+                if (strtolower($def['name']) === strtolower($planName)) {
+                    $matchedDef = $def;
+                    break;
+                }
+            }
+            if (!$matchedDef) continue;
 
             $payMethod = parse_payment_method($data['payment_method']);
             $txId      = trim($data['transaction_id']) ?: null;
@@ -187,7 +198,7 @@ if ($sqlMode) {
             $geoLevel  = parse_geologist_level($data['geologist_level']);
             $memType   = str_contains(strtolower($data['is_renewal']), 'renewal') ? 'renewal' : 'new';
             $verified  = ($txId && $payMethod === 'bank_transfer') ? 'verified' : 'unverified';
-            $planPrice = $planDefs[$planSlug]['price'];
+            $planPrice = $matchedDef['price'];
 
             sql_write($fout, sprintf(
                 "INSERT INTO `membership_subscriptions`"
@@ -197,7 +208,7 @@ if ($sqlMode) {
                 . " SELECT m.`id`, p.`id`,"
                 . " %s, %s, %s, %s, %.2f, 'EUR', %s, %s, %s"
                 . " FROM `members` m"
-                . " JOIN `membership_plans` p ON p.`slug` = %s"
+                . " JOIN `membership_plans` p ON LOWER(p.`name`) = LOWER(%s)"
                 . " WHERE m.`email` = %s"
                 . " AND NOT EXISTS ("
                 .   "SELECT 1 FROM `membership_subscriptions` x"
@@ -211,7 +222,7 @@ if ($sqlMode) {
                 qs($payMethod),
                 qs($txId),
                 qs($verified),
-                qs($planSlug),
+                qs($planName),
                 qs($data['email']),
                 $year
             ));
@@ -245,13 +256,12 @@ if ($sqlMode) {
 // ══════════════════════════════════════════════════════════════
 
 $planIds = [];
-foreach ($planDefs as $slug => $def) {
-    $existing = $db->fetch('SELECT id FROM membership_plans WHERE slug = ?', [$slug]);
+foreach ($planDefs as $key => $def) {
+    $existing = $db->fetch('SELECT id FROM membership_plans WHERE LOWER(name) = LOWER(?)', [$def['name']]);
     if ($existing) {
-        $planIds[$slug] = (int) $existing['id'];
+        $planIds[$key] = (int) $existing['id'];
     } else {
-        $planIds[$slug] = (int) $db->insert('membership_plans', [
-            'slug'           => $slug,
+        $planIds[$key] = (int) $db->insert('membership_plans', [
             'name'           => $def['name'],
             'billing_period' => 'annual',
             'price'          => $def['price'],
@@ -260,7 +270,7 @@ foreach ($planDefs as $slug => $def) {
             'is_group'       => (int) $def['is_group'],
             'max_members'    => null,
         ]);
-        log_line("Plan seeded: {$def['name']} (id={$planIds[$slug]})");
+        log_line("Plan seeded: {$def['name']} (id={$planIds[$key]})");
     }
 }
 
@@ -287,15 +297,28 @@ foreach ($csvFiles as $year => $filepath) {
         $data = normalize_row($year, $row);
         if (!$data) { $stats['skipped']++; continue; }
 
-        $planSlug = parse_plan_slug($data['membership_type']);
-        if (!$planSlug || !isset($planIds[$planSlug])) {
+        $planName = parse_plan_name($data['membership_type']);
+        if (!$planName) {
+            // find plan key by name
             log_line("  Row $rowNum [{$data['email']}]: unknown plan — skipped");
             $stats['skipped']++;
             continue;
         }
-
-        $planId    = $planIds[$planSlug];
-        $planPrice = $planDefs[$planSlug]['price'];
+        // resolve key for planIds
+        $planKey = null;
+        foreach ($planDefs as $k => $def) {
+            if (strtolower($def['name']) === strtolower($planName)) {
+                $planKey = $k;
+                break;
+            }
+        }
+        if ($planKey === null || !isset($planIds[$planKey])) {
+            log_line("  Row $rowNum [{$data['email']}]: plan not found in DB — skipped");
+            $stats['skipped']++;
+            continue;
+        }
+        $planId    = $planIds[$planKey];
+        $planPrice = $planDefs[$planKey]['price'];
 
         $existingMember = $db->fetch(
             'SELECT id, forenames, surnames FROM members WHERE LOWER(email) = ?',
@@ -386,7 +409,7 @@ foreach ($csvFiles as $year => $filepath) {
         ]);
 
         $stats['subscriptions']++;
-        log_line("  Sub #{$subId}: {$data['forenames']} {$data['surnames']} | $planSlug | $memType | $payMethod");
+        log_line("  Sub #{$subId}: {$data['forenames']} {$data['surnames']} | $planName | $memType | $payMethod");
     }
 
     fclose($fh);
@@ -578,13 +601,13 @@ function normalize_2025_2026(array $row): ?array
     ];
 }
 
-function parse_plan_slug(string $raw): ?string
+function parse_plan_name(string $raw): ?string
 {
     $r = strtolower($raw);
-    if (str_contains($r, 'family'))                                  return 'family';
-    if (str_contains($r, 'student'))                                 return 'student';
-    if (str_contains($r, 'oap') || str_contains($r, 'unemployed'))  return 'oap-unemployed';
-    if (str_contains($r, 'individual'))                              return 'individual';
+    if (str_contains($r, 'family'))                                  return 'Family';
+    if (str_contains($r, 'student'))                                 return 'Student';
+    if (str_contains($r, 'oap') || str_contains($r, 'unemployed'))  return 'OAP / Unemployed';
+    if (str_contains($r, 'individual'))                              return 'Individual';
     return null;
 }
 

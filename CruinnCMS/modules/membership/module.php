@@ -54,6 +54,8 @@ return [
         $router->get('/admin/membership/import',                      [MembershipAdminController::class, 'importForm']);
         $router->post('/admin/membership/import',                     [MembershipAdminController::class, 'processImport']);
         $router->post('/admin/membership/import/confirm',             [MembershipAdminController::class, 'confirmImport']);
+        $router->get('/admin/membership/import/map-plans',            [MembershipAdminController::class, 'mapPlansForm']);
+        $router->post('/admin/membership/import/map-plans',           [MembershipAdminController::class, 'runImport']);
     },
 
     'migrations' => [

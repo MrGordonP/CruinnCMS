@@ -49,12 +49,6 @@ if ($promoEndsAt !== '') {
     </div>
 
     <div>
-        <label class="form-label" for="slug">Slug</label>
-        <input class="form-input" id="slug" name="slug" type="text" value="<?= e($plan['slug'] ?? '') ?>" placeholder="ordinary-membership">
-        <?php if (!empty($errors['slug'])): ?><small class="text-danger"><?= e($errors['slug']) ?></small><?php endif; ?>
-    </div>
-
-    <div>
         <label class="form-label" for="description">Description</label>
         <textarea class="form-input" id="description" name="description" rows="4"><?= e($plan['description'] ?? '') ?></textarea>
     </div>

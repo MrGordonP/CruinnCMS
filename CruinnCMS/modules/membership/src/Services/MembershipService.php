@@ -49,7 +49,6 @@ class MembershipService
     public function createPlan(array $data): int
     {
         $payload = [
-            'slug'           => $data['slug'],
             'name'           => $data['name'],
             'description'    => $data['description'] ?: null,
             'billing_period' => $data['billing_period'],
@@ -82,7 +81,6 @@ class MembershipService
     public function updatePlan(int $id, array $data): void
     {
         $payload = [
-            'slug'           => $data['slug'],
             'name'           => $data['name'],
             'description'    => $data['description'] ?: null,
             'billing_period' => $data['billing_period'],
@@ -439,7 +437,7 @@ class MembershipService
         ], 'id = ?', [$subscriptionId]);
     }
 
-    public function importMembers(array $rows, string $onDuplicate = 'skip', string $defaultStatus = 'applicant'): array
+    public function importMembers(array $rows, string $onDuplicate = 'skip', string $defaultStatus = 'applicant', array $planValueMap = []): array
     {
         $created = 0;
         $updated = 0;
@@ -516,6 +514,31 @@ class MembershipService
                     $this->upsertAddress($memberId, $addrLine1, $addrLine2, $addrCity, $addrCounty, $addrPost, $addrCountry);
                 }
                 $created++;
+            }
+
+            // Assign plan subscription if plan value was mapped and resolved
+            if (!empty($planValueMap)) {
+                $rawPlanValue = trim((string) ($row['plan'] ?? ''));
+                if ($rawPlanValue !== '' && isset($planValueMap[$rawPlanValue])) {
+                    $planId = (int) $planValueMap[$rawPlanValue];
+                    $yearRaw = trim((string) ($row['membership_year'] ?? ''));
+                    $year = (int) $yearRaw > 0 ? (int) $yearRaw : (int) date('Y');
+                    $alreadySub = $this->db->fetch(
+                        'SELECT id FROM membership_subscriptions WHERE member_id = ? AND plan_id = ? AND YEAR(period_start) = ?',
+                        [$memberId, $planId, $year]
+                    );
+                    if (!$alreadySub) {
+                        $this->db->insert('membership_subscriptions', [
+                            'member_id'    => $memberId,
+                            'plan_id'      => $planId,
+                            'period_start' => $year . '-01-01',
+                            'period_end'   => $year . '-12-31',
+                            'member_type'  => 'new',
+                            'amount'       => 0,
+                            'currency'     => 'EUR',
+                        ]);
+                    }
+                }
             }
         }
 
