@@ -26,8 +26,11 @@ return [
         $router->post('/admin/membership/members/{id}/subscriptions', [MembershipAdminController::class, 'createSubscription']);
 
         // Subscriptions and payments
+        $router->get('/admin/membership/subscriptions',                       [MembershipAdminController::class, 'indexSubscriptions']);
         $router->post('/admin/membership/subscriptions/{id}/status',  [MembershipAdminController::class, 'updateSubscriptionStatus']);
         $router->post('/admin/membership/subscriptions/{id}/payments', [MembershipAdminController::class, 'recordPayment']);
+        $router->post('/admin/membership/subscriptions/{id}/link-payment', [MembershipAdminController::class, 'linkPayment']);
+        $router->post('/admin/membership/subscriptions/{id}/verify',  [MembershipAdminController::class, 'verifySubscription']);
 
         // Plans
         $router->get('/admin/membership/plans',                       [MembershipAdminController::class, 'listPlans']);

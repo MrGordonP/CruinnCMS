@@ -930,6 +930,192 @@ class MembershipAdminController extends BaseController
         $this->redirect('/admin/membership/plans');
     }
 
+    public function indexSubscriptions(): void
+    {
+        Auth::requireAdmin();
+
+        $yearFilter   = (string) $this->query('year', '');
+        $planFilter   = (int) $this->query('plan', 0);
+        $statusFilter = (string) $this->query('status', '');
+        $memberSearch = trim((string) $this->query('q', ''));
+        $sort         = (string) $this->query('sort', 'period_start');
+        $dir          = strtoupper((string) $this->query('dir', 'DESC')) === 'ASC' ? 'ASC' : 'DESC';
+        $selectedId   = (int) $this->query('sub', 0);
+
+        $allowedSorts = [
+            'period_start' => 's.period_start',
+            'member'       => 'm.surnames',
+            'plan'         => 'p.name',
+            'amount'       => 's.amount',
+            'verification' => 's.verification_status',
+        ];
+        $orderBy = isset($allowedSorts[$sort]) ? $allowedSorts[$sort] : 's.period_start';
+
+        $where = ['1=1'];
+        $params = [];
+
+        if ($yearFilter !== '') {
+            $where[] = 'YEAR(s.period_start) = ?';
+            $params[] = (int) $yearFilter;
+        }
+        if ($planFilter > 0) {
+            $where[] = 's.plan_id = ?';
+            $params[] = $planFilter;
+        }
+        $allowedStatuses = ['unverified', 'verified', 'disputed', 'waived'];
+        if (in_array($statusFilter, $allowedStatuses, true)) {
+            $where[] = 's.verification_status = ?';
+            $params[] = $statusFilter;
+        }
+        if ($memberSearch !== '') {
+            $where[] = '(m.forenames LIKE ? OR m.surnames LIKE ? OR m.email LIKE ? OR m.membership_number LIKE ?)';
+            $like = '%' . $memberSearch . '%';
+            $params = array_merge($params, [$like, $like, $like, $like]);
+        }
+
+        $whereClause = implode(' AND ', $where);
+        $subscriptions = $this->db->fetchAll(
+            "SELECT s.id, s.member_id, s.plan_id, s.period_start, s.period_end,
+                    s.amount, s.currency, s.payment_method, s.transaction_id,
+                    s.payment_id, s.verification_status, s.verified_at, s.notes,
+                    m.forenames, m.surnames, m.membership_number,
+                    p.name AS plan_name,
+                    py.transaction_id AS payment_transaction_id,
+                    py.amount AS payment_amount, py.paid_at AS payment_paid_at,
+                    py.gateway AS payment_gateway
+             FROM membership_subscriptions s
+             LEFT JOIN members m ON m.id = s.member_id
+             LEFT JOIN membership_plans p ON p.id = s.plan_id
+             LEFT JOIN payments py ON py.id = s.payment_id
+             WHERE $whereClause
+             ORDER BY $orderBy $dir, s.id DESC
+             LIMIT 500",
+            $params
+        );
+
+        $selectedSub = null;
+        if ($selectedId > 0) {
+            foreach ($subscriptions as $sub) {
+                if ((int) $sub['id'] === $selectedId) { $selectedSub = $sub; break; }
+            }
+            if (!$selectedSub) {
+                $selectedSub = $this->db->fetch(
+                    "SELECT s.id, s.member_id, s.plan_id, s.period_start, s.period_end,
+                            s.amount, s.currency, s.payment_method, s.transaction_id,
+                            s.payment_id, s.verification_status, s.verified_at, s.notes,
+                            m.forenames, m.surnames, m.membership_number,
+                            p.name AS plan_name,
+                            py.transaction_id AS payment_transaction_id,
+                            py.amount AS payment_amount, py.paid_at AS payment_paid_at,
+                            py.gateway AS payment_gateway
+                     FROM membership_subscriptions s
+                     LEFT JOIN members m ON m.id = s.member_id
+                     LEFT JOIN membership_plans p ON p.id = s.plan_id
+                     LEFT JOIN payments py ON py.id = s.payment_id
+                     WHERE s.id = ?",
+                    [$selectedId]
+                );
+            }
+        }
+
+        // Unmatched payments for the link-payment panel
+        $unmatchedPayments = [];
+        if ($selectedSub) {
+            $unmatchedPayments = $this->db->fetchAll(
+                "SELECT id, transaction_id, amount, currency, gateway, paid_at
+                 FROM payments
+                 WHERE subscription_id IS NULL OR subscription_id = ?
+                 ORDER BY paid_at DESC
+                 LIMIT 50",
+                [(int) $selectedSub['id']]
+            );
+        }
+
+        // Filter options
+        $availableYears = $this->db->fetchAll(
+            'SELECT DISTINCT YEAR(period_start) AS y FROM membership_subscriptions ORDER BY y DESC'
+        );
+        $plans = $this->membership->allPlans();
+
+        $this->renderAdmin('admin/membership/subscriptions/index', [
+            'title'             => 'Subscriptions',
+            'subscriptions'     => $subscriptions,
+            'selectedId'        => $selectedId,
+            'selectedSub'       => $selectedSub,
+            'unmatchedPayments' => $unmatchedPayments,
+            'availableYears'    => array_column($availableYears, 'y'),
+            'plans'             => $plans,
+            'filters'           => compact('yearFilter', 'planFilter', 'statusFilter', 'memberSearch', 'sort', 'dir'),
+            'allowedStatuses'   => $allowedStatuses,
+            'breadcrumbs'       => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Subscriptions']],
+        ]);
+    }
+
+    public function linkPayment(int $id): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $paymentId = (int) $this->input('payment_id', 0);
+        $sub = $this->db->fetch('SELECT id, member_id FROM membership_subscriptions WHERE id = ?', [$id]);
+        if (!$sub) {
+            Auth::flash('error', 'Subscription not found.');
+            $this->redirect('/admin/membership/subscriptions');
+            return;
+        }
+
+        if ($paymentId > 0) {
+            $payment = $this->db->fetch('SELECT id FROM payments WHERE id = ?', [$paymentId]);
+            if (!$payment) {
+                Auth::flash('error', 'Payment not found.');
+                $this->redirect('/admin/membership/subscriptions?sub=' . $id);
+                return;
+            }
+            $this->db->update('membership_subscriptions', ['payment_id' => $paymentId], 'id = ?', [$id]);
+            $this->db->update('payments', ['subscription_id' => $id], 'id = ?', [$paymentId]);
+            $this->logActivity('update', 'membership_subscription', $id, 'Payment #' . $paymentId . ' linked to subscription.');
+            Auth::flash('success', 'Payment linked.');
+        } else {
+            $this->db->update('membership_subscriptions', ['payment_id' => null], 'id = ?', [$id]);
+            $this->logActivity('update', 'membership_subscription', $id, 'Payment unlinked from subscription.');
+            Auth::flash('success', 'Payment unlinked.');
+        }
+
+        $this->redirect('/admin/membership/subscriptions?sub=' . $id);
+    }
+
+    public function verifySubscription(int $id): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $status = (string) $this->input('verification_status', 'verified');
+        $allowed = ['unverified', 'verified', 'disputed', 'waived'];
+        if (!in_array($status, $allowed, true)) {
+            Auth::flash('error', 'Invalid verification status.');
+            $this->redirect('/admin/membership/subscriptions');
+            return;
+        }
+
+        $sub = $this->db->fetch('SELECT id FROM membership_subscriptions WHERE id = ?', [$id]);
+        if (!$sub) {
+            Auth::flash('error', 'Subscription not found.');
+            $this->redirect('/admin/membership/subscriptions');
+            return;
+        }
+
+        $payload = ['verification_status' => $status];
+        if ($status === 'verified') {
+            $userId = Auth::userId();
+            $payload['verified_by'] = $userId > 0 ? $userId : null;
+            $payload['verified_at'] = date('Y-m-d H:i:s');
+        }
+        $this->db->update('membership_subscriptions', $payload, 'id = ?', [$id]);
+        $this->logActivity('update', 'membership_subscription', $id, 'Subscription verification status set to ' . $status . '.');
+        Auth::flash('success', 'Subscription marked as ' . $status . '.');
+        $this->redirect('/admin/membership/subscriptions?sub=' . $id);
+    }
+
     public function formsWorkspace(): void
     {
         Auth::requireAdmin();

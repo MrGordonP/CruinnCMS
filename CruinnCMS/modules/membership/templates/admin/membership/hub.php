@@ -12,6 +12,7 @@ $status = is_array($members ?? null) ? $members : [];
         <div class="pl-nav-section">Workspace</div>
         <a class="pl-nav-item active" href="<?= url('/admin/membership') ?>">Hub</a>
         <a class="pl-nav-item" href="<?= url('/admin/membership/members') ?>">Members</a>
+        <a class="pl-nav-item" href="<?= url('/admin/membership/subscriptions') ?>">Subscriptions</a>
         <a class="pl-nav-item" href="<?= url('/admin/membership/plans') ?>">Plans</a>
         <a class="pl-nav-item" href="<?= url('/admin/membership/import') ?>">Import</a>
         <div class="pl-nav-section">Forms</div>
@@ -52,7 +53,7 @@ $status = is_array($members ?? null) ? $members : [];
                 <div class="membership-hub-actions">
                     <a href="<?= url('/admin/membership/plans/new-group') ?>" class="btn btn-primary">Create Group</a>
                     <a href="<?= url('/admin/membership/plans/new-tier') ?>" class="btn btn-outline">Create Tier</a>
-                    <a href="<?= url('/admin/membership/members') ?>" class="btn btn-outline">Subscription Workspace</a>
+                    <a href="<?= url('/admin/membership/subscriptions') ?>" class="btn btn-outline">Subscriptions Workspace</a>
                 </div>
             </section>
 
