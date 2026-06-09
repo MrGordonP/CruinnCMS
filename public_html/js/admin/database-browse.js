@@ -34,9 +34,14 @@
                 var display = td.querySelector('.db-cell-display');
                 var input   = td.querySelector('.db-cell-input');
                 if (!display || !input) return;
-                display.style.display = on ? 'none'   : '';
-                input.style.display   = on ? 'inline' : 'none';
-                if (!on) rowStatus(tr, ''); // clear outline on exit
+                display.style.visibility = on ? 'hidden' : '';
+                display.style.display    = '';
+                input.style.display      = on ? 'block' : 'none';
+                if (!on) {
+                    display.style.visibility = '';
+                    input.style.display = 'none';
+                    rowStatus(tr, '');
+                }
             });
             var viewAct = tr.querySelector('.db-view-actions');
             var editAct = tr.querySelector('.db-edit-actions');
