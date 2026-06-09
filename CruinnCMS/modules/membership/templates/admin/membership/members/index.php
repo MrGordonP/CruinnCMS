@@ -3,15 +3,17 @@
 \Cruinn\Template::requireCss('admin-panel-layout.css');
 $GLOBALS['admin_flush_layout'] = true;
 
-$selectedId = (int) ($memberId ?? 0);
+$selectedId       = (int) ($memberId ?? 0);
 $verificationStatuses = ['unverified', 'verified', 'disputed', 'waived'];
-$memberTree = $memberTree ?? ['groups' => [], 'plansByParent' => [], 'standalone' => []];
-$category = $category ?? 'all';
-$categoryId = (int) ($categoryId ?? 0);
-$filters = $filters ?? ['q' => ''];
+$memberTree       = $memberTree ?? ['groups' => [], 'plansByParent' => [], 'standalone' => []];
+$category         = $category ?? 'all';
+$categoryId       = (int) ($categoryId ?? 0);
+$filters          = $filters ?? ['q' => '', 'status_filter' => '', 'org_filter' => '', 'sort' => '', 'dir' => 'asc'];
+$allowedStatuses  = $allowedStatuses ?? ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
+$distinctOrgs     = $distinctOrgs ?? [];
 
-$groups = $memberTree['groups'] ?? [];
-$plansByParent = $memberTree['plansByParent'] ?? [];
+$groups          = $memberTree['groups'] ?? [];
+$plansByParent   = $memberTree['plansByParent'] ?? [];
 $standalonePlans = $memberTree['standalone'] ?? [];
 
 $selectedCategoryLabel = 'All Members';
@@ -26,18 +28,62 @@ if ($category === 'plan') {
         }
     }
 }
+
+// Build a base URL preserving current filters (for sort links)
+$baseFilterParams = array_filter([
+    'category'      => $category !== 'all' ? $category : '',
+    'category_id'   => $categoryId > 0 ? $categoryId : '',
+    'q'             => $filters['q'],
+    'status_filter' => $filters['status_filter'],
+    'org_filter'    => $filters['org_filter'],
+]);
+$baseFilterQuery = http_build_query($baseFilterParams);
+
+$sortLink = static function(string $col, string $label) use ($filters, $baseFilterQuery): string {
+    $currentSort = $filters['sort'] ?? '';
+    $currentDir  = $filters['dir'] ?? 'asc';
+    $newDir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
+    $arrow  = '';
+    if ($currentSort === $col) {
+        $arrow = $currentDir === 'asc' ? ' ↑' : ' ↓';
+    }
+    $qs = $baseFilterQuery ? $baseFilterQuery . '&' : '';
+    return '<a href="?' . $qs . 'sort=' . urlencode($col) . '&dir=' . $newDir . '" style="color:inherit;text-decoration:none;">' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . $arrow . '</a>';
+};
+
+$statusBadge = static function(string $status): string {
+    $colours = [
+        'active'    => '#16a34a',
+        'applicant' => '#2563eb',
+        'lapsed'    => '#d97706',
+        'suspended' => '#dc2626',
+        'resigned'  => '#6b7280',
+        'archived'  => '#9ca3af',
+    ];
+    $colour = $colours[$status] ?? '#6b7280';
+    return '<span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:0.72rem;font-weight:600;background:' . $colour . '22;color:' . $colour . ';">' . htmlspecialchars($status, ENT_QUOTES, 'UTF-8') . '</span>';
+};
+
+$verifiedBadge = static function(?string $vs): string {
+    if ($vs === null || $vs === '') { return '<span style="color:#9ca3af;font-size:0.78rem;">—</span>'; }
+    $colours = ['verified' => '#16a34a', 'unverified' => '#d97706', 'disputed' => '#dc2626', 'waived' => '#6b7280'];
+    $colour = $colours[$vs] ?? '#6b7280';
+    return '<span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:0.72rem;background:' . $colour . '22;color:' . $colour . ';">' . htmlspecialchars($vs, ENT_QUOTES, 'UTF-8') . '</span>';
+};
 ?>
 
 <div class="panel-layout" id="membership-layout">
     <div class="pl-panel pl-panel-left">
         <div class="pl-panel-header" style="flex-direction:column;align-items:stretch;gap:0.45rem;">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:0.4rem;">
-                <span class="pl-panel-title">Member Categories</span>
+                <span class="pl-panel-title">Members</span>
                 <a href="<?= url('/admin/membership/members/new') ?>" class="btn btn-primary btn-small">+ New</a>
             </div>
-            <form method="get" action="<?= url('/admin/membership/members') ?>" style="display:flex;gap:0.3rem;">
+            <form method="get" action="<?= url('/admin/membership/members') ?>" id="members-filter-form" style="display:flex;gap:0.3rem;">
                 <input type="hidden" name="category" value="<?= e($category) ?>">
                 <input type="hidden" name="category_id" value="<?= (int) $categoryId ?>">
+                <input type="hidden" name="sort" value="<?= e($filters['sort'] ?? '') ?>">
+                <input type="hidden" name="dir" value="<?= e($filters['dir'] ?? 'asc') ?>">
                 <input class="form-input" type="text" name="q" value="<?= e($filters['q'] ?? '') ?>" placeholder="Search members..." style="font-size:0.82rem;">
                 <button class="btn btn-secondary btn-small" type="submit">Go</button>
             </form>
@@ -45,12 +91,12 @@ if ($category === 'plan') {
 
         <div class="pl-panel-body" style="padding:0;">
             <div class="pl-nav-section">Categories</div>
-            <a class="pl-nav-item<?= $category === 'all' ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=all') ?>">
+            <a class="pl-nav-item<?= $category === 'all' && empty($filters['status_filter']) && empty($filters['org_filter']) ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=all') ?>">
                 <span>All Members</span>
                 <span class="pl-nav-count"><?= (int) ($statusCount['total'] ?? 0) ?></span>
             </a>
 
-            <div class="pl-nav-section">Groups</div>
+            <div class="pl-nav-section">Subscription Groups</div>
             <?php if (empty($groups)): ?>
             <div style="padding:0.6rem 0.9rem;color:#64748b;font-size:0.82rem;">No groups available.</div>
             <?php else: ?>
@@ -74,6 +120,40 @@ if ($category === 'plan') {
             </a>
             <?php endforeach; ?>
             <?php endif; ?>
+
+            <div class="pl-nav-section">Account Status</div>
+            <form method="get" action="<?= url('/admin/membership/members') ?>" style="padding:0.4rem 0.9rem 0.6rem;">
+                <input type="hidden" name="category" value="<?= e($category) ?>">
+                <input type="hidden" name="category_id" value="<?= (int) $categoryId ?>">
+                <input type="hidden" name="q" value="<?= e($filters['q'] ?? '') ?>">
+                <input type="hidden" name="org_filter" value="<?= e($filters['org_filter'] ?? '') ?>">
+                <input type="hidden" name="sort" value="<?= e($filters['sort'] ?? '') ?>">
+                <input type="hidden" name="dir" value="<?= e($filters['dir'] ?? 'asc') ?>">
+                <select name="status_filter" class="form-input" style="font-size:0.82rem;width:100%;" onchange="this.form.submit()">
+                    <option value="">— All statuses —</option>
+                    <?php foreach ($allowedStatuses as $st): ?>
+                    <option value="<?= e($st) ?>"<?= ($filters['status_filter'] ?? '') === $st ? ' selected' : '' ?>><?= e(ucfirst($st)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+
+            <?php if (!empty($distinctOrgs)): ?>
+            <div class="pl-nav-section">Organisation</div>
+            <form method="get" action="<?= url('/admin/membership/members') ?>" style="padding:0.4rem 0.9rem 0.6rem;">
+                <input type="hidden" name="category" value="<?= e($category) ?>">
+                <input type="hidden" name="category_id" value="<?= (int) $categoryId ?>">
+                <input type="hidden" name="q" value="<?= e($filters['q'] ?? '') ?>">
+                <input type="hidden" name="status_filter" value="<?= e($filters['status_filter'] ?? '') ?>">
+                <input type="hidden" name="sort" value="<?= e($filters['sort'] ?? '') ?>">
+                <input type="hidden" name="dir" value="<?= e($filters['dir'] ?? 'asc') ?>">
+                <select name="org_filter" class="form-input" style="font-size:0.82rem;width:100%;" onchange="this.form.submit()">
+                    <option value="">— All organisations —</option>
+                    <?php foreach ($distinctOrgs as $org): ?>
+                    <option value="<?= e($org) ?>"<?= ($filters['org_filter'] ?? '') === $org ? ' selected' : '' ?>><?= e($org) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -91,40 +171,93 @@ if ($category === 'plan') {
             <?php if (empty($members)): ?>
             <p class="pl-empty">No members found for this selection.</p>
             <?php else: ?>
-            <table class="pl-table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Membership #</th>
-                        <th>Organisation</th>
-                        <th>Plan</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($members as $m): ?>
-                    <?php
-                        $rowName = trim((string) ($m['forenames'] ?? '') . ' ' . (string) ($m['surnames'] ?? ''));
-                        $planLabel = (string) ($m['group_name'] ?? '') !== ''
-                            ? ((string) $m['group_name'] . ' -> ' . (string) ($m['plan_name'] ?? ''))
-                            : (string) ($m['plan_name'] ?? '—');
-                        $memberUrl = '/admin/membership/members?member=' . (int) $m['id']
-                            . '&category=' . urlencode((string) $category)
-                            . '&category_id=' . (int) $categoryId
-                            . (!empty($filters['q']) ? '&q=' . urlencode((string) $filters['q']) : '');
-                    ?>
-                    <tr<?= (int) $m['id'] === $selectedId ? ' class="selected"' : '' ?> onclick="window.location='<?= url($memberUrl) ?>'">
-                        <td><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></td>
-                        <td><?= e((string) ($m['email'] ?? '—')) ?></td>
-                        <td><?= e((string) ($m['membership_number'] ?? '—')) ?></td>
-                        <td><?= e((string) ($m['organisation'] ?? '—')) ?></td>
-                        <td><?= e($planLabel) ?></td>
-                        <td><?= e((string) ($m['verification_status'] ?? '—')) ?></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <form method="post" action="<?= url('/admin/membership/members/bulk') ?>" id="bulk-form">
+                <?= csrf_field() ?>
+                <div id="bulk-bar" style="display:none;align-items:center;gap:0.6rem;padding:0.5rem 1rem;background:#fef9c3;border-bottom:1px solid #fde047;">
+                    <span id="bulk-count" style="font-size:0.82rem;font-weight:600;"></span>
+                    <select name="bulk_action" class="form-input" style="font-size:0.82rem;width:auto;">
+                        <option value="">— Bulk action —</option>
+                        <option value="set_status">Set Status…</option>
+                        <option value="archive">Archive</option>
+                        <option value="delete">Delete (no subscriptions only)</option>
+                    </select>
+                    <select name="bulk_status" class="form-input" style="font-size:0.82rem;width:auto;" id="bulk-status-select">
+                        <?php foreach ($allowedStatuses as $st): ?>
+                        <option value="<?= e($st) ?>"><?= e(ucfirst($st)) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-small" onclick="return confirm('Apply bulk action to selected members?')">Apply</button>
+                    <button type="button" class="btn btn-outline btn-small" onclick="document.querySelectorAll('.member-cb').forEach(cb=>cb.checked=false);updateBulkBar();">Deselect all</button>
+                </div>
+                <table class="pl-table" style="table-layout:fixed;">
+                    <colgroup>
+                        <col style="width:2.2rem;">
+                        <col style="width:16%;">
+                        <col style="width:18%;">
+                        <col style="width:9%;">
+                        <col style="width:13%;">
+                        <col style="width:9%;">
+                        <col style="width:14%;">
+                        <col style="width:12%;">
+                        <col style="width:9%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all" title="Select all" style="cursor:pointer;"></th>
+                            <th><?= $sortLink('surnames', 'Name') ?></th>
+                            <th><?= $sortLink('email', 'Email') ?></th>
+                            <th><?= $sortLink('membership_number', 'Mbr #') ?></th>
+                            <th><?= $sortLink('organisation', 'Organisation') ?></th>
+                            <th><?= $sortLink('status', 'Status') ?></th>
+                            <th><?= $sortLink('plan_name', 'Plan') ?></th>
+                            <th>Group</th>
+                            <th><?= $sortLink('verification_status', 'Verified') ?></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($members as $m): ?>
+                        <?php
+                            $rowName = trim((string) ($m['forenames'] ?? '') . ' ' . (string) ($m['surnames'] ?? ''));
+                            $memberUrl = '/admin/membership/members?member=' . (int) $m['id']
+                                . '&category=' . urlencode((string) $category)
+                                . '&category_id=' . (int) $categoryId
+                                . (!empty($filters['q']) ? '&q=' . urlencode((string) $filters['q']) : '')
+                                . (!empty($filters['status_filter']) ? '&status_filter=' . urlencode((string) $filters['status_filter']) : '')
+                                . (!empty($filters['org_filter']) ? '&org_filter=' . urlencode((string) $filters['org_filter']) : '');
+                        ?>
+                        <tr<?= (int) $m['id'] === $selectedId ? ' class="selected"' : '' ?> onclick="window.location='<?= url($memberUrl) ?>'">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="member-cb" name="member_ids[]" value="<?= (int) $m['id'] ?>" onchange="updateBulkBar()"></td>
+                            <td><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></td>
+                            <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?= e((string) ($m['email'] ?? '')) ?>"><?= e((string) ($m['email'] ?? '—')) ?></td>
+                            <td><?= e((string) ($m['membership_number'] ?? '—')) ?></td>
+                            <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['organisation'] ?? '—')) ?></td>
+                            <td><?= $statusBadge((string) ($m['status'] ?? 'applicant')) ?></td>
+                            <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['plan_name'] ?? '—')) ?></td>
+                            <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['group_name'] ?? '—')) ?></td>
+                            <td><?= $verifiedBadge((string) ($m['verification_status'] ?? '')) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </form>
+            <script>
+            (function(){
+                var selectAll = document.getElementById('select-all');
+                if (selectAll) {
+                    selectAll.addEventListener('change', function() {
+                        document.querySelectorAll('.member-cb').forEach(function(cb){ cb.checked = selectAll.checked; });
+                        updateBulkBar();
+                    });
+                }
+            })();
+            function updateBulkBar() {
+                var checked = document.querySelectorAll('.member-cb:checked');
+                var bar = document.getElementById('bulk-bar');
+                var count = document.getElementById('bulk-count');
+                if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
+                if (count) count.textContent = checked.length + ' selected';
+            }
+            </script>
             <?php endif; ?>
         </div>
     </div>

@@ -19,6 +19,7 @@ return [
         $router->get('/admin/membership/members',                     [MembershipAdminController::class, 'indexMembers']);
         $router->get('/admin/membership/members/new',                 [MembershipAdminController::class, 'newMember']);
         $router->post('/admin/membership/members',                    [MembershipAdminController::class, 'createMember']);
+        $router->post('/admin/membership/members/bulk',               [MembershipAdminController::class, 'bulkMembers']);
         $router->get('/admin/membership/members/{id}',                [MembershipAdminController::class, 'showMember']);
         $router->get('/admin/membership/members/{id}/edit',           [MembershipAdminController::class, 'editMember']);
         $router->post('/admin/membership/members/{id}',               [MembershipAdminController::class, 'updateMember']);

@@ -78,8 +78,15 @@ class MembershipAdminController extends BaseController
     {
         Auth::requireAdmin();
 
+        $allowedStatuses = ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
+        $allowedSorts    = ['surnames', 'forenames', 'email', 'membership_number', 'organisation', 'status', 'plan_name', 'verification_status'];
+
         $filters = [
-            'q' => trim((string) $this->query('q', '')),
+            'q'             => trim((string) $this->query('q', '')),
+            'status_filter' => in_array($this->query('status_filter', ''), $allowedStatuses, true) ? $this->query('status_filter', '') : '',
+            'org_filter'    => trim((string) $this->query('org_filter', '')),
+            'sort'          => in_array($this->query('sort', ''), $allowedSorts, true) ? $this->query('sort', '') : '',
+            'dir'           => strtolower($this->query('dir', '')) === 'desc' ? 'desc' : 'asc',
         ];
 
         $category = (string) $this->query('category', 'all');
@@ -105,6 +112,12 @@ class MembershipAdminController extends BaseController
             );
         }
 
+        // Distinct organisations for sidebar filter
+        $distinctOrgs = array_values(array_filter(array_column(
+            $this->db->fetchAll('SELECT DISTINCT organisation FROM members WHERE organisation IS NOT NULL AND organisation != \'\'  ORDER BY organisation ASC'),
+            'organisation'
+        )));
+
         $this->renderAdmin('admin/membership/members/index', [
             'title'         => 'Membership',
             'members'       => $members,
@@ -113,6 +126,8 @@ class MembershipAdminController extends BaseController
             'category'      => $category,
             'categoryId'    => $categoryId,
             'filters'       => $filters,
+            'allowedStatuses' => $allowedStatuses,
+            'distinctOrgs'  => $distinctOrgs,
             'statusCount'   => $this->membership->countByStatus(),
             'member'        => $member,
             'memberId'      => $memberId,
@@ -1263,6 +1278,16 @@ class MembershipAdminController extends BaseController
             $params = array_merge($params, [$like, $like, $like, $like]);
         }
 
+        if (!empty($filters['status_filter'])) {
+            $where[] = 'm.status = ?';
+            $params[] = $filters['status_filter'];
+        }
+
+        if (!empty($filters['org_filter'])) {
+            $where[] = 'm.organisation = ?';
+            $params[] = $filters['org_filter'];
+        }
+
         if ($category === 'plan' && $categoryId > 0) {
             $where[] = 's.plan_id = ?';
             $params[] = $categoryId;
@@ -1296,9 +1321,78 @@ class MembershipAdminController extends BaseController
             $sql .= ' WHERE ' . implode(' AND ', $where);
         }
 
-        $sql .= ' ORDER BY m.surnames ASC, m.forenames ASC, m.id DESC';
+        // Sort
+        $sortCol = !empty($filters['sort']) ? $filters['sort'] : 'surnames';
+        $sortDir = !empty($filters['dir']) && $filters['dir'] === 'desc' ? 'DESC' : 'ASC';
+        $sortMap = [
+            'surnames'            => 'm.surnames',
+            'forenames'           => 'm.forenames',
+            'email'               => 'm.email',
+            'membership_number'   => 'm.membership_number',
+            'organisation'        => 'm.organisation',
+            'status'              => 'm.status',
+            'plan_name'           => 'p.name',
+            'verification_status' => 's.verification_status',
+        ];
+        $orderExpr = $sortMap[$sortCol] ?? 'm.surnames';
+        $sql .= " ORDER BY {$orderExpr} {$sortDir}, m.forenames ASC, m.id DESC";
 
         return $this->db->fetchAll($sql, $params);
+    }
+
+    public function bulkMembers(): void
+    {
+        Auth::requireAdmin();
+        \Cruinn\CSRF::verify();
+
+        $action = (string) $this->input('bulk_action', '');
+        $ids = array_values(array_filter(array_map('intval', (array) ($_POST['member_ids'] ?? []))));
+
+        if (empty($ids)) {
+            Auth::flash('error', 'No members selected.');
+            $this->redirect('/admin/membership/members');
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+
+        switch ($action) {
+            case 'set_status':
+                $newStatus = (string) $this->input('bulk_status', '');
+                $allowed = ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
+                if (!in_array($newStatus, $allowed, true)) {
+                    Auth::flash('error', 'Invalid status.');
+                    $this->redirect('/admin/membership/members');
+                }
+                $this->db->execute(
+                    "UPDATE members SET status = ?, updated_at = NOW() WHERE id IN ({$placeholders})",
+                    array_merge([$newStatus], $ids)
+                );
+                Auth::flash('success', count($ids) . ' member(s) set to ' . $newStatus . '.');
+                break;
+
+            case 'archive':
+                $this->db->execute(
+                    "UPDATE members SET status = 'archived', updated_at = NOW() WHERE id IN ({$placeholders})",
+                    $ids
+                );
+                Auth::flash('success', count($ids) . ' member(s) archived.');
+                break;
+
+            case 'delete':
+                // Only delete members who have no subscription history
+                $this->db->execute(
+                    "DELETE FROM members WHERE id IN ({$placeholders})
+                     AND id NOT IN (SELECT DISTINCT member_id FROM membership_subscriptions)",
+                    $ids
+                );
+                Auth::flash('success', 'Members without subscriptions deleted. Members with subscription history were not deleted.');
+                break;
+
+            default:
+                Auth::flash('error', 'Unknown bulk action.');
+        }
+
+        $this->redirect('/admin/membership/members');
     }
 
     private function membershipAssociatedSubjectIds(): array
