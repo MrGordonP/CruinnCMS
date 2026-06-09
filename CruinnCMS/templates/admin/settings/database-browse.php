@@ -151,13 +151,13 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
                 <!-- Edit input (hidden until edit mode) -->
                 <?php if ($isPk): ?>
                 <input class="db-cell-input" type="text" value="<?= e($strVal) ?>" disabled
-                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; min-width:60px; max-width:280px; opacity:0.6; background:#f3f4f6;">
+                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; opacity:0.6; background:#f3f4f6;">
                 <?php elseif ($isLong): ?>
                 <textarea class="db-cell-input" rows="2"
-                          style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; min-width:120px; max-width:400px; resize:both;"><?= e($strVal) ?></textarea>
+                          style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; resize:both;"><?= e($strVal) ?></textarea>
                 <?php else: ?>
                 <input class="db-cell-input" type="text" value="<?= e($strVal) ?>"
-                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; min-width:60px; max-width:280px;">
+                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content;">
                 <?php endif; ?>
             </td>
             <?php endforeach; ?>
