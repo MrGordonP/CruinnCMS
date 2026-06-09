@@ -30,10 +30,15 @@ return [
 
         // Plans
         $router->get('/admin/membership/plans',                       [MembershipAdminController::class, 'listPlans']);
+        $router->get('/admin/membership/plans/new-group',             [MembershipAdminController::class, 'newGroup']);
+        $router->get('/admin/membership/plans/new-tier',              [MembershipAdminController::class, 'newTier']);
         $router->get('/admin/membership/plans/new',                   [MembershipAdminController::class, 'newPlan']);
         $router->post('/admin/membership/plans',                      [MembershipAdminController::class, 'createPlan']);
         $router->get('/admin/membership/plans/{id}/edit',             [MembershipAdminController::class, 'editPlan']);
         $router->post('/admin/membership/plans/{id}',                 [MembershipAdminController::class, 'updatePlan']);
+
+        // Membership forms/responses workspace
+        $router->get('/admin/membership/forms',                       [MembershipAdminController::class, 'formsWorkspace']);
 
         // User linking
         $router->post('/admin/membership/members/{id}/link-user',   [MembershipAdminController::class, 'linkUser']);

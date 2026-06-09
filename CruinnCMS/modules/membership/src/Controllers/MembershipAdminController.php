@@ -82,8 +82,17 @@ class MembershipAdminController extends BaseController
             'q' => trim((string) $this->query('q', '')),
         ];
 
+        $category = (string) $this->query('category', 'all');
+        $allowedCategories = ['all', 'group', 'plan'];
+        if (!in_array($category, $allowedCategories, true)) {
+            $category = 'all';
+        }
+        $categoryId = (int) $this->query('category_id', 0);
+
         $memberId      = (int) $this->query('member', 0);
-        $members       = $this->membership->listMembers($filters);
+        $plans         = $this->membership->allPlans(true);
+        $memberTree    = $this->buildPlanTree($plans);
+        $members       = $this->membersForCategory($filters, $category, $categoryId);
         $member        = $memberId ? $this->membership->findById($memberId) : null;
         $subscriptions = $member ? $this->membership->subscriptionsForMember($memberId) : [];
         $payments      = $member ? $this->membership->paymentsForMember($memberId) : [];
@@ -99,7 +108,10 @@ class MembershipAdminController extends BaseController
         $this->renderAdmin('admin/membership/members/index', [
             'title'         => 'Membership',
             'members'       => $members,
-            'plans'         => $this->membership->allPlans(true),
+            'plans'         => $plans,
+            'memberTree'    => $memberTree,
+            'category'      => $category,
+            'categoryId'    => $categoryId,
             'filters'       => $filters,
             'statusCount'   => $this->membership->countByStatus(),
             'member'        => $member,
@@ -531,30 +543,112 @@ class MembershipAdminController extends BaseController
     {
         Auth::requireAdmin();
 
+        $plans = $this->membership->allPlans();
+        $groupPlans = array_values(array_filter(
+            $plans,
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
+        ));
+
+        $selectedPlanId = (int) $this->query('plan', 0);
+        if ($selectedPlanId <= 0 && !empty($plans)) {
+            $selectedPlanId = (int) $plans[0]['id'];
+        }
+
+        $selectedPlan = null;
+        foreach ($plans as $plan) {
+            if ((int) $plan['id'] === $selectedPlanId) {
+                $selectedPlan = $plan;
+                break;
+            }
+        }
+
+        $subCountByPlan = [];
+        foreach ($this->db->fetchAll('SELECT plan_id, COUNT(*) AS c FROM membership_subscriptions WHERE plan_id IS NOT NULL GROUP BY plan_id') as $row) {
+            $subCountByPlan[(int) $row['plan_id']] = (int) $row['c'];
+        }
+
+        $selectedSubCount = $selectedPlan ? ($subCountByPlan[(int) $selectedPlan['id']] ?? 0) : 0;
+
         $this->renderAdmin('admin/membership/plans/index', [
             'title'       => 'Membership Plans',
-            'plans'       => $this->membership->allPlans(),
+            'plans'       => $plans,
+            'groupPlans'  => $groupPlans,
+            'selectedPlanId' => $selectedPlanId,
+            'selectedPlan' => $selectedPlan,
+            'subCountByPlan' => $subCountByPlan,
+            'selectedSubCount' => $selectedSubCount,
             'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans']],
         ]);
     }
 
     public function newPlan(): void
     {
+        $this->newGroup();
+    }
+
+    public function newGroup(): void
+    {
         Auth::requireAdmin();
 
         $groupPlans = array_values(array_filter(
             $this->membership->allPlans(),
-            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
         ));
         $subjects = $this->activeSubjects();
 
         $this->renderAdmin('admin/membership/plans/form', [
-            'title'       => 'New Membership Plan',
-            'plan'        => null,
+            'title'       => 'New Membership Group',
+            'plan'        => [
+                'is_plan_group' => 1,
+                'is_group' => 1,
+                'is_active' => 1,
+                'max_members' => 2,
+                'parent_plan_id' => 0,
+                'billing_period' => 'annual',
+                'currency' => 'EUR',
+            ],
+            'mode'        => 'group',
             'groupPlans'  => $groupPlans,
             'subjects'    => $subjects,
             'errors'      => [],
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['New Plan']],
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['New Group']],
+        ]);
+    }
+
+    public function newTier(): void
+    {
+        Auth::requireAdmin();
+
+        $groupPlans = array_values(array_filter(
+            $this->membership->allPlans(),
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
+        ));
+        $subjects = $this->activeSubjects();
+        $prefillParent = (int) $this->query('parent_id', 0);
+        $prefillBillingPeriod = 'annual';
+        if ($prefillParent > 0) {
+            $parent = $this->db->fetch('SELECT billing_period FROM membership_plans WHERE id = ?', [$prefillParent]);
+            if ($parent && !empty($parent['billing_period'])) {
+                $prefillBillingPeriod = (string) $parent['billing_period'];
+            }
+        }
+
+        $this->renderAdmin('admin/membership/plans/form', [
+            'title'       => 'New Membership Tier',
+            'plan'        => [
+                'is_plan_group' => 0,
+                'is_group' => 0,
+                'is_active' => 1,
+                'max_members' => 0,
+                'parent_plan_id' => $prefillParent,
+                'billing_period' => $prefillBillingPeriod,
+                'currency' => 'EUR',
+            ],
+            'mode'        => 'tier',
+            'groupPlans'  => $groupPlans,
+            'subjects'    => $subjects,
+            'errors'      => [],
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['New Tier']],
         ]);
     }
 
@@ -562,30 +656,80 @@ class MembershipAdminController extends BaseController
     {
         Auth::requireAdmin();
 
-        $data = $this->planPayload();
-        $errors = $this->validatePlanPayload($data, null);
+        try {
+            $data = $this->planPayload();
+            $errors = $this->validatePlanPayload($data, null);
+        } catch (\Throwable $e) {
+            $data = $this->planPayloadFromPost();
+            $errors = ['general' => 'Failed to process plan submission: ' . $e->getMessage()];
+        }
         $groupPlans = array_values(array_filter(
             $this->membership->allPlans(),
-            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
         ));
         $subjects = $this->activeSubjects();
 
         if ($errors) {
             $this->renderAdmin('admin/membership/plans/form', [
-                'title'       => 'New Membership Plan',
+                'title'       => !empty($data['is_plan_group']) ? 'New Membership Group' : 'New Membership Tier',
                 'plan'        => $data,
+                'mode'        => !empty($data['is_plan_group']) ? 'group' : 'tier',
                 'groupPlans'  => $groupPlans,
                 'subjects'    => $subjects,
                 'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['New Plan']],
+                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], [!empty($data['is_plan_group']) ? 'New Group' : 'New Tier']],
             ]);
             return;
         }
 
-        $planId = $this->membership->createPlan($data);
+        try {
+            $planId = $this->membership->createPlan($data);
+        } catch (\Throwable $e) {
+            $errors['general'] = 'Failed to save plan: ' . $e->getMessage();
+            $this->renderAdmin('admin/membership/plans/form', [
+                'title'       => !empty($data['is_plan_group']) ? 'New Membership Group' : 'New Membership Tier',
+                'plan'        => $data,
+                'mode'        => !empty($data['is_plan_group']) ? 'group' : 'tier',
+                'groupPlans'  => $groupPlans,
+                'subjects'    => $subjects,
+                'errors'      => $errors,
+                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], [!empty($data['is_plan_group']) ? 'New Group' : 'New Tier']],
+            ]);
+            return;
+        }
         $this->logActivity('create', 'membership_plan', $planId, 'Membership plan created.');
         Auth::flash('success', 'Plan created.');
         $this->redirect('/admin/membership/plans');
+    }
+
+    private function planPayloadFromPost(): array
+    {
+        $mode = strtolower((string) ($_POST['mode'] ?? ''));
+        $isPlanGroup = !empty($_POST['is_plan_group']) ? 1 : 0;
+        if ($mode === 'group') {
+            $isPlanGroup = 1;
+        } elseif ($mode === 'tier') {
+            $isPlanGroup = 0;
+        }
+
+        return [
+            'slug' => trim((string) ($_POST['slug'] ?? '')),
+            'name' => trim((string) ($_POST['name'] ?? '')),
+            'description' => trim((string) ($_POST['description'] ?? '')),
+            'billing_period' => trim((string) ($_POST['billing_period'] ?? 'annual')),
+            'price' => isset($_POST['price']) ? (float) $_POST['price'] : 0.0,
+            'currency' => strtoupper(trim((string) ($_POST['currency'] ?? 'EUR'))),
+            'is_active' => !empty($_POST['is_active']) ? 1 : 0,
+            'is_group' => !empty($_POST['is_group']) ? 1 : 0,
+            'is_plan_group' => $isPlanGroup,
+            'max_members' => isset($_POST['max_members']) ? (int) $_POST['max_members'] : 0,
+            'parent_plan_id' => isset($_POST['parent_plan_id']) ? (int) $_POST['parent_plan_id'] : 0,
+            'subject_id' => isset($_POST['subject_id']) ? (int) $_POST['subject_id'] : 0,
+            'promo_type' => trim((string) ($_POST['promo_type'] ?? '')),
+            'promo_value' => trim((string) ($_POST['promo_value'] ?? '')),
+            'promo_starts_at' => trim((string) ($_POST['promo_starts_at'] ?? '')),
+            'promo_ends_at' => trim((string) ($_POST['promo_ends_at'] ?? '')),
+        ];
     }
 
     public function editPlan(int $id): void
@@ -601,7 +745,7 @@ class MembershipAdminController extends BaseController
 
         $groupPlans = array_values(array_filter(
             $this->membership->allPlans(),
-            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
         ));
         $groupPlans = array_values(array_filter(
             $groupPlans,
@@ -634,7 +778,7 @@ class MembershipAdminController extends BaseController
         $errors = $this->validatePlanPayload($data, $id);
         $groupPlans = array_values(array_filter(
             $this->membership->allPlans(),
-            static fn(array $p): bool => (int) ($p['is_group'] ?? 0) === 1
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
         ));
         $groupPlans = array_values(array_filter(
             $groupPlans,
@@ -654,10 +798,124 @@ class MembershipAdminController extends BaseController
             return;
         }
 
-        $this->membership->updatePlan($id, $data);
+        try {
+            $this->membership->updatePlan($id, $data);
+        } catch (\Throwable $e) {
+            $errors['general'] = 'Failed to update plan: ' . $e->getMessage();
+            $this->renderAdmin('admin/membership/plans/form', [
+                'title'       => 'Edit Membership Plan',
+                'plan'        => array_merge($plan, $data),
+                'groupPlans'  => $groupPlans,
+                'subjects'    => $subjects,
+                'errors'      => $errors,
+                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['Edit Plan']],
+            ]);
+            return;
+        }
         $this->logActivity('update', 'membership_plan', $id, 'Membership plan updated.');
         Auth::flash('success', 'Plan updated.');
         $this->redirect('/admin/membership/plans');
+    }
+
+    public function formsWorkspace(): void
+    {
+        Auth::requireAdmin();
+
+        $subjectIds = $this->membershipAssociatedSubjectIds();
+        $forms = [];
+        if (!empty($subjectIds)) {
+            $placeholders = implode(',', array_fill(0, count($subjectIds), '?'));
+            $params = array_merge($subjectIds, $subjectIds);
+            $forms = $this->db->fetchAll(
+                "SELECT f.id, f.title, f.slug, f.status, f.subject_id, s.title AS subject_title,
+                        COUNT(fs.id) AS submission_count,
+                        SUM(CASE WHEN fs.status = 'pending' THEN 1 ELSE 0 END) AS pending_count
+                 FROM forms f
+                 LEFT JOIN subjects s ON s.id = f.subject_id
+                 LEFT JOIN form_submissions fs ON fs.form_id = f.id
+                 WHERE f.subject_id IN ($placeholders)
+                    OR EXISTS (
+                        SELECT 1
+                        FROM subject_content sc
+                        WHERE sc.item_type = 'form'
+                          AND sc.item_id = f.id
+                          AND sc.subject_id IN ($placeholders)
+                    )
+                 GROUP BY f.id
+                 ORDER BY f.title ASC",
+                $params
+            );
+        }
+
+        $selectedFormId = (int) $this->query('form', 0);
+        if ($selectedFormId <= 0 && !empty($forms)) {
+            $selectedFormId = (int) $forms[0]['id'];
+        }
+
+        $selectedForm = null;
+        foreach ($forms as $form) {
+            if ((int) $form['id'] === $selectedFormId) {
+                $selectedForm = $form;
+                break;
+            }
+        }
+
+        $statusFilter = (string) $this->query('status', '');
+        $search = trim((string) $this->query('search', ''));
+        $submissions = [];
+        if ($selectedFormId > 0) {
+            $where = ['fs.form_id = ?'];
+            $params = [$selectedFormId];
+            if ($statusFilter !== '') {
+                $where[] = 'fs.status = ?';
+                $params[] = $statusFilter;
+            }
+            if ($search !== '') {
+                $where[] = 'fs.data LIKE ?';
+                $params[] = '%' . $search . '%';
+            }
+            $submissions = $this->db->fetchAll(
+                'SELECT fs.id, fs.form_id, fs.user_id, fs.status, fs.submitted_at, fs.data,
+                        u.display_name AS user_name, u.email AS user_email
+                 FROM form_submissions fs
+                 LEFT JOIN users u ON u.id = fs.user_id
+                 WHERE ' . implode(' AND ', $where) . '
+                 ORDER BY fs.submitted_at DESC
+                 LIMIT 200',
+                $params
+            );
+            foreach ($submissions as &$submission) {
+                $submission['data'] = json_decode((string) $submission['data'], true) ?: [];
+            }
+            unset($submission);
+        }
+
+        $selectedSubmissionId = (int) $this->query('submission', 0);
+        if ($selectedSubmissionId <= 0 && !empty($submissions)) {
+            $selectedSubmissionId = (int) $submissions[0]['id'];
+        }
+
+        $selectedSubmission = null;
+        foreach ($submissions as $submission) {
+            if ((int) $submission['id'] === $selectedSubmissionId) {
+                $selectedSubmission = $submission;
+                break;
+            }
+        }
+
+        $this->renderAdmin('admin/membership/forms/index', [
+            'title' => 'Membership Forms and Responses',
+            'forms' => $forms,
+            'subjectIds' => $subjectIds,
+            'selectedFormId' => $selectedFormId,
+            'selectedForm' => $selectedForm,
+            'submissions' => $submissions,
+            'selectedSubmissionId' => $selectedSubmissionId,
+            'selectedSubmission' => $selectedSubmission,
+            'statusFilter' => $statusFilter,
+            'search' => $search,
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Forms and Responses']],
+        ]);
     }
 
     public function searchMembers(): void
@@ -782,18 +1040,63 @@ class MembershipAdminController extends BaseController
 
     private function planPayload(): array
     {
+        $mode = strtolower((string) $this->input('mode', ''));
+        $isGroup = $this->input('is_group') ? 1 : 0;
+        $isPlanGroup = $this->input('is_plan_group') ? 1 : 0;
+        if ($mode === 'group') {
+            $isPlanGroup = 1;
+        }
+        if ($mode === 'tier') {
+            $isPlanGroup = 0;
+        }
+
+        $billingPeriod = (string) $this->input('billing_period', 'annual');
+        $price = (float) $this->input('price', 0);
+        $currency = strtoupper((string) $this->input('currency', 'EUR'));
+        $parentPlanId = (int) $this->input('parent_plan_id', 0);
+
+        // Groups define billing period, but amount remains on child plans/tiers.
+        if ($isPlanGroup === 1) {
+            $price = 0.0;
+            $currency = 'EUR';
+            $parentPlanId = 0;
+        }
+
+        $promoType = strtolower((string) $this->input('promo_type', ''));
+        $promoValue = $this->input('promo_value', '');
+        $promoStartsAt = trim((string) $this->input('promo_starts_at', ''));
+        $promoEndsAt = trim((string) $this->input('promo_ends_at', ''));
+        if ($isPlanGroup === 1) {
+            $promoType = '';
+            $promoValue = '';
+            $promoStartsAt = '';
+            $promoEndsAt = '';
+        }
+
+        if ($isPlanGroup === 0 && $parentPlanId > 0) {
+            $parent = $this->db->fetch('SELECT billing_period FROM membership_plans WHERE id = ?', [$parentPlanId]);
+            if ($parent && !empty($parent['billing_period'])) {
+                $billingPeriod = (string) $parent['billing_period'];
+            }
+        }
+
         return [
             'slug'           => $this->sanitiseSlug((string) $this->input('slug', '')),
             'name'           => $this->input('name', ''),
             'description'    => $this->input('description', ''),
-            'billing_period' => $this->input('billing_period', 'annual'),
-            'price'          => (float) $this->input('price', 0),
-            'currency'       => strtoupper((string) $this->input('currency', 'EUR')),
+            'billing_period' => $billingPeriod,
+            'price'          => $price,
+            'currency'       => $currency,
             'is_active'      => $this->input('is_active') ? 1 : 0,
-            'is_group'       => $this->input('is_group') ? 1 : 0,
+            'is_group'       => $isGroup,
+            'is_plan_group'  => $isPlanGroup,
             'max_members'    => (int) $this->input('max_members', 0),
-            'parent_plan_id' => (int) $this->input('parent_plan_id', 0),
+            'parent_plan_id' => $parentPlanId,
             'subject_id'     => (int) $this->input('subject_id', 0),
+            'promo_type'     => $promoType,
+            'promo_value'    => $promoValue,
+            'promo_starts_at'=> $promoStartsAt,
+            'promo_ends_at'  => $promoEndsAt,
         ];
     }
 
@@ -811,7 +1114,7 @@ class MembershipAdminController extends BaseController
             $errors['price'] = 'Price cannot be negative.';
         }
 
-        if (!empty($data['parent_plan_id']) && !empty($data['is_group'])) {
+        if (!empty($data['parent_plan_id']) && !empty($data['is_plan_group'])) {
             $errors['parent_plan_id'] = 'A group plan cannot be assigned to a parent group.';
         }
 
@@ -819,8 +1122,20 @@ class MembershipAdminController extends BaseController
             $errors['parent_plan_id'] = 'A plan cannot be its own parent.';
         }
 
-        if (!empty($data['is_group']) && (int) ($data['max_members'] ?? 0) <= 1) {
-            $errors['max_members'] = 'Group plans must allow at least 2 members.';
+        if ((int) ($data['max_members'] ?? 0) < 0) {
+            $errors['max_members'] = 'Max members cannot be negative.';
+        }
+
+        if (!empty($data['is_group']) && (int) ($data['max_members'] ?? 0) === 1) {
+            $errors['max_members'] = 'Use 0 for no limit, or 2+ for a capped group.';
+        }
+
+        if (empty($data['is_plan_group']) && (int) $data['price'] <= 0) {
+            $errors['price'] = 'Plans/tiers must have a billable amount greater than zero.';
+        }
+
+        if ($planId === null && empty($data['is_plan_group']) && empty($data['parent_plan_id'])) {
+            $errors['parent_plan_id'] = 'Create a group first, then assign new plans as tiers under a parent group.';
         }
 
         $allowedPeriods = ['annual', 'monthly', 'quarterly', 'lifetime', 'custom'];
@@ -831,6 +1146,40 @@ class MembershipAdminController extends BaseController
         $allowedCurrency = preg_match('/^[A-Z]{3}$/', $data['currency']) === 1;
         if (!$allowedCurrency) {
             $errors['currency'] = 'Currency must be a 3-letter code (e.g. EUR).';
+        }
+
+        $promoType = (string) ($data['promo_type'] ?? '');
+        $promoValueRaw = $data['promo_value'] ?? '';
+        $promoValue = $promoValueRaw === '' ? null : (float) $promoValueRaw;
+        if ($promoType !== '' && !in_array($promoType, ['percent', 'fixed'], true)) {
+            $errors['promo_type'] = 'Promotion type must be percent or fixed.';
+        }
+        if ($promoType !== '' && ($promoValue === null || $promoValue <= 0)) {
+            $errors['promo_value'] = 'Promotion value must be greater than zero.';
+        }
+        if ($promoType === 'percent' && $promoValue !== null && $promoValue > 100) {
+            $errors['promo_value'] = 'Percent promotion cannot exceed 100.';
+        }
+
+        $promoStartsAt = !empty($data['promo_starts_at']) ? strtotime((string) $data['promo_starts_at']) : false;
+        $promoEndsAt = !empty($data['promo_ends_at']) ? strtotime((string) $data['promo_ends_at']) : false;
+        if (!empty($data['promo_starts_at']) && $promoStartsAt === false) {
+            $errors['promo_starts_at'] = 'Promotion start date/time is invalid.';
+        }
+        if (!empty($data['promo_ends_at']) && $promoEndsAt === false) {
+            $errors['promo_ends_at'] = 'Promotion end date/time is invalid.';
+        }
+        if ($promoStartsAt !== false && $promoEndsAt !== false && $promoEndsAt < $promoStartsAt) {
+            $errors['promo_ends_at'] = 'Promotion end must be after promotion start.';
+        }
+
+        if (!empty($data['is_plan_group'])) {
+            if ($promoType !== '') {
+                $errors['promo_type'] = 'Promotions apply to billable plans/tiers, not groups.';
+            }
+            if (!empty($data['promo_starts_at']) || !empty($data['promo_ends_at'])) {
+                $errors['promo_type'] = 'Promotions apply to billable plans/tiers, not groups.';
+            }
         }
 
         $sql = 'SELECT id FROM membership_plans WHERE slug = ?';
@@ -845,10 +1194,10 @@ class MembershipAdminController extends BaseController
         }
 
         if (!empty($data['parent_plan_id'])) {
-            $parent = $this->db->fetch('SELECT id, is_group FROM membership_plans WHERE id = ?', [(int) $data['parent_plan_id']]);
+            $parent = $this->db->fetch('SELECT id, is_plan_group, is_group, parent_plan_id, price FROM membership_plans WHERE id = ?', [(int) $data['parent_plan_id']]);
             if (!$parent) {
                 $errors['parent_plan_id'] = 'Selected parent group does not exist.';
-            } elseif ((int) ($parent['is_group'] ?? 0) !== 1) {
+            } elseif (!$this->isStructuralGroupPlan($parent)) {
                 $errors['parent_plan_id'] = 'Parent plan must be marked as a group.';
             }
         }
@@ -860,6 +1209,12 @@ class MembershipAdminController extends BaseController
             }
         }
 
+        if ($promoType === '') {
+            $data['promo_value'] = null;
+            $data['promo_starts_at'] = null;
+            $data['promo_ends_at'] = null;
+        }
+
         return $errors;
     }
 
@@ -869,5 +1224,110 @@ class MembershipAdminController extends BaseController
             'SELECT id, title FROM subjects WHERE status = ? ORDER BY title ASC',
             ['active']
         );
+    }
+
+    private function buildPlanTree(array $plans): array
+    {
+        $groups = [];
+        $plansByParent = [];
+        $standalone = [];
+
+        foreach ($plans as $plan) {
+            $isGroup = $this->isStructuralGroupPlan($plan);
+            $parentId = (int) ($plan['parent_plan_id'] ?? 0);
+
+            if ($isGroup) {
+                $groups[(int) $plan['id']] = $plan;
+            } elseif ($parentId > 0) {
+                $plansByParent[$parentId][] = $plan;
+            } else {
+                $standalone[] = $plan;
+            }
+        }
+
+        return [
+            'groups' => $groups,
+            'plansByParent' => $plansByParent,
+            'standalone' => $standalone,
+        ];
+    }
+
+    private function membersForCategory(array $filters, string $category, int $categoryId): array
+    {
+        $where = [];
+        $params = [];
+
+        if (!empty($filters['q'])) {
+            $where[] = '(m.forenames LIKE ? OR m.surnames LIKE ? OR m.email LIKE ? OR m.membership_number LIKE ?)';
+            $like = '%' . $filters['q'] . '%';
+            $params = array_merge($params, [$like, $like, $like, $like]);
+        }
+
+        if ($category === 'plan' && $categoryId > 0) {
+            $where[] = 's.plan_id = ?';
+            $params[] = $categoryId;
+        }
+
+        if ($category === 'group' && $categoryId > 0) {
+            $where[] = '(s.plan_id = ? OR s.plan_id IN (SELECT id FROM membership_plans WHERE parent_plan_id = ?))';
+            $params[] = $categoryId;
+            $params[] = $categoryId;
+        }
+
+        $sql = 'SELECT m.*,
+                    s.id                 AS latest_sub_id,
+                    s.period_start       AS latest_period_start,
+                    s.period_end         AS latest_period_end,
+                    s.verification_status,
+                    p.name               AS plan_name,
+                    gp.name              AS group_name
+                FROM members m
+                LEFT JOIN membership_subscriptions s
+                    ON s.id = (
+                        SELECT id FROM membership_subscriptions
+                        WHERE member_id = m.id
+                        ORDER BY period_end DESC, id DESC
+                        LIMIT 1
+                    )
+                LEFT JOIN membership_plans p ON p.id = s.plan_id
+                LEFT JOIN membership_plans gp ON gp.id = p.parent_plan_id';
+
+        if ($where) {
+            $sql .= ' WHERE ' . implode(' AND ', $where);
+        }
+
+        $sql .= ' ORDER BY m.surnames ASC, m.forenames ASC, m.id DESC';
+
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    private function membershipAssociatedSubjectIds(): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT DISTINCT subject_id FROM (
+                SELECT subject_id FROM membership_plans WHERE subject_id IS NOT NULL
+                UNION
+                SELECT subject_id FROM membership_subscriptions WHERE subject_id IS NOT NULL
+            ) t
+            ORDER BY subject_id ASC'
+        );
+
+        return array_values(array_filter(array_map(
+            static fn(array $row): int => (int) ($row['subject_id'] ?? 0),
+            $rows
+        )));
+    }
+
+    private function isStructuralGroupPlan(array $plan): bool
+    {
+        if (array_key_exists('is_plan_group', $plan)) {
+            return (int) ($plan['is_plan_group'] ?? 0) === 1;
+        }
+
+        $isGroupFlag = (int) ($plan['is_group'] ?? 0) === 1;
+        $hasParent = (int) ($plan['parent_plan_id'] ?? 0) > 0;
+        $price = (float) ($plan['price'] ?? 0);
+
+        return $isGroupFlag && !$hasParent && $price <= 0;
     }
 }

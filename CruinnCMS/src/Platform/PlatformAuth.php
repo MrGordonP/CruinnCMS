@@ -21,7 +21,17 @@ class PlatformAuth
         static $cred = null;
         if ($cred === null) {
             $path = dirname(__DIR__, 2) . '/config/CruinnCMS.php';
-            $cred = file_exists($path) ? require $path : [];
+            if (!file_exists($path)) {
+                $cred = [];
+            } else {
+                try {
+                    $loaded = require $path;
+                    $cred = is_array($loaded) ? $loaded : [];
+                } catch (\Throwable $e) {
+                    error_log('PlatformAuth credential load failed: ' . $e->getMessage());
+                    $cred = [];
+                }
+            }
         }
         return $cred;
     }

@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.19`
-**HEAD:** `346479e` — fix(ui): migrate all module admin pages to shared panel-layout [v1.0.0-beta.19]
+**Current version:** `v1.0.0-beta.22`
+**HEAD:** `(pending commit for v1.0.0-beta.22 in this session)`
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
@@ -76,6 +76,9 @@ Keep this file focused on session behavior and execution workflow rules.
 
 ## Version History
 
+- **v1.0.0-beta.22** (pending commit) — stabilized membership plan/tier flows, introduced structural `is_plan_group` semantics split from shared-subscription `is_group`, added plan promotion and structural-group migrations, and hardened plan form error surfacing.
+- **v1.0.0-beta.21** (`ef92338`) — added grouped tiers and plan subject linkage support in membership admin and migrations.
+- **v1.0.0-beta.20** (`631ff23`) — restored standardized `pl-panel` shell across migrated admin pages.
 - **v1.0.0-beta.19** (`346479e`) — migrated all module admin and member-facing pages (blog, events, forms, forum, mailout, documents, drivespace, organisation admin, social, organisation member pages) to shared `panel-layout` CSS grid system; removed bespoke `.drivespace { display:grid }` rule.
 - **v1.0.0-beta.18** (`a94cf18`) — restored subject coverage and section propagation for forms, mailout, and organisation.
 - **v1.0.0-beta.17 follow-up** (`1208625`) — added subject workspace `+ Add existing` flows for articles/events, subject attach endpoints/routes, and blog/events new-form subject preselect handling from subject context.

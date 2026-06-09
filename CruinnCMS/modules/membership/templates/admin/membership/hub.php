@@ -15,10 +15,7 @@ $status = is_array($members ?? null) ? $members : [];
         <a class="pl-nav-item" href="<?= url('/admin/membership/plans') ?>">Plans</a>
         <a class="pl-nav-item" href="<?= url('/admin/membership/import') ?>">Import</a>
         <div class="pl-nav-section">Forms</div>
-        <a class="pl-nav-item" href="<?= url('/admin/forms') ?>">Forms</a>
-        <?php if (!empty($latestForm['id'])): ?>
-            <a class="pl-nav-item" href="<?= url('/admin/forms/' . (int) $latestForm['id'] . '/submissions') ?>">Latest Responses</a>
-        <?php endif; ?>
+        <a class="pl-nav-item" href="<?= url('/admin/membership/forms') ?>">Forms and Responses</a>
     </div>
 </div>
 
@@ -53,7 +50,8 @@ $status = is_array($members ?? null) ? $members : [];
                     <span>Payments <?= (int) ($paymentsCount ?? 0) ?></span>
                 </div>
                 <div class="membership-hub-actions">
-                    <a href="<?= url('/admin/membership/plans') ?>" class="btn btn-primary">Manage Plans</a>
+                    <a href="<?= url('/admin/membership/plans/new-group') ?>" class="btn btn-primary">Create Group</a>
+                    <a href="<?= url('/admin/membership/plans/new-tier') ?>" class="btn btn-outline">Create Tier</a>
                     <a href="<?= url('/admin/membership/members') ?>" class="btn btn-outline">Subscription Workspace</a>
                 </div>
             </section>
@@ -67,10 +65,7 @@ $status = is_array($members ?? null) ? $members : [];
                     <span>Pending <?= (int) ($pendingResponsesCount ?? 0) ?></span>
                 </div>
                 <div class="membership-hub-actions">
-                    <a href="<?= url('/admin/forms') ?>" class="btn btn-primary">Open Forms</a>
-                    <?php if (!empty($latestForm['id'])): ?>
-                        <a href="<?= url('/admin/forms/' . (int) $latestForm['id'] . '/submissions') ?>" class="btn btn-outline">Latest Responses</a>
-                    <?php endif; ?>
+                    <a href="<?= url('/admin/membership/forms') ?>" class="btn btn-primary">Open Forms Workspace</a>
                 </div>
             </section>
 

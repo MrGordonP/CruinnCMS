@@ -48,7 +48,7 @@ class MembershipService
 
     public function createPlan(array $data): int
     {
-        return (int) $this->db->insert('membership_plans', [
+        $payload = [
             'slug'           => $data['slug'],
             'name'           => $data['name'],
             'description'    => $data['description'] ?: null,
@@ -57,15 +57,31 @@ class MembershipService
             'currency'       => strtoupper($data['currency'] ?: 'EUR'),
             'is_active'      => !empty($data['is_active']) ? 1 : 0,
             'is_group'       => !empty($data['is_group']) ? 1 : 0,
+            'is_plan_group'  => !empty($data['is_plan_group']) ? 1 : 0,
             'max_members'    => !empty($data['max_members']) ? (int) $data['max_members'] : null,
             'parent_plan_id' => !empty($data['parent_plan_id']) ? (int) $data['parent_plan_id'] : null,
             'subject_id'     => !empty($data['subject_id']) ? (int) $data['subject_id'] : null,
-        ]);
+            'promo_type'     => !empty($data['promo_type']) ? (string) $data['promo_type'] : null,
+            'promo_value'    => isset($data['promo_value']) && $data['promo_value'] !== '' ? (float) $data['promo_value'] : null,
+            'promo_starts_at'=> !empty($data['promo_starts_at']) ? (string) $data['promo_starts_at'] : null,
+            'promo_ends_at'  => !empty($data['promo_ends_at']) ? (string) $data['promo_ends_at'] : null,
+        ];
+
+        try {
+            return (int) $this->db->insert('membership_plans', $payload);
+        } catch (\Throwable $e) {
+            if (!$this->isUnknownPromoColumnError($e)) {
+                throw $e;
+            }
+
+            unset($payload['promo_type'], $payload['promo_value'], $payload['promo_starts_at'], $payload['promo_ends_at'], $payload['is_plan_group']);
+            return (int) $this->db->insert('membership_plans', $payload);
+        }
     }
 
     public function updatePlan(int $id, array $data): void
     {
-        $this->db->update('membership_plans', [
+        $payload = [
             'slug'           => $data['slug'],
             'name'           => $data['name'],
             'description'    => $data['description'] ?: null,
@@ -74,10 +90,41 @@ class MembershipService
             'currency'       => strtoupper($data['currency'] ?: 'EUR'),
             'is_active'      => !empty($data['is_active']) ? 1 : 0,
             'is_group'       => !empty($data['is_group']) ? 1 : 0,
+            'is_plan_group'  => !empty($data['is_plan_group']) ? 1 : 0,
             'max_members'    => !empty($data['max_members']) ? (int) $data['max_members'] : null,
             'parent_plan_id' => !empty($data['parent_plan_id']) ? (int) $data['parent_plan_id'] : null,
             'subject_id'     => !empty($data['subject_id']) ? (int) $data['subject_id'] : null,
-        ], 'id = ?', [$id]);
+            'promo_type'     => !empty($data['promo_type']) ? (string) $data['promo_type'] : null,
+            'promo_value'    => isset($data['promo_value']) && $data['promo_value'] !== '' ? (float) $data['promo_value'] : null,
+            'promo_starts_at'=> !empty($data['promo_starts_at']) ? (string) $data['promo_starts_at'] : null,
+            'promo_ends_at'  => !empty($data['promo_ends_at']) ? (string) $data['promo_ends_at'] : null,
+        ];
+
+        try {
+            $this->db->update('membership_plans', $payload, 'id = ?', [$id]);
+            return;
+        } catch (\Throwable $e) {
+            if (!$this->isUnknownPromoColumnError($e)) {
+                throw $e;
+            }
+
+            unset($payload['promo_type'], $payload['promo_value'], $payload['promo_starts_at'], $payload['promo_ends_at'], $payload['is_plan_group']);
+            $this->db->update('membership_plans', $payload, 'id = ?', [$id]);
+        }
+    }
+
+    private function isUnknownPromoColumnError(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+        if (strpos($message, 'unknown column') === false) {
+            return false;
+        }
+
+        return strpos($message, 'promo_type') !== false
+            || strpos($message, 'promo_value') !== false
+            || strpos($message, 'promo_starts_at') !== false
+            || strpos($message, 'promo_ends_at') !== false
+            || strpos($message, 'is_plan_group') !== false;
     }
 
     public function listMembers(array $filters = []): array
