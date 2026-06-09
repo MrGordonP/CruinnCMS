@@ -584,15 +584,63 @@ class MembershipAdminController extends BaseController
 
         $selectedSubCount = $selectedPlan ? ($subCountByPlan[(int) $selectedPlan['id']] ?? 0) : 0;
 
+        // Inline form state
+        $inlineMode   = null;
+        $inlinePlan   = null;
+        $inlineErrors = [];
+        $inlineAction = (string) $this->query('action', '');
+        $inlineEditId = (int) $this->query('edit', 0);
+        $subjects     = $this->activeSubjects();
+        $inlineGroupPlans = $groupPlans;
+
+        if ($inlineEditId > 0) {
+            $found = $this->membership->findPlan($inlineEditId);
+            if ($found) {
+                $inlineMode = $this->isStructuralGroupPlan($found) ? 'group' : 'tier';
+                $inlinePlan = $found;
+                $inlineGroupPlans = array_values(array_filter(
+                    $groupPlans,
+                    static fn(array $p): bool => (int) ($p['id'] ?? 0) !== $inlineEditId
+                ));
+            }
+        } elseif ($inlineAction === 'new-group') {
+            $inlineMode = 'group';
+            $inlinePlan = [
+                'is_plan_group' => 1, 'is_group' => 1, 'is_active' => 1,
+                'max_members' => 2, 'parent_plan_id' => 0,
+                'billing_period' => 'annual', 'currency' => 'EUR',
+            ];
+        } elseif ($inlineAction === 'new-tier') {
+            $prefillParent = (int) $this->query('parent_id', 0);
+            $prefillBilling = 'annual';
+            if ($prefillParent > 0) {
+                $parent = $this->db->fetch('SELECT billing_period FROM membership_plans WHERE id = ?', [$prefillParent]);
+                if ($parent && !empty($parent['billing_period'])) {
+                    $prefillBilling = (string) $parent['billing_period'];
+                }
+            }
+            $inlineMode = 'tier';
+            $inlinePlan = [
+                'is_plan_group' => 0, 'is_group' => 0, 'is_active' => 1,
+                'max_members' => 0, 'parent_plan_id' => $prefillParent,
+                'billing_period' => $prefillBilling, 'currency' => 'EUR',
+            ];
+        }
+
         $this->renderAdmin('admin/membership/plans/index', [
-            'title'       => 'Membership Plans',
-            'plans'       => $plans,
-            'groupPlans'  => $groupPlans,
-            'selectedPlanId' => $selectedPlanId,
-            'selectedPlan' => $selectedPlan,
-            'subCountByPlan' => $subCountByPlan,
+            'title'            => 'Membership Plans',
+            'plans'            => $plans,
+            'groupPlans'       => $groupPlans,
+            'selectedPlanId'   => $selectedPlanId,
+            'selectedPlan'     => $selectedPlan,
+            'subCountByPlan'   => $subCountByPlan,
             'selectedSubCount' => $selectedSubCount,
-            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans']],
+            'inlineMode'       => $inlineMode,
+            'inlinePlan'       => $inlinePlan,
+            'inlineErrors'     => $inlineErrors,
+            'inlineGroupPlans' => $inlineGroupPlans,
+            'inlineSubjects'   => $subjects,
+            'breadcrumbs'      => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans']],
         ]);
     }
 
@@ -685,15 +733,7 @@ class MembershipAdminController extends BaseController
         $subjects = $this->activeSubjects();
 
         if ($errors) {
-            $this->renderAdmin('admin/membership/plans/form', [
-                'title'       => !empty($data['is_plan_group']) ? 'New Membership Group' : 'New Membership Tier',
-                'plan'        => $data,
-                'mode'        => !empty($data['is_plan_group']) ? 'group' : 'tier',
-                'groupPlans'  => $groupPlans,
-                'subjects'    => $subjects,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], [!empty($data['is_plan_group']) ? 'New Group' : 'New Tier']],
-            ]);
+            $this->renderInlinePlansIndex($data, !empty($data['is_plan_group']) ? 'group' : 'tier', null, $groupPlans, $subjects, $errors);
             return;
         }
 
@@ -701,20 +741,12 @@ class MembershipAdminController extends BaseController
             $planId = $this->membership->createPlan($data);
         } catch (\Throwable $e) {
             $errors['general'] = 'Failed to save plan: ' . $e->getMessage();
-            $this->renderAdmin('admin/membership/plans/form', [
-                'title'       => !empty($data['is_plan_group']) ? 'New Membership Group' : 'New Membership Tier',
-                'plan'        => $data,
-                'mode'        => !empty($data['is_plan_group']) ? 'group' : 'tier',
-                'groupPlans'  => $groupPlans,
-                'subjects'    => $subjects,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], [!empty($data['is_plan_group']) ? 'New Group' : 'New Tier']],
-            ]);
+            $this->renderInlinePlansIndex($data, !empty($data['is_plan_group']) ? 'group' : 'tier', null, $groupPlans, $subjects, $errors);
             return;
         }
         $this->logActivity('create', 'membership_plan', $planId, 'Membership plan created.');
         Auth::flash('success', 'Plan created.');
-        $this->redirect('/admin/membership/plans');
+        $this->redirect('/admin/membership/plans?plan=' . $planId);
     }
 
     private function planPayloadFromPost(): array
@@ -802,14 +834,7 @@ class MembershipAdminController extends BaseController
         $subjects = $this->activeSubjects();
 
         if ($errors) {
-            $this->renderAdmin('admin/membership/plans/form', [
-                'title'       => 'Edit Membership Plan',
-                'plan'        => array_merge($plan, $data),
-                'groupPlans'  => $groupPlans,
-                'subjects'    => $subjects,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['Edit Plan']],
-            ]);
+            $this->renderInlinePlansIndex(array_merge($plan, $data), $this->isStructuralGroupPlan($plan) ? 'group' : 'tier', $id, $groupPlans, $subjects, $errors);
             return;
         }
 
@@ -817,18 +842,91 @@ class MembershipAdminController extends BaseController
             $this->membership->updatePlan($id, $data);
         } catch (\Throwable $e) {
             $errors['general'] = 'Failed to update plan: ' . $e->getMessage();
-            $this->renderAdmin('admin/membership/plans/form', [
-                'title'       => 'Edit Membership Plan',
-                'plan'        => array_merge($plan, $data),
-                'groupPlans'  => $groupPlans,
-                'subjects'    => $subjects,
-                'errors'      => $errors,
-                'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans', '/admin/membership/plans'], ['Edit Plan']],
-            ]);
+            $this->renderInlinePlansIndex(array_merge($plan, $data), $this->isStructuralGroupPlan($plan) ? 'group' : 'tier', $id, $groupPlans, $subjects, $errors);
             return;
         }
         $this->logActivity('update', 'membership_plan', $id, 'Membership plan updated.');
         Auth::flash('success', 'Plan updated.');
+        $this->redirect('/admin/membership/plans?plan=' . $id);
+    }
+
+    private function renderInlinePlansIndex(array $inlinePlan, string $inlineMode, ?int $inlineEditId, array $inlineGroupPlans, array $inlineSubjects, array $inlineErrors): void
+    {
+        $plans = $this->membership->allPlans();
+        $groupPlans = array_values(array_filter(
+            $plans,
+            fn(array $p): bool => $this->isStructuralGroupPlan($p)
+        ));
+        $selectedPlanId = $inlineEditId ?? (int) ($inlinePlan['id'] ?? 0);
+        if ($selectedPlanId <= 0 && !empty($plans)) {
+            $selectedPlanId = (int) $plans[0]['id'];
+        }
+        $selectedPlan = null;
+        foreach ($plans as $p) {
+            if ((int) $p['id'] === $selectedPlanId) { $selectedPlan = $p; break; }
+        }
+        $subCountByPlan = [];
+        foreach ($this->db->fetchAll('SELECT plan_id, COUNT(*) AS c FROM membership_subscriptions WHERE plan_id IS NOT NULL GROUP BY plan_id') as $row) {
+            $subCountByPlan[(int) $row['plan_id']] = (int) $row['c'];
+        }
+        $this->renderAdmin('admin/membership/plans/index', [
+            'title'            => 'Membership Plans',
+            'plans'            => $plans,
+            'groupPlans'       => $groupPlans,
+            'selectedPlanId'   => $selectedPlanId,
+            'selectedPlan'     => $selectedPlan,
+            'subCountByPlan'   => $subCountByPlan,
+            'selectedSubCount' => $selectedPlan ? ($subCountByPlan[(int) $selectedPlan['id']] ?? 0) : 0,
+            'inlineMode'       => $inlineMode,
+            'inlinePlan'       => $inlinePlan,
+            'inlineErrors'     => $inlineErrors,
+            'inlineGroupPlans' => $inlineGroupPlans,
+            'inlineSubjects'   => $inlineSubjects,
+            'breadcrumbs'      => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Plans']],
+        ]);
+    }
+
+    public function bulkPlans(): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $action  = (string) ($_POST['bulk_action'] ?? '');
+        $rawIds  = $_POST['plan_ids'] ?? [];
+        $planIds = array_map('intval', is_array($rawIds) ? $rawIds : []);
+        $planIds = array_filter($planIds, static fn(int $id): bool => $id > 0);
+
+        if (empty($planIds) || !in_array($action, ['set_active', 'set_inactive', 'delete'], true)) {
+            Auth::flash('error', 'No plans selected or invalid action.');
+            $this->redirect('/admin/membership/plans');
+            return;
+        }
+
+        $affected = 0;
+        if ($action === 'set_active' || $action === 'set_inactive') {
+            $isActive = $action === 'set_active' ? 1 : 0;
+            foreach ($planIds as $id) {
+                $this->db->execute('UPDATE membership_plans SET is_active = ? WHERE id = ?', [$isActive, $id]);
+                $affected++;
+            }
+            $label = $isActive ? 'activated' : 'deactivated';
+            Auth::flash('success', $affected . ' plan(s) ' . $label . '.');
+        } elseif ($action === 'delete') {
+            foreach ($planIds as $id) {
+                $inUse = (int) ($this->db->fetch('SELECT COUNT(*) AS c FROM membership_subscriptions WHERE plan_id = ?', [$id])['c'] ?? 0);
+                if ($inUse > 0) {
+                    Auth::flash('error', 'Plan #' . $id . ' has active subscriptions and cannot be deleted.');
+                    $this->redirect('/admin/membership/plans');
+                    return;
+                }
+            }
+            foreach ($planIds as $id) {
+                $this->db->execute('DELETE FROM membership_plans WHERE id = ?', [$id]);
+                $affected++;
+            }
+            Auth::flash('success', $affected . ' plan(s) deleted.');
+        }
+
         $this->redirect('/admin/membership/plans');
     }
 

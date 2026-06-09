@@ -37,6 +37,7 @@ return [
         $router->post('/admin/membership/plans',                      [MembershipAdminController::class, 'createPlan']);
         $router->get('/admin/membership/plans/{id}/edit',             [MembershipAdminController::class, 'editPlan']);
         $router->post('/admin/membership/plans/{id}',                 [MembershipAdminController::class, 'updatePlan']);
+        $router->post('/admin/membership/plans/bulk',                 [MembershipAdminController::class, 'bulkPlans']);
 
         // Membership forms/responses workspace
         $router->get('/admin/membership/forms',                       [MembershipAdminController::class, 'formsWorkspace']);
