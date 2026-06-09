@@ -3,6 +3,7 @@
 namespace Cruinn\Module\Membership\Controllers;
 
 use Cruinn\Auth;
+use Cruinn\CSRF;
 use Cruinn\Controllers\BaseController;
 use Cruinn\Module\Membership\Services\MembershipService;
 
@@ -1627,7 +1628,7 @@ class MembershipAdminController extends BaseController
     public function bulkMembers(): void
     {
         Auth::requireAdmin();
-        \Cruinn\CSRF::verify();
+        CSRF::verify();
 
         $action = (string) $this->input('bulk_action', '');
         $ids = array_values(array_filter(array_map('intval', (array) ($_POST['member_ids'] ?? []))));
