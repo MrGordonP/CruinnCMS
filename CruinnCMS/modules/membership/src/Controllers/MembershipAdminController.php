@@ -753,6 +753,17 @@ class MembershipAdminController extends BaseController
         foreach ($this->db->fetchAll('SELECT plan_id, COUNT(*) AS c FROM membership_subscriptions WHERE plan_id IS NOT NULL GROUP BY plan_id') as $row) {
             $subCountByPlan[(int) $row['plan_id']] = (int) $row['c'];
         }
+        // Aggregate group totals from child tiers
+        foreach ($groupPlans as $g) {
+            $gid = (int) $g['id'];
+            $total = $subCountByPlan[$gid] ?? 0;
+            foreach ($plans as $p) {
+                if ((int) ($p['parent_plan_id'] ?? 0) === $gid) {
+                    $total += $subCountByPlan[(int) $p['id']] ?? 0;
+                }
+            }
+            $subCountByPlan[$gid] = $total;
+        }
 
         $selectedSubCount = $selectedPlan ? ($subCountByPlan[(int) $selectedPlan['id']] ?? 0) : 0;
 
@@ -1119,6 +1130,17 @@ class MembershipAdminController extends BaseController
         $subCountByPlan = [];
         foreach ($this->db->fetchAll('SELECT plan_id, COUNT(*) AS c FROM membership_subscriptions WHERE plan_id IS NOT NULL GROUP BY plan_id') as $row) {
             $subCountByPlan[(int) $row['plan_id']] = (int) $row['c'];
+        }
+        // Aggregate group totals from child tiers
+        foreach ($groupPlans as $g) {
+            $gid = (int) $g['id'];
+            $total = $subCountByPlan[$gid] ?? 0;
+            foreach ($plans as $p) {
+                if ((int) ($p['parent_plan_id'] ?? 0) === $gid) {
+                    $total += $subCountByPlan[(int) $p['id']] ?? 0;
+                }
+            }
+            $subCountByPlan[$gid] = $total;
         }
         $this->renderAdmin('admin/membership/plans/index', [
             'title'            => 'Membership Plans',
