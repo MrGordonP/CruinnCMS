@@ -1898,6 +1898,7 @@ class PlatformController
         $error = null;
         $rows = [];
         $columns = [];
+        $columnMeta = []; // col => ['type'=>..., 'nullable'=>bool]
         $total = 0;
         $pages = 1;
         $dbName = '';
@@ -1908,6 +1909,9 @@ class PlatformController
         $perPage = 50;
         $offset  = ($page - 1) * $perPage;
 
+        $sortCol = (string)($_GET['sort'] ?? '');
+        $sortDir = strtoupper((string)($_GET['dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+
         try {
             [$pdo, $dbName, $instanceLabel] = $this->resolveDbConnection($instanceFolder);
 
@@ -1915,12 +1919,37 @@ class PlatformController
                 throw new \RuntimeException("Unknown table: {$table}");
             }
 
-            $pkCol  = $this->pdoGetTablePk($pdo, $dbName, $table);
-            $total  = (int)$pdo->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
-            $pages  = (int)ceil($total / $perPage) ?: 1;
-            $stmt   = $pdo->query("SELECT * FROM `{$table}` LIMIT {$perPage} OFFSET {$offset}");
-            $rows   = $stmt->fetchAll();
-            $columns = !empty($rows) ? array_keys($rows[0]) : [];
+            $pkCol   = $this->pdoGetTablePk($pdo, $dbName, $table);
+            $allCols = $this->pdoGetTableColumns($pdo, $dbName, $table);
+
+            // Validate sort column against real columns
+            if ($sortCol !== '' && !in_array($sortCol, $allCols, true)) {
+                $sortCol = '';
+            }
+
+            // Fetch column metadata for inline editor
+            $metaStmt = $pdo->prepare(
+                "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+                 ORDER BY ORDINAL_POSITION"
+            );
+            $metaStmt->execute([$dbName, $table]);
+            foreach ($metaStmt->fetchAll() as $m) {
+                $columnMeta[$m['COLUMN_NAME']] = [
+                    'type'     => strtolower((string)$m['DATA_TYPE']),
+                    'nullable' => $m['IS_NULLABLE'] === 'YES',
+                    'maxlen'   => $m['CHARACTER_MAXIMUM_LENGTH'],
+                ];
+            }
+
+            $total = (int)$pdo->query("SELECT COUNT(*) FROM `{$table}`")->fetchColumn();
+            $pages = (int)ceil($total / $perPage) ?: 1;
+
+            $orderSql = $sortCol !== '' ? " ORDER BY `{$sortCol}` {$sortDir}" : '';
+            $stmt = $pdo->query("SELECT * FROM `{$table}`{$orderSql} LIMIT {$perPage} OFFSET {$offset}");
+            $rows = $stmt->fetchAll();
+            $columns = !empty($rows) ? array_keys($rows[0]) : $allCols;
         } catch (\Throwable $e) {
             $error = $e->getMessage();
         }
@@ -1930,12 +1959,15 @@ class PlatformController
             'username'       => PlatformAuth::username(),
             'table'          => $table,
             'columns'        => $columns,
+            'columnMeta'     => $columnMeta,
             'rows'           => $rows,
             'total'          => $total,
             'page'           => $page,
             'perPage'        => $perPage,
             'pages'          => $pages,
             'pkCol'          => $pkCol,
+            'sortCol'        => $sortCol,
+            'sortDir'        => $sortDir,
             'dbName'         => $dbName,
             'instanceFolder' => $instanceFolder ?? '',
             'instanceLabel'  => $instanceLabel,
@@ -1990,7 +2022,10 @@ class PlatformController
         $instanceFolder = $_POST['_instance'] ?? null;
         $pkVal = $_POST['_pk'] ?? '';
         $page  = (int)($_POST['_page'] ?? 1);
-        $instParam = $instanceFolder ? '?instance=' . urlencode($instanceFolder) : '';
+        $sort  = (string)($_POST['_sort'] ?? '');
+        $dir   = strtoupper((string)($_POST['_dir'] ?? '')) === 'DESC' ? 'DESC' : 'ASC';
+        $instParam = $instanceFolder ? '&instance=' . urlencode($instanceFolder) : '';
+        $sortParam = $sort !== '' ? '&sort=' . urlencode($sort) . '&dir=' . $dir : '';
 
         try {
             [$pdo, $dbName] = $this->resolveDbConnection($instanceFolder ?: null);
@@ -2020,7 +2055,7 @@ class PlatformController
             $_SESSION['_platform_flash'] = ['type' => 'error', 'message' => $e->getMessage()];
         }
 
-        $back = '/cms/database/browse/' . urlencode($table) . '?page=' . $page . ($instanceFolder ? '&instance=' . urlencode($instanceFolder) : '');
+        $back = '/cms/database/browse/' . urlencode($table) . '?page=' . $page . $instParam . $sortParam;
         header('Location: ' . $back); exit;
     }
 
