@@ -133,7 +133,7 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
                 data-null="<?= $val === null ? '1' : '0' ?>"
                 style="white-space:nowrap; padding:0.3rem 0.6rem; width:1%; min-width:0; position:relative;">
                 <!-- Display span -->
-                <span class="db-cell-display">
+                <span class="db-cell-display" style="display:block;">
                 <?php if ($val === null): ?>
                     <span style="color:var(--text-muted);font-style:italic;">NULL</span>
                 <?php else:
@@ -151,13 +151,13 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
                 <!-- Edit input (hidden until edit mode) -->
                 <?php if ($isPk): ?>
                 <input class="db-cell-input" type="text" value="<?= e($strVal) ?>" disabled
-                       style="display:none; position:absolute; inset:1px; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:calc(100% - 2px); box-sizing:border-box; opacity:0.6; background:#f3f4f6;">
+                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:100%; box-sizing:border-box; opacity:0.6; background:#f3f4f6;">
                 <?php elseif ($isLong): ?>
                 <textarea class="db-cell-input" rows="2"
-                          style="display:none; position:absolute; inset:1px; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:calc(100% - 2px); box-sizing:border-box; resize:none;"><?= e($strVal) ?></textarea>
+                          style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:100%; box-sizing:border-box; resize:none;"><?= e($strVal) ?></textarea>
                 <?php else: ?>
                 <input class="db-cell-input" type="text" value="<?= e($strVal) ?>"
-                       style="display:none; position:absolute; inset:1px; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:calc(100% - 2px); box-sizing:border-box;">
+                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:100%; box-sizing:border-box;">
                 <?php endif; ?>
             </td>
             <?php endforeach; ?>

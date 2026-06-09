@@ -34,10 +34,11 @@
                 var display = td.querySelector('.db-cell-display');
                 var input   = td.querySelector('.db-cell-input');
                 if (!display || !input) return;
-                display.style.visibility = on ? 'hidden' : '';
-                display.style.display    = '';
-                input.style.display      = on ? 'block' : 'none';
-                if (!on) {
+                if (on) {
+                    // Ghost: invisible but in flow, anchors column width
+                    display.style.visibility = 'hidden';
+                    input.style.display = 'block';
+                } else {
                     display.style.visibility = '';
                     input.style.display = 'none';
                     rowStatus(tr, '');
