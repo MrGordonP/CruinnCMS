@@ -43,6 +43,7 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
     <?php endif; ?>
     <?php if ($pkCol): ?>
     <button type="button" id="db-edit-toggle" class="btn btn-primary" style="margin-left:auto;">Edit Table</button>
+    <button type="button" id="db-save-all-btn" class="btn btn-primary" style="display:none;" disabled>Save All</button>
     <?php endif; ?>
 </p>
 
@@ -57,6 +58,10 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
 
 <!-- Filter form (wraps only the filter header inputs, not the whole table) -->
 <form method="get" action="<?= $baseUrl ?>" id="db-filter-form">
+<style>
+tr.db-row-dirty { background: #fffbeb; }
+tr.db-row-dirty td { border-bottom-color: #fcd34d; }
+</style>
     <?php if ($sortCol !== ''): ?>
     <input type="hidden" name="sort" value="<?= e($sortCol) ?>">
     <input type="hidden" name="dir" value="<?= e($sortDir) ?>">
