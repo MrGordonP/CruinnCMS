@@ -539,22 +539,51 @@ class AcpSystemController extends BaseController
         $perPage = 50;
         $offset  = ($page - 1) * $perPage;
         $pkCol   = $this->getTablePk($db, $dbName, $table);
+        $allCols = $this->getTableColumns($db, $dbName, $table);
 
-        $total   = (int)$db->fetchColumn("SELECT COUNT(*) FROM `{$table}`");
-        $rows    = $db->fetchAll("SELECT * FROM `{$table}` LIMIT {$perPage} OFFSET {$offset}");
-        $columns = !empty($rows) ? array_keys($rows[0]) : [];
+        $sortCol = (string)($_GET['sort'] ?? '');
+        $sortDir = strtoupper((string)($_GET['dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+        if ($sortCol !== '' && !in_array($sortCol, $allCols, true)) {
+            $sortCol = '';
+        }
+
+        // Fetch column metadata for inline editor
+        $columnMeta = [];
+        $pdo = $db->pdo();
+        $metaStmt = $pdo->prepare(
+            "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+             ORDER BY ORDINAL_POSITION"
+        );
+        $metaStmt->execute([$dbName, $table]);
+        foreach ($metaStmt->fetchAll() as $m) {
+            $columnMeta[$m['COLUMN_NAME']] = [
+                'type'     => strtolower((string)$m['DATA_TYPE']),
+                'nullable' => $m['IS_NULLABLE'] === 'YES',
+                'maxlen'   => $m['CHARACTER_MAXIMUM_LENGTH'],
+            ];
+        }
+
+        $total    = (int)$db->fetchColumn("SELECT COUNT(*) FROM `{$table}`");
+        $orderSql = $sortCol !== '' ? " ORDER BY `{$sortCol}` {$sortDir}" : '';
+        $rows     = $db->fetchAll("SELECT * FROM `{$table}`{$orderSql} LIMIT {$perPage} OFFSET {$offset}");
+        $columns  = !empty($rows) ? array_keys($rows[0]) : $allCols;
 
         $data = [
-            'title'   => "Browse: {$table}",
-            'tab'     => 'database',
-            'table'   => $table,
-            'columns' => $columns,
-            'rows'    => $rows,
-            'total'   => $total,
-            'page'    => $page,
-            'perPage' => $perPage,
-            'pages'   => (int)ceil($total / $perPage),
-            'pkCol'   => $pkCol,
+            'title'      => "Browse: {$table}",
+            'tab'        => 'database',
+            'table'      => $table,
+            'columns'    => $columns,
+            'columnMeta' => $columnMeta,
+            'rows'       => $rows,
+            'total'      => $total,
+            'page'       => $page,
+            'perPage'    => $perPage,
+            'pages'      => (int)ceil($total / $perPage) ?: 1,
+            'pkCol'      => $pkCol,
+            'sortCol'    => $sortCol,
+            'sortDir'    => $sortDir,
         ];
         $this->renderAcp('admin/settings/database-browse', $data);
     }
@@ -607,6 +636,9 @@ class AcpSystemController extends BaseController
         $pkCol  = $this->getTablePk($db, $dbName, $table);
         $pkVal  = $_POST['_pk'] ?? '';
         $page   = (int)($_POST['_page'] ?? 1);
+        $sort   = (string)($_POST['_sort'] ?? '');
+        $dir    = strtoupper((string)($_POST['_dir'] ?? '')) === 'DESC' ? 'DESC' : 'ASC';
+        $sortParam = $sort !== '' ? '&sort=' . urlencode($sort) . '&dir=' . $dir : '';
 
         if (!$pkCol || $pkVal === '') {
             Auth::flash('error', 'Missing primary key.');
@@ -627,7 +659,7 @@ class AcpSystemController extends BaseController
 
         if (empty($setClauses)) {
             Auth::flash('error', 'Nothing to update.');
-            $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page);
+            $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam);
         }
 
         $values[] = $pkVal;
@@ -637,7 +669,7 @@ class AcpSystemController extends BaseController
         );
 
         Auth::flash('success', 'Row updated.');
-        $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page);
+        $this->redirect('/admin/settings/database/browse/' . urlencode($table) . '?page=' . $page . $sortParam);
     }
 
     public function deleteRow(string $table): void
