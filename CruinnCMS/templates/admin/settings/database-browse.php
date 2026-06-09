@@ -131,7 +131,7 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
                 data-col="<?= e($col) ?>"
                 data-orig="<?= e($strVal) ?>"
                 data-null="<?= $val === null ? '1' : '0' ?>"
-                style="white-space:nowrap; padding:0.3rem 0.6rem;">
+                style="white-space:nowrap; padding:0.3rem 0.6rem; width:1%; min-width:0;">
                 <!-- Display span -->
                 <span class="db-cell-display">
                 <?php if ($val === null): ?>
@@ -151,13 +151,13 @@ $extraParams = acp_extra_params($sortCol, $sortDir, $filters);
                 <!-- Edit input (hidden until edit mode) -->
                 <?php if ($isPk): ?>
                 <input class="db-cell-input" type="text" value="<?= e($strVal) ?>" disabled
-                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:100%; min-width:80px; opacity:0.6; background:#f3f4f6;">
+                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; min-width:60px; max-width:280px; opacity:0.6; background:#f3f4f6;">
                 <?php elseif ($isLong): ?>
                 <textarea class="db-cell-input" rows="2"
-                          style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:100%; min-width:140px; resize:vertical;"><?= e($strVal) ?></textarea>
+                          style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; min-width:120px; max-width:400px; resize:both;"><?= e($strVal) ?></textarea>
                 <?php else: ?>
                 <input class="db-cell-input" type="text" value="<?= e($strVal) ?>"
-                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:100%; min-width:80px;">
+                       style="display:none; font-family:monospace; font-size:0.82rem; padding:0.2rem 0.35rem; border:1px solid var(--border); border-radius:3px; width:max-content; min-width:60px; max-width:280px;">
                 <?php endif; ?>
             </td>
             <?php endforeach; ?>
