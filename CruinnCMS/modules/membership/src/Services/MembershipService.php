@@ -401,7 +401,7 @@ class MembershipService
         }
     }
 
-    public function upsertAddress(int $memberId, array $data): void
+    public function saveAddress(int $memberId, array $data): void
     {
         $fields = [
             'line_1'   => $data['line_1']   ?: null,

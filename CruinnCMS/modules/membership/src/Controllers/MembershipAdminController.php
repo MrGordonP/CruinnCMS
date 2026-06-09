@@ -299,7 +299,7 @@ class MembershipAdminController extends BaseController
         }
 
         $this->membership->updateMember($id, $data);
-        $this->membership->upsertAddress($id, $this->addressPayload());
+        $this->membership->saveAddress($id, $this->addressPayload());
         $this->membership->upsertMemberAdmin($id, $this->adminNotesPayload());
         $this->logActivity('update', 'member', $id, 'Membership record updated.');
         Auth::flash('success', 'Member updated.');
