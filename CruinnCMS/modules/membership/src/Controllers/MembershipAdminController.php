@@ -843,6 +843,7 @@ class MembershipAdminController extends BaseController
                     '_clone_from_name' => (string) ($source['name'] ?? ''),
                 ];
             }
+        }
 
         $this->renderAdmin('admin/membership/plans/index', [
             'title'            => 'Membership Plans',
