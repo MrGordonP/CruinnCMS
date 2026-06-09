@@ -113,6 +113,25 @@ class MembershipAdminController extends BaseController
             );
         }
 
+        // Bulk fetch subscriptions for all listed members (powers expandable rows)
+        $subsByMember = [];
+        if (!empty($members)) {
+            $memberIds = array_map(static fn(array $m): int => (int) $m['id'], $members);
+            $placeholders = implode(',', array_fill(0, count($memberIds), '?'));
+            $bulkSubs = $this->db->fetchAll(
+                "SELECT s.id, s.member_id, s.period_start, s.period_end,
+                        s.amount, s.currency, s.verification_status, p.name AS plan_name
+                 FROM membership_subscriptions s
+                 LEFT JOIN membership_plans p ON p.id = s.plan_id
+                 WHERE s.member_id IN ($placeholders)
+                 ORDER BY s.period_start DESC",
+                $memberIds
+            );
+            foreach ($bulkSubs as $bs) {
+                $subsByMember[(int) $bs['member_id']][] = $bs;
+            }
+        }
+
         // Distinct organisations for sidebar filter
         $distinctOrgs = array_values(array_filter(array_column(
             $this->db->fetchAll('SELECT DISTINCT organisation FROM members WHERE organisation IS NOT NULL AND organisation != \'\'  ORDER BY organisation ASC'),
@@ -135,6 +154,7 @@ class MembershipAdminController extends BaseController
             'subscriptions' => $subscriptions,
             'payments'      => $payments,
             'linkedUser'    => $linkedUser,
+            'subsByMember'  => $subsByMember,
             'errors'        => [],
             'breadcrumbs'   => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members']],
         ]);
@@ -143,7 +163,46 @@ class MembershipAdminController extends BaseController
     public function showMember(int $id): void
     {
         Auth::requireAdmin();
-        $this->redirect('/admin/membership/members?member=' . $id);
+
+        $member = $this->membership->findById($id);
+        if (!$member) {
+            http_response_code(404);
+            $this->render('errors/404');
+            return;
+        }
+
+        $subscriptions = $this->membership->subscriptionsForMember($id);
+        $payments      = $this->membership->paymentsForMember($id);
+        $plans         = $this->membership->allPlans(true);
+
+        $linkedUser = null;
+        if (!empty($member['user_id'])) {
+            $linkedUser = $this->db->fetch(
+                'SELECT id, display_name, email FROM users WHERE id = ?',
+                [(int) $member['user_id']]
+            );
+        }
+
+        $address = $this->db->fetch(
+            'SELECT * FROM member_addresses WHERE member_id = ?',
+            [$id]
+        );
+
+        $this->renderAdmin('admin/membership/members/show', [
+            'title'         => trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? '')),
+            'member'        => $member,
+            'subscriptions' => $subscriptions,
+            'payments'      => $payments,
+            'plans'         => $plans,
+            'linkedUser'    => $linkedUser,
+            'address'       => $address,
+            'breadcrumbs'   => [
+                ['Admin', '/admin'],
+                ['Membership', '/admin/membership'],
+                ['Members', '/admin/membership/members'],
+                [trim((string) ($member['forenames'] ?? '') . ' ' . (string) ($member['surnames'] ?? ''))],
+            ],
+        ]);
     }
 
     public function newMember(): void

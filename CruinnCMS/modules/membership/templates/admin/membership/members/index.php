@@ -12,6 +12,7 @@ $filters          = $filters ?? ['q' => '', 'status_filter' => '', 'org_filter' 
 $allowedStatuses  = $allowedStatuses ?? ['applicant', 'active', 'lapsed', 'suspended', 'resigned', 'archived'];
 $distinctOrgs     = $distinctOrgs ?? [];
 
+$subsByMember    = $subsByMember ?? [];
 $groups          = $memberTree['groups'] ?? [];
 $plansByParent   = $memberTree['plansByParent'] ?? [];
 $standalonePlans = $memberTree['standalone'] ?? [];
@@ -217,25 +218,70 @@ $verifiedBadge = static function(?string $vs): string {
                     <tbody>
                         <?php foreach ($members as $m): ?>
                         <?php
+                            $mId = (int) $m['id'];
                             $rowName = trim((string) ($m['forenames'] ?? '') . ' ' . (string) ($m['surnames'] ?? ''));
-                            $memberUrl = '/admin/membership/members?member=' . (int) $m['id']
+                            $memberUrl = '/admin/membership/members?member=' . $mId
                                 . '&category=' . urlencode((string) $category)
                                 . '&category_id=' . (int) $categoryId
                                 . (!empty($filters['q']) ? '&q=' . urlencode((string) $filters['q']) : '')
                                 . (!empty($filters['status_filter']) ? '&status_filter=' . urlencode((string) $filters['status_filter']) : '')
                                 . (!empty($filters['org_filter']) ? '&org_filter=' . urlencode((string) $filters['org_filter']) : '');
+                            $mSubs = $subsByMember[$mId] ?? [];
                         ?>
-                        <tr<?= (int) $m['id'] === $selectedId ? ' class="selected"' : '' ?> onclick="window.location='<?= url($memberUrl) ?>'">
-                            <td onclick="event.stopPropagation()"><input type="checkbox" class="member-cb" name="member_ids[]" value="<?= (int) $m['id'] ?>" onchange="updateBulkBar()"></td>
-                            <td><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></td>
+                        <tr<?= $mId === $selectedId ? ' class="selected"' : '' ?> style="cursor:pointer;"
+                            onclick="window.location='<?= url($memberUrl) ?>'"
+                            ondblclick="event.preventDefault();window.location='<?= url('/admin/membership/members/' . $mId) ?>'">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="member-cb" name="member_ids[]" value="<?= $mId ?>" onchange="updateBulkBar()"></td>
+                            <td>
+                                <span><?= e($rowName !== '' ? $rowName : '(unnamed)') ?></span>
+                                <?php if (!empty($mSubs)): ?>
+                                <button type="button" class="sub-expand-btn" data-mid="<?= $mId ?>"
+                                    onclick="event.stopPropagation();toggleSubRow(<?= $mId ?>)"
+                                    title="Show subscriptions"
+                                    style="margin-left:0.3rem;background:none;border:none;cursor:pointer;font-size:0.75rem;color:#6b7280;padding:0;">
+                                    ▸ <?= count($mSubs) ?>
+                                </button>
+                                <?php endif; ?>
+                            </td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?= e((string) ($m['email'] ?? '')) ?>"><?= e((string) ($m['email'] ?? '—')) ?></td>
                             <td><?= e((string) ($m['membership_number'] ?? '—')) ?></td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['organisation'] ?? '—')) ?></td>
                             <td><?= $statusBadge((string) ($m['status'] ?? 'applicant')) ?></td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['plan_name'] ?? '—')) ?></td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string) ($m['group_name'] ?? '—')) ?></td>
-                            <td><?= $verifiedBadge((string) ($m['verification_status'] ?? '')) ?></td>
+                            <td>
+                                <?= $verifiedBadge((string) ($m['verification_status'] ?? '')) ?>
+                                <a href="<?= url('/admin/membership/members/' . $mId) ?>" onclick="event.stopPropagation()" title="Open profile" style="margin-left:0.3rem;color:#6b7280;text-decoration:none;font-size:0.75rem;">↗</a>
+                            </td>
                         </tr>
+                        <?php if (!empty($mSubs)): ?>
+                        <tr id="sub-row-<?= $mId ?>" style="display:none;background:#f8fafc;">
+                            <td colspan="9" style="padding:0 0.5rem 0.5rem 2.5rem;">
+                                <table style="width:100%;font-size:0.78rem;border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="color:#6b7280;">
+                                            <th style="text-align:left;padding:0.25rem 0.4rem;font-weight:600;">Period</th>
+                                            <th style="text-align:left;padding:0.25rem 0.4rem;font-weight:600;">Plan</th>
+                                            <th style="text-align:left;padding:0.25rem 0.4rem;font-weight:600;">Amount</th>
+                                            <th style="text-align:left;padding:0.25rem 0.4rem;font-weight:600;">Verified</th>
+                                            <th style="text-align:left;padding:0.25rem 0.4rem;font-weight:600;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($mSubs as $ms): ?>
+                                    <tr style="border-top:1px solid #e5e7eb;">
+                                        <td style="padding:0.25rem 0.4rem;"><?= e((string) ($ms['period_start'] ?? '')) ?> – <?= e((string) ($ms['period_end'] ?? '')) ?></td>
+                                        <td style="padding:0.25rem 0.4rem;"><?= e((string) ($ms['plan_name'] ?? '—')) ?></td>
+                                        <td style="padding:0.25rem 0.4rem;"><?= e((string) ($ms['currency'] ?? 'EUR')) ?> <?= number_format((float) ($ms['amount'] ?? 0), 2) ?></td>
+                                        <td style="padding:0.25rem 0.4rem;"><?= $verifiedBadge((string) ($ms['verification_status'] ?? '')) ?></td>
+                                        <td style="padding:0.25rem 0.4rem;"><a href="<?= url('/admin/membership/subscriptions?sub=' . (int) $ms['id']) ?>" style="font-size:0.75rem;color:#2563eb;">View →</a></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -256,6 +302,14 @@ $verifiedBadge = static function(?string $vs): string {
                 var count = document.getElementById('bulk-count');
                 if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
                 if (count) count.textContent = checked.length + ' selected';
+            }
+            function toggleSubRow(mid) {
+                var row = document.getElementById('sub-row-' + mid);
+                var btn = document.querySelector('.sub-expand-btn[data-mid="' + mid + '"]');
+                if (!row) return;
+                var open = row.style.display !== 'none';
+                row.style.display = open ? 'none' : 'table-row';
+                if (btn) btn.textContent = (open ? '▸' : '▾') + ' ' + btn.textContent.trim().slice(2);
             }
             </script>
             <?php endif; ?>
