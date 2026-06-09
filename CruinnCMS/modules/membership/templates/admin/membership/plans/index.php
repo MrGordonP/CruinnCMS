@@ -108,6 +108,7 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                 <table class="pl-table" style="table-layout:fixed;">
                     <colgroup>
                         <col style="width:2.2rem;">
+                        <col style="width:3.5rem;">
                         <col>
                         <col style="width:7%;">
                         <col style="width:13%;">
@@ -119,6 +120,7 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="plans-select-all" title="Select all" style="cursor:pointer;"></th>
+                            <th>ID</th>
                             <th>Name</th>
                             <th>Type</th>
                             <th>Group</th>
@@ -159,6 +161,7 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                         ?>
                         <tr<?= $planId === $selectedPlanId ? ' class="selected"' : '' ?> onclick="window.location='<?= url('/admin/membership/plans?plan=' . $planId) ?>'">
                             <td onclick="event.stopPropagation()"><input type="checkbox" class="plan-cb" name="plan_ids[]" value="<?= $planId ?>" onchange="updateBulkPlansBar()"></td>
+                            <td style="color:var(--text-muted);font-size:0.8rem;font-variant-numeric:tabular-nums;"><?= $planId ?></td>
                             <td><?= e($plan['name']) ?></td>
                             <td><?= $isStructuralGroup ? 'Group' : ($parentId > 0 ? 'Tier' : 'Plan') ?></td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($groupName) ?></td>
