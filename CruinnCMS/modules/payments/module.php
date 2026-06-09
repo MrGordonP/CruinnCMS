@@ -4,6 +4,7 @@
  */
 
 use Cruinn\Module\Payments\Controllers\PaymentController;
+use Cruinn\Module\Payments\Controllers\PaymentAdminController;
 
 return [
     'slug'        => 'payments',
@@ -27,7 +28,7 @@ return [
         $router->get('/payments/cancel',            [PaymentController::class, 'cancel']);
         $router->post('/payments/webhook/{gateway}',[PaymentController::class, 'webhook']);
 
-        // Admin — TODO when admin dashboard is built
-        // $router->get('/admin/payments', [PaymentAdminController::class, 'index']);
+        // Admin — payments ledger workspace
+        $router->get('/admin/payments', [PaymentAdminController::class, 'indexPayments']);
     },
 ];
