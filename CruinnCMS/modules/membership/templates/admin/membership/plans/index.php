@@ -329,6 +329,7 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
             <p class="text-muted" style="font-size:0.85rem;">Select a plan to view details.</p>
         <?php else: ?>
             <table class="pl-meta">
+                <tr><th>ID</th><td><code><?= (int) $selectedPlan['id'] ?></code></td></tr>
                 <tr><th>Name</th><td><?= e($selectedPlan['name']) ?></td></tr>
                 <tr><th>Type</th><td><?= isset($groupById[(int) $selectedPlan['id']]) ? 'Group' : ((int) ($selectedPlan['parent_plan_id'] ?? 0) > 0 ? 'Tier' : 'Plan') ?></td></tr>
                 <tr><th>Subject</th><td><?= e($selectedPlan['subject_title'] ?? '—') ?></td></tr>
