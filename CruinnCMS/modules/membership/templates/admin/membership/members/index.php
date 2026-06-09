@@ -14,9 +14,14 @@ $allowedStatuses  = $allowedStatuses ?? ['applicant', 'active', 'lapsed', 'suspe
 $distinctOrgs     = $distinctOrgs ?? [];
 
 $subsByMember    = $subsByMember ?? [];
+$subCountByPlan  = $subCountByPlan ?? [];
 $groups          = $memberTree['groups'] ?? [];
 $plansByParent   = $memberTree['plansByParent'] ?? [];
 $standalonePlans = $memberTree['standalone'] ?? [];
+$memberTreeInactive  = $memberTreeInactive ?? [];
+$groupsInactive      = $memberTreeInactive['groups'] ?? [];
+$plansByParentInactive = $memberTreeInactive['plansByParent'] ?? [];
+$standalonePlansInactive = $memberTreeInactive['standalone'] ?? [];
 
 $selectedCategoryLabel = 'All Members';
 if ($category === 'group' && isset($groups[$categoryId])) {
@@ -99,28 +104,72 @@ $verifiedBadge = static function(?string $vs): string {
             </a>
 
             <div class="pl-nav-section">Subscription Groups</div>
-            <?php if (empty($groups)): ?>
+            <?php if (empty($groups) && empty($groupsInactive) && empty($standalonePlans) && empty($standalonePlansInactive)): ?>
             <div style="padding:0.6rem 0.9rem;color:#64748b;font-size:0.82rem;">No groups available.</div>
             <?php else: ?>
+            <?php
+                // Determine which active group to expand: one containing the selected category, else none
+                $navOpenGroupId = 0;
+                if ($category === 'group') { $navOpenGroupId = $categoryId; }
+                elseif ($category === 'plan') {
+                    foreach ($groups as $g) {
+                        foreach (($plansByParent[(int) $g['id']] ?? []) as $t) {
+                            if ((int) $t['id'] === $categoryId) { $navOpenGroupId = (int) $g['id']; break 2; }
+                        }
+                    }
+                }
+            ?>
             <?php foreach ($groups as $group): ?>
-            <a class="pl-nav-item<?= $category === 'group' && $categoryId === (int) $group['id'] ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=group&category_id=' . (int) $group['id']) ?>">
-                <span><?= e($group['name']) ?></span>
-            </a>
-                <?php foreach (($plansByParent[(int) $group['id']] ?? []) as $tier): ?>
+            <?php $gid = (int) $group['id']; ?>
+            <details class="pl-nav-group" id="nav-group-<?= $gid ?>"<?= $gid === $navOpenGroupId ? ' open' : '' ?>>
+                <summary class="pl-nav-item pl-nav-group-summary<?= $gid === $navOpenGroupId ? ' active' : '' ?>" onclick="event.preventDefault(); this.closest('details').toggleAttribute('open');">
+                    <span><?= e($group['name']) ?></span>
+                    <span class="pl-nav-count"><?= (int) ($subCountByPlan[$gid] ?? 0) ?></span>
+                </summary>
+                <a class="pl-nav-item<?= $category === 'group' && $categoryId === $gid ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=group&category_id=' . $gid) ?>" style="padding-left:1rem;font-style:italic;font-size:0.82rem;">Group overview</a>
+                <?php foreach (($plansByParent[$gid] ?? []) as $tier): ?>
                 <a class="pl-nav-item<?= $category === 'plan' && $categoryId === (int) $tier['id'] ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=plan&category_id=' . (int) $tier['id']) ?>" style="padding-left:1.7rem;">
                     <span>&#8627; <?= e($tier['name']) ?></span>
+                    <span class="pl-nav-count"><?= (int) ($subCountByPlan[(int) $tier['id']] ?? 0) ?></span>
                 </a>
                 <?php endforeach; ?>
+            </details>
             <?php endforeach; ?>
-            <?php endif; ?>
-
             <?php if (!empty($standalonePlans)): ?>
             <div class="pl-nav-section">Standalone Plans</div>
             <?php foreach ($standalonePlans as $plan): ?>
             <a class="pl-nav-item<?= $category === 'plan' && $categoryId === (int) $plan['id'] ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=plan&category_id=' . (int) $plan['id']) ?>">
                 <span><?= e($plan['name']) ?></span>
+                <span class="pl-nav-count"><?= (int) ($subCountByPlan[(int) $plan['id']] ?? 0) ?></span>
             </a>
             <?php endforeach; ?>
+            <?php endif; ?>
+            <?php if (!empty($groupsInactive) || !empty($standalonePlansInactive)): ?>
+            <details class="pl-nav-group" style="margin-top:0.25rem;">
+                <summary class="pl-nav-item pl-nav-group-summary" style="color:var(--text-muted,#64748b);" onclick="event.preventDefault(); this.closest('details').toggleAttribute('open');">
+                    <span>Inactive Groups</span>
+                </summary>
+                <?php foreach ($groupsInactive as $group): ?>
+                <?php $gid = (int) $group['id']; ?>
+                <details class="pl-nav-group" id="nav-group-inactive-<?= $gid ?>">
+                    <summary class="pl-nav-item pl-nav-group-summary" style="padding-left:1rem;" onclick="event.preventDefault(); this.closest('details').toggleAttribute('open');">
+                        <span><?= e($group['name']) ?></span>
+                    </summary>
+                    <a class="pl-nav-item<?= $category === 'group' && $categoryId === $gid ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=group&category_id=' . $gid) ?>" style="padding-left:1.4rem;font-style:italic;font-size:0.82rem;">Group overview</a>
+                    <?php foreach (($plansByParentInactive[$gid] ?? []) as $tier): ?>
+                    <a class="pl-nav-item<?= $category === 'plan' && $categoryId === (int) $tier['id'] ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=plan&category_id=' . (int) $tier['id']) ?>" style="padding-left:2rem;">
+                        <span>&#8627; <?= e($tier['name']) ?></span>
+                    </a>
+                    <?php endforeach; ?>
+                </details>
+                <?php endforeach; ?>
+                <?php foreach ($standalonePlansInactive as $plan): ?>
+                <a class="pl-nav-item<?= $category === 'plan' && $categoryId === (int) $plan['id'] ? ' active' : '' ?>" href="<?= url('/admin/membership/members?category=plan&category_id=' . (int) $plan['id']) ?>" style="padding-left:1rem;">
+                    <span><?= e($plan['name']) ?></span>
+                </a>
+                <?php endforeach; ?>
+            </details>
+            <?php endif; ?>
             <?php endif; ?>
 
             <div class="pl-nav-section">Account Status</div>

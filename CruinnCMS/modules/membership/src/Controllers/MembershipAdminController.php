@@ -99,7 +99,22 @@ class MembershipAdminController extends BaseController
 
         $memberId      = (int) $this->query('member', 0);
         $plans         = $this->membership->allPlans(true);
-        $memberTree    = $this->buildPlanTree($plans);
+        $allPlans      = $this->membership->allPlans();
+        $activePlans   = array_values(array_filter($allPlans, fn(array $p): bool => (int) ($p['is_active'] ?? 0) === 1));
+        $inactivePlans = array_values(array_filter($allPlans, fn(array $p): bool => (int) ($p['is_active'] ?? 0) !== 1));
+        $memberTree         = $this->buildPlanTree($activePlans);
+        $memberTreeInactive = $this->buildPlanTree($inactivePlans);
+        // Sub counts per plan, aggregated into groups
+        $subCountByPlan = [];
+        foreach ($this->db->fetchAll('SELECT plan_id, COUNT(*) AS c FROM membership_subscriptions WHERE plan_id IS NOT NULL GROUP BY plan_id') as $row) {
+            $subCountByPlan[(int) $row['plan_id']] = (int) $row['c'];
+        }
+        foreach ($allPlans as $p) {
+            $gid = (int) ($p['parent_plan_id'] ?? 0);
+            if ($gid > 0 && $this->isStructuralGroupPlan($p) === false) {
+                $subCountByPlan[$gid] = ($subCountByPlan[$gid] ?? 0) + ($subCountByPlan[(int) $p['id']] ?? 0);
+            }
+        }
         $members       = $this->membersForCategory($filters, $category, $categoryId);
         $member        = $memberId ? $this->membership->findById($memberId) : null;
         $subscriptions = $member ? $this->membership->subscriptionsForMember($memberId) : [];
@@ -141,8 +156,10 @@ class MembershipAdminController extends BaseController
         $this->renderAdmin('admin/membership/members/index', [
             'title'         => 'Membership',
             'members'       => $members,
-            'plans'         => $plans,
-            'memberTree'    => $memberTree,
+            'plans'              => $plans,
+            'memberTree'         => $memberTree,
+            'memberTreeInactive' => $memberTreeInactive,
+            'subCountByPlan'     => $subCountByPlan,
             'category'      => $category,
             'categoryId'    => $categoryId,
             'filters'       => $filters,
