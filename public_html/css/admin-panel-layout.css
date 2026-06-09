@@ -139,6 +139,25 @@
     flex-shrink: 0;
 }
 
+/* Collapsible group nav */
+.pl-nav-group { border: none; margin: 0; padding: 0; }
+.pl-nav-group > summary { list-style: none; }
+.pl-nav-group > summary::-webkit-details-marker { display: none; }
+.pl-nav-group-summary::before {
+    content: '▶';
+    font-size: 0.65rem;
+    margin-right: 0.3rem;
+    opacity: 0.5;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+.pl-nav-group[open] > .pl-nav-group-summary::before {
+    transform: rotate(90deg);
+}
+
+/* Group row highlight in center panel */
+.plan-group-row > td:nth-child(3) { font-weight: 600; }
+
 .pl-nav-section {
     font-size: 0.68rem;
     font-weight: 700;

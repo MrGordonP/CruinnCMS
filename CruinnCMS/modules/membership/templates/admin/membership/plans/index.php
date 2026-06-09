@@ -53,17 +53,34 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
             <?php if (empty($groupPlans)): ?>
             <div style="padding:0.6rem 0.9rem;color:#64748b;font-size:0.82rem;">No groups yet.</div>
             <?php else: ?>
+            <?php
+                // Determine which group to expand on load:
+                // the one containing the selected plan, else the last group
+                $lastGroupId = !empty($groupPlans) ? (int) end($groupPlans)['id'] : 0;
+                $openGroupId = $lastGroupId;
+                foreach ($groupPlans as $g) {
+                    $gid = (int) $g['id'];
+                    if ($gid === $selectedPlanId) { $openGroupId = $gid; break; }
+                    foreach (($tiersByParent[$gid] ?? []) as $t) {
+                        if ((int) $t['id'] === $selectedPlanId) { $openGroupId = $gid; break 2; }
+                    }
+                }
+            ?>
             <?php foreach ($groupPlans as $group): ?>
-            <a class="pl-nav-item<?= (int) $group['id'] === $selectedPlanId ? ' active' : '' ?>" href="<?= url('/admin/membership/plans?plan=' . (int) $group['id']) ?>">
-                <span><?= e($group['name']) ?></span>
-                <span class="pl-nav-count"><?= (int) ($subCountByPlan[(int) $group['id']] ?? 0) ?></span>
-            </a>
-                <?php foreach (($tiersByParent[(int) $group['id']] ?? []) as $tier): ?>
+            <?php $gid = (int) $group['id']; ?>
+            <details class="pl-nav-group" id="nav-group-<?= $gid ?>"<?= $gid === $openGroupId ? ' open' : '' ?>>
+                <summary class="pl-nav-item pl-nav-group-summary<?= $gid === $selectedPlanId ? ' active' : '' ?>" onclick="event.preventDefault(); this.closest('details').toggleAttribute('open');">
+                    <span><?= e($group['name']) ?></span>
+                    <span class="pl-nav-count"><?= (int) ($subCountByPlan[$gid] ?? 0) ?></span>
+                </summary>
+                <a class="pl-nav-item pl-nav-group-self<?= $gid === $selectedPlanId ? ' active' : '' ?>" href="<?= url('/admin/membership/plans?plan=' . $gid) ?>" style="padding-left:1rem;font-style:italic;font-size:0.82rem;">Group overview</a>
+                <?php foreach (($tiersByParent[$gid] ?? []) as $tier): ?>
                 <a class="pl-nav-item<?= (int) $tier['id'] === $selectedPlanId ? ' active' : '' ?>" href="<?= url('/admin/membership/plans?plan=' . (int) $tier['id']) ?>" style="padding-left:1.7rem;">
                     <span>&#8627; <?= e($tier['name']) ?></span>
                     <span class="pl-nav-count"><?= (int) ($subCountByPlan[(int) $tier['id']] ?? 0) ?></span>
                 </a>
                 <?php endforeach; ?>
+            </details>
             <?php endforeach; ?>
             <?php endif; ?>
 
@@ -131,6 +148,17 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                         </tr>
                     </thead>
                     <tbody>
+                        <?php
+                            // Pre-compute which group is open in center panel
+                            $centerOpenGroupId = $lastGroupId ?? 0;
+                            foreach ($groupPlans as $g) {
+                                $gid = (int) $g['id'];
+                                if ($gid === $selectedPlanId) { $centerOpenGroupId = $gid; break; }
+                                foreach (($tiersByParent[$gid] ?? []) as $t) {
+                                    if ((int) $t['id'] === $selectedPlanId) { $centerOpenGroupId = $gid; break 2; }
+                                }
+                            }
+                        ?>
                         <?php foreach ($plans as $plan): ?>
                         <?php
                             $planId = (int) $plan['id'];
@@ -158,12 +186,38 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                                 if ($promoActive) { $effectivePrice = max(0.0, $basePrice - $promoValue); }
                             }
                             if ($promoLabel !== '—' && !$promoActive) { $promoLabel .= ' (scheduled)'; }
+                            // Is this a group row? Render toggle + child count
+                            $tierCount = $isStructuralGroup ? count($tiersByParent[$planId] ?? []) : 0;
+                            $isOpen = $isStructuralGroup && $planId === $centerOpenGroupId;
                         ?>
-                        <tr<?= $planId === $selectedPlanId ? ' class="selected"' : '' ?> onclick="window.location='<?= url('/admin/membership/plans?plan=' . $planId) ?>'">
+                        <?php if ($isStructuralGroup): ?>
+                        <tr class="plan-group-row<?= $planId === $selectedPlanId ? ' selected' : '' ?>"
+                            data-group-id="<?= $planId ?>"
+                            onclick="window.location='<?= url('/admin/membership/plans?plan=' . $planId) ?>'">
                             <td onclick="event.stopPropagation()"><input type="checkbox" class="plan-cb" name="plan_ids[]" value="<?= $planId ?>" onchange="updateBulkPlansBar()"></td>
                             <td style="color:var(--text-muted);font-size:0.8rem;font-variant-numeric:tabular-nums;"><?= $planId ?></td>
-                            <td><?= e($plan['name']) ?></td>
-                            <td><?= $isStructuralGroup ? 'Group' : ($parentId > 0 ? 'Tier' : 'Plan') ?></td>
+                            <td style="font-weight:600;">
+                                <button type="button" class="plan-group-toggle" data-group="<?= $planId ?>" onclick="event.stopPropagation(); togglePlanGroup(<?= $planId ?>);"
+                                        style="background:none;border:none;cursor:pointer;padding:0 0.3rem 0 0;font-size:0.85rem;line-height:1;color:var(--text-muted);"><?= $isOpen ? '▼' : '▶' ?></button>
+                                <?= e($plan['name']) ?>
+                                <?php if ($tierCount > 0): ?><small style="color:var(--text-muted);font-weight:normal;margin-left:0.3rem;">(<?= $tierCount ?> tier<?= $tierCount !== 1 ? 's' : '' ?>)</small><?php endif; ?>
+                            </td>
+                            <td>Group</td>
+                            <td>—</td>
+                            <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($plan['subject_title'] ?? '—') ?></td>
+                            <td>—</td>
+                            <td><?= !empty($plan['is_active']) ? 'Yes' : 'No' ?></td>
+                            <td><?= (int) ($subCountByPlan[$planId] ?? 0) ?></td>
+                        </tr>
+                        <?php else: ?>
+                        <tr class="<?= $parentId > 0 ? 'plan-tier-row' : '' ?><?= $planId === $selectedPlanId ? ' selected' : '' ?>"
+                            <?= $parentId > 0 ? 'data-parent-group="' . $parentId . '"' : '' ?>
+                            style="<?= $parentId > 0 && $parentId !== $centerOpenGroupId ? 'display:none;' : '' ?>"
+                            onclick="window.location='<?= url('/admin/membership/plans?plan=' . $planId) ?>'">
+                            <td onclick="event.stopPropagation()"><input type="checkbox" class="plan-cb" name="plan_ids[]" value="<?= $planId ?>" onchange="updateBulkPlansBar()"></td>
+                            <td style="color:var(--text-muted);font-size:0.8rem;font-variant-numeric:tabular-nums;"><?= $planId ?></td>
+                            <td style="<?= $parentId > 0 ? 'padding-left:1.5rem;' : '' ?>"><?= $parentId > 0 ? '&#8627; ' : '' ?><?= e($plan['name']) ?></td>
+                            <td><?= $parentId > 0 ? 'Tier' : 'Plan' ?></td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($groupName) ?></td>
                             <td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e($plan['subject_title'] ?? '—') ?></td>
                             <td>
@@ -178,6 +232,7 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                             <td><?= !empty($plan['is_active']) ? 'Yes' : 'No' ?></td>
                             <td><?= (int) ($subCountByPlan[$planId] ?? 0) ?></td>
                         </tr>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
@@ -196,6 +251,13 @@ if ($inlinePromoEnds !== '') { $inlinePromoEnds = str_replace(' ', 'T', substr($
                 var count = document.getElementById('bulk-plans-count');
                 if (bar) bar.style.display = checked.length > 0 ? 'flex' : 'none';
                 if (count) count.textContent = checked.length + ' selected';
+            }
+            function togglePlanGroup(groupId) {
+                var btn = document.querySelector('.plan-group-toggle[data-group="' + groupId + '"]');
+                var tiers = document.querySelectorAll('tr.plan-tier-row[data-parent-group="' + groupId + '"]');
+                var isOpen = tiers.length > 0 && tiers[0].style.display !== 'none';
+                tiers.forEach(function(tr) { tr.style.display = isOpen ? 'none' : ''; });
+                if (btn) btn.textContent = isOpen ? '▶' : '▼';
             }
             </script>
             <?php endif; ?>
