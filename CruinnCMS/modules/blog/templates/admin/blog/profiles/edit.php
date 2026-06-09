@@ -41,6 +41,23 @@ $action = $isEdit
             </section>
 
             <section class="form-section">
+                <h3>Filter</h3>
+
+                <div class="form-group">
+                    <label for="blog-profile-subject">Limit to Subject</label>
+                    <select id="blog-profile-subject" name="subject_id" class="form-input">
+                        <option value="">— All subjects —</option>
+                        <?php foreach (($subjects ?? []) as $subject): ?>
+                        <option value="<?= (int) ($subject['id'] ?? 0) ?>"<?= (int) ($profile['subject_id'] ?? 0) === (int) ($subject['id'] ?? 0) ? ' selected' : '' ?>>
+                            <?= e($subject['title'] ?? '') ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small>When set, only posts linked to this subject will appear in this profile's listing.</small>
+                </div>
+            </section>
+
+            <section class="form-section">
                 <h3>Rendering Defaults</h3>
 
                 <div class="form-group">

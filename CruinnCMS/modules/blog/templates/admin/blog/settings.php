@@ -60,6 +60,19 @@ $settings = $settings ?? [];
                 <h3>Defaults</h3>
 
                 <div class="form-group">
+                    <label for="blog-default-profile">Default Profile</label>
+                    <select id="blog-default-profile" name="default_profile_id" class="form-input">
+                        <option value="">— None (use global defaults) —</option>
+                        <?php foreach (($profiles ?? []) as $profile): ?>
+                        <option value="<?= (int) ($profile['id'] ?? 0) ?>"<?= (int) ($settings['default_profile_id'] ?? 0) === (int) ($profile['id'] ?? 0) ? ' selected' : '' ?>>
+                            <?= e($profile['name'] ?? '') ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small>Profile applied to the canonical blog list page and any block that doesn't specify its own profile.</small>
+                </div>
+
+                <div class="form-group">
                     <label for="blog-default-posts">Default Posts Per Page</label>
                     <input type="number" id="blog-default-posts" name="default_posts_per_page" min="1" max="100" class="form-input" value="<?= (int) ($settings['default_posts_per_page'] ?? 10) ?>">
                     <small>Used by the blog list unless a block overrides it.</small>

@@ -83,11 +83,13 @@ class ArticleController extends BaseController
         $pages = $this->db->fetchAll(
             "SELECT id, title, slug FROM pages_index WHERE canvas_type = 'content' ORDER BY title ASC"
         );
+        $profiles = self::readBlogProfiles($this->db);
 
         $this->renderAdmin('admin/blog/settings', [
             'title' => 'Blog Settings',
             'settings' => $settings,
             'pages' => $pages,
+            'profiles' => $profiles,
             'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Settings']],
         ]);
     }
@@ -99,12 +101,14 @@ class ArticleController extends BaseController
 
         $listPageId = max(0, (int) $this->input('list_page_id', 0));
         $postPageId = max(0, (int) $this->input('post_page_id', 0));
+        $defaultProfileId = max(0, (int) $this->input('default_profile_id', 0));
         $defaultPostsPerPage = self::normalisePerPage($this->input('default_posts_per_page', 10));
         $showReturnToList = $this->input('show_return_to_list', '0') === '1' ? '1' : '0';
         $showPostNavigation = $this->input('show_post_navigation', '0') === '1' ? '1' : '0';
 
         $this->upsertBlogSetting('blog.list_page_id', $listPageId > 0 ? (string) $listPageId : null);
         $this->upsertBlogSetting('blog.post_page_id', $postPageId > 0 ? (string) $postPageId : null);
+        $this->upsertBlogSetting('blog.default_profile_id', $defaultProfileId > 0 ? (string) $defaultProfileId : null);
         $this->upsertBlogSetting('blog.default_posts_per_page', (string) $defaultPostsPerPage);
         $this->upsertBlogSetting('blog.show_return_to_list', $showReturnToList);
         $this->upsertBlogSetting('blog.show_post_navigation', $showPostNavigation);
@@ -130,9 +134,15 @@ class ArticleController extends BaseController
     {
         Auth::requireAdmin();
 
+        $subjects = $this->db->fetchAll(
+            'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+            ['archived']
+        );
+
         $this->renderAdmin('admin/blog/profiles/edit', [
             'title' => 'New Blog Profile',
             'profile' => null,
+            'subjects' => $subjects,
             'errors' => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], ['New Profile']],
         ]);
@@ -152,6 +162,7 @@ class ArticleController extends BaseController
             $this->renderAdmin('admin/blog/profiles/edit', [
                 'title' => 'New Blog Profile',
                 'profile' => $profile,
+                'subjects' => $this->db->fetchAll('SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC', ['archived']),
                 'errors' => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], ['New Profile']],
             ]);
@@ -162,6 +173,7 @@ class ArticleController extends BaseController
             'name' => $profile['name'],
             'slug' => $profile['slug'],
             'description' => $profile['description'],
+            'subject_id' => $profile['subject_id'],
             'display_mode' => $profile['display_mode'],
             'posts_per_page' => $profile['posts_per_page'],
             'show_return_to_list' => $profile['show_return_to_list'] ? 1 : 0,
@@ -184,9 +196,15 @@ class ArticleController extends BaseController
             $this->redirect('/admin/blog/profiles');
         }
 
+        $subjects = $this->db->fetchAll(
+            'SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC',
+            ['archived']
+        );
+
         $this->renderAdmin('admin/blog/profiles/edit', [
             'title' => 'Edit Blog Profile',
             'profile' => $profile,
+            'subjects' => $subjects,
             'errors' => [],
             'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], [$profile['name']]],
         ]);
@@ -214,6 +232,7 @@ class ArticleController extends BaseController
             $this->renderAdmin('admin/blog/profiles/edit', [
                 'title' => 'Edit Blog Profile',
                 'profile' => $profile,
+                'subjects' => $this->db->fetchAll('SELECT id, title FROM subjects WHERE status != ? ORDER BY title ASC', ['archived']),
                 'errors' => $errors,
                 'breadcrumbs' => [['Admin', '/admin'], ['Blog', '/admin/blog'], ['Profiles', '/admin/blog/profiles'], [$existingProfile['name']]],
             ]);
@@ -224,6 +243,7 @@ class ArticleController extends BaseController
             'name' => $profile['name'],
             'slug' => $profile['slug'],
             'description' => $profile['description'],
+            'subject_id' => $profile['subject_id'],
             'display_mode' => $profile['display_mode'],
             'posts_per_page' => $profile['posts_per_page'],
             'show_return_to_list' => $profile['show_return_to_list'] ? 1 : 0,
@@ -678,9 +698,11 @@ class ArticleController extends BaseController
         $basePath = self::normalisePublicBasePath($baseSlug);
 
         if ($normalisedPath === $baseSlug) {
+            // Apply default profile so canonical blog page respects its settings
+            $resolvedSettings = self::applyBlogProfileSettings($settings, $db);
             return [
                 'page_id' => $listPageId,
-                'data' => self::buildBlogListViewData($db, $basePath, $settings),
+                'data' => self::buildBlogListViewData($db, $basePath, $resolvedSettings),
             ];
         }
 
@@ -774,24 +796,36 @@ class ArticleController extends BaseController
         $perPage = self::normalisePerPage($settings['per_page'] ?? ($blogSettings['default_posts_per_page'] ?? 10));
         $offset = ($page - 1) * $perPage;
 
+        $filterSubjectId = isset($settings['subject_id']) ? max(0, (int) $settings['subject_id']) : 0;
+
+        $where  = ['a.status = ?', '(a.published_at IS NULL OR a.published_at <= NOW())'];
+        $params = ['published'];
+
+        if ($filterSubjectId > 0) {
+            $where[]  = 'EXISTS (SELECT 1 FROM subject_content _sc WHERE _sc.item_type = \'article\' AND _sc.item_id = a.id AND _sc.subject_id = ?)';
+            $params[] = $filterSubjectId;
+        }
+
+        $whereSQL = 'WHERE ' . implode(' AND ', $where);
+
         $articles = $db->fetchAll(
             "SELECT a.*, u.display_name as author_name, s.title as subject_title
              FROM articles a
              LEFT JOIN users u ON a.author_id = u.id
              LEFT JOIN subject_content sc ON sc.item_type = 'article' AND sc.item_id = a.id
              LEFT JOIN subjects s ON s.id = sc.subject_id
-             WHERE a.status = ? AND (a.published_at IS NULL OR a.published_at <= NOW())
+             {$whereSQL}
              GROUP BY a.id
              ORDER BY a.published_at DESC
              LIMIT ? OFFSET ?",
-            ['published', $perPage, $offset]
+            array_merge($params, [$perPage, $offset])
         );
         $articles = self::hydrateArticlePreviewData($db, $articles);
         $articles = self::attachPublicUrls($articles, $basePath);
 
         $totalCount = (int) $db->fetchColumn(
-            'SELECT COUNT(*) FROM articles WHERE status = ? AND (published_at IS NULL OR published_at <= NOW())',
-            ['published']
+            "SELECT COUNT(*) FROM articles a {$whereSQL}",
+            $params
         );
 
         return [
@@ -891,16 +925,18 @@ class ArticleController extends BaseController
         $defaults = [
             'list_page_id' => 0,
             'post_page_id' => 0,
+            'default_profile_id' => 0,
             'default_posts_per_page' => 10,
             'show_return_to_list' => true,
             'show_post_navigation' => true,
         ];
 
         $rows = $db->fetchAll(
-            "SELECT `key`, `value` FROM settings WHERE `group` = 'blog' AND `key` IN (?, ?, ?, ?, ?)",
+            "SELECT `key`, `value` FROM settings WHERE `group` = 'blog' AND `key` IN (?, ?, ?, ?, ?, ?)",
             [
                 'blog.list_page_id',
                 'blog.post_page_id',
+                'blog.default_profile_id',
                 'blog.default_posts_per_page',
                 'blog.show_return_to_list',
                 'blog.show_post_navigation',
@@ -938,6 +974,7 @@ class ArticleController extends BaseController
         $settings = $defaults;
         $settings['list_page_id'] = max(0, (int) ($raw['blog.list_page_id'] ?? 0));
         $settings['post_page_id'] = max(0, (int) ($raw['blog.post_page_id'] ?? 0));
+        $settings['default_profile_id'] = max(0, (int) ($raw['blog.default_profile_id'] ?? 0));
         $settings['default_posts_per_page'] = self::normalisePerPage($raw['blog.default_posts_per_page'] ?? 10);
         $settings['show_return_to_list'] = ($raw['blog.show_return_to_list'] ?? '1') === '1';
         $settings['show_post_navigation'] = ($raw['blog.show_post_navigation'] ?? '1') === '1';
@@ -948,7 +985,7 @@ class ArticleController extends BaseController
     private static function readBlogProfiles(Database $db): array
     {
         $rows = $db->fetchAll(
-            'SELECT id, name, slug, description, display_mode, posts_per_page, show_return_to_list, show_post_navigation, updated_at
+            'SELECT id, name, slug, description, subject_id, display_mode, posts_per_page, show_return_to_list, show_post_navigation, updated_at
              FROM blog_profiles
              ORDER BY name ASC'
         );
@@ -959,6 +996,7 @@ class ArticleController extends BaseController
                 'name' => (string) ($row['name'] ?? ''),
                 'slug' => (string) ($row['slug'] ?? ''),
                 'description' => (string) ($row['description'] ?? ''),
+                'subject_id' => isset($row['subject_id']) ? (int) $row['subject_id'] : null,
                 'display_mode' => (string) ($row['display_mode'] ?? 'both'),
                 'posts_per_page' => self::normalisePerPage($row['posts_per_page'] ?? 10),
                 'show_return_to_list' => (int) ($row['show_return_to_list'] ?? 1) === 1,
@@ -975,7 +1013,7 @@ class ArticleController extends BaseController
         }
 
         $row = $db->fetch(
-            'SELECT id, name, slug, description, display_mode, posts_per_page, show_return_to_list, show_post_navigation, updated_at
+            'SELECT id, name, slug, description, subject_id, display_mode, posts_per_page, show_return_to_list, show_post_navigation, updated_at
              FROM blog_profiles
              WHERE id = ?
              LIMIT 1',
@@ -991,6 +1029,7 @@ class ArticleController extends BaseController
             'name' => (string) ($row['name'] ?? ''),
             'slug' => (string) ($row['slug'] ?? ''),
             'description' => (string) ($row['description'] ?? ''),
+            'subject_id' => isset($row['subject_id']) ? (int) $row['subject_id'] : null,
             'display_mode' => (string) ($row['display_mode'] ?? 'both'),
             'posts_per_page' => self::normalisePerPage($row['posts_per_page'] ?? 10),
             'show_return_to_list' => (int) ($row['show_return_to_list'] ?? 1) === 1,
@@ -1001,12 +1040,20 @@ class ArticleController extends BaseController
 
     private static function applyBlogProfileSettings(array $settings, ?Database $db = null): array
     {
+        $db ??= Database::getInstance();
+
         $profileId = max(0, (int) ($settings['profile_id'] ?? 0));
+
+        // Fall back to the global default profile when no explicit profile_id
+        if ($profileId <= 0) {
+            $blogSettings = self::readBlogSettings($db);
+            $profileId = max(0, (int) ($blogSettings['default_profile_id'] ?? 0));
+        }
+
         if ($profileId <= 0) {
             return $settings;
         }
 
-        $db ??= Database::getInstance();
         $profile = self::readBlogProfile($db, $profileId);
         if (!$profile) {
             return $settings;
@@ -1026,6 +1073,11 @@ class ArticleController extends BaseController
 
         if (!array_key_exists('show_post_navigation', $settings)) {
             $settings['show_post_navigation'] = $profile['show_post_navigation'];
+        }
+
+        // Apply subject filter from profile only if caller has not set one
+        if (!array_key_exists('subject_id', $settings) && $profile['subject_id'] !== null) {
+            $settings['subject_id'] = $profile['subject_id'];
         }
 
         return $settings;
@@ -1103,10 +1155,13 @@ class ArticleController extends BaseController
             $displayMode = 'both';
         }
 
+        $rawSubjectId = (int) $this->input('subject_id', $existing['subject_id'] ?? 0);
+
         $profile = [
             'name' => $name,
             'slug' => $slug,
             'description' => trim((string) $this->input('description', $existing['description'] ?? '')),
+            'subject_id' => $rawSubjectId > 0 ? $rawSubjectId : null,
             'display_mode' => $displayMode,
             'posts_per_page' => self::normalisePerPage($this->input('posts_per_page', $existing['posts_per_page'] ?? 10)),
             'show_return_to_list' => $this->input('show_return_to_list', !empty($existing['show_return_to_list']) ? '1' : '0') === '1',

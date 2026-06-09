@@ -51,6 +51,7 @@ return [
         __DIR__ . '/migrations/003_article_editor_tables.sql',
         __DIR__ . '/migrations/004_fix_editor_state_schema.sql',
         __DIR__ . '/migrations/005_blog_profiles.sql',
+        __DIR__ . '/migrations/006_blog_profile_filters.sql',
     ],
 
     'template_path' => __DIR__ . '/templates',
