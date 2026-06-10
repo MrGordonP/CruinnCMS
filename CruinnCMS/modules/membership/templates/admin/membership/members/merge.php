@@ -59,7 +59,7 @@ $subCount = static function (array $subs): string {
                         <dt style="color:#64748b;">Organisation</dt>
                         <dd style="margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= e((string)($m['organisation'] ?? '—')) ?></dd>
                         <dt style="color:#64748b;">Joined</dt>
-                        <dd style="margin:0;"><?= e($m['joined_at'] ? substr((string)$m['joined_at'], 0, 10) : '—') ?></dd>
+                        <dd style="margin:0;"><?= e(!empty($m['joined_at']) ? substr((string)$m['joined_at'], 0, 10) : '—') ?></dd>
                         <dt style="color:#64748b;">Subscriptions</dt>
                         <dd style="margin:0;"><?= $subCount($card['subs']) ?></dd>
                     </dl>
