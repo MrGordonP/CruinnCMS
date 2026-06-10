@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.22`
-**HEAD:** `(pending commit for v1.0.0-beta.22 in this session)`
+**Current version:** `v1.0.0-beta.23`
+**HEAD:** `9ae864b`
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
@@ -76,7 +76,8 @@ Keep this file focused on session behavior and execution workflow rules.
 
 ## Version History
 
-- **v1.0.0-beta.22** (pending commit) — stabilized membership plan/tier flows, introduced structural `is_plan_group` semantics split from shared-subscription `is_group`, added plan promotion and structural-group migrations, and hardened plan form error surfacing.
+- **v1.0.0-beta.23** (`9ae864b`) — member account merge via bulk action; admin sidebar reorganised (Modules section, Accounts to core, flat single-child items); notifications module built (inbox, preferences, mailing list subscribe/unsubscribe); stale platform template copies removed; subjects/show relocated.
+- **v1.0.0-beta.22** (`1553e81`) — stabilized membership plan/tier flows, introduced structural `is_plan_group` semantics split from shared-subscription `is_group`, added plan promotion and structural-group migrations, and hardened plan form error surfacing.
 - **v1.0.0-beta.21** (`ef92338`) — added grouped tiers and plan subject linkage support in membership admin and migrations.
 - **v1.0.0-beta.20** (`631ff23`) — restored standardized `pl-panel` shell across migrated admin pages.
 - **v1.0.0-beta.19** (`346479e`) — migrated all module admin and member-facing pages (blog, events, forms, forum, mailout, documents, drivespace, organisation admin, social, organisation member pages) to shared `panel-layout` CSS grid system; removed bespoke `.drivespace { display:grid }` rule.
