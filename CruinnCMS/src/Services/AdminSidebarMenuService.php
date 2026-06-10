@@ -51,6 +51,15 @@ class AdminSidebarMenuService
                     ['label' => 'Import', 'url' => '/admin/import'],
                 ],
             ],
+            [
+                'label' => 'Accounts',
+                'url' => '/admin/users',
+                'children' => [
+                    ['label' => 'Users', 'url' => '/admin/users'],
+                    ['label' => 'Roles', 'url' => '/admin/roles'],
+                    ['label' => 'Groups', 'url' => '/admin/groups'],
+                ],
+            ],
         ];
 
         // Collect module sidebar entries — one group per active module
@@ -104,17 +113,6 @@ class AdminSidebarMenuService
         foreach ($moduleMenus as $moduleMenu) {
             $menu[] = $moduleMenu;
         }
-
-        // Core accounts group — no module contributions
-        $menu[] = [
-            'label' => 'Accounts',
-            'url' => '/admin/users',
-            'children' => [
-                ['label' => 'Users', 'url' => '/admin/users'],
-                ['label' => 'Roles', 'url' => '/admin/roles'],
-                ['label' => 'Groups', 'url' => '/admin/groups'],
-            ],
-        ];
 
         return $menu;
     }
