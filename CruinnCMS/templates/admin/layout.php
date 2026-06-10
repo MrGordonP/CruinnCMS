@@ -45,7 +45,9 @@
                 <a href="<?= url('/admin/settings/site') ?>">⚙ Settings</a>
             <?php else: ?>
                 <?php foreach ($_adminSidebarMenu as $_item): ?>
-                    <?php if (!empty($_item['children'])): ?>
+                    <?php if (($_item['type'] ?? '') === 'heading'): ?>
+                    <span class="admin-sidebar-section"><?= e($_item['label']) ?></span>
+                    <?php elseif (!empty($_item['children'])): ?>
                     <div class="admin-sidebar-group">
                         <a href="<?= url($_item['url']) ?>" class="admin-sidebar-parent"><?= e($_item['label']) ?> <span class="sidebar-caret">▸</span></a>
                         <div class="admin-sidebar-flyout">

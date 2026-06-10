@@ -114,6 +114,17 @@ html.admin-layout-wide .admin-wrap {
     margin: 0.5rem 1rem;
 }
 
+.admin-sidebar-section {
+    display: block;
+    padding: 0.6rem 1rem 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .35);
+    margin-top: 0.25rem;
+}
+
 /* ── Sidebar Nav Groups (flyout children) ────────────────────── */
 .admin-sidebar-group {
     position: relative;

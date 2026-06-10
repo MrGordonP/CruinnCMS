@@ -53,6 +53,7 @@ class AdminSidebarMenuService
             ],
         ];
 
+        // Collect module sidebar entries — one group per active module
         $moduleMenus = [];
         foreach (ModuleRegistry::all() as $slug => $def) {
             if (!ModuleRegistry::isActive((string) $slug)) {
@@ -62,23 +63,13 @@ class AdminSidebarMenuService
             $children = [];
             foreach ((array) ($def['acp_sections'] ?? []) as $section) {
                 $label = trim((string) ($section['label'] ?? ''));
-                $url = trim((string) ($section['url'] ?? ''));
+                $url   = trim((string) ($section['url']   ?? ''));
                 if ($label === '' || $url === '') {
                     continue;
                 }
-
-                $exists = false;
-                foreach ($children as $child) {
-                    if ($child['url'] === $url) {
-                        $exists = true;
-                        break;
-                    }
-                }
-                if (!$exists) {
-                    $children[] = [
-                        'label' => $label,
-                        'url' => $url,
-                    ];
+                $seenUrls = array_column($children, 'url');
+                if (!in_array($url, $seenUrls, true)) {
+                    $children[] = ['label' => $label, 'url' => $url];
                 }
             }
 
@@ -86,55 +77,43 @@ class AdminSidebarMenuService
                 continue;
             }
 
-            $moduleLabel = trim((string) ($def['name'] ?? ''));
-            if ($moduleLabel === '') {
-                $moduleLabel = ucfirst((string) $slug);
-            }
+            $moduleLabel = trim((string) ($def['name'] ?? '')) ?: ucfirst((string) $slug);
 
-            $moduleMenus[] = [
-                'label' => $moduleLabel,
-                'url' => $children[0]['url'],
-                'children' => $children,
-            ];
+            if (count($children) === 1) {
+                // Single-item module — flat link, no flyout
+                $moduleMenus[] = [
+                    'label'    => $moduleLabel,
+                    'url'      => $children[0]['url'],
+                    'children' => [],
+                ];
+            } else {
+                $moduleMenus[] = [
+                    'label'    => $moduleLabel,
+                    'url'      => $children[0]['url'],
+                    'children' => $children,
+                ];
+            }
         }
 
         usort($moduleMenus, static function (array $a, array $b): int {
             return strcasecmp((string) ($a['label'] ?? ''), (string) ($b['label'] ?? ''));
         });
+
+        // Section heading + all module entries
+        $menu[] = ['type' => 'heading', 'label' => 'Modules'];
         foreach ($moduleMenus as $moduleMenu) {
             $menu[] = $moduleMenu;
         }
 
-        $peopleChildren = [
-            ['label' => 'Users', 'url' => '/admin/users'],
-            ['label' => 'Roles', 'url' => '/admin/roles'],
-            ['label' => 'Groups', 'url' => '/admin/groups'],
-        ];
-        foreach (ModuleRegistry::acpSections() as $section) {
-            if (($section['group'] ?? '') !== 'People') {
-                continue;
-            }
-            $label = trim((string) ($section['label'] ?? ''));
-            $url = trim((string) ($section['url'] ?? ''));
-            if ($label === '' || $url === '') {
-                continue;
-            }
-            $exists = false;
-            foreach ($peopleChildren as $child) {
-                if ($child['url'] === $url) {
-                    $exists = true;
-                    break;
-                }
-            }
-            if (!$exists) {
-                $peopleChildren[] = ['label' => $label, 'url' => $url];
-            }
-        }
-
+        // Core accounts group — no module contributions
         $menu[] = [
-            'label' => 'People',
+            'label' => 'Accounts',
             'url' => '/admin/users',
-            'children' => $peopleChildren,
+            'children' => [
+                ['label' => 'Users', 'url' => '/admin/users'],
+                ['label' => 'Roles', 'url' => '/admin/roles'],
+                ['label' => 'Groups', 'url' => '/admin/groups'],
+            ],
         ];
 
         return $menu;
