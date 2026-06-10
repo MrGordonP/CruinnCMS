@@ -129,4 +129,3 @@ if (!$isNew) { $GLOBALS['admin_flush_layout'] = true; }
 
 <?php \Cruinn\Template::requireJs('roles.js'); ?>
 <?php endif; ?>
-<?php endif; ?>
