@@ -545,6 +545,52 @@ class MembershipService
         return compact('created', 'updated', 'skipped', 'errors');
     }
 
+    public function mergeInto(int $primaryId, int $secondaryId): void
+    {
+        if ($primaryId === $secondaryId) {
+            throw new \InvalidArgumentException('Primary and secondary member cannot be the same.');
+        }
+
+        $primary   = $this->findById($primaryId);
+        $secondary = $this->findById($secondaryId);
+
+        if (!$primary || !$secondary) {
+            throw new \RuntimeException('One or both members not found.');
+        }
+
+        // Repoint subscriptions
+        $this->db->execute(
+            'UPDATE membership_subscriptions SET member_id = ? WHERE member_id = ?',
+            [$primaryId, $secondaryId]
+        );
+
+        // Repoint payments
+        $this->db->execute(
+            'UPDATE membership_payments SET member_id = ? WHERE member_id = ?',
+            [$primaryId, $secondaryId]
+        );
+
+        // Address: copy secondary's address to primary only if primary has none
+        $primaryHasAddress = (bool) $this->db->fetchColumn(
+            'SELECT COUNT(*) FROM member_addresses WHERE member_id = ?',
+            [$primaryId]
+        );
+        if (!$primaryHasAddress) {
+            $this->db->execute(
+                'UPDATE member_addresses SET member_id = ? WHERE member_id = ?',
+                [$primaryId, $secondaryId]
+            );
+        }
+
+        // user_id: assign secondary's user_id to primary if primary has none
+        if (empty($primary['user_id']) && !empty($secondary['user_id'])) {
+            $this->db->update('members', ['user_id' => (int) $secondary['user_id']], 'id = ?', [$primaryId]);
+        }
+
+        // Delete the secondary member (cascades will clean up any remaining address)
+        $this->db->execute('DELETE FROM members WHERE id = ?', [$secondaryId]);
+    }
+
     private function upsertAddress(int $memberId, string $line1, string $line2, string $city, string $county, string $postcode, string $country): void
     {
         $existing = $this->db->fetch('SELECT id FROM member_addresses WHERE member_id = ?', [$memberId]);

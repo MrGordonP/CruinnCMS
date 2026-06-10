@@ -231,6 +231,7 @@ $verifiedBadge = static function(?string $vs): string {
                         <option value="set_status">Set Status…</option>
                         <option value="archive">Archive</option>
                         <option value="delete">Delete (no subscriptions only)</option>
+                        <option value="merge">Merge accounts (select exactly 2)…</option>
                     </select>
                     <select name="bulk_status" class="form-input" style="font-size:0.82rem;width:auto;" id="bulk-status-select">
                         <?php foreach ($allowedStatuses as $st): ?>

@@ -45,6 +45,10 @@ return [
         // Membership forms/responses workspace
         $router->get('/admin/membership/forms',                       [MembershipAdminController::class, 'formsWorkspace']);
 
+        // Merge
+        $router->get('/admin/membership/members/merge',             [MembershipAdminController::class, 'mergeForm']);
+        $router->post('/admin/membership/members/merge',            [MembershipAdminController::class, 'executeMerge']);
+
         // User linking
         $router->post('/admin/membership/members/{id}/link-user',   [MembershipAdminController::class, 'linkUser']);
         $router->post('/admin/membership/members/{id}/unlink-user', [MembershipAdminController::class, 'unlinkUser']);

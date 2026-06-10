@@ -1971,11 +1971,77 @@ class MembershipAdminController extends BaseController
                 Auth::flash('success', 'Members without subscriptions deleted. Members with subscription history were not deleted.');
                 break;
 
+            case 'merge':
+                if (count($ids) !== 2) {
+                    Auth::flash('error', 'Merge requires exactly 2 members to be selected.');
+                    $this->redirect('/admin/membership/members');
+                }
+                $this->redirect('/admin/membership/members/merge?a=' . $ids[0] . '&b=' . $ids[1]);
+                break;
+
             default:
                 Auth::flash('error', 'Unknown bulk action.');
         }
 
         $this->redirect('/admin/membership/members');
+    }
+
+    public function mergeForm(): void
+    {
+        Auth::requireAdmin();
+
+        $aId = (int) $this->query('a', 0);
+        $bId = (int) $this->query('b', 0);
+
+        if (!$aId || !$bId || $aId === $bId) {
+            Auth::flash('error', 'Two distinct members are required to merge.');
+            $this->redirect('/admin/membership/members');
+        }
+
+        $memberA = $this->membership->findById($aId);
+        $memberB = $this->membership->findById($bId);
+
+        if (!$memberA || !$memberB) {
+            Auth::flash('error', 'One or both members not found.');
+            $this->redirect('/admin/membership/members');
+        }
+
+        $subsA = $this->membership->subscriptionsForMember($aId);
+        $subsB = $this->membership->subscriptionsForMember($bId);
+
+        $this->renderAdmin('admin/membership/members/merge', [
+            'title'       => 'Merge Member Accounts',
+            'memberA'     => $memberA,
+            'memberB'     => $memberB,
+            'subsA'       => $subsA,
+            'subsB'       => $subsB,
+            'breadcrumbs' => [['Admin', '/admin'], ['Membership', '/admin/membership'], ['Members', '/admin/membership/members'], ['Merge Accounts']],
+        ]);
+    }
+
+    public function executeMerge(): void
+    {
+        Auth::requireAdmin();
+        CSRF::verify();
+
+        $primaryId   = (int) $this->input('primary_id', 0);
+        $secondaryId = (int) $this->input('secondary_id', 0);
+
+        if (!$primaryId || !$secondaryId || $primaryId === $secondaryId) {
+            Auth::flash('error', 'Invalid merge selection.');
+            $this->redirect('/admin/membership/members');
+        }
+
+        try {
+            $this->membership->mergeInto($primaryId, $secondaryId);
+        } catch (\Throwable $e) {
+            Auth::flash('error', 'Merge failed: ' . $e->getMessage());
+            $this->redirect('/admin/membership/members/merge?a=' . $primaryId . '&b=' . $secondaryId);
+        }
+
+        $this->logActivity('merge', 'member', $primaryId, 'Member #' . $secondaryId . ' merged into #' . $primaryId . '.');
+        Auth::flash('success', 'Accounts merged. Member #' . $secondaryId . ' has been absorbed into #' . $primaryId . '.');
+        $this->redirect('/admin/membership/members?member=' . $primaryId);
     }
 
     private function membershipAssociatedSubjectIds(): array
