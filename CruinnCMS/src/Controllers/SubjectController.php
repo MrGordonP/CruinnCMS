@@ -60,7 +60,7 @@ class SubjectController extends BaseController
             $events = [];
         }
 
-        $this->render('public/subjects/show', [
+        $this->render('subjects/show', [
             'title'   => $subject['title'],
             'subject' => $subject,
             'articles'=> $articles,
