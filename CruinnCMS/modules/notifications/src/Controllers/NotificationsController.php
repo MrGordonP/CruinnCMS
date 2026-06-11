@@ -9,6 +9,8 @@ use Cruinn\CSRF;
 use Cruinn\Controllers\BaseController;
 use Cruinn\Module\Notifications\Services\NotificationService;
 
+// Last edit: 2026-06-11 16:00 UTC.
+
 class NotificationsController extends BaseController
 {
     private NotificationService $svc;
@@ -17,6 +19,28 @@ class NotificationsController extends BaseController
     {
         parent::__construct();
         $this->svc = new NotificationService();
+    }
+
+    private function isAdminRoute(): bool
+    {
+        $uri = (string) ($_SERVER['REQUEST_URI'] ?? '');
+        return str_starts_with($uri, '/admin/');
+    }
+
+    private function basePath(string $suffix = ''): string
+    {
+        $prefix = $this->isAdminRoute() ? '/admin' : '';
+        return $prefix . $suffix;
+    }
+
+    private function renderNotifications(string $view, array $data): void
+    {
+        if ($this->isAdminRoute()) {
+            $data['title'] = $data['title'] ?? 'Notifications';
+            $this->renderAdmin($view, $data);
+            return;
+        }
+        $this->render($view, $data);
     }
 
     // ── In-app notifications ──────────────────────────────────
@@ -40,9 +64,11 @@ class NotificationsController extends BaseController
         $categories       = $this->svc->categories($userId);
         $selectedCategory = $filters['category'];
         $showUnread       = $filters['unread'];
+        $basePath         = $this->basePath('/notifications');
+        $preferencesPath  = $this->basePath('/notifications/preferences');
 
-        $this->render('public/notifications/index', compact(
-            'notifications', 'unreadCount', 'categories', 'selectedCategory', 'showUnread'
+        $this->renderNotifications('public/notifications/index', compact(
+            'notifications', 'unreadCount', 'categories', 'selectedCategory', 'showUnread', 'basePath', 'preferencesPath'
         ));
     }
 
@@ -54,7 +80,7 @@ class NotificationsController extends BaseController
         Auth::requireLogin();
         CSRF::verify();
         $userId   = (int) Auth::user()['id'];
-        $redirect = $this->input('redirect', '/notifications');
+        $redirect = $this->input('redirect', $this->basePath('/notifications'));
         $this->svc->markRead($id, $userId);
         Auth::flash('success', 'Notification marked as read.');
         $this->redirect($redirect);
@@ -69,7 +95,7 @@ class NotificationsController extends BaseController
         CSRF::verify();
         $this->svc->markAllRead((int) Auth::user()['id']);
         Auth::flash('success', 'All notifications marked as read.');
-        $this->redirect('/notifications');
+        $this->redirect($this->basePath('/notifications'));
     }
 
     // ── Preferences ───────────────────────────────────────────
@@ -83,8 +109,10 @@ class NotificationsController extends BaseController
         $userId      = (int) Auth::user()['id'];
         $categories  = $this->svc->categories($userId);
         $preferences = $this->svc->preferencesForUser($userId);
+        $basePath    = $this->basePath('/notifications');
+        $preferencesPath = $this->basePath('/notifications/preferences');
 
-        $this->render('public/notifications/preferences', compact('categories', 'preferences'));
+        $this->renderNotifications('public/notifications/preferences', compact('categories', 'preferences', 'basePath', 'preferencesPath'));
     }
 
     /**
@@ -99,7 +127,7 @@ class NotificationsController extends BaseController
         $emailFreq     = (array) ($_POST['email_frequency'] ?? []);
         $this->svc->savePreferences($userId, $inApp, $emailFreq);
         Auth::flash('success', 'Notification preferences saved.');
-        $this->redirect('/notifications/preferences');
+        $this->redirect($this->basePath('/notifications/preferences'));
     }
 
     // ── Mailing lists ─────────────────────────────────────────
@@ -112,7 +140,9 @@ class NotificationsController extends BaseController
         Auth::requireLogin();
         $userId = (int) Auth::user()['id'];
         $lists  = $this->svc->listsForUser($userId);
-        $this->render('public/notifications/mailing-lists', compact('lists'));
+        $basePath = $this->isAdminRoute() ? '/admin/mailing-lists' : '/mailing-lists';
+        $preferencesPath = $this->basePath('/notifications/preferences');
+        $this->renderNotifications('public/notifications/mailing-lists', compact('lists', 'basePath', 'preferencesPath'));
     }
 
     /**
@@ -125,7 +155,7 @@ class NotificationsController extends BaseController
         $user = Auth::user();
         $this->svc->subscribe($id, (int) $user['id'], (string) $user['email'], (string) ($user['display_name'] ?? ''));
         Auth::flash('success', 'Subscribed successfully.');
-        $this->redirect('/mailing-lists');
+        $this->redirect($this->isAdminRoute() ? '/admin/mailing-lists' : '/mailing-lists');
     }
 
     /**
@@ -137,7 +167,24 @@ class NotificationsController extends BaseController
         CSRF::verify();
         $this->svc->unsubscribeByUser($id, (int) Auth::user()['id']);
         Auth::flash('success', 'Unsubscribed.');
-        $this->redirect('/mailing-lists');
+        $this->redirect($this->isAdminRoute() ? '/admin/mailing-lists' : '/mailing-lists');
+    }
+
+    /**
+     * GET /admin/notifications/hub
+     */
+    public function hub(): void
+    {
+        Auth::requireAdmin();
+
+        $rows = $this->svc->recentHubEvents(200);
+        $summary = $this->svc->hubSummary();
+
+        $this->renderAdmin('public/notifications/hub', [
+            'title' => 'Notifications Hub',
+            'rows' => $rows,
+            'summary' => $summary,
+        ]);
     }
 
     /**

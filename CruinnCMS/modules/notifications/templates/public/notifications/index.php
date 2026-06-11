@@ -5,8 +5,8 @@
             <p class="results-count">Unread: <?= (int)$unreadCount ?></p>
         </div>
         <div class="notifications-actions">
-            <a href="<?= url('/notifications/preferences') ?>" class="btn btn-outline btn-small">Preferences</a>
-            <form method="post" action="<?= url('/notifications/read-all') ?>">
+            <a href="<?= url($preferencesPath ?? '/notifications/preferences') ?>" class="btn btn-outline btn-small">Preferences</a>
+            <form method="post" action="<?= url(($basePath ?? '/notifications') . '/read-all') ?>">
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-primary btn-small">Mark all read</button>
             </form>
@@ -25,7 +25,7 @@
                 <input type="checkbox" name="unread" value="1"<?= $showUnread ? ' checked' : '' ?>> Unread only
             </label>
             <button class="btn btn-outline" type="submit">Apply</button>
-            <a href="<?= url('/notifications') ?>" class="btn btn-outline">Reset</a>
+            <a href="<?= url($basePath ?? '/notifications') ?>" class="btn btn-outline">Reset</a>
         </form>
     </section>
 
@@ -58,9 +58,9 @@
                         <?php endif; ?>
 
                         <?php if (empty($item['read_at'])): ?>
-                            <form method="post" action="<?= url('/notifications/' . (int)$item['id'] . '/read') ?>">
+                            <form method="post" action="<?= url(($basePath ?? '/notifications') . '/' . (int)$item['id'] . '/read') ?>">
                                 <?= csrf_field() ?>
-                                <input type="hidden" name="redirect" value="<?= e($_SERVER['REQUEST_URI'] ?? '/notifications') ?>">
+                                <input type="hidden" name="redirect" value="<?= e($_SERVER['REQUEST_URI'] ?? ($basePath ?? '/notifications')) ?>">
                                 <button type="submit" class="btn btn-primary btn-small">Mark read</button>
                             </form>
                         <?php else: ?>

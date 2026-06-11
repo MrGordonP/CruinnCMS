@@ -4,6 +4,9 @@ namespace Cruinn\Module\Forum\Forum;
 
 use Cruinn\Auth;
 use Cruinn\Database;
+use Cruinn\Module\Notifications\Services\NotificationService;
+
+// Last edit: 2026-06-11 16:00 UTC.
 
 class NativeForumProvider implements ForumProviderInterface
 {
@@ -370,7 +373,34 @@ class NativeForumProvider implements ForumProviderInterface
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
 
-            // Notifications stub — NotificationService not yet implemented.
+            $categoryOwner = $this->db->fetch(
+                'SELECT user_id FROM forum_categories WHERE id = ? LIMIT 1',
+                [$categoryId]
+            );
+            $recipients = [];
+            if (!empty($categoryOwner['user_id'])) {
+                $ownerId = (int) $categoryOwner['user_id'];
+                if ($ownerId > 0 && $ownerId !== $userId) {
+                    $recipients[] = $ownerId;
+                }
+            }
+
+            if (!empty($recipients)) {
+                $notif = new NotificationService();
+                $notif->publishHubEvent([
+                    'source_module' => 'forum',
+                    'source_event' => 'thread_created',
+                    'category' => 'forum',
+                    'title' => 'New forum thread: ' . $title,
+                    'body' => 'A new discussion thread was created.',
+                    'url' => '/forum/thread/' . $threadId,
+                    'subject_id' => ($subjectId ?? 0) > 0 ? (int) $subjectId : null,
+                    'actor_user_id' => $userId,
+                    'recipient_user_ids' => $recipients,
+                    'dedupe_key' => 'forum:thread_created:' . $threadId,
+                    'metadata' => ['thread_id' => $threadId, 'category_id' => $categoryId],
+                ]);
+            }
 
             return $threadId;
         });
@@ -408,7 +438,21 @@ class NativeForumProvider implements ForumProviderInterface
 
             $participantIds = array_values(array_unique(array_map(static fn(array $row): int => (int)$row['user_id'], $participants)));
 
-            // Notifications stub — NotificationService not yet implemented.
+            if (!empty($participantIds)) {
+                $notif = new NotificationService();
+                $notif->publishHubEvent([
+                    'source_module' => 'forum',
+                    'source_event' => 'reply_created',
+                    'category' => 'forum',
+                    'title' => 'New reply in: ' . (string) ($thread['title'] ?? 'Forum thread'),
+                    'body' => 'A new reply was posted in a thread you participated in.',
+                    'url' => '/forum/thread/' . $threadId,
+                    'actor_user_id' => $userId,
+                    'recipient_user_ids' => $participantIds,
+                    'dedupe_key' => 'forum:reply_created:' . $postId,
+                    'metadata' => ['thread_id' => $threadId, 'post_id' => $postId],
+                ]);
+            }
 
             return $postId;
         });

@@ -4,7 +4,7 @@
             <h1>Mailing Lists</h1>
             <p class="page-subtitle">Subscribe or unsubscribe from our mailing lists. You can change your preferences at any time.</p>
         </div>
-        <a href="<?= url('/notifications/preferences') ?>" class="btn btn-outline btn-small">Notification preferences</a>
+        <a href="<?= url($preferencesPath ?? '/notifications/preferences') ?>" class="btn btn-outline btn-small">Notification preferences</a>
     </header>
 
     <?php if (empty($lists)): ?>
@@ -23,12 +23,12 @@
                     <div class="mailing-list-action">
                         <?php if ($isSubscribed): ?>
                             <span class="badge badge-success">Subscribed</span>
-                            <form method="post" action="<?= url('/mailing-lists/' . $list['id'] . '/unsubscribe') ?>" style="display:inline">
+                            <form method="post" action="<?= url(($basePath ?? '/mailing-lists') . '/' . $list['id'] . '/unsubscribe') ?>" style="display:inline">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn-outline btn-small btn-danger-outline">Unsubscribe</button>
                             </form>
                         <?php else: ?>
-                            <form method="post" action="<?= url('/mailing-lists/' . $list['id'] . '/subscribe') ?>">
+                            <form method="post" action="<?= url(($basePath ?? '/mailing-lists') . '/' . $list['id'] . '/subscribe') ?>">
                                 <?= csrf_field() ?>
                                 <button type="submit" class="btn btn-primary btn-small">Subscribe</button>
                             </form>

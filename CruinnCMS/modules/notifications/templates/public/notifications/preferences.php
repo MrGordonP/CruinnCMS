@@ -4,10 +4,10 @@
             <h1>Notification Preferences</h1>
             <p class="results-count">Choose in-app and email behaviour by category.</p>
         </div>
-        <a href="<?= url('/notifications') ?>" class="btn btn-outline btn-small">Back to notifications</a>
+        <a href="<?= url($basePath ?? '/notifications') ?>" class="btn btn-outline btn-small">Back to notifications</a>
     </header>
 
-    <form method="post" action="<?= url('/notifications/preferences') ?>" class="form-register notifications-preferences-form">
+    <form method="post" action="<?= url($preferencesPath ?? '/notifications/preferences') ?>" class="form-register notifications-preferences-form">
         <?= csrf_field() ?>
 
         <div class="notifications-pref-grid">
@@ -35,7 +35,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save Preferences</button>
-            <a href="<?= url('/notifications') ?>" class="btn btn-outline">Cancel</a>
+            <a href="<?= url($basePath ?? '/notifications') ?>" class="btn btn-outline">Cancel</a>
         </div>
     </form>
 </section>

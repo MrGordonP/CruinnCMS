@@ -6,6 +6,8 @@ namespace Cruinn\Module\Notifications\Services;
 
 use Cruinn\Database;
 
+// Last edit: 2026-06-11 16:00 UTC.
+
 class NotificationService
 {
     private Database $db;
@@ -83,6 +85,147 @@ class NotificationService
             'url'        => $url,
             'subject_id' => $subjectId,
         ]);
+    }
+
+    /**
+     * Backward-compatible wrapper used by legacy callers.
+     */
+    public function notifyUser(int $userId, string $category, string $title, ?string $body = null, ?string $url = null, ?int $subjectId = null): int
+    {
+        return $this->create($userId, $category, $title, $body, $url, $subjectId);
+    }
+
+    // ── Hub events ────────────────────────────────────────────
+
+    /**
+     * Publish a normalized hub event and dispatch in-app notifications.
+     *
+     * Expected keys:
+     * source_module, source_event, category, title, body, url,
+     * actor_user_id, subject_id, recipient_user_ids, dedupe_key, metadata.
+     */
+    public function publishHubEvent(array $event): int
+    {
+        $sourceModule = substr(trim((string) ($event['source_module'] ?? 'core')), 0, 80);
+        $sourceEvent  = substr(trim((string) ($event['source_event'] ?? 'event')), 0, 120);
+        $category     = substr(trim((string) ($event['category'] ?? 'general')), 0, 60);
+        $title        = trim((string) ($event['title'] ?? 'Notification'));
+        $body         = isset($event['body']) ? (string) $event['body'] : null;
+        $url          = isset($event['url']) ? (string) $event['url'] : null;
+        $subjectId    = isset($event['subject_id']) ? (int) $event['subject_id'] : null;
+        $actorUserId  = isset($event['actor_user_id']) ? (int) $event['actor_user_id'] : null;
+        $dedupeKey    = trim((string) ($event['dedupe_key'] ?? ''));
+        $status       = 'queued';
+        $errorMessage = null;
+
+        $recipientUserIds = array_values(array_unique(array_filter(array_map(
+            static fn($v): int => (int) $v,
+            (array) ($event['recipient_user_ids'] ?? [])
+        ), static fn(int $v): bool => $v > 0)));
+
+        $metadata = $event['metadata'] ?? null;
+        if (is_array($metadata)) {
+            $metadata = json_encode($metadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } elseif ($metadata !== null) {
+            $metadata = (string) $metadata;
+        }
+
+        if ($title === '' || empty($recipientUserIds)) {
+            $status = 'failed';
+            $errorMessage = 'Missing title or recipients.';
+        }
+
+        if ($status === 'queued' && $dedupeKey !== '') {
+            $existing = $this->db->fetch(
+                'SELECT id FROM notification_hub_events
+                 WHERE dedupe_key = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                 ORDER BY id DESC LIMIT 1',
+                [$dedupeKey]
+            );
+            if ($existing) {
+                $status = 'skipped';
+                $errorMessage = 'Duplicate dedupe_key within 24h.';
+            }
+        }
+
+        $eventId = (int) $this->db->insert('notification_hub_events', [
+            'source_module'      => $sourceModule,
+            'source_event'       => $sourceEvent,
+            'category'           => $category,
+            'title'              => substr($title, 0, 255),
+            'body'               => $body,
+            'url'                => $url,
+            'subject_id'         => $subjectId,
+            'actor_user_id'      => $actorUserId,
+            'recipient_count'    => count($recipientUserIds),
+            'recipient_user_ids' => !empty($recipientUserIds) ? json_encode($recipientUserIds) : null,
+            'dedupe_key'         => $dedupeKey !== '' ? substr($dedupeKey, 0, 191) : null,
+            'metadata'           => $metadata,
+            'status'             => $status,
+            'error_message'      => $errorMessage,
+        ]);
+
+        if ($status !== 'queued') {
+            return $eventId;
+        }
+
+        $delivered = 0;
+        foreach ($recipientUserIds as $uid) {
+            if (!$this->allowInAppForCategory($uid, $category)) {
+                continue;
+            }
+            $this->create($uid, $category, $title, $body, $url, $subjectId);
+            $delivered++;
+        }
+
+        $this->db->update('notification_hub_events', [
+            'status' => $delivered > 0 ? 'delivered' : 'skipped',
+            'delivered_count' => $delivered,
+            'processed_at' => date('Y-m-d H:i:s'),
+            'error_message' => $delivered > 0 ? null : 'No recipients passed in-app preference checks.',
+        ], 'id = ?', [$eventId]);
+
+        return $eventId;
+    }
+
+    public function recentHubEvents(int $limit = 200): array
+    {
+        $safeLimit = max(1, min($limit, 500));
+        return $this->db->fetchAll(
+            "SELECT he.*, u.display_name AS actor_name
+             FROM notification_hub_events he
+             LEFT JOIN users u ON u.id = he.actor_user_id
+             ORDER BY he.id DESC
+             LIMIT {$safeLimit}"
+        );
+    }
+
+    public function hubSummary(): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT status, COUNT(*) AS total FROM notification_hub_events GROUP BY status'
+        );
+        $summary = ['queued' => 0, 'delivered' => 0, 'skipped' => 0, 'failed' => 0];
+        foreach ($rows as $row) {
+            $status = (string) ($row['status'] ?? '');
+            if (array_key_exists($status, $summary)) {
+                $summary[$status] = (int) ($row['total'] ?? 0);
+            }
+        }
+        $summary['total'] = array_sum($summary);
+        return $summary;
+    }
+
+    private function allowInAppForCategory(int $userId, string $category): bool
+    {
+        $row = $this->db->fetch(
+            'SELECT in_app FROM notification_preferences WHERE user_id = ? AND category = ? LIMIT 1',
+            [$userId, $category]
+        );
+        if (!$row) {
+            return true;
+        }
+        return !empty($row['in_app']);
     }
 
     // ── Preferences ───────────────────────────────────────────
