@@ -1265,6 +1265,49 @@ class CruinnController extends BaseController
             );
             $newSeq = $currentSeq + 1;
 
+            // File/html pages keep document-level metadata in doc-* rows.
+            // Carry them forward into every new snapshot because the canvas
+            // payload only contains editable body blocks.
+            if ($bk['col'] === 'page_id'
+                && in_array($page['render_mode'] ?? 'block', ['html', 'file'], true)
+                && $currentSeq > 0
+            ) {
+                $docRows = $this->db->fetchAll(
+                    "SELECT block_id, block_type, inner_html, css_props,
+                            css_props_tablet, css_props_mobile,
+                            block_config, sort_order, parent_block_id
+                       FROM pages_draft
+                      WHERE page_id = ?
+                        AND edit_seq = ?
+                        AND block_type IN ('doc-html', 'doc-head', 'doc-body')
+                      ORDER BY sort_order ASC",
+                    [$pageId, $currentSeq]
+                );
+
+                foreach ($docRows as $docRow) {
+                    $this->db->execute(
+                        'INSERT INTO pages_draft
+                            (page_id, edit_seq, block_id, block_type, inner_html, css_props,
+                             css_props_tablet, css_props_mobile,
+                             block_config, sort_order, parent_block_id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [
+                            $pageId,
+                            $newSeq,
+                            $docRow['block_id'],
+                            $docRow['block_type'],
+                            $docRow['inner_html'],
+                            $docRow['css_props'],
+                            $docRow['css_props_tablet'],
+                            $docRow['css_props_mobile'],
+                            $docRow['block_config'],
+                            (int) ($docRow['sort_order'] ?? 0),
+                            $docRow['parent_block_id'],
+                        ]
+                    );
+                }
+            }
+
             // Insert all incoming blocks as a full snapshot at newSeq
             foreach ($incomingBlocks as $b) {
                 $this->db->execute(

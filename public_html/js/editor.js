@@ -22,6 +22,37 @@
     var CSRF = wrap.dataset.csrf;
     var API_BASE = wrap.dataset.apiBase || '/admin/editor';
     var liveStyles = document.getElementById('editor-live-styles');
+    var DEBUG_EDITOR = /(?:\?|&)eddebug=1(?:&|$)/.test(window.location.search || '');
+
+    var _dbg = {
+        actionCount: 0,
+        totalActionMs: 0,
+        maxActionMs: 0,
+        dndBlockBound: 0,
+    };
+
+    function debugSnapshot(reason, extra) {
+        if (!DEBUG_EDITOR) { return; }
+        var liveBlocks = canvas.querySelectorAll('[data-block]').length;
+        var boundBlocks = canvas.querySelectorAll('[data-block][data-dnd-bound="1"]').length;
+        var avgActionMs = _dbg.actionCount > 0 ? (_dbg.totalActionMs / _dbg.actionCount) : 0;
+        var payload = {
+            reason: reason,
+            liveBlocks: liveBlocks,
+            boundBlocks: boundBlocks,
+            dndBlockBoundTotal: _dbg.dndBlockBound,
+            actionCount: _dbg.actionCount,
+            avgActionMs: Math.round(avgActionMs * 100) / 100,
+            maxActionMs: Math.round(_dbg.maxActionMs * 100) / 100,
+        };
+        if (window.performance && performance.memory && typeof performance.memory.usedJSHeapSize === 'number') {
+            payload.heapMB = Math.round((performance.memory.usedJSHeapSize / 1024 / 1024) * 100) / 100;
+        }
+        if (extra && typeof extra === 'object') {
+            Object.keys(extra).forEach(function (k) { payload[k] = extra[k]; });
+        }
+        console.debug('[CruinnEditorDebug]', payload);
+    }
 
     // -- Viewport (responsive breakpoint) state --------------------
     // 'desktop' | 'tablet' | 'mobile'
@@ -137,6 +168,9 @@
         }
         if (activeBlock) {
             activeBlock.setAttribute('contenteditable', 'true');
+        }
+        if (DEBUG_EDITOR) {
+            debugSnapshot('reInitAll');
         }
     }
 
@@ -795,9 +829,13 @@
     // ── Section E — Drag and Drop ────────────────────────────────────
 
     var dragSrc = null;
+    var _canvasDnDBound = false;
 
     function initDnD(root) {
         (root || canvas).querySelectorAll('[data-block]').forEach(function (block) {
+            if (block.dataset.dndBound === '1') { return; }
+            block.dataset.dndBound = '1';
+            _dbg.dndBlockBound++;
             block.setAttribute('draggable', 'true');
 
             block.addEventListener('dragstart', function (e) {
@@ -893,6 +931,9 @@
         });
 
         // Also allow dropping onto the canvas itself (top level)
+        if (_canvasDnDBound) { return; }
+        _canvasDnDBound = true;
+
         canvas.addEventListener('dragover', function (e) {
             if (!dragSrc) { return; }
             e.preventDefault();
@@ -3642,6 +3683,11 @@
     }
 
     function postRecordAction(blocks, retriedAfterRefresh) {
+        var startedAt = (window.performance && performance.now) ? performance.now() : Date.now();
+        var payloadSize = 0;
+        if (DEBUG_EDITOR) {
+            try { payloadSize = JSON.stringify({ blocks: blocks }).length; } catch (e) { payloadSize = 0; }
+        }
         return fetch(API_BASE + '/' + PAGE_ID + '/action', {
             method: 'POST',
             headers: {
@@ -3674,9 +3720,23 @@
 
                 return r.json().then(function (data) {
                     if (data.success) {
+                        var finishedAt = (window.performance && performance.now) ? performance.now() : Date.now();
+                        var elapsed = finishedAt - startedAt;
+                        _dbg.actionCount++;
+                        _dbg.totalActionMs += elapsed;
+                        if (elapsed > _dbg.maxActionMs) { _dbg.maxActionMs = elapsed; }
+
                         setUndoRedoState(data.can_undo, data.can_redo);
                         showDraftBadge(true);
                         clearSaveError();
+
+                        if (DEBUG_EDITOR && (_dbg.actionCount <= 5 || _dbg.actionCount % 10 === 0)) {
+                            debugSnapshot('recordAction:success', {
+                                actionMs: Math.round(elapsed * 100) / 100,
+                                blockCount: Array.isArray(blocks) ? blocks.length : 0,
+                                payloadBytes: payloadSize,
+                            });
+                        }
                     } else {
                         console.error('recordAction error:', data.error || data);
                         showSaveError('Save error: ' + (data.error || 'unknown'));
@@ -3695,8 +3755,6 @@
         }
         clearTimeout(_actionTimer);
         var blocks = serialiseCanvas();
-
-        pushLocalUndo();
 
         postRecordAction(blocks, false)
             .catch(function (err) {
@@ -3733,27 +3791,8 @@
 
     // G��G�� Section J G�� Undo / Redo G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��G��
 
-    // Local ring-buffer for optimistic undo (stores canvas.innerHTML snapshots)
-    var localUndoStack = [];
-    var localRedoStack = [];
-    var MAX_LOCAL = 10;
-
-    function pushLocalUndo() {
-        localUndoStack.push(canvas.innerHTML);
-        if (localUndoStack.length > MAX_LOCAL) { localUndoStack.shift(); }
-        localRedoStack.length = 0;
-    }
-
     function undo() {
         if (!HAS_PAGE) { return; }
-        // Optimistic: restore from local buffer immediately
-        if (localUndoStack.length) {
-            localRedoStack.push(canvas.innerHTML);
-            canvas.innerHTML = localUndoStack.pop();
-            reInitAll();
-        }
-
-        // Confirm with server
         fetch(API_BASE + '/' + PAGE_ID + '/undo', {
             method: 'POST',
             headers: { 'X-CSRF-Token': CSRF, 'Accept': 'application/json' },
@@ -3772,11 +3811,6 @@
 
     function redo() {
         if (!HAS_PAGE) { return; }
-        if (localRedoStack.length) {
-            localUndoStack.push(canvas.innerHTML);
-            canvas.innerHTML = localRedoStack.pop();
-            reInitAll();
-        }
 
         fetch(API_BASE + '/' + PAGE_ID + '/redo', {
             method: 'POST',
@@ -3935,8 +3969,6 @@
                                 location.reload();
                             } else {
                                 showDraftBadge(false);
-                                localUndoStack.length = 0;
-                                localRedoStack.length = 0;
                                 setUndoRedoState(false, false);
                                 publishBtn.disabled = false;
                                 alert('Page published successfully.');
