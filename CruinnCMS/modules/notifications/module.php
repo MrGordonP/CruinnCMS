@@ -9,6 +9,8 @@
 use Cruinn\Router;
 use Cruinn\Module\Notifications\Controllers\NotificationsController;
 
+// Last edit: 2026-06-11 13:39 UTC.
+
 return [
     'slug'        => 'notifications',
     'name'        => 'Notifications',
@@ -42,7 +44,10 @@ return [
 
     'template_path' => __DIR__ . '/templates',
 
-    'acp_sections' => [],
+    'acp_sections' => [
+        ['group' => 'Modules', 'label' => 'Notifications', 'url' => '/notifications', 'icon' => '🔔'],
+        ['group' => 'Modules', 'label' => 'Mailing Lists', 'url' => '/mailing-lists', 'icon' => '✉️'],
+    ],
 
     'provides' => ['notifications', 'mailing_list_subscriptions'],
 ];
