@@ -1,4 +1,6 @@
 <?php
+// Last edit: 2026-06-11 13:39 UTC.
+
 \Cruinn\Template::requireCss('admin-acp.css');
 \Cruinn\Template::requireCss('admin-panel-layout.css');
 $GLOBALS['admin_flush_layout'] = true;
@@ -10,6 +12,10 @@ $availableYears    = $availableYears ?? [];
 $availableGateways = $availableGateways ?? [];
 $allowedStatuses   = $allowedStatuses ?? ['pending', 'completed', 'failed', 'refunded'];
 $filters           = $filters ?? [];
+$unmatchedTransactions = $unmatchedTransactions ?? [];
+$selectedPaymentTransactions = $selectedPaymentTransactions ?? [];
+$linkablePayments = $linkablePayments ?? [];
+$backUrl = $_SERVER['REQUEST_URI'] ?? '/admin/payments';
 
 $gatewayFilter = (string) ($filters['gatewayFilter'] ?? '');
 $statusFilter  = (string) ($filters['statusFilter'] ?? '');
@@ -219,7 +225,77 @@ $verBadge = static function (string $status): string {
                 <p style="font-size:0.8rem;color:#6b7280;margin:0.3rem 0 0;">This payment has not been matched to a subscription. Open the <a href="<?= url('/admin/membership/subscriptions') ?>">Subscriptions workspace</a> to link it.</p>
             </div>
             <?php endif; ?>
+
+            <div style="border-top:1px solid #e5e7eb;padding-top:0.7rem;">
+                <strong style="font-size:0.82rem;color:#111827;">Linked Raw Transactions</strong>
+                <?php if (empty($selectedPaymentTransactions)): ?>
+                <p style="font-size:0.8rem;color:#6b7280;margin:0.35rem 0 0;">No raw transaction records currently linked to this payment.</p>
+                <?php else: ?>
+                <div style="margin-top:0.45rem;display:grid;gap:0.45rem;max-height:240px;overflow:auto;padding-right:0.25rem;">
+                    <?php foreach ($selectedPaymentTransactions as $tx): ?>
+                    <div style="border:1px solid #e5e7eb;border-radius:6px;padding:0.45rem;background:#fff;">
+                        <div style="display:flex;justify-content:space-between;gap:0.4rem;align-items:center;">
+                            <strong style="font-size:0.78rem;">#<?= (int) $tx['id'] ?> · <?= e((string) ($tx['source'] ?? 'manual')) ?></strong>
+                            <span style="font-size:0.76rem;color:#374151;"><?= e((string) ($tx['currency'] ?? 'EUR')) ?> <?= number_format((float) ($tx['amount'] ?? 0), 2) ?></span>
+                        </div>
+                        <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem;word-break:break-word;">
+                            <?= e((string) ($tx['reference'] ?? $tx['external_transaction_id'] ?? 'No reference')) ?>
+                        </div>
+                        <form method="post" action="<?= url('/admin/payments/transactions/' . (int) $tx['id'] . '/unlink') ?>" style="margin-top:0.35rem;">
+                            <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
+                            <input type="hidden" name="back" value="<?= e((string) $backUrl) ?>">
+                            <button class="btn btn-outline btn-small" type="submit">Unlink</button>
+                        </form>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+            </div>
         <?php endif; ?>
+
+        <div style="border-top:1px solid #e5e7eb;padding-top:0.7rem;margin-top:0.75rem;">
+            <strong style="font-size:0.82rem;color:#111827;">Unmatched Transactions</strong>
+            <?php if (empty($unmatchedTransactions)): ?>
+            <p style="font-size:0.8rem;color:#6b7280;margin:0.35rem 0 0;">No unmatched raw transactions.</p>
+            <?php else: ?>
+            <div style="margin-top:0.45rem;display:grid;gap:0.55rem;max-height:360px;overflow:auto;padding-right:0.25rem;">
+                <?php foreach ($unmatchedTransactions as $tx): ?>
+                <div style="border:1px solid #e5e7eb;border-radius:6px;padding:0.5rem;background:#fff;">
+                    <div style="display:flex;justify-content:space-between;gap:0.4rem;align-items:center;">
+                        <strong style="font-size:0.78rem;">#<?= (int) $tx['id'] ?> · <?= e((string) ($tx['source'] ?? 'manual')) ?></strong>
+                        <span style="font-size:0.76rem;color:#374151;"><?= e((string) ($tx['currency'] ?? 'EUR')) ?> <?= number_format((float) ($tx['amount'] ?? 0), 2) ?></span>
+                    </div>
+                    <div style="font-size:0.76rem;color:#6b7280;margin-top:0.2rem;word-break:break-word;">
+                        <?= e((string) ($tx['reference'] ?? $tx['external_transaction_id'] ?? 'No reference')) ?><br>
+                        <span><?= e((string) ($tx['transacted_at'] ?? '')) ?></span>
+                    </div>
+
+                    <form method="post" action="<?= url('/admin/payments/transactions/' . (int) $tx['id'] . '/link') ?>" style="margin-top:0.4rem;display:grid;gap:0.35rem;">
+                        <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
+                        <input type="hidden" name="back" value="<?= e((string) $backUrl) ?>">
+                        <select class="form-input" name="payment_id" style="font-size:0.78rem;">
+                            <option value="">Link to payment…</option>
+                            <?php foreach ($linkablePayments as $opt): ?>
+                            <option value="<?= (int) $opt['id'] ?>">#<?= (int) $opt['id'] ?> · <?= e((string) ($opt['transaction_id'] ?? '—')) ?> · <?= e((string) ($opt['currency'] ?? 'EUR')) ?> <?= number_format((float) ($opt['amount'] ?? 0), 2) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input class="form-input" type="text" name="notes" placeholder="Optional reconciliation note" style="font-size:0.78rem;">
+                        <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+                            <button class="btn btn-primary btn-small" type="submit">Link</button>
+                        </div>
+                    </form>
+
+                    <form method="post" action="<?= url('/admin/payments/transactions/' . (int) $tx['id'] . '/ignore') ?>" style="margin-top:0.35rem;">
+                        <input type="hidden" name="csrf_token" value="<?= \Cruinn\CSRF::getToken() ?>">
+                        <input type="hidden" name="back" value="<?= e((string) $backUrl) ?>">
+                        <input class="form-input" type="text" name="notes" placeholder="Reason for ignore (optional)" style="font-size:0.78rem; margin-bottom:0.25rem;">
+                        <button class="btn btn-outline btn-small" type="submit">Ignore</button>
+                    </form>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+        </div>
         </div>
     </div>
 </div>

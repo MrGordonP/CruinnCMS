@@ -3,7 +3,7 @@
  * Forms Module — Dynamic form builder with field management and submission handling.
  */
 
-// Last edit: 2026-06-11 12:30 UTC.
+// Last edit: 2026-06-11 13:39 UTC.
 
 use Cruinn\Module\Payments\Controllers\PaymentController;
 use Cruinn\Module\Payments\Controllers\PaymentAdminController;
@@ -34,5 +34,8 @@ return [
 
         // Admin — payments ledger workspace
         $router->get('/admin/payments', [PaymentAdminController::class, 'indexPayments']);
+        $router->post('/admin/payments/transactions/{id}/link', [PaymentAdminController::class, 'linkTransaction']);
+        $router->post('/admin/payments/transactions/{id}/unlink', [PaymentAdminController::class, 'unlinkTransaction']);
+        $router->post('/admin/payments/transactions/{id}/ignore', [PaymentAdminController::class, 'ignoreTransaction']);
     },
 ];

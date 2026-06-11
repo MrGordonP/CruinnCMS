@@ -4,7 +4,7 @@ namespace Cruinn\Module\Payments\Services;
 
 use Cruinn\Database;
 
-// Last edit: 2026-06-11 13:28 UTC.
+// Last edit: 2026-06-11 13:39 UTC.
 
 class PaymentService
 {
@@ -254,6 +254,57 @@ class PaymentService
         $this->db->update('payment_transactions', [
             'payment_id'            => null,
             'reconciled_status'     => 'unmatched',
+            'reconciled_by_user_id' => $userId,
+            'reconciled_at'         => date('Y-m-d H:i:s'),
+            'reconciliation_notes'  => $notes,
+        ], 'id = ?', [$transactionId]);
+    }
+
+    public function findTransactionById(int $transactionId): ?array
+    {
+        $row = $this->db->fetch('SELECT * FROM payment_transactions WHERE id = ?', [$transactionId]);
+        return $row ?: null;
+    }
+
+    public function listUnmatchedTransactions(int $limit = 200): array
+    {
+        $safeLimit = max(1, min($limit, 500));
+        return $this->db->fetchAll(
+            "SELECT id, payment_id, batch_id, source, external_transaction_id, gateway,
+                    direction, amount, currency, transacted_at, description,
+                    reference, counterparty, reconciled_status, created_at
+             FROM payment_transactions
+             WHERE reconciled_status = 'unmatched'
+             ORDER BY transacted_at DESC, id DESC
+             LIMIT {$safeLimit}"
+        );
+    }
+
+    public function listTransactionsForPayment(int $paymentId, int $limit = 100): array
+    {
+        $safeLimit = max(1, min($limit, 500));
+        return $this->db->fetchAll(
+            "SELECT id, payment_id, batch_id, source, external_transaction_id, gateway,
+                    direction, amount, currency, transacted_at, description,
+                    reference, counterparty, reconciled_status, reconciliation_notes, created_at
+             FROM payment_transactions
+             WHERE payment_id = ?
+             ORDER BY transacted_at DESC, id DESC
+             LIMIT {$safeLimit}",
+            [$paymentId]
+        );
+    }
+
+    public function markTransactionIgnored(int $transactionId, ?int $userId = null, ?string $notes = null): void
+    {
+        $transaction = $this->db->fetch('SELECT id FROM payment_transactions WHERE id = ?', [$transactionId]);
+        if (!$transaction) {
+            throw new \RuntimeException('Transaction not found.');
+        }
+
+        $this->db->update('payment_transactions', [
+            'payment_id'            => null,
+            'reconciled_status'     => 'ignored',
             'reconciled_by_user_id' => $userId,
             'reconciled_at'         => date('Y-m-d H:i:s'),
             'reconciliation_notes'  => $notes,
