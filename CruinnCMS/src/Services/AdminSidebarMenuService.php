@@ -20,6 +20,8 @@ class AdminSidebarMenuService
      */
     public static function build(): array
     {
+        $coreSlugs = ['subjects', 'accounts', 'pages', 'menus', 'media', 'roles', 'groups'];
+
         $menu = [
             [
                 'label' => 'Dashboard',
@@ -66,6 +68,9 @@ class AdminSidebarMenuService
         $moduleMenus = [];
         foreach (ModuleRegistry::all() as $slug => $def) {
             if (!ModuleRegistry::isActive((string) $slug)) {
+                continue;
+            }
+            if (in_array((string) $slug, $coreSlugs, true)) {
                 continue;
             }
 
