@@ -387,6 +387,14 @@ class Auth
     }
 
     /**
+     * Backward-compatible alias for older module code paths.
+     */
+    public static function requireLogin(): void
+    {
+        self::requireLoggedIn();
+    }
+
+    /**
      * Require the user to be an admin (role level >= 100).
      * Returns 403 if not admin.
      */

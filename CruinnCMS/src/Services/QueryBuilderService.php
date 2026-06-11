@@ -66,6 +66,8 @@ class QueryBuilderService
             return [];
         }
 
+        $config = $this->applyLegacyUsersRoleCompat($config, $primaryTable);
+
         // Collect all tables referenced
         $allTables = [$primaryTable];
         $joins     = [];
@@ -328,5 +330,80 @@ class QueryBuilderService
     private function quoteAlias(string $alias): string
     {
         return '`' . str_replace('`', '', $alias) . '`';
+    }
+
+    /**
+     * Legacy compat for pre-user_roles query configs that still reference
+     * users.role_id. Modern schema stores role assignments in user_roles.
+     */
+    private function applyLegacyUsersRoleCompat(array $config, string $primaryTable): array
+    {
+        if ($primaryTable !== 'users') {
+            return $config;
+        }
+
+        $foundLegacyRef = false;
+
+        $rewrite = function ($ref) use (&$foundLegacyRef) {
+            if (!is_string($ref)) {
+                return $ref;
+            }
+            $trimmed = trim($ref);
+            if ($trimmed === 'users.role_id' || $trimmed === 'role_id') {
+                $foundLegacyRef = true;
+                return 'user_roles.role_id';
+            }
+            return $ref;
+        };
+
+        if (!empty($config['fields']) && is_array($config['fields'])) {
+            foreach ($config['fields'] as $i => $field) {
+                $config['fields'][$i] = $rewrite($field);
+            }
+        }
+
+        if (!empty($config['filters']) && is_array($config['filters'])) {
+            foreach ($config['filters'] as $i => $filter) {
+                if (is_array($filter) && isset($filter['field'])) {
+                    $config['filters'][$i]['field'] = $rewrite($filter['field']);
+                }
+            }
+        }
+
+        if (isset($config['order_by'])) {
+            $config['order_by'] = $rewrite($config['order_by']);
+        }
+
+        if (!$foundLegacyRef) {
+            return $config;
+        }
+
+        $joins = $config['joins'] ?? [];
+        if (!is_array($joins)) {
+            $joins = [];
+        }
+
+        $hasUserRolesJoin = false;
+        foreach ($joins as $join) {
+            if (!is_array($join)) {
+                continue;
+            }
+            if (($join['table'] ?? '') === 'user_roles') {
+                $hasUserRolesJoin = true;
+                break;
+            }
+        }
+
+        if (!$hasUserRolesJoin) {
+            $joins[] = [
+                'type'     => 'LEFT',
+                'table'    => 'user_roles',
+                'on_left'  => 'users.id',
+                'on_right' => 'user_roles.user_id',
+            ];
+            $config['joins'] = $joins;
+        }
+
+        return $config;
     }
 }
