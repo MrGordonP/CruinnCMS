@@ -26,23 +26,6 @@
         <nav class="admin-sidebar-nav">
             <?php if (!empty($acp_mode)): ?>
                 <a href="<?= url('/admin/dashboard') ?>">← Dashboard</a>
-            <?php elseif (!empty($role_nav_items) && ($current_user['role_level'] ?? 0) < 100): ?>
-                <?php foreach ($role_nav_items as $item): ?>
-                    <?php if (!empty($item['children'])): ?>
-                    <div class="admin-sidebar-group">
-                        <a href="<?= url($item['url'] ?? '#') ?>" class="admin-sidebar-parent"><?= e($item['label']) ?> <span class="sidebar-caret">▸</span></a>
-                        <div class="admin-sidebar-flyout">
-                            <?php foreach ($item['children'] as $child): ?>
-                            <a href="<?= url($child['url']) ?>"<?= $child['opens_new_tab'] ? ' target="_blank"' : '' ?>><?= e($child['label']) ?></a>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    <?php else: ?>
-                    <a href="<?= url($item['url']) ?>"><?= e($item['label']) ?></a>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-                <span class="admin-sidebar-sep"></span>
-                <a href="<?= url('/admin/settings/site') ?>">⚙ Settings</a>
             <?php else: ?>
                 <?php foreach ($_adminSidebarMenu as $_item): ?>
                     <?php if (($_item['type'] ?? '') === 'heading'): ?>
