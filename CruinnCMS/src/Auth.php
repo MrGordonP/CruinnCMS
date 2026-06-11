@@ -9,6 +9,8 @@
 
 namespace Cruinn;
 
+// Last edit: 2026-06-11 15:35 UTC.
+
 class Auth
 {
     /** @var array|null Cached permissions for current session */

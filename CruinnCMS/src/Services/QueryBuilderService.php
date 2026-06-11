@@ -4,6 +4,8 @@ namespace Cruinn\Services;
 
 use Cruinn\Database;
 
+// Last edit: 2026-06-11 15:35 UTC.
+
 /**
  * QueryBuilderService
  *
