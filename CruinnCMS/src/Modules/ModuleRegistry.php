@@ -944,7 +944,7 @@ class ModuleRegistry
                     'stats' => [
                         ['label' => 'Members', 'sql' => 'SELECT COUNT(*) FROM members'],
                         ['label' => 'Subscriptions', 'sql' => 'SELECT COUNT(*) FROM membership_subscriptions'],
-                        ['label' => 'Payments', 'sql' => 'SELECT COUNT(*) FROM membership_payments'],
+                        ['label' => 'Payments', 'sql' => 'SELECT COUNT(*) FROM payments WHERE subscription_id IS NOT NULL'],
                     ],
                 ],
                 [
@@ -1028,9 +1028,9 @@ class ModuleRegistry
                     'title' => 'Payments Summary',
                     'primary_url' => '/admin/modules',
                     'stats' => [
-                        ['label' => 'Transactions', 'sql' => 'SELECT COUNT(*) FROM payment_transactions'],
-                        ['label' => 'Completed', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'completed'"],
-                        ['label' => 'Pending', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'pending'"],
+                        ['label' => 'Transactions', 'sql' => 'SELECT COUNT(*) FROM payments'],
+                        ['label' => 'Completed', 'sql' => "SELECT COUNT(*) FROM payments WHERE status = 'completed'"],
+                        ['label' => 'Pending', 'sql' => "SELECT COUNT(*) FROM payments WHERE status = 'pending'"],
                     ],
                 ],
                 [
@@ -1038,9 +1038,9 @@ class ModuleRegistry
                     'title' => 'Payment Exceptions',
                     'primary_url' => '/admin/modules',
                     'stats' => [
-                        ['label' => 'Failed', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'failed'"],
-                        ['label' => 'Refunded', 'sql' => "SELECT COUNT(*) FROM payment_transactions WHERE status = 'refunded'"],
-                        ['label' => 'Unverified', 'sql' => 'SELECT COUNT(*) FROM payment_transactions WHERE verified_at IS NULL'],
+                        ['label' => 'Failed', 'sql' => "SELECT COUNT(*) FROM payments WHERE status = 'failed'"],
+                        ['label' => 'Refunded', 'sql' => "SELECT COUNT(*) FROM payments WHERE status = 'refunded'"],
+                        ['label' => 'Unlinked', 'sql' => 'SELECT COUNT(*) FROM payments WHERE subscription_id IS NULL'],
                     ],
                 ],
             ],

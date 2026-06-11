@@ -13,8 +13,8 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Windows):** `G:\Programming\Workspaces\CruinnCMS`
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
-**Current version:** `v1.0.0-beta.23`
-**HEAD:** `9ae864b`
+**Current version:** `v1.0.0-beta.27`
+**HEAD:** `09921c9`
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
@@ -75,6 +75,8 @@ Keep this file focused on session behavior and execution workflow rules.
 ---
 
 ## Version History
+
+- **v1.0.0-beta.27** (`09921c9`) — payments/membership/organisation boundary realignment: canonicalized schema to `payments`, introduced payments service ownership for link/unlink/manual record operations, updated organisation finance ingest to canonical payments joins, and cleaned module registry payment metrics.
 
 - **v1.0.0-beta.23** (`9ae864b`) — member account merge via bulk action; admin sidebar reorganised (Modules section, Accounts to core, flat single-child items); notifications module built (inbox, preferences, mailing list subscribe/unsubscribe); stale platform template copies removed; subjects/show relocated.
 - **v1.0.0-beta.22** (`1553e81`) — stabilized membership plan/tier flows, introduced structural `is_plan_group` semantics split from shared-subscription `is_group`, added plan promotion and structural-group migrations, and hardened plan form error surfacing.

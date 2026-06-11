@@ -3,14 +3,17 @@
 namespace Cruinn\Module\Membership\Services;
 
 use Cruinn\Database;
+use Cruinn\Module\Payments\Services\PaymentService;
 
 class MembershipService
 {
     private Database $db;
+    private PaymentService $payments;
 
     public function __construct()
     {
         $this->db = Database::getInstance();
+        $this->payments = new PaymentService($this->db);
     }
 
     public function allPlans(bool $activeOnly = false): array
@@ -354,33 +357,17 @@ class MembershipService
 
     public function recordPayment(int $subscriptionId, array $data): int
     {
-        $subscription = $this->db->fetch(
-            'SELECT id, member_id FROM membership_subscriptions WHERE id = ?',
-            [$subscriptionId]
-        );
-        if (!$subscription) {
-            throw new \RuntimeException('Subscription not found.');
-        }
+        return $this->payments->recordManualMembershipPayment($subscriptionId, $data);
+    }
 
-        $paymentId = (int) $this->db->insert('payments', [
-            'subscription_id' => $subscriptionId,
-            'transaction_id'  => $data['transaction_id'] ?: ('manual-' . date('YmdHis')),
-            'gateway'         => $data['gateway'] ?: null,
-            'amount'          => $data['amount'],
-            'currency'        => strtoupper($data['currency'] ?: 'EUR'),
-            'status'          => 'completed',
-            'paid_at'         => $data['paid_at'] ?: date('Y-m-d H:i:s'),
-            'notes'           => $data['notes'] ?: null,
-        ]);
+    public function linkPaymentToSubscription(int $subscriptionId, int $paymentId): void
+    {
+        $this->payments->linkPaymentToSubscription($subscriptionId, $paymentId);
+    }
 
-        $this->db->update('membership_subscriptions', [
-            'payment_id'          => $paymentId,
-            'verification_status' => 'verified',
-            'verified_at'         => date('Y-m-d H:i:s'),
-            'transaction_id'      => $data['transaction_id'] ?: null,
-        ], 'id = ?', [$subscriptionId]);
-
-        return $paymentId;
+    public function unlinkPaymentFromSubscription(int $subscriptionId): void
+    {
+        $this->payments->unlinkPaymentFromSubscription($subscriptionId);
     }
 
     public function memberAdminForMember(int $memberId): ?array
@@ -561,12 +548,6 @@ class MembershipService
         // Repoint subscriptions
         $this->db->execute(
             'UPDATE membership_subscriptions SET member_id = ? WHERE member_id = ?',
-            [$primaryId, $secondaryId]
-        );
-
-        // Repoint payments
-        $this->db->execute(
-            'UPDATE membership_payments SET member_id = ? WHERE member_id = ?',
             [$primaryId, $secondaryId]
         );
 

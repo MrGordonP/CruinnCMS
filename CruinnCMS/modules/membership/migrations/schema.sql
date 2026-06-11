@@ -83,21 +83,7 @@ CREATE TABLE IF NOT EXISTS `membership_subscriptions` (
     CONSTRAINT `fk_membership_subscriptions_plan`   FOREIGN KEY (`plan_id`)   REFERENCES `membership_plans`(`id`)   ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `membership_payments` (
-    `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `subscription_id` INT UNSIGNED  NULL,
-    `member_id`       INT UNSIGNED  NOT NULL,
-    `amount`          DECIMAL(10,2) NOT NULL,
-    `currency`        CHAR(3)       NOT NULL DEFAULT 'EUR',
-    `method`          VARCHAR(40)   NULL,
-    `reference`       VARCHAR(120)  NULL,
-    `status`          ENUM('pending','completed','failed','refunded') NOT NULL DEFAULT 'completed',
-    `paid_at`         DATETIME      NOT NULL,
-    `notes`           TEXT          NULL,
-    `created_at`      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `idx_membership_payments_member`       (`member_id`),
-    INDEX `idx_membership_payments_subscription` (`subscription_id`),
-    CONSTRAINT `fk_membership_payments_member`       FOREIGN KEY (`member_id`)       REFERENCES `members`(`id`)                ON DELETE CASCADE,
-    CONSTRAINT `fk_membership_payments_subscription` FOREIGN KEY (`subscription_id`) REFERENCES `membership_subscriptions`(`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- NOTE:
+-- `membership_payments` is deprecated.
+-- Canonical payment transactions live in the platform-level `payments` table.
+-- Kept as comment intentionally to prevent recreating legacy schema drift.

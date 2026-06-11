@@ -63,6 +63,8 @@ class FinanceService
 
     /**
      * Import completed membership payments into finance_entries.
+     * Source of truth is the canonical `payments` table, limited to
+     * rows linked to membership subscriptions.
      * Idempotent — skips rows already present by source_id.
      *
      * @return int Number of new entries created
@@ -89,15 +91,16 @@ class FinanceService
         );
         $existingIds = array_column($existing, 'source_id');
 
-        $payments = $this->db->fetchAll(
-            "SELECT mp.id, mp.amount, mp.currency, mp.reference, mp.paid_at,
-                    u.display_name AS member_name
-             FROM membership_payments mp
-             LEFT JOIN users u ON mp.member_id = u.id
-             WHERE mp.status = 'completed'
-               AND mp.paid_at BETWEEN ? AND ?",
-            [$period['starts_on'] . ' 00:00:00', $period['ends_on'] . ' 23:59:59']
-        );
+            $payments = $this->db->fetchAll(
+                "SELECT py.id, py.amount, py.currency, py.transaction_id, py.paid_at,
+                    TRIM(CONCAT(COALESCE(m.forenames, ''), ' ', COALESCE(m.surnames, ''))) AS member_name
+                 FROM payments py
+                 INNER JOIN membership_subscriptions s ON s.id = py.subscription_id
+                 LEFT JOIN members m ON m.id = s.member_id
+                 WHERE py.status = 'completed'
+                   AND py.paid_at BETWEEN ? AND ?",
+                [$period['starts_on'] . ' 00:00:00', $period['ends_on'] . ' 23:59:59']
+            );
 
         $inserted = 0;
         foreach ($payments as $p) {
@@ -110,7 +113,7 @@ class FinanceService
                 'amount'      => $p['amount'],
                 'currency'    => $p['currency'] ?? 'EUR',
                 'description' => 'Membership payment' . ($p['member_name'] ? ' — ' . $p['member_name'] : ''),
-                'reference'   => $p['reference'],
+                'reference'   => $p['transaction_id'] ?? null,
                 'entry_date'  => substr($p['paid_at'], 0, 10),
                 'source_type' => 'membership_payment',
                 'source_id'   => (int) $p['id'],

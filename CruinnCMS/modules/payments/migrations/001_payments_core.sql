@@ -1,28 +1,24 @@
 -- ============================================================
--- Payments Module — Core Schema (stub)
+-- Payments Module — Core Schema (canonical)
 -- ============================================================
--- payment_transactions records every payment attempt associated
--- with any source object (e.g. a form submission).
+-- Canonical payment transactions are stored in `payments`.
 -- Gateway integration (Stripe etc.) is implemented separately.
 -- ============================================================
 
-CREATE TABLE IF NOT EXISTS `payment_transactions` (
+CREATE TABLE IF NOT EXISTS `payments` (
     `id`                INT UNSIGNED NOT NULL AUTO_INCREMENT,
-    `source_type`       VARCHAR(50) NOT NULL COMMENT 'e.g. form_submission',
-    `source_id`         INT UNSIGNED NOT NULL COMMENT 'FK to the source record',
+    `subscription_id`   INT UNSIGNED NULL,
+    `subject_id`        INT UNSIGNED NULL,
+    `transaction_id`    VARCHAR(120) NOT NULL,
+    `gateway`           VARCHAR(60) NULL,
     `amount`            DECIMAL(10,2) NOT NULL,
     `currency`          CHAR(3) NOT NULL DEFAULT 'EUR',
-    `payment_method`    ENUM('bank_transfer','cash','cheque','stripe') NOT NULL,
-    `gateway`           VARCHAR(50) NULL COMMENT 'stripe, paypal, etc.',
-    `gateway_ref`       VARCHAR(255) NULL COMMENT 'Gateway transaction ID',
-    `status`            ENUM('pending','completed','failed','refunded') NOT NULL DEFAULT 'pending',
-    `verified_by`       INT UNSIGNED NULL,
-    `verified_at`       DATETIME NULL,
+    `status`            ENUM('pending','completed','failed','refunded') NOT NULL DEFAULT 'completed',
+    `paid_at`           DATETIME NOT NULL,
     `notes`             TEXT NULL,
     `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `idx_pt_source` (`source_type`, `source_id`),
-    INDEX `idx_pt_status` (`status`),
-    CONSTRAINT `fk_pt_verifier` FOREIGN KEY (`verified_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+    INDEX `idx_payments_transaction` (`transaction_id`),
+    INDEX `idx_payments_subscription` (`subscription_id`),
+    INDEX `idx_payments_subject` (`subject_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

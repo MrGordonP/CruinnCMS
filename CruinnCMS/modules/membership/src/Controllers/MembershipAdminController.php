@@ -1355,20 +1355,21 @@ class MembershipAdminController extends BaseController
         }
 
         if ($paymentId > 0) {
-            $payment = $this->db->fetch('SELECT id FROM payments WHERE id = ?', [$paymentId]);
-            if (!$payment) {
-                Auth::flash('error', 'Payment not found.');
-                $this->redirect('/admin/membership/subscriptions?sub=' . $id);
-                return;
+            try {
+                $this->membership->linkPaymentToSubscription($id, $paymentId);
+                $this->logActivity('update', 'membership_subscription', $id, 'Payment #' . $paymentId . ' linked to subscription.');
+                Auth::flash('success', 'Payment linked.');
+            } catch (\Throwable $e) {
+                Auth::flash('error', 'Failed to link payment: ' . $e->getMessage());
             }
-            $this->db->update('membership_subscriptions', ['payment_id' => $paymentId], 'id = ?', [$id]);
-            $this->db->update('payments', ['subscription_id' => $id], 'id = ?', [$paymentId]);
-            $this->logActivity('update', 'membership_subscription', $id, 'Payment #' . $paymentId . ' linked to subscription.');
-            Auth::flash('success', 'Payment linked.');
         } else {
-            $this->db->update('membership_subscriptions', ['payment_id' => null], 'id = ?', [$id]);
-            $this->logActivity('update', 'membership_subscription', $id, 'Payment unlinked from subscription.');
-            Auth::flash('success', 'Payment unlinked.');
+            try {
+                $this->membership->unlinkPaymentFromSubscription($id);
+                $this->logActivity('update', 'membership_subscription', $id, 'Payment unlinked from subscription.');
+                Auth::flash('success', 'Payment unlinked.');
+            } catch (\Throwable $e) {
+                Auth::flash('error', 'Failed to unlink payment: ' . $e->getMessage());
+            }
         }
 
         $this->redirect('/admin/membership/subscriptions?sub=' . $id);
