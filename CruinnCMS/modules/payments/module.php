@@ -3,7 +3,7 @@
  * Forms Module — Dynamic form builder with field management and submission handling.
  */
 
-// Last edit: 2026-06-11 13:39 UTC.
+// Last edit: 2026-06-11 14:05 UTC.
 
 use Cruinn\Module\Payments\Controllers\PaymentController;
 use Cruinn\Module\Payments\Controllers\PaymentAdminController;
@@ -16,6 +16,7 @@ return [
     'provides'    => ['payments'],
     'migrations'  => [
         __DIR__ . '/migrations/schema.sql',
+        __DIR__ . '/migrations/002_payments_interconnect_backfill.sql',
     ],
     'template_path' => __DIR__ . '/templates',
 
