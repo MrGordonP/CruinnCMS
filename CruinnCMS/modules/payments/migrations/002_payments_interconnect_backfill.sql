@@ -75,7 +75,7 @@ SET @payments_has_source_type := (
 SET @payments_add_source_type_sql := IF(
     @payments_has_source_type = 0,
     'ALTER TABLE `payments` ADD COLUMN `source_type` VARCHAR(60) NULL AFTER `subject_id`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE payments_add_source_type_stmt FROM @payments_add_source_type_sql;
 EXECUTE payments_add_source_type_stmt;
@@ -92,7 +92,7 @@ SET @payments_has_source_id := (
 SET @payments_add_source_id_sql := IF(
     @payments_has_source_id = 0,
     'ALTER TABLE `payments` ADD COLUMN `source_id` INT UNSIGNED NULL AFTER `source_type`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE payments_add_source_id_stmt FROM @payments_add_source_id_sql;
 EXECUTE payments_add_source_id_stmt;
@@ -109,7 +109,7 @@ SET @payments_has_source_idx := (
 SET @payments_add_source_idx_sql := IF(
     @payments_has_source_idx = 0,
     'ALTER TABLE `payments` ADD KEY `idx_payments_source` (`source_type`, `source_id`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE payments_add_source_idx_stmt FROM @payments_add_source_idx_sql;
 EXECUTE payments_add_source_idx_stmt;
@@ -126,7 +126,7 @@ SET @pt_has_payment_id := (
 SET @pt_add_payment_id_sql := IF(
     @pt_has_payment_id = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `payment_id` INT UNSIGNED NULL AFTER `id`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_payment_id_stmt FROM @pt_add_payment_id_sql;
 EXECUTE pt_add_payment_id_stmt;
@@ -143,7 +143,7 @@ SET @pt_has_batch_id := (
 SET @pt_add_batch_id_sql := IF(
     @pt_has_batch_id = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `batch_id` INT UNSIGNED NULL AFTER `payment_id`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_batch_id_stmt FROM @pt_add_batch_id_sql;
 EXECUTE pt_add_batch_id_stmt;
@@ -160,7 +160,7 @@ SET @pt_has_source := (
 SET @pt_add_source_sql := IF(
     @pt_has_source = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `source` VARCHAR(40) NOT NULL DEFAULT ''manual'' AFTER `batch_id`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_source_stmt FROM @pt_add_source_sql;
 EXECUTE pt_add_source_stmt;
@@ -177,7 +177,7 @@ SET @pt_has_external_tx := (
 SET @pt_add_external_tx_sql := IF(
     @pt_has_external_tx = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `external_transaction_id` VARCHAR(191) NULL AFTER `source`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_external_tx_stmt FROM @pt_add_external_tx_sql;
 EXECUTE pt_add_external_tx_stmt;
@@ -194,7 +194,7 @@ SET @pt_has_gateway := (
 SET @pt_add_gateway_sql := IF(
     @pt_has_gateway = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `gateway` VARCHAR(60) NULL AFTER `external_transaction_id`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_gateway_stmt FROM @pt_add_gateway_sql;
 EXECUTE pt_add_gateway_stmt;
@@ -211,7 +211,7 @@ SET @pt_has_direction := (
 SET @pt_add_direction_sql := IF(
     @pt_has_direction = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `direction` ENUM(''credit'',''debit'') NOT NULL DEFAULT ''credit'' AFTER `gateway`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_direction_stmt FROM @pt_add_direction_sql;
 EXECUTE pt_add_direction_stmt;
@@ -228,7 +228,7 @@ SET @pt_has_amount := (
 SET @pt_add_amount_sql := IF(
     @pt_has_amount = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER `direction`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_amount_stmt FROM @pt_add_amount_sql;
 EXECUTE pt_add_amount_stmt;
@@ -245,7 +245,7 @@ SET @pt_has_currency := (
 SET @pt_add_currency_sql := IF(
     @pt_has_currency = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `currency` CHAR(3) NOT NULL DEFAULT ''EUR'' AFTER `amount`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_currency_stmt FROM @pt_add_currency_sql;
 EXECUTE pt_add_currency_stmt;
@@ -262,7 +262,7 @@ SET @pt_has_transacted_at := (
 SET @pt_add_transacted_at_sql := IF(
     @pt_has_transacted_at = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `transacted_at` DATETIME NULL AFTER `currency`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_transacted_at_stmt FROM @pt_add_transacted_at_sql;
 EXECUTE pt_add_transacted_at_stmt;
@@ -279,7 +279,7 @@ SET @pt_has_description := (
 SET @pt_add_description_sql := IF(
     @pt_has_description = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `description` VARCHAR(255) NULL AFTER `transacted_at`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_description_stmt FROM @pt_add_description_sql;
 EXECUTE pt_add_description_stmt;
@@ -296,7 +296,7 @@ SET @pt_has_reference := (
 SET @pt_add_reference_sql := IF(
     @pt_has_reference = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `reference` VARCHAR(191) NULL AFTER `description`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_reference_stmt FROM @pt_add_reference_sql;
 EXECUTE pt_add_reference_stmt;
@@ -313,7 +313,7 @@ SET @pt_has_counterparty := (
 SET @pt_add_counterparty_sql := IF(
     @pt_has_counterparty = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `counterparty` VARCHAR(191) NULL AFTER `reference`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_counterparty_stmt FROM @pt_add_counterparty_sql;
 EXECUTE pt_add_counterparty_stmt;
@@ -330,7 +330,7 @@ SET @pt_has_reconciled_status := (
 SET @pt_add_reconciled_status_sql := IF(
     @pt_has_reconciled_status = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `reconciled_status` ENUM(''unmatched'',''matched'',''ignored'') NOT NULL DEFAULT ''unmatched'' AFTER `counterparty`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_reconciled_status_stmt FROM @pt_add_reconciled_status_sql;
 EXECUTE pt_add_reconciled_status_stmt;
@@ -347,7 +347,7 @@ SET @pt_has_reconciled_by_user_id := (
 SET @pt_add_reconciled_by_user_id_sql := IF(
     @pt_has_reconciled_by_user_id = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `reconciled_by_user_id` INT UNSIGNED NULL AFTER `reconciled_status`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_reconciled_by_user_id_stmt FROM @pt_add_reconciled_by_user_id_sql;
 EXECUTE pt_add_reconciled_by_user_id_stmt;
@@ -364,7 +364,7 @@ SET @pt_has_reconciled_at := (
 SET @pt_add_reconciled_at_sql := IF(
     @pt_has_reconciled_at = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `reconciled_at` DATETIME NULL AFTER `reconciled_by_user_id`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_reconciled_at_stmt FROM @pt_add_reconciled_at_sql;
 EXECUTE pt_add_reconciled_at_stmt;
@@ -381,7 +381,7 @@ SET @pt_has_reconciliation_notes := (
 SET @pt_add_reconciliation_notes_sql := IF(
     @pt_has_reconciliation_notes = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `reconciliation_notes` TEXT NULL AFTER `reconciled_at`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_reconciliation_notes_stmt FROM @pt_add_reconciliation_notes_sql;
 EXECUTE pt_add_reconciliation_notes_stmt;
@@ -398,7 +398,7 @@ SET @pt_has_raw_payload := (
 SET @pt_add_raw_payload_sql := IF(
     @pt_has_raw_payload = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `raw_payload` JSON NULL AFTER `reconciliation_notes`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_raw_payload_stmt FROM @pt_add_raw_payload_sql;
 EXECUTE pt_add_raw_payload_stmt;
@@ -415,7 +415,7 @@ SET @pt_has_created_at := (
 SET @pt_add_created_at_sql := IF(
     @pt_has_created_at = 0,
     'ALTER TABLE `payment_transactions` ADD COLUMN `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `raw_payload`',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_created_at_stmt FROM @pt_add_created_at_sql;
 EXECUTE pt_add_created_at_stmt;
@@ -439,7 +439,7 @@ SET @pt_has_legacy_source_type := (
 SET @pt_backfill_source_sql := IF(
     @pt_has_source_now = 1 AND @pt_has_legacy_source_type = 1,
     'UPDATE `payment_transactions` SET `source` = `source_type` WHERE (`source` IS NULL OR TRIM(`source`) = '''') AND `source_type` IS NOT NULL',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_backfill_source_stmt FROM @pt_backfill_source_sql;
 EXECUTE pt_backfill_source_stmt;
@@ -463,7 +463,7 @@ SET @pt_has_legacy_gateway_ref := (
 SET @pt_backfill_external_sql := IF(
     @pt_has_external_tx_now = 1 AND @pt_has_legacy_gateway_ref = 1,
     'UPDATE `payment_transactions` SET `external_transaction_id` = `gateway_ref` WHERE `external_transaction_id` IS NULL AND `gateway_ref` IS NOT NULL',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_backfill_external_stmt FROM @pt_backfill_external_sql;
 EXECUTE pt_backfill_external_stmt;
@@ -487,7 +487,7 @@ SET @pt_has_created_at_now := (
 SET @pt_backfill_transacted_sql := IF(
     @pt_has_transacted_at_now = 1 AND @pt_has_created_at_now = 1,
     'UPDATE `payment_transactions` SET `transacted_at` = `created_at` WHERE `transacted_at` IS NULL',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_backfill_transacted_stmt FROM @pt_backfill_transacted_sql;
 EXECUTE pt_backfill_transacted_stmt;
@@ -504,7 +504,7 @@ SET @pt_has_idx_payment := (
 SET @pt_add_idx_payment_sql := IF(
     @pt_has_idx_payment = 0,
     'ALTER TABLE `payment_transactions` ADD KEY `idx_payment_transactions_payment` (`payment_id`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_idx_payment_stmt FROM @pt_add_idx_payment_sql;
 EXECUTE pt_add_idx_payment_stmt;
@@ -521,7 +521,7 @@ SET @pt_has_idx_batch := (
 SET @pt_add_idx_batch_sql := IF(
     @pt_has_idx_batch = 0,
     'ALTER TABLE `payment_transactions` ADD KEY `idx_payment_transactions_batch` (`batch_id`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_idx_batch_stmt FROM @pt_add_idx_batch_sql;
 EXECUTE pt_add_idx_batch_stmt;
@@ -538,7 +538,7 @@ SET @pt_has_idx_source := (
 SET @pt_add_idx_source_sql := IF(
     @pt_has_idx_source = 0,
     'ALTER TABLE `payment_transactions` ADD KEY `idx_payment_transactions_source` (`source`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_idx_source_stmt FROM @pt_add_idx_source_sql;
 EXECUTE pt_add_idx_source_stmt;
@@ -555,7 +555,7 @@ SET @pt_has_idx_external := (
 SET @pt_add_idx_external_sql := IF(
     @pt_has_idx_external = 0,
     'ALTER TABLE `payment_transactions` ADD KEY `idx_payment_transactions_external` (`external_transaction_id`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_idx_external_stmt FROM @pt_add_idx_external_sql;
 EXECUTE pt_add_idx_external_stmt;
@@ -572,7 +572,7 @@ SET @pt_has_idx_reconciled := (
 SET @pt_add_idx_reconciled_sql := IF(
     @pt_has_idx_reconciled = 0,
     'ALTER TABLE `payment_transactions` ADD KEY `idx_payment_transactions_reconciled` (`reconciled_status`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_idx_reconciled_stmt FROM @pt_add_idx_reconciled_sql;
 EXECUTE pt_add_idx_reconciled_stmt;
@@ -589,7 +589,7 @@ SET @pt_has_idx_transacted := (
 SET @pt_add_idx_transacted_sql := IF(
     @pt_has_idx_transacted = 0,
     'ALTER TABLE `payment_transactions` ADD KEY `idx_payment_transactions_transacted_at` (`transacted_at`)',
-    'SELECT 1'
+    'DO 0'
 );
 PREPARE pt_add_idx_transacted_stmt FROM @pt_add_idx_transacted_sql;
 EXECUTE pt_add_idx_transacted_stmt;
