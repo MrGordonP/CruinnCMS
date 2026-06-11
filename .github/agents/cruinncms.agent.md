@@ -14,7 +14,7 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
 **Current version:** `v1.0.0-beta.27`
-**HEAD:** `09921c9`
+**HEAD:** `0a5a9f1`
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
@@ -75,6 +75,8 @@ Keep this file focused on session behavior and execution workflow rules.
 ---
 
 ## Version History
+
+- **v1.0.0-beta.27 closure** (`0a5a9f1`) — shipped post-checkpoint production hardening: canonical admin sidebar fixes, payments/nav visibility restoration, additive payments interconnect migration + runner compatibility patch, auth/query backward-compat shims, notifications hub implementation (providers/widgets/forum emitters), and hub table self-provisioning for migration-lag resilience.
 
 - **v1.0.0-beta.27** (`09921c9`) — payments/membership/organisation boundary realignment: canonicalized schema to `payments`, introduced payments service ownership for link/unlink/manual record operations, updated organisation finance ingest to canonical payments joins, and cleaned module registry payment metrics.
 
