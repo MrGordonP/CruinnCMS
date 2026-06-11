@@ -4,7 +4,7 @@ namespace Cruinn\Module\Payments\Services;
 
 use Cruinn\Database;
 
-// Last edit: 2026-06-11 13:04 UTC.
+// Last edit: 2026-06-11 13:28 UTC.
 
 class PaymentService
 {
@@ -111,6 +111,50 @@ class PaymentService
             'paid_at'         => !empty($data['paid_at']) ? (string) $data['paid_at'] : date('Y-m-d H:i:s'),
             'notes'           => !empty($data['notes']) ? (string) $data['notes'] : null,
         ]);
+    }
+
+    public function findPaymentById(int $paymentId): ?array
+    {
+        $row = $this->db->fetch('SELECT * FROM payments WHERE id = ?', [$paymentId]);
+        return $row ?: null;
+    }
+
+    public function findPaymentBySource(string $sourceType, int $sourceId): ?array
+    {
+        $row = $this->db->fetch(
+            'SELECT * FROM payments WHERE source_type = ? AND source_id = ? ORDER BY id DESC LIMIT 1',
+            [$sourceType, $sourceId]
+        );
+        return $row ?: null;
+    }
+
+    public function findPaymentByTransactionId(string $transactionId): ?array
+    {
+        $tx = trim($transactionId);
+        if ($tx === '') {
+            return null;
+        }
+
+        $row = $this->db->fetch('SELECT * FROM payments WHERE transaction_id = ? ORDER BY id DESC LIMIT 1', [$tx]);
+        return $row ?: null;
+    }
+
+    public function updatePaymentStatus(int $paymentId, string $status, ?string $notes = null, ?string $paidAt = null): void
+    {
+        $allowed = ['pending', 'completed', 'failed', 'refunded'];
+        if (!in_array($status, $allowed, true)) {
+            throw new \InvalidArgumentException('Invalid payment status.');
+        }
+
+        $update = ['status' => $status];
+        if ($notes !== null) {
+            $update['notes'] = $notes;
+        }
+        if ($paidAt !== null && $paidAt !== '') {
+            $update['paid_at'] = $paidAt;
+        }
+
+        $this->db->update('payments', $update, 'id = ?', [$paymentId]);
     }
 
     public function createImportBatch(array $data): int
