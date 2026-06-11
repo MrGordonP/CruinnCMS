@@ -6,11 +6,12 @@ namespace Cruinn\Module\Notifications\Services;
 
 use Cruinn\Database;
 
-// Last edit: 2026-06-11 16:00 UTC.
+// Last edit: 2026-06-11 16:08 UTC.
 
 class NotificationService
 {
     private Database $db;
+    private ?bool $hasHubTable = null;
 
     public function __construct()
     {
@@ -106,6 +107,10 @@ class NotificationService
      */
     public function publishHubEvent(array $event): int
     {
+        if (!$this->hubTableExists()) {
+            return 0;
+        }
+
         $sourceModule = substr(trim((string) ($event['source_module'] ?? 'core')), 0, 80);
         $sourceEvent  = substr(trim((string) ($event['source_event'] ?? 'event')), 0, 120);
         $category     = substr(trim((string) ($event['category'] ?? 'general')), 0, 60);
@@ -190,6 +195,10 @@ class NotificationService
 
     public function recentHubEvents(int $limit = 200): array
     {
+        if (!$this->hubTableExists()) {
+            return [];
+        }
+
         $safeLimit = max(1, min($limit, 500));
         return $this->db->fetchAll(
             "SELECT he.*, u.display_name AS actor_name
@@ -202,6 +211,10 @@ class NotificationService
 
     public function hubSummary(): array
     {
+        if (!$this->hubTableExists()) {
+            return ['queued' => 0, 'delivered' => 0, 'skipped' => 0, 'failed' => 0, 'total' => 0];
+        }
+
         $rows = $this->db->fetchAll(
             'SELECT status, COUNT(*) AS total FROM notification_hub_events GROUP BY status'
         );
@@ -226,6 +239,25 @@ class NotificationService
             return true;
         }
         return !empty($row['in_app']);
+    }
+
+    private function hubTableExists(): bool
+    {
+        if ($this->hasHubTable !== null) {
+            return $this->hasHubTable;
+        }
+
+        try {
+            $exists = (int) $this->db->fetchColumn(
+                'SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+                ['notification_hub_events']
+            );
+            $this->hasHubTable = $exists > 0;
+        } catch (\Throwable) {
+            $this->hasHubTable = false;
+        }
+
+        return $this->hasHubTable;
     }
 
     // ── Preferences ───────────────────────────────────────────
