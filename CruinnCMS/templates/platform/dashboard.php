@@ -55,12 +55,17 @@
                         <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
                         <button type="submit" class="platform-btn platform-btn-danger">Take Offline</button>
                     </form>
-                    <?php else: ?>
+                    <?php elseif ($instance['db_connected']): ?>
+                    <!-- Offline but DB exists — just needs .active file -->
                     <form method="POST" action="/cms/instances/<?= e(urlencode($instance['folder_name'])) ?>/toggle" style="display:inline">
                         <input type="hidden" name="csrf_token" value="<?= e(\Cruinn\CSRF::getToken()) ?>">
                         <button type="submit" class="platform-btn platform-btn-secondary">Bring Online</button>
                     </form>
                     <a href="/cms/database?instance=<?= e(urlencode($instance['folder_name'])) ?>" class="platform-btn platform-btn-secondary">DB Browser</a>
+                    <?php else: ?>
+                    <!-- Orphaned — directory exists but DB connection failed -->
+                    <a href="/cms/instances/new?restore=<?= e(urlencode($instance['folder_name'])) ?>" class="platform-btn platform-btn-primary">Provision Database</a>
+                    <span class="text-muted" style="font-size:.85rem;">Database not found or connection failed</span>
                     <?php endif; ?>
                 </div>
             </div>

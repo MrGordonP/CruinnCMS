@@ -79,11 +79,17 @@ class PlatformController
             header('Location: /cms/login');
             exit;
         }
+        $formData = $_SESSION['_install_form_data'] ?? [];
         echo $this->view->render('platform/install', [
-            'title'  => 'CruinnCMS Setup',
-            'errors' => $_SESSION['_install_errors'] ?? [],
+            'title'    => 'CruinnCMS Setup',
+            'errors'   => $_SESSION['_install_errors'] ?? [],
+            'username' => $formData['username'] ?? 'platform',
+            'db_host'  => $formData['db_host'] ?? 'localhost',
+            'db_port'  => $formData['db_port'] ?? 3306,
+            'db_name'  => $formData['db_name'] ?? '',
+            'db_user'  => $formData['db_user'] ?? '',
         ]);
-        unset($_SESSION['_install_errors']);
+        unset($_SESSION['_install_errors'], $_SESSION['_install_form_data']);
     }
 
     public function install(): void
@@ -120,6 +126,13 @@ class PlatformController
 
         if (!empty($errors)) {
             $_SESSION['_install_errors'] = $errors;
+            $_SESSION['_install_form_data'] = [
+                'username' => $username,
+                'db_host'  => $db['host'],
+                'db_port'  => $db['port'],
+                'db_name'  => $db['name'],
+                'db_user'  => $db['user'],
+            ];
             header('Location: /cms/install');
             exit;
         }

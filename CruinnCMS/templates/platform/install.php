@@ -61,16 +61,17 @@
 
             <div class="platform-field">
                 <label>Username</label>
-                <input type="text" name="username" value="platform" required autocomplete="username">
+                <input type="text" name="username" value="<?= e($username ?? 'platform') ?>" required autocomplete="username">
             </div>
             <div class="row2">
                 <div class="platform-field">
                     <label>Password</label>
-                    <input type="password" name="password" required autocomplete="new-password" placeholder="Min. 8 characters">
+                    <input type="password" name="password" id="password" required autocomplete="new-password" placeholder="Min. 8 characters">
                 </div>
                 <div class="platform-field">
                     <label>Confirm Password</label>
-                    <input type="password" name="password_confirm" required autocomplete="new-password">
+                    <input type="password" name="password_confirm" id="password_confirm" required autocomplete="new-password">
+                    <div class="hint" id="password-match-hint" style="display:none; color:#ef4444;">Passwords do not match</div>
                 </div>
             </div>
 
@@ -79,22 +80,22 @@
             <div class="row2">
                 <div class="platform-field">
                     <label>Host</label>
-                    <input type="text" name="db_host" value="localhost" required>
+                    <input type="text" name="db_host" value="<?= e($db_host ?? 'localhost') ?>" required>
                     <div class="hint">Usually <code>localhost</code></div>
                 </div>
                 <div class="platform-field">
                     <label>Port</label>
-                    <input type="number" name="db_port" value="3306" required>
+                    <input type="number" name="db_port" value="<?= (int)($db_port ?? 3306) ?>" required>
                 </div>
             </div>
 
             <div class="platform-field">
                 <label>Database Name</label>
-                <input type="text" name="db_name" placeholder="cruinn_platform" required>
+                <input type="text" name="db_name" value="<?= e($db_name ?? '') ?>" placeholder="cruinn_platform" required>
             </div>
             <div class="platform-field">
                 <label>Database User</label>
-                <input type="text" name="db_user" placeholder="root" required>
+                <input type="text" name="db_user" value="<?= e($db_user ?? '') ?>" placeholder="root" required>
             </div>
             <div class="platform-field">
                 <label>Database Password</label>
@@ -110,6 +111,31 @@
     </div>
 </div>
 <p class="footer-note">CruinnCMS Platform Setup</p>
+
+<script>
+const pwd = document.getElementById('password');
+const confirm = document.getElementById('password_confirm');
+const hint = document.getElementById('password-match-hint');
+const form = document.querySelector('form');
+
+function checkMatch() {
+    if (confirm.value === '') {
+        hint.style.display = 'none';
+        confirm.setCustomValidity('');
+        return;
+    }
+    if (pwd.value !== confirm.value) {
+        hint.style.display = 'block';
+        confirm.setCustomValidity('Passwords do not match');
+    } else {
+        hint.style.display = 'none';
+        confirm.setCustomValidity('');
+    }
+}
+
+pwd.addEventListener('input', checkMatch);
+confirm.addEventListener('input', checkMatch);
+</script>
 
 </body>
 </html>
