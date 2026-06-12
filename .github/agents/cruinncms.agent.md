@@ -14,7 +14,7 @@ The engine is intentionally instance-agnostic — no hardcoded instance assumpti
 **Local path (Linux/Fedora):** `/mnt/MyMedia/Programming/Workspace/CruinnCMS`
 
 **Current version:** `v1.0.0-beta.28`
-**HEAD:** `7046424`
+**HEAD:** `4548e1b`
 **Schema:** `schema/platform.sql` (platform tables) + `schema/instance_core.sql` (per-instance, applied at provisioning)
 
 **Canonical technical reference:** `.github/agents/CRUINNCMS_REFERENCE.md`
