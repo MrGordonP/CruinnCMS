@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Platform Login — Cruinn CMS</title>
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
-    <link rel="stylesheet" href="/css/platform.css">
+    <link rel="stylesheet" href="<?= asset('/css/platform.css') ?>">
 </head>
 <body class="platform-body platform-login-body platform-dark-login">
 

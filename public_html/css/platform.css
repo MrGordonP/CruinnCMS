@@ -37,21 +37,25 @@
     padding: 0;
 }
 
+html {
+    height: 100%;
+}
+
 .platform-body {
     font-family: system-ui, -apple-system, sans-serif;
     background: var(--plat-bg);
     color: var(--plat-text);
     font-size: 15px;
     line-height: 1.6;
-    min-height: 100vh;
+    height: 100%;
+    overflow: hidden;
 }
 
 /* ── Top Bar ──────────────────────────────────────────────────── */
 .platform-bar {
     background: var(--plat-dark);
     color: var(--plat-cream);
-    position: sticky;
-    top: 0;
+    flex-shrink: 0;
     z-index: 100;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .4);
     border-bottom: 1px solid rgba(29, 158, 117, .25);
@@ -148,19 +152,11 @@
     border-color: rgba(255, 255, 255, .45);
 }
 
-/* ── Wrap (max-width container) ─────────────────────────────── */
+/* ── Wrap (fixed app frame) ─────────────────────────────────── */
 .platform-wrap {
-    max-width: none;
-    margin: 0;
-    min-height: 100vh;
     display: flex;
     width: 100%;
-}
-
-/* Wide mode: remove outer constraint */
-html.platform-layout-wide .platform-wrap {
-    max-width: none;
-    box-shadow: none;
+    height: 100%;
 }
 
 
@@ -427,19 +423,43 @@ html.platform-layout-wide .platform-wrap {
 .platform-right {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
 
+/* The single scroll region. Flat pages overflow and scroll here;
+   panel layouts set height:100% on themselves and scroll internally. */
 .platform-main {
     flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow-y: auto;
 }
 
-/* ── Content ──────────────────────────────────────────────────── */
-.platform-content {
-    width: 100%;
+.platform-main>#editor-wrap {
+    height: 100%;
+}
+
+/* Width preview modes — constrain the scroll region to device standards */
+html.platform-width-tablet .platform-main {
+    max-width: 768px;
+    margin-inline: auto;
+}
+
+html.platform-width-mobile .platform-main {
+    max-width: 390px;
+    margin-inline: auto;
+}
+
+/* ── Page (flat document pages) ───────────────────────────────── */
+.platform-page {
     padding: 2rem 1.5rem;
-    box-sizing: border-box;
+}
+
+.platform-main>.flash,
+.platform-main>.flash-messages {
+    margin: 1rem 1.5rem 0;
 }
 
 /* ── Page Header ──────────────────────────────────────────────── */
@@ -771,16 +791,17 @@ html.platform-layout-wide .platform-wrap {
 }
 
 /* ── Login Page ───────────────────────────────────────────────── */
+/* Standalone page (no .platform-wrap shell) — body becomes the scroll
+   region; the card centres via auto margins so tall forms can scroll. */
 .platform-login-body {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
+    overflow-y: auto;
 }
 
 .platform-login-wrap {
     width: 100%;
     max-width: 460px;
+    margin: auto;
     padding: 1.5rem;
 }
 
@@ -903,73 +924,10 @@ html.platform-layout-wide .platform-wrap {
 }
 
 .platform-editor-empty {
-    flex: 1;
+    height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* Strip padding and make content area fill height when editor is present */
-html:has(#editor-wrap),
-body:has(#editor-wrap) {
-    height: 100%;
-    overflow: hidden;
-}
-
-/* All /cms/editor pages — force full width regardless of wide toggle */
-html:has(.platform-editor-page),
-.platform-editor-page {
-    height: 100%;
-    overflow: hidden;
-}
-
-.platform-editor-page .platform-wrap {
-    max-width: none;
-    box-shadow: none;
-}
-
-.platform-body:has(#editor-wrap) {
-    height: 100%;
-    min-height: unset;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.platform-body:has(#editor-wrap) .platform-bar {
-    flex-shrink: 0;
-}
-
-.platform-body:has(#editor-wrap) .platform-wrap {
-    flex: 1;
-    min-height: unset;
-    overflow: hidden;
-    display: flex;
-    max-width: none;
-    box-shadow: none;
-}
-
-.platform-main:has(#editor-wrap) {
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.platform-content:has(#editor-wrap) {
-    padding: 0;
-    max-width: none;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-/* editor-wrap fills the platform content area */
-.platform-content #editor-wrap {
-    flex: 1;
-    min-height: 0;
-    height: 100%;
 }
 
 .platform-change-password {
@@ -1072,14 +1030,18 @@ code {
     }
 }
 
-/* ── Footer ───────────────────────────────────────────────────── */
+/* ── Footer (inside .platform-right — never obscures the sidebar) ── */
 .platform-footer {
-    text-align: center;
-    padding: 1.25rem;
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    padding: 1rem 2.5rem;
     font-size: 0.8rem;
     color: rgba(100, 116, 139, .6);
     border-top: 1px solid var(--plat-border);
-    margin-top: 0;
 }
 
 .platform-footer a {
@@ -1091,53 +1053,42 @@ code {
     text-decoration: underline;
 }
 
-/* ── Source Editor (/cms/source) ──────────────────────────────── */
-html:has(#source-wrap),
-body:has(#source-wrap) {
-    height: 100%;
-    overflow: hidden;
+.platform-footer-toggle {
+    position: absolute;
+    right: .5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.65rem;
+    line-height: 1;
+    padding: 0.15rem 0.3rem;
+    border-radius: 3px;
+    color: var(--plat-text-light);
+    transition: color .12s, background .12s;
 }
 
-.platform-body:has(#source-wrap) {
-    height: 100%;
-    min-height: unset;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+.platform-footer-toggle:hover {
+    color: var(--plat-accent);
+    background: rgba(29, 158, 117, .08);
 }
 
-.platform-body:has(#source-wrap) .platform-bar {
-    flex-shrink: 0;
-}
-
-.platform-body:has(#source-wrap) .platform-wrap {
-    flex: 1;
-    min-height: unset;
-    overflow: hidden;
-    display: flex;
-    max-width: none;
-    box-shadow: none;
-}
-
-.platform-main:has(#source-wrap),
-.platform-content:has(#source-wrap) {
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+/* Collapsed: footer shrinks to a thin strip holding only the toggle */
+html.platform-footer-collapsed .platform-footer {
     padding: 0;
-    max-width: none;
-    flex: 1;
-    min-height: 0;
+    height: 16px;
 }
 
+html.platform-footer-collapsed .platform-footer>*:not(.platform-footer-toggle) {
+    display: none;
+}
+
+/* ── Source Editor (/cms/source) ──────────────────────────────── */
 #source-wrap {
     --pl-left-width: 220px;
     --pl-right-width: 220px;
-    flex: 1;
-    min-height: 0;
     height: 100%;
-    display: grid;
-    overflow: hidden;
 }
 
 /* ── Platform colour overrides for shared pl-panel-* classes ───── */
@@ -1608,13 +1559,13 @@ html.platform-sidebar-collapsed .platform-sidebar {
         width: 260px !important;
     }
 
-    .platform-content {
+    .platform-page {
         padding: 1.25rem 1rem;
     }
 }
 
 @media (max-width: 480px) {
-    .platform-content {
+    .platform-page {
         padding: 1rem 0.75rem;
     }
 

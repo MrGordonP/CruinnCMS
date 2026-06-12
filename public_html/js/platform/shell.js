@@ -70,14 +70,57 @@
 
     function syncWidthButtonState() {
         if (!widthBtn) return;
-        widthBtn.textContent = root.classList.contains('platform-layout-wide') ? '\u22A1' : '\u229E';
+        var mode = currentWidthMode();
+        var icons = { desktop: '\u229E', tablet: '\u25AD', mobile: '\u25AF' };
+        widthBtn.textContent = icons[mode];
+        widthBtn.title = 'Width: ' + mode.charAt(0).toUpperCase() + mode.slice(1);
+    }
+
+    function currentWidthMode() {
+        if (root.classList.contains('platform-width-mobile')) return 'mobile';
+        if (root.classList.contains('platform-width-tablet')) return 'tablet';
+        return 'desktop';
+    }
+
+    function setWidthMode(mode) {
+        root.classList.remove('platform-width-tablet', 'platform-width-mobile');
+        if (mode === 'tablet' || mode === 'mobile') {
+            root.classList.add('platform-width-' + mode);
+        }
+        try {
+            localStorage.setItem('platform-width-mode', mode);
+        } catch (e) {
+            // Ignore storage access failures.
+        }
+        syncWidthButtonState();
     }
 
     if (widthBtn) {
         widthBtn.addEventListener('click', function () {
-            var wide = root.classList.toggle('platform-layout-wide');
-            localStorage.setItem('platform-layout-wide', wide ? '1' : '0');
-            syncWidthButtonState();
+            var order = ['desktop', 'tablet', 'mobile'];
+            var next = order[(order.indexOf(currentWidthMode()) + 1) % order.length];
+            setWidthMode(next);
+        });
+    }
+
+    var footerBtn = document.getElementById('platform-footer-btn');
+
+    function syncFooterButtonState() {
+        if (!footerBtn) return;
+        var collapsed = root.classList.contains('platform-footer-collapsed');
+        footerBtn.textContent = collapsed ? '\u25B4' : '\u25BE';
+        footerBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+
+    if (footerBtn) {
+        footerBtn.addEventListener('click', function () {
+            var collapsed = root.classList.toggle('platform-footer-collapsed');
+            try {
+                localStorage.setItem('platform-footer-collapsed', collapsed ? '1' : '0');
+            } catch (e) {
+                // Ignore storage access failures.
+            }
+            syncFooterButtonState();
         });
     }
 
@@ -137,5 +180,6 @@
     });
 
     syncWidthButtonState();
+    syncFooterButtonState();
     syncSidebarButtonState();
 }());

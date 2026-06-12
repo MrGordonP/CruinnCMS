@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($title ?? 'Cruinn CMS') ?></title>
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
-    <link rel="stylesheet" href="/css/admin-panel-layout.css?v=beta6">
-    <link rel="stylesheet" href="/css/platform.css?v=beta6">
-    <script src="/js/platform/boot.js"></script>
+    <link rel="stylesheet" href="<?= asset('/css/admin-panel-layout.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/css/platform.css') ?>">
+    <script src="<?= asset('/js/platform/boot.js') ?>"></script>
 </head>
-<body class="platform-body<?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/cms/editor') ? ' platform-editor-page' : '' ?>">
+<body class="platform-body">
 <div class="platform-wrap"><div class="platform-sidebar-backdrop" id="platform-sidebar-backdrop"></div><aside class="platform-sidebar" id="platform-sidebar"><div class="platform-sidebar-hero"><a href="/cms/dashboard"><img src="/brand/cruinn-favicon.svg" alt="Cruinn CMS">
 </a>
 <div class="platform-sidebar-wordmark">
@@ -113,7 +113,7 @@
 <?php endif; ?>
 </div>
 </div>
-<div class="platform-main"><div class="platform-content"><?php
+<div class="platform-main"><?php
                     // Instance-switch flash (separate from instance Auth::flash system)
                     $_pf = $_SESSION['_platform_flash'] ?? null;
                     if ($_pf) { unset($_SESSION['_platform_flash']); }
@@ -129,12 +129,12 @@
 <?php endif; ?>
 <?= $content ?>
 </div>
-</div>
-</div>
-</div>
 <footer class="platform-footer"><span>Built with</span>
 <a href="https://cruinncms.com" target="_blank" rel="noopener"><span>Cruinn CMS</span></a>
+<button class="platform-footer-toggle" id="platform-footer-btn" type="button" aria-label="Toggle footer" title="Toggle footer">▾</button>
 </footer>
-<script src="/js/platform/shell.js"></script>
+</div>
+</div>
+<script src="<?= asset('/js/platform/shell.js') ?>"></script>
 </body>
 </html>

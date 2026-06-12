@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CruinnCMS Setup</title>
     <link rel="icon" type="image/svg+xml" href="/brand/cruinn-favicon.svg">
-    <link rel="stylesheet" href="/css/platform.css">
+    <link rel="stylesheet" href="<?= asset('/css/platform.css') ?>">
     <style>
         .install-wrap  { max-width: 620px; }
         .install-title { font-size: 1rem; font-weight: 700; text-transform: uppercase;

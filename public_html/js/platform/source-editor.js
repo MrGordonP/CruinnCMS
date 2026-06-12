@@ -172,7 +172,7 @@
 
             if (dirResults) {
                 dirResults.style.display = '';
-                dirResults.innerHTML = '<span style="color:var(--plat-text-muted)">Contacting GitHub\u2026</span>';
+                dirResults.innerHTML = '<span style="color:var(--plat-text-light)">Contacting GitHub\u2026</span>';
             }
 
             var fd = new FormData();
@@ -208,7 +208,7 @@
                             html += '<div style="color:#16a34a">\u2713 ' + file.path + '</div>';
                         } else if (file.status === 'skipped') {
                             skipped++;
-                            html += '<div style="color:var(--plat-text-muted)">\u2014 ' + file.path + (file.error ? ' (' + file.error + ')' : '') + '</div>';
+                            html += '<div style="color:var(--plat-text-light)">\u2014 ' + file.path + (file.error ? ' (' + file.error + ')' : '') + '</div>';
                         } else {
                             failed++;
                             html += '<div style="color:#dc2626">\u274c ' + file.path + (file.error ? ': ' + file.error : '') + '</div>';

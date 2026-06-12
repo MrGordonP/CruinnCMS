@@ -208,7 +208,7 @@ if ($activeFile !== null && $fileContent !== null) {
                 </form>
             </div>
             <?php else: ?>
-            <p style="font-size:.75rem;color:var(--plat-text-muted);margin-top:.75rem;">Protected path — cannot pull from repo.</p>
+            <p style="font-size:.75rem;color:var(--plat-text-light);margin-top:.75rem;">Protected path — cannot pull from repo.</p>
             <?php endif; ?>
             <?php endif; ?>
             </div>

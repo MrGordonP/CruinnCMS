@@ -228,6 +228,18 @@ namespace {
     }
 
     /**
+     * Cache-busted asset URL. Appends the file's mtime as ?v= so browsers
+     * re-fetch only when the file changes. Path is web-root-relative.
+     * Usage: <?= asset('/css/platform.css') ?>
+     */
+    function asset(string $path): string
+    {
+        $file = CRUINN_PUBLIC . $path;
+        $v = is_file($file) ? filemtime($file) : 0;
+        return url($path) . '?v=' . $v;
+    }
+
+    /**
      * Get a CSRF token field for forms.
      * Usage: <?= csrf_field() ?>
      */

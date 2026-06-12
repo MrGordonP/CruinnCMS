@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?= e(\Cruinn\CSRF::getToken()) ?>">
     <title><?= e($title ?? 'Admin') ?> — <?= e(\Cruinn\App::config('site.name', 'Admin')) ?></title>
-    <link rel="stylesheet" href="<?= url('/css/style.css') ?>">
-    <link rel="stylesheet" href="<?= url('/css/admin-base.css') ?>?v=<?= file_exists(CRUINN_PUBLIC . '/css/admin-base.css') ? filemtime(CRUINN_PUBLIC . '/css/admin-base.css') : 0 ?>">
+    <link rel="stylesheet" href="<?= asset('/css/style.css') ?>">
+    <link rel="stylesheet" href="<?= asset('/css/admin-base.css') ?>">
     <?php foreach (\Cruinn\Template::flushCss() as $_cssFile): ?>
-    <link rel="stylesheet" href="<?= url('/css/' . e($_cssFile)) ?>?v=<?= file_exists(CRUINN_PUBLIC . '/css/' . $_cssFile) ? filemtime(CRUINN_PUBLIC . '/css/' . $_cssFile) : 0 ?>">
+    <link rel="stylesheet" href="<?= e(asset('/css/' . $_cssFile)) ?>">
     <?php endforeach; ?>
-    <script src="<?= url('/js/admin/boot.js') ?>?v=<?= file_exists(CRUINN_PUBLIC . '/js/admin/boot.js') ? filemtime(CRUINN_PUBLIC . '/js/admin/boot.js') : 0 ?>"></script>
+    <script src="<?= asset('/js/admin/boot.js') ?>"></script>
 </head>
 <body class="admin-body">
 
@@ -132,7 +132,6 @@
 </div>
 
 <?php
-$adminJsBase = CRUINN_PUBLIC . '/js/admin/';
 $adminModules = [
     'utils.js',
     'api.js',
@@ -148,12 +147,11 @@ $adminModules = [
     'index.js',
 ];
 foreach ($adminModules as $module):
-    $mtime = file_exists($adminJsBase . $module) ? filemtime($adminJsBase . $module) : 0;
 ?>
-<script src="<?= url('/js/admin/' . $module) ?>?v=<?= $mtime ?>"></script>
+<script src="<?= asset('/js/admin/' . $module) ?>"></script>
 <?php endforeach; ?>
 <?php foreach (\Cruinn\Template::flushJs() as $_jsModule): ?>
-<script src="<?= url('/js/admin/' . e($_jsModule)) ?>?v=<?= file_exists($adminJsBase . $_jsModule) ? filemtime($adminJsBase . $_jsModule) : 0 ?>"></script>
+<script src="<?= e(asset('/js/admin/' . $_jsModule)) ?>"></script>
 <?php endforeach; ?>
 </body>
 </html>

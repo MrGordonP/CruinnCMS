@@ -6,11 +6,12 @@
  */
 ?>
 <?php ob_start(); ?>
-<div class="plat-content-header">
-    <h1 class="plat-content-title">Platform Migrations</h1>
+<div class="platform-page">
+<div class="platform-page-header">
+    <h1>Platform Migrations</h1>
 </div>
 
-<p style="color:var(--plat-text-muted);margin-bottom:1.5rem;">
+<p style="color:var(--plat-text-light);margin-bottom:1.5rem;">
     Platform schema migration files (<code>schema/migrate_*.sql</code>). These update the platform database
     for existing installs when new platform features are added.
 </p>
@@ -44,7 +45,7 @@
 <?php if ($pending > 0): ?>
 <form method="post" action="/cms/migrations" style="margin-bottom:2rem;">
     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-    <button type="submit" id="migrations-apply-all" class="plat-btn plat-btn-primary">
+    <button type="submit" id="migrations-apply-all" class="platform-btn platform-btn-primary">
         Apply <?= (int)$pending ?> pending migration<?= $pending !== 1 ? 's' : '' ?>
     </button>
 </form>
@@ -56,8 +57,8 @@
 <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
     <thead>
         <tr style="border-bottom:2px solid var(--plat-border);">
-            <th style="text-align:left;padding:.5rem .75rem;color:var(--plat-text-muted);">File</th>
-            <th style="text-align:center;padding:.5rem .75rem;color:var(--plat-text-muted);width:130px;">Status</th>
+            <th style="text-align:left;padding:.5rem .75rem;color:var(--plat-text-light);">File</th>
+            <th style="text-align:center;padding:.5rem .75rem;color:var(--plat-text-light);width:130px;">Status</th>
             <th style="width:100px;"></th>
         </tr>
     </thead>
@@ -80,7 +81,7 @@
                 <?php elseif ($justRan === 'missing'): ?>
                     <span style="color:#d97706;font-weight:600;">⚠ File missing</span>
                 <?php elseif ($row['applied']): ?>
-                    <span style="color:var(--plat-text-muted);">✓ Applied</span>
+                    <span style="color:var(--plat-text-light);">✓ Applied</span>
                 <?php else: ?>
                     <span style="color:#f59e0b;font-weight:600;">⏳ Pending</span>
                 <?php endif ?>
@@ -96,7 +97,7 @@
                 <form method="post" action="/cms/migrations/rerun" style="margin:0;" onsubmit="return confirm('Re-run <?= htmlspecialchars($row['file'], ENT_QUOTES | ENT_HTML5, 'UTF-8') ?>? This will re-execute the SQL.');">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="file" value="<?= htmlspecialchars($row['file'], ENT_QUOTES, 'UTF-8') ?>">
-                    <button type="submit" style="font-size:.75rem;padding:.25rem .6rem;background:transparent;color:var(--plat-text-muted);border:1px solid var(--plat-border);border-radius:4px;cursor:pointer;">Re-run</button>
+                    <button type="submit" style="font-size:.75rem;padding:.25rem .6rem;background:transparent;color:var(--plat-text-light);border:1px solid var(--plat-border);border-radius:4px;cursor:pointer;">Re-run</button>
                 </form>
                 <?php endif ?>
             </td>
@@ -105,8 +106,9 @@
     </tbody>
 </table>
 <?php else: ?>
-<p style="color:var(--plat-text-muted);">No migration files found in <code>schema/</code>.</p>
+<p style="color:var(--plat-text-light);">No migration files found in <code>schema/</code>.</p>
 <?php endif ?>
+</div>
 <script src="/js/platform/migrations.js"></script>
 <?php $content = ob_get_clean(); ?>
 <?php require __DIR__ . '/layout.php'; ?>
